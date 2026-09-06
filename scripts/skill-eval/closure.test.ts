@@ -1,17 +1,17 @@
 /**
- * scripts/skill-eval/closure.test.ts — plan 20260907-skill-load-contract (SP2), Task 1.
+ * scripts/skill-eval/closure.test.ts — plan 20260907-skill-load-contract
+ * (SP2). Task 1 captured the before-state pins (HEAD 5d7aab93, conflict
+ * inventory C1–C3); Task 2 applied the A2 semantics and FLIPPED the pins to
+ * the after-state (single load-selection authority in the roles hub, core
+ * as pointer/lifecycle authority, none-coherent leaf boundary, narrow
+ * roles-bootstrap exception in lintLoadOrder).
  *
- * Structural closure evidence for the skill load contract (Spec A5: "extracts
- * referenced local files/anchors and reports missing/cyclic unconditional
- * edges; route expectations come from case assertions, not an Engine routing
- * platform"). Plan 06 extends THIS test rather than creating a parallel graph
- * checker.
- *
- * What it pins (before-state, HEAD 5d7aab93):
+ * What it pins (after-state, A2 applied):
  *  1. Reference integrity — every local file/directory referenced by the
  *     roles hub, its role references, and the shared leaf block resolves on
  *     disk; cross-skill `references/...` mentions resolve too. No cycles in
- *     the unconditional required-read graph.
+ *     the unconditional required-read graph (which no longer contains a
+ *     leaf→core edge — `none` is coherent without core).
  *  2. Load-bearing anchors — the AC3 blocks (Completion Report / Git NEVER /
  *     Non-Recursive Dispatch Rule / Shared anti-recursion NEVER in the shared
  *     leaf block; roles Load Order + mapping; core 状态机 Done authority) are
@@ -19,14 +19,22 @@
  *  3. Route matrix from Plan 01 cases (scripts/skill-eval/cases.json) —
  *     PM/dev/QC/audit/close x first/resume, none and default(standard)
  *     presets, engine absent/advisory/blocking all covered; each route's
- *     none-closure contains identity chain + role-owned QC/QA obligations;
- *     each route's default preset members exist on disk.
- *  4. Conflict pins (load-inventory.json C1/C2/C3) — exact before-state text
- *     that Task 2 will change, plus the REAL `lintLoadOrder` from
- *     @mstar-harness/engine returning ok for mstar-roles today (treated as an
- *     ordinary topic) and still failing when the mention is stripped (the
- *     lint is substring-strength only).
- *  5. Red fixtures — on a disposable synthetic skill root, a removed
+ *     none-closure contains identity chain + role-owned QC/QA obligations
+ *     and NO core; each route's default preset members exist on disk AND are
+ *     named in the route's role reference (list pinned in lockstep with the
+ *     refs, not free-floating).
+ *  4. A2 authority pins — core points to the hub for load selection (no
+ *     universal-read rule); the hub owns the omission/none/named/resume/
+ *     unknown-preset decision; the REAL `lintLoadOrder` recognizes the one
+ *     hub bootstrap exception, still fails a hub without its decision
+ *     matrix, and REJECTS broad exemptions (an arbitrary topic with
+ *     hub-style bootstrap and no core-first declaration fails).
+ *  5. Inventory gap closures (Task 1 coverageGapsFound) — audit mode has a
+ *     role-owned identity boundary in code-reviewer.md (trigger-contract +
+ *     enforcement honesty reachable under none); the close route's
+ *     Done-ownership stop condition is reachable because PM required reading
+ *     is declared not preset-gated.
+ *  6. Red fixtures — on a disposable synthetic skill root, a removed
  *     referenced target, a removed anchor heading, and a manufactured cycle
  *     are each reported by the checker (i.e. the suite fails on such real
  *     regressions).
@@ -190,14 +198,10 @@ function buildGraph(rootDir: string): ClosureReport {
     }
   }
 
-  // The unconditional core-first edge of the shared leaf block (conflict C3).
-  const leafRel = "references/_shared/leaf-executor-core.md";
-  const leafPath = join(rootDir, leafRel);
-  if (existsSync(leafPath)) {
-    const coreRel = "../mstar-harness-core/SKILL.md";
-    if (!existsSync(join(rootDir, coreRel))) missingTargets.push(`mstar-harness-core/SKILL.md (required by ${leafRel})`);
-    else addEdge(leafRel, "../mstar-harness-core/SKILL.md");
-  }
+  // A2 flip (was conflict C3): the shared leaf block no longer carries an
+  // unconditional core-first edge — under explicit `none` the identity chain
+  // plus this role-owned boundary is the whole closure. There is therefore
+  // NO leaf→core edge in the unconditional graph anymore.
 
   // Anchor checks.
   const missingAnchors: string[] = [];
@@ -288,7 +292,10 @@ const ROUTE_ROLE_REF: Record<(typeof ROUTES)[number], string> = {
   audit: "references/code-reviewer.md",
   close: "references/project-manager.md",
 };
-/** Role-owned files that must be reachable under none (per route class). */
+/** Role-owned files that must be reachable under none (per route class).
+ * Pinned in lockstep with the role references — the derivation test below
+ * asserts each entry is named in the route's role reference file, so this
+ * list cannot silently drift from the refs. */
 const ROLE_OWNED_UNDER_NONE: Record<(typeof ROUTES)[number], string[]> = {
   pm: ["references/project-manager/qa-trigger-matrix.md"],
   dev: [],
@@ -300,7 +307,11 @@ const ROLE_OWNED_UNDER_NONE: Record<(typeof ROUTES)[number], string[]> = {
   audit: [],
   close: [],
 };
-/** Default(standard) preset members per route — structural existence only. */
+/** Default(standard) preset members per route — structural existence + the
+ * derivation test asserts each is named in the route's role reference (or
+ * required-reading list for the preset-exempt PM/close route). Residual
+ * drift (members named only in prose) is documented, not silently pinned:
+ * the hub table summarizes menus; role refs own the member lists (A2). */
 const DEFAULT_PRESET_MEMBERS: Record<(typeof ROUTES)[number], string[]> = {
   pm: ["mstar-dispatch-gates", "mstar-phase-gates", "mstar-conventions"],
   dev: ["mstar-coding-behavior", "mstar-dispatch-gates", "mstar-branch-worktree"],
@@ -313,7 +324,7 @@ const DEFAULT_PRESET_MEMBERS: Record<(typeof ROUTES)[number], string[]> = {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("skill load closure — plan 20260907-skill-load-contract Task 1", () => {
+describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2", () => {
   const realGraph = buildGraph(ROLES_DIR);
 
   afterAll(() => {
@@ -374,7 +385,7 @@ describe("skill load closure — plan 20260907-skill-load-contract Task 1", () =
     }
   });
 
-  test("none closure: identity chain + role-owned QC/QA obligations reachable for every route", () => {
+  test("none closure: identity chain + role-owned QC/QA obligations reachable, core NOT required, for every route", () => {
     for (const route of ROUTES) {
       const closure = closureOf(realGraph, ["SKILL.md", ROUTE_ROLE_REF[route]]);
       expect(closure.has(ROUTE_ROLE_REF[route]), `${route} role reference reachable`).toBe(true);
@@ -385,56 +396,116 @@ describe("skill load closure — plan 20260907-skill-load-contract Task 1", () =
     }
   });
 
-  test("before-state pin (C3): the none closure is forced through mstar-harness-core via the leaf core-first edge", () => {
-    // Task 2 intentionally flips this: roles hub bootstrap becomes the single
-    // exception so `none` is coherent WITHOUT the forced core read, while the
-    // AC3 leaf semantics stay reachable under none.
-    expect(leafText.includes("**Read `mstar-harness-core` first.**")).toBe(true);
+  test("A2 pin (C3 flipped): the none closure does NOT pass through mstar-harness-core — leaf boundary is none-coherent", () => {
+    // Task 1 before-state: the leaf block forced "**Read `mstar-harness-core`
+    // first.**" so every none closure was pulled through core. Task 2 (A2):
+    // the leaf boundary carries the load-bearing semantics itself and load
+    // selection follows the hub decision.
+    expect(leafText.includes("**Read `mstar-harness-core` first.**")).toBe(false);
+    expect(leafText.includes("Load selection follows the `mstar-roles` hub § Load Order")).toBe(true);
+    expect(leafText.includes("`none` never grants delegation or waives gates")).toBe(true);
     const qcClosure = closureOf(realGraph, ["SKILL.md", ROUTE_ROLE_REF.qc]);
-    expect(qcClosure.has("../mstar-harness-core/SKILL.md")).toBe(true);
+    expect(qcClosure.has("../mstar-harness-core/SKILL.md")).toBe(false);
+    // AC3 still holds under none: leaf + role-owned checklist reachable
+    expect(qcClosure.has("references/_shared/leaf-executor-core.md")).toBe(true);
+    expect(qcClosure.has("references/qc-specialist/reviewer-checklist.md")).toBe(true);
   });
 
-  test("default preset members exist on disk for every route", () => {
+  test("default preset members exist on disk for every route AND are named in the route role reference", () => {
     for (const route of ROUTES) {
+      const refText = read(join(ROLES_DIR, ROUTE_ROLE_REF[route]));
       for (const skill of DEFAULT_PRESET_MEMBERS[route]) {
         expect(existsSync(join(SKILLS_DIR, skill, "SKILL.md")), `${route} preset member ${skill}`).toBe(true);
+        expect(
+          refText.includes(`\`${skill}\``),
+          `${route} preset member ${skill} named in ${ROUTE_ROLE_REF[route]}`,
+        ).toBe(true);
+      }
+      for (const owned of ROLE_OWNED_UNDER_NONE[route]) {
+        expect(
+          refText.includes(`\`${owned}\``),
+          `${route} role-owned ${owned} named in ${ROUTE_ROLE_REF[route]}`,
+        ).toBe(true);
       }
     }
   });
 
-  test("conflict pin (C1): core universal-read rule vs roles none sentence — both exact texts present", () => {
-    expect(coreText.includes("凡 **`mstar-*`**（`name` ≠ `mstar-harness-core`）假定读者**已 Read 本 skill**。")).toBe(true);
-    expect(coreText.includes("**仅读专题、未读核心** → 未完成 harness 加载。")).toBe(true);
-    expect(rolesText.includes("explicit `Skill presets: none` (or a trivial route) ⇒ execute from identity + assignment alone without topic skills")).toBe(true);
-    // the roles hub's own Load Order mentions core only conditionally
-    expect(rolesText.includes("Whenever `mstar-harness-core` is loaded, it remains the global entry")).toBe(true);
+  test("A2 pin (C1 flipped): core points to the hub for load selection; the universal-read rule is gone", () => {
+    // Old universal claims (Task 1 C1 side A) must be gone:
+    expect(coreText.includes("凡 **`mstar-*`**（`name` ≠ `mstar-harness-core`）假定读者**已 Read 本 skill**。")).toBe(false);
+    expect(coreText.includes("**仅读专题、未读核心** → 未完成 harness 加载。")).toBe(false);
+    // Core keeps lifecycle/authorization authority and points at the hub:
+    expect(coreText.includes("生命周期 / 授权语义权威")).toBe(true);
+    expect(coreText.includes("加载**选择**权威是 **`mstar-roles`**")).toBe(true);
+    expect(coreText.includes("本 skill 不维护第二份全局必读角色表")).toBe(true);
+    expect(coreText.includes("**唯一例外**是 `mstar-roles` hub bootstrap")).toBe(true);
+    // Standalone topic→core is preserved for direct topic invocation:
+    expect(coreText.includes("**独立直接调用专题**")).toBe(true);
+    // The hub owns the decision (Task 1 C1 side B now authoritative):
+    expect(rolesText.includes("**single load-selection authority**")).toBe(true);
+    expect(rolesText.includes("This bootstrap is the **one exception** to topic→core")).toBe(true);
+    expect(rolesText.includes("explicit `none` ⇒ no optional topic preset")).toBe(true);
+    expect(rolesText.includes("**Unknown preset** or missing required identity ⇒ return Needs Context / Blocked")).toBe(true);
+    expect(rolesText.includes("Resume: retain loaded identity/contract only when the source hashes are unchanged")).toBe(true);
   });
 
-  test("conflict pin (C2): real lintLoadOrder passes mstar-roles today (ordinary-topic treatment) and is substring-strength", () => {
-    // Before-state: the real engine lint returns ok for the roles hub.
+  test("A2 pin (C2 flipped): lintLoadOrder recognizes the one hub exception, requires the hub matrix, and rejects broad exemptions", () => {
+    // The real hub passes via the bootstrap exception (no core-first needed).
     const rolesOnly = lintLoadOrder({ "mstar-roles": rolesText });
     expect(rolesOnly.ok).toBe(true);
     expect(rolesOnly.violations).toEqual([]);
-    // Strength proof: strip the conditional core mention from the roles Load
-    // Order section — the lint STILL passes while any other mention remains
-    // inside the section ("If any conflict appears, ..."), i.e. its pass
-    // condition is a substring mention (roles.ts:334 section.includes), not a
-    // core-first declaration.
-    const stripWhenever = rolesText.replace(
-      "Whenever `mstar-harness-core` is loaded, it remains the global entry (state machine, gates, routing).",
+    // A hub section without its decision matrix fails the hub check.
+    const hubNoMatrix = "## Load Order\n\nIf any conflict appears, `mstar-harness-core` remains authoritative.\n";
+    const hubLint = lintLoadOrder({ "mstar-roles": hubNoMatrix });
+    expect(hubLint.ok).toBe(false);
+    expect(hubLint.violations.map((v) => v.code)).toContain("roles.loadorder.hub.bootstrap.missing");
+    // Broad exemption rejected: the hub-style bootstrap passes only under
+    // the name `mstar-roles` (matrix + conditional core pointer); a topic
+    // claiming the same bootstrap WITHOUT the core pointer — i.e. claiming
+    // the core-first exemption for itself — still fails core.missing. The
+    // exception is keyed on the skill name alone.
+    const hubStyleBootstrap = [
+      "## Load Order",
+      "",
+      "This skill is the **single load-selection authority**.",
+      "1. Read this skill — **identity-first**: identity before any skill list.",
+      "2. Apply the Assignment **`Skill presets:`** decision — explicit `none` ⇒ identity only; omitted substantive ⇒ `standard`; **role-owned** methods always load.",
+      "3. **Unknown preset** ⇒ Needs Context / Blocked.",
+      "4. Whenever `mstar-harness-core` is loaded it remains the global entry.",
+      "",
+    ].join("\n");
+    expect(lintLoadOrder({ "mstar-roles": hubStyleBootstrap }).ok).toBe(true);
+    const exemptClaim = hubStyleBootstrap.replace(
+      "4. Whenever `mstar-harness-core` is loaded it remains the global entry.\n",
       "",
     );
-    expect(stripWhenever).not.toBe(rolesText);
-    expect(lintLoadOrder({ "mstar-roles": stripWhenever }).ok).toBe(true);
-    // only once EVERY core mention is gone does the lint report the violation
-    const stripAll = stripWhenever.replace(
-      "If any conflict appears, `mstar-harness-core` remains the authoritative source for lifecycle, gates, routing, and invariants.",
-      "",
-    );
-    expect(stripAll).not.toBe(stripWhenever);
-    const strippedLint = lintLoadOrder({ "mstar-roles": stripAll });
-    expect(strippedLint.ok).toBe(false);
-    expect(strippedLint.violations.map((v) => v.code)).toContain("roles.loadorder.core.missing");
+    const topicLint = lintLoadOrder({ "mstar-some-topic": exemptClaim });
+    expect(topicLint.ok).toBe(false);
+    expect(topicLint.violations.map((v) => v.code)).toContain("roles.loadorder.core.missing");
+    // Ordinary topics remain core-first checked (standalone topic→core kept).
+    const topicNoCore = lintLoadOrder({
+      "mstar-other": "## Load Order\nRead `mstar-iteration` first.\n",
+    });
+    expect(topicNoCore.violations.map((v) => v.code)).toContain("roles.loadorder.core.missing");
+  });
+
+  test("inventory gap closures: audit role-owned boundary under none; close Done-ownership reachable (PM not preset-gated)", () => {
+    // Gap 1 (coverageGapsFound[0]): audit method had no role-owned source
+    // under none — the Mode B identity boundary in code-reviewer.md makes the
+    // trigger-contract check + enforcement honesty reachable from identity.
+    const reviewerText = read(join(ROLES_DIR, "references/code-reviewer.md"));
+    expect(reviewerText.includes("### Mode B identity boundary (role-owned, reachable under `none`)")).toBe(true);
+    expect(reviewerText.includes("frontmatter trigger contract")).toBe(true);
+    expect(reviewerText.includes("Enforcement honesty")).toBe(true);
+    expect(reviewerText.includes("engine absent or advisory means every check is advisory-only")).toBe(true);
+    // Gap 2 (coverageGapsFound[1]): the close route's Done-ownership stop
+    // condition (core § 状态机) is reachable because PM required reading is
+    // declared not preset-gated.
+    const pmText = read(join(ROLES_DIR, "references/project-manager.md"));
+    expect(pmText.includes("**Required reading is not preset-gated.**")).toBe(true);
+    expect(pmText.includes("only `project-manager` or `qa-engineer` set `Done`")).toBe(true);
+    // And the stop condition's authority text is still present in core:
+    expect(coreText.includes("仅 `@project-manager` 或 `@qa-engineer`")).toBe(true);
   });
 });
 

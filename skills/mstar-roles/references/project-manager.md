@@ -12,6 +12,8 @@ Before any non-trivial PM action, read in order:
 
 **Not required:** `mstar-coding-behavior` (orchestration-only PM work).
 
+**Required reading is not preset-gated.** PM is exempt from `Skill presets` (the `mstar-roles` hub § Load Order keeps PM required reading unconditional): the lifecycle / Done-ownership stop conditions (`mstar-harness-core` § 状态机 — only `project-manager` or `qa-engineer` set `Done`; QA gate required first) and the assigned evidence obligations stay reachable on every PM round — including plan close — under every preset decision.
+
 Full cross-role matrix: `mstar-roles` SKILL.md.
 
 This file is a compact PM orchestrator shell.

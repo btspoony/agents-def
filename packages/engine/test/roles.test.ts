@@ -13,10 +13,15 @@
  *   (SSOT) — dev track `primary` / `parallel_secondary`; QC reviewer_index
  *   unique 1/2/3, each seat with a focus and `qc<index>` report_suffix
  *   (`qc1.md`…`qc3.md` under `{SDD_DIR}/review/`).
- * - Load-order contract: `mstar-harness-core` SKILL.md § 加载约定 — "凡
- *   `mstar-*`（`name` ≠ `mstar-harness-core`）假定读者已 **Read 本 skill**";
- *   every topic skill therefore declares `mstar-harness-core` as its first
- *   dependency in its Load Order / First action section.
+ * - Load-order contract: `mstar-harness-core` SKILL.md § 与其它 `mstar-*`
+ *   skill 的加载契约 + `mstar-roles` SKILL.md § Load Order (Spec A2 —
+ *   single load-selection authority): directly-invoked topic skills declare
+ *   `mstar-harness-core` as first dependency; the `mstar-roles` hub
+ *   bootstrap is the ONE exception (keyed on the skill name — broad
+ *   exemptions rejected) and instead must declare the identity→preset
+ *   decision matrix (identity-first / `Skill presets:` none+standard /
+ *   role-owned methods / unknown-preset refusal) plus the conditional core
+ *   conflict-authority pointer.
  *
  * Corpus fixtures use the read-only control checkout (assignment: "mapping
  * fixtures with real rolesDir from control checkout read-only"), overridable
@@ -45,9 +50,12 @@ import type { GateResult } from "../src/core.js";
 
 /**
  * Locate the read-only skill corpus: `MSTAR_CONTROL_SKILLS` env override →
- * the control checkout path → this checkout's own `skills/` (identical at
- * the base commit). Returns `null` when no corpus is available so corpus
- * tests skip instead of failing on machines without the harness checkout.
+ * THIS checkout's own `skills/` (upward walk — tests must validate the
+ * corpus this checkout ships, which in feature worktrees differs from the
+ * primary checkout that stays on `main`) → the primary control checkout
+ * path as a last resort. Returns `null` when no corpus is available so
+ * corpus tests skip instead of failing on machines without the harness
+ * checkout.
  *
  * Documented trade-off (qc3 F-007, kept intentionally): the two
  * `test.skipIf(CORPUS === null)` corpus tests are env-conditional — a CI
@@ -57,23 +65,14 @@ import type { GateResult } from "../src/core.js";
  * unconditionally; a checked-in full-corpus fixture is the future upgrade
  * path if machine-independent enforcement is required.
  *
- * Expected-red note (FIX-10, deterministic, NOT a regression): pointing
- * `MSTAR_CONTROL_SKILLS` at the CONTROL checkout while it is still on
- * `main` (pre-merge) reds the real-corpus test with
- * `roles.mapping.reference.missing` for `code-reviewer` — the branch ships
- * the `code-reviewer` ROLE_MAPPING row + `references/code-reviewer.md`,
- * but the control `main` corpus does not have that file yet. This is the
- * expected pre-merge state, not a regression: CI does not set
- * `MSTAR_CONTROL_SKILLS`, so it resolves the upward walk to this
- * checkout's own `skills/` (which contains the file) and stays green.
- * Gate runs set the override to THIS checkout's skills, e.g.
- * `MSTAR_CONTROL_SKILLS=<checkout>/skills`.
+ * Env override semantics are unchanged (gate runs may still point the
+ * validator at an explicit skills root, e.g.
+ * `MSTAR_CONTROL_SKILLS=<checkout>/skills`); only the default resolution
+ * order flipped so the corpus under test is this checkout's own.
  */
 function resolveCorpusRoot(): string | null {
   const fromEnv = process.env.MSTAR_CONTROL_SKILLS;
   if (fromEnv !== undefined && fromEnv !== "") return fromEnv;
-  const control = "/Users/bibi/workspace/ai/mstar-harness/skills";
-  if (existsSync(join(control, "mstar-roles", "SKILL.md"))) return control;
   let dir = import.meta.dir;
   for (;;) {
     const candidate = join(dir, "skills");
@@ -82,6 +81,8 @@ function resolveCorpusRoot(): string | null {
     if (parent === dir) break;
     dir = parent;
   }
+  const control = "/Users/bibi/workspace/ai/mstar-harness/skills";
+  if (existsSync(join(control, "mstar-roles", "SKILL.md"))) return control;
   return null;
 }
 
@@ -337,7 +338,7 @@ describe("validateRoleMapping", () => {
 
 describe("lintLoadOrder", () => {
   test.skipIf(CORPUS === null)(
-    "real corpus: every mstar-* topic SKILL.md declares mstar-harness-core in its Load Order / First action section",
+    "real corpus: topics declare core-first; the mstar-roles hub bootstrap declares the decision matrix (Spec A2 exception)",
     () => {
       const corpus = CORPUS as string;
       const record: Record<string, string> = {};
@@ -405,9 +406,105 @@ describe("lintLoadOrder", () => {
 
   test("parenthesized Load Order heading passes", () => {
     const result = lintLoadOrder({
-      "mstar-roles": "## Load Order (Required)\n\n1. Read `mstar-harness-core` first (SKILL.md).\n",
+      "mstar-docs": "## Load Order (Required)\n\n1. Read `mstar-harness-core` first (SKILL.md).\n",
     });
     expect(result.ok).toBe(true);
+  });
+
+  // --- Spec A2: the one hub-bootstrap exception (mstar-roles) -------------
+
+  const HUB_OK =
+    "## Load Order\n\n" +
+    "This hub is the **single load-selection authority**.\n\n" +
+    "1. Read this skill — **identity-first**: mission, scope, NEVER rules before any skill list.\n" +
+    "2. Apply the Assignment **`Skill presets:`** decision — explicit `none` ⇒ no optional topic preset; " +
+    "omitted on a substantive round ⇒ `standard`; **role-owned** methods load regardless of preset.\n" +
+    "3. **Unknown preset** or missing required identity ⇒ Needs Context / Blocked.\n" +
+    "4. Whenever `mstar-harness-core` is loaded it remains the global entry (conflict authority).\n";
+
+  test("hub bootstrap exception: mstar-roles passes with the decision matrix instead of a core-first declaration", () => {
+    const result = lintLoadOrder({ "mstar-roles": HUB_OK });
+    expect(result.ok).toBe(true);
+    expect(result.violations).toEqual([]);
+  });
+
+  test("hub missing its Load Order section → roles.loadorder.section.missing", () => {
+    const result = lintLoadOrder({ "mstar-roles": "# Roles\n## Role Reference Mapping\ntable\n" });
+    expect(result.ok).toBe(false);
+    expect(result.violations.map((x) => x.code)).toContain("roles.loadorder.section.missing");
+  });
+
+  test("negative: hub missing the identity boundary fails (identity-first token)", () => {
+    const withoutIdentity = HUB_OK.replace(
+      "— **identity-first**: mission, scope, NEVER rules before any skill list.",
+      "— read the reference.",
+    );
+    expect(withoutIdentity).not.toBe(HUB_OK);
+    const result = lintLoadOrder({ "mstar-roles": withoutIdentity });
+    expect(result.ok).toBe(false);
+    const v = result.violations.find((x) => x.code === "roles.loadorder.hub.bootstrap.missing");
+    expect(v).toBeDefined();
+    expect(v?.message).toContain("identity-first");
+  });
+
+  test("negative: hub missing the standard arm fails (decision matrix incomplete)", () => {
+    const withoutStandard = HUB_OK.replace("omitted on a substantive round ⇒ `standard`; ", "");
+    expect(withoutStandard).not.toBe(HUB_OK);
+    const result = lintLoadOrder({ "mstar-roles": withoutStandard });
+    expect(result.ok).toBe(false);
+    const v = result.violations.find((x) => x.code === "roles.loadorder.hub.bootstrap.missing");
+    expect(v).toBeDefined();
+    expect(v?.message).toContain("standard");
+  });
+
+  test("negative: hub missing the role-owned methods arm fails", () => {
+    const withoutOwned = HUB_OK.replace("**role-owned** methods load regardless of preset.", "");
+    expect(withoutOwned).not.toBe(HUB_OK);
+    const result = lintLoadOrder({ "mstar-roles": withoutOwned });
+    expect(result.ok).toBe(false);
+    const v = result.violations.find((x) => x.code === "roles.loadorder.hub.bootstrap.missing");
+    expect(v).toBeDefined();
+    expect(v?.message).toContain("role-owned");
+  });
+
+  test("negative: hub without the unknown-preset refusal arm fails (unknown preset must be rejected, not inferred)", () => {
+    const withoutUnknown = HUB_OK.replace(
+      "3. **Unknown preset** or missing required identity ⇒ Needs Context / Blocked.\n",
+      "",
+    );
+    expect(withoutUnknown).not.toBe(HUB_OK);
+    const result = lintLoadOrder({ "mstar-roles": withoutUnknown });
+    expect(result.ok).toBe(false);
+    const v = result.violations.find((x) => x.code === "roles.loadorder.hub.bootstrap.missing");
+    expect(v).toBeDefined();
+    expect(v?.message).toContain("unknown preset");
+  });
+
+  test("hub without the core conflict-authority pointer still fails core.missing", () => {
+    const withoutPointer = HUB_OK.replace(
+      "4. Whenever `mstar-harness-core` is loaded it remains the global entry (conflict authority).\n",
+      "",
+    );
+    expect(withoutPointer).not.toBe(HUB_OK);
+    const result = lintLoadOrder({ "mstar-roles": withoutPointer });
+    expect(result.ok).toBe(false);
+    expect(result.violations.map((x) => x.code)).toContain("roles.loadorder.core.missing");
+  });
+
+  test("negative: broad exemption rejected — an arbitrary topic with the hub-style bootstrap still needs core-first", () => {
+    // The hub exception is keyed on the skill name `mstar-roles`. A topic
+    // that copies the hub bootstrap but drops the conditional core pointer
+    // (i.e. claims the core-first exemption for itself) must still fail
+    // roles.loadorder.core.missing.
+    const exemptClaim = HUB_OK.replace(
+      "4. Whenever `mstar-harness-core` is loaded it remains the global entry (conflict authority).\n",
+      "",
+    );
+    expect(exemptClaim).not.toBe(HUB_OK);
+    const result = lintLoadOrder({ "mstar-some-topic": exemptClaim });
+    expect(result.ok).toBe(false);
+    expect(result.violations.map((x) => x.code)).toContain("roles.loadorder.core.missing");
+    expect(result.violations.some((x) => x.code === "roles.loadorder.hub.bootstrap.missing")).toBe(false);
   });
 
   test("empty record → ok", () => {
