@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [3.6.3] - 2026-09-06
+
+### Harness
+
+- 安全测试中的静态合成凭据改为本地生成的一次性值（随机 token、本地签名 JWT、内存 RSA 与 OpenSSH 密钥），无需 OpenSSH 可执行文件，全部检测与脱敏断言保留。CLI 覆盖新增断言：已跟踪 token 会被发现且输出永不回显其值。
+- 引擎审计源码中的占位符掩码注释与 mstar-audit 提示注入规则改为直接陈述不变量，不再引用攻击话术；before/after 配对分类检查确认防御行为不变。
+- 加固仓库贡献准备：所有 GitHub Actions 固定到不可变 commit SHA，普通 CI 限为只读权限且不保留 checkout 凭据，新增 GitHub Actions 与 Bun 工作区依赖的每周更新，并发布双语安全漏洞报告政策。发布流程的写权限与推送认证保持不变。
+- Kimi 插件 interface 元数据对齐 Kimi Code 支持的展示字段，并补充项目网站链接。仅从 Kimi manifest 移除不受支持的 Codex 风格能力、启动提示与视觉元数据；skills、commands 和会话启动行为保持不变。
+- 新增 advisory HOL Plugin Security Scan workflow，覆盖 PR、main 分支推送及手动触发；固定 Action 版本，显式启用 Cisco 技能分析，以 80 分及 high 严重度为阈值，未达阈值时仍保留报告，不信任仓库自带的告警豁免。
+- dsh 分发包包含 MIT 许可证及统一安全漏洞报告政策的链接。
+
+### 版本对齐
+
+- 提升 monorepo 根、`@mstar-harness/opencode`、`@mstar-harness/cli`、`@mstar-harness/engine`、`@mstar-harness/dsh`、Cursor/Codex/Kimi/ZCode/omp/Claude 插件清单及便携式 Agent Plugins 清单：**→ 3.6.3**。
+
 ## [3.6.2] - 2026-09-05
 
 ### Harness

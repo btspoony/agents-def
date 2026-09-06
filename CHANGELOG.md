@@ -8,6 +8,21 @@ Package-specific histories: [`packages/cli/CHANGELOG.md`](packages/cli/CHANGELOG
 
 ## [Unreleased]
 
+## [3.6.3] - 2026-09-06
+
+### Harness
+
+- Replaced static synthetic credentials in security tests with locally generated disposable values (random tokens, locally signed JWTs, in-memory RSA and OpenSSH keys), preserving every detection and redaction assertion without requiring an OpenSSH executable. CLI coverage now also asserts a tracked token is found and its value never printed.
+- Reworded the placeholder-masking comment in the engine audit source and the mstar-audit prompt-injection rules to state the invariant without quoting attack phrasing; paired before/after classification checks keep the defensive behavior identical.
+- Hardened repository contribution readiness: pinned all GitHub Actions to immutable commit SHAs, restricted ordinary CI to read-only permissions without persisted checkout credentials, added weekly GitHub Actions and Bun workspace dependency updates, and published a bilingual security disclosure policy. Release write permissions and push authentication are unchanged.
+- Aligned Kimi plugin interface metadata with Kimi Code's supported display fields and added the project website link. Removed unsupported Codex-style capabilities, starter prompts, and visual metadata from the Kimi manifest only; skills, commands, and session-start behavior are unchanged.
+- Added an advisory HOL Plugin Security Scan workflow for pull requests, main-branch pushes, and manual runs, with a pinned Action, explicit Cisco skill analysis, an 80-point/high-severity target, and reports preserved on threshold failure. Repository-owned suppressions remain untrusted.
+- Included the MIT license and a link to the shared security disclosure policy in the dsh package distribution.
+
+### Version alignment
+
+- Bump monorepo root, `@mstar-harness/opencode`, `@mstar-harness/cli`, `@mstar-harness/engine`, `@mstar-harness/dsh`, Cursor/Codex/Kimi/ZCode/omp/Claude plugin manifests, and the portable Agent Plugins manifest: **→ 3.6.3**.
+
 ## [3.6.2] - 2026-09-05
 
 ### Harness
