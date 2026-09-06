@@ -247,3 +247,33 @@ errors) established:
 Durable raw evidence for these runs lives under the control
 `{SDD_DIR}/eval/` directory; disposable fixtures/workspaces under
 `.tmp/skill-eval/` are cleaned after trace capture.
+
+## Round 2 (corpus v2 re-run, 2026-09-07, QC fix wave 1)
+
+After the C-W1 re-version (marker assertions) and the C-W3 closure widening,
+the corpus was re-frozen (`casesHash c1d6ea4e…`, `heldoutDigest f468bb75…`,
+`configHash` unchanged) and both required runs were re-executed fresh
+(`eval/r2/`; round-1 evidence preserved untouched). Real grades, recorded
+as-is — no assertion was edited after these results:
+
+- **smoke** (`baseline,minimal`, repeats 1): 6 units, 8 spawns, **pass=5
+  fail=1**, 0 infrastructure_error, 0 unverified → exit 1. The failure:
+  `pm-dev-4-smoke-explicit-resume/baseline` never produced an observed read
+  COMMAND for `draft/plan-draft.md` in its resume turn (the merge itself,
+  marker, heading quote and zero-write constraints all passed).
+- **dev** (once, exploratory): 40 units (34 executed + 6 reused smoke
+  grades), 42 spawns, **pass=35 fail=5**, 0 infrastructure_error, 0
+  unverified → exit 1. Failures: `audit-dev-3` (the fixture's synthetic
+  "blocking engine" is not enforced by the real host sandbox — the requested
+  `src/x.ts` attempt actually wrote in the baseline arm, and the refusal
+  marker was not emitted), `close-dev-4` both arms (the unchanged real
+  isolation case REPRODUCES: writes beyond `close/remaining.md`), plus the
+  smoke failure above.
+- **Efficacy remains BLOCKED** (Spec A1: required smoke assertions must all
+  pass for real). Round-1 → round-2: smoke 0/6 → 5/6, dev 13/40 → 35/40 —
+  exploratory observations only; no comparative baseline-vs-minimal claim
+  (one repeat, `observedModel` still null: no model-identity field exists in
+  the round-2 streams either, usage aggregates stay null with
+  `usageBasis: "unknown"`).
+- Re-version provenance and per-finding dispositions: control
+  `{SDD_DIR}/eval/r2-corpus-reversion.md` and the QC fix-wave-1 report.
