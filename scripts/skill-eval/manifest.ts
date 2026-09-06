@@ -26,7 +26,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, isAbsolute, join, relative, resolve } from "node:path";
 
 // ---------------------------------------------------------------------------
 // Schema constants (manifest v1)
@@ -90,6 +90,17 @@ export const REPEATS_ALLOWED = [1, 3] as const;
 
 /** Disposable scratch root (gitignored): all prepare writes live under it. */
 export const FIXTURE_ROOT_SEGMENT = join(".tmp", "skill-eval");
+
+/**
+ * C-W3 (QC wave 1): the per-arm freeze closure covers the complete reachable
+ * skill/reference closure of the pinned ref (Spec A1) — the `skills/` tree
+ * PLUS the repo-root contract and command surfaces that skill content
+ * load-bearingly references (`AGENTS.md` — proven injected by the real smoke —
+ * and `commands/`). Host plugin mirrors (`.cursor-plugin/` etc.) are derived
+ * bundles, not load-authority sources, and stay excluded; deep link-graph
+ * reachability extraction is Plan 02's `closure.test.ts` scope (Spec A5).
+ */
+export const CLOSURE_TREE_PATHS = ["AGENTS.md", "commands", "skills"] as const;
 
 const FULL_SHA_RE = /^[0-9a-f]{40}$/;
 const HEX_64_RE = /^[0-9a-f]{64}$/;
@@ -321,16 +332,27 @@ function parseLsTreeZ(stdout: Buffer): LsTreeEntry[] {
 }
 
 /**
- * Reader that resolves the skills/ closure of a pinned full-SHA ref via
- * `git ls-tree -r -z <ref> -- skills` + `git cat-file blob <ref>:<path>`.
- * Read-only git argv calls; never touches the working tree of any checkout.
+ * Reader that resolves the freeze closure of a pinned full-SHA ref via
+ * `git ls-tree -r -z <ref> -- <CLOSURE_TREE_PATHS>` + `git cat-file blob
+ * <ref>:<path>` (C-W3: complete reachable skill/reference closure — skills/
+ * tree plus AGENTS.md and commands/). Read-only git argv calls; never touches
+ * the working tree of any checkout.
  */
 export function makeGitSourceTreeReader(
   repoRoot: string,
   exec: ExecArgv = defaultExecArgv,
 ): SourceTreeReader {
   return async (sourceRef) => {
-    const ls = await exec("git", ["-C", repoRoot, "ls-tree", "-r", "-z", sourceRef, "--", "skills"]);
+    const ls = await exec("git", [
+      "-C",
+      repoRoot,
+      "ls-tree",
+      "-r",
+      "-z",
+      sourceRef,
+      "--",
+      ...CLOSURE_TREE_PATHS,
+    ]);
     const tree: SourceTree = {};
     for (const entry of parseLsTreeZ(ls.stdout)) {
       if (entry.type !== "blob") continue;
@@ -910,23 +932,21 @@ export function validateOutDirShape(outDir: string, repoRoot: string): { resolve
 
 function assertRealpathInside(outDir: string, fixtureRoot: string, io: Io): string[] {
   const errors: string[] = [];
-  // Walk up to the nearest existing ancestor, then resolve symlinks; a
-  // symlinked ancestor escaping the fixture root is rejected.
-  let ancestor = outDir;
-  for (;;) {
-    if (io.exists(ancestor)) break;
-    const parent = resolve(ancestor, "..");
-    if (parent === ancestor) {
-      errors.push(`cannot resolve fixture root containment for ${outDir}`);
-      return errors;
-    }
-    ancestor = parent;
+  // Walk both target and fixture root up to their nearest existing ancestor,
+  // then resolve symlinks; a symlinked ancestor escaping the fixture root is
+  // rejected. Walking (instead of requiring existence) lets every stage run
+  // this check BEFORE creating anything, so a rejected request writes nothing.
+  const ancestor = nearestExistingAncestor(outDir, io);
+  const fixtureAncestor = nearestExistingAncestor(fixtureRoot, io);
+  if (ancestor === null || fixtureAncestor === null) {
+    errors.push(`cannot resolve fixture root containment for ${outDir}`);
+    return errors;
   }
   let realAncestor: string;
   let realFixtureRoot: string;
   try {
     realAncestor = io.realpath(ancestor);
-    realFixtureRoot = io.realpath(fixtureRoot);
+    realFixtureRoot = io.realpath(fixtureAncestor);
   } catch (error) {
     errors.push(`realpath failed while checking output containment: ${(error as Error).message}`);
     return errors;
@@ -938,6 +958,57 @@ function assertRealpathInside(outDir: string, fixtureRoot: string, io: Io): stri
     );
   }
   return errors;
+}
+
+/** Nearest existing ancestor of a path (the filesystem root counts as existing). */
+function nearestExistingAncestor(target: string, io: Io): string | null {
+  let current = resolve(target);
+  for (;;) {
+    const parent = resolve(current, "..");
+    if (parent === current) return current; // filesystem root
+    if (io.exists(current)) return current;
+    current = parent;
+  }
+}
+
+/**
+ * C-W2 (QC wave 1): shared disposable-root write containment for EVERY stage
+ * that writes under a run dir (prepare / run / report). The target must be
+ * strictly inside `<repoRoot>/.tmp/skill-eval/` (shape check) with no symlink
+ * ancestor escaping it (realpath check). Performs no filesystem writes, so a
+ * rejection leaves the tree untouched.
+ */
+export function disposableRootContainmentErrors(
+  targetDir: string,
+  repoRoot: string,
+  io: Io,
+): { fixtureRoot: string; resolved: string | undefined; errors: string[] } {
+  const shape = validateOutDirShape(targetDir, repoRoot);
+  if (shape.errors.length > 0 || shape.resolved === undefined) {
+    return { fixtureRoot: shape.fixtureRoot, resolved: undefined, errors: shape.errors };
+  }
+  return {
+    fixtureRoot: shape.fixtureRoot,
+    resolved: shape.resolved,
+    errors: assertRealpathInside(shape.resolved, shape.fixtureRoot, io),
+  };
+}
+
+/**
+ * Derive the repo root for a path that must live under a disposable
+ * `<repoRoot>/.tmp/skill-eval/` root (run/report stages receive only a
+ * manifest path). Returns null when no such ancestor segment exists.
+ */
+export function deriveDisposableRepoRoot(descendantPath: string): string | null {
+  let dir = resolve(descendantPath);
+  for (;;) {
+    const parent = resolve(dir, "..");
+    if (parent === dir) return null;
+    dir = parent;
+    if (basename(dir) === "skill-eval" && basename(resolve(dir, "..")) === ".tmp") {
+      return resolve(dir, "..", "..");
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1061,13 +1132,17 @@ export async function prepareManifest(args: PrepareArgs): Promise<PrepareResult>
   if (resolvedErrors.length > 0) return fail(resolvedErrors);
 
   // -- Phase C: output safety, then (only now) writes ----------------------
+  // Containment (shape + realpath/symlink walk) completes BEFORE any mkdir:
+  // a rejected prepare creates nothing, not even the gitignored fixture root
+  // (QC wave 1: the previous ensureDir-before-check ordering could create the
+  // disposable root directory on rejection).
   const { resolved, fixtureRoot, errors: outErrors } = validateOutDirShape(args.outDir, args.repoRoot);
   if (outErrors.length > 0 || resolved === undefined) return fail(outErrors);
 
-  io.ensureDir(fixtureRoot);
   const containmentErrors = assertRealpathInside(resolved, fixtureRoot, io);
   if (containmentErrors.length > 0) return fail(containmentErrors);
 
+  io.ensureDir(fixtureRoot);
   io.ensureDir(resolved);
   for (const c of preparedCases) {
     const caseDir = join(resolved, "fixtures", c.id);

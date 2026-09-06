@@ -13,9 +13,13 @@
  *   are file streams (events.jsonl / stderr.txt raw bytes preserved).
  * - Thread IDs are captured from thread.started events only; resume uses the
  *   exact captured ID with the same case/variant/workspace/sandbox and
- *   rejects cross-arm or ephemeral resume.
+ *   rejects cross-arm or ephemeral resume. Resume identity is checked
+ *   state-vs-evidence: thread id from a fresh re-scan of preserved turn-1
+ *   events, cwd/sandbox from preserved turn-1 argv.json (C-W4).
  * - Timed-out children are terminated (SIGTERM, then SIGKILL after a grace
- *   period); stderr, exit code and signal are preserved either way.
+ *   period; direct child only — see README known limits); stderr, exit code
+ *   and signal are preserved either way. Re-executed turns archive the
+ *   previous attempt's raw bytes under aborted/ instead of deleting them.
  * - The event adapter tolerates unknown records and malformed JSON lines
  *   (raw bytes are always retained in events.jsonl) and never invents usage:
  *   missing counters stay null with an explicit reason, and the per-turn vs
@@ -50,8 +54,11 @@ import {
   canonicalJson,
   canonicalRunId,
   computeConfigHash,
+  disposableRootContainmentErrors,
+  deriveDisposableRepoRoot,
   REPEATS_ALLOWED,
   sha256Hex,
+  SMOKE_CASE_COUNT,
   validateRunSplit,
   VARIANT_IDS,
   type AssertionKind,
@@ -82,7 +89,7 @@ export type ReadEvidence = (typeof READ_EVIDENCE_KINDS)[number];
 const KILL_GRACE_MS = 5000;
 
 const AUTH_FAILURE_RE =
-  /(unauthori[sz]ed|authentication|not logged in|invalid api key|api key|quota|rate limit|401|403)/i;
+  /\b(unauthori[sz]ed|authentication|not logged in|invalid api key|api key|quota|rate limit|401|403)\b/i;
 const THREAD_STARTED_RE = /^thread[._-]?started$/i;
 const TURN_COMPLETED_RE = /^turn[._-]?completed$/i;
 const FAILURE_EVENT_RE = /^(error|turn[._-]?failed)$/i;
@@ -289,43 +296,74 @@ export function buildResumeArgv(opts: {
 
 export interface ResumeGuardInput {
   unitId: string;
-  /** Thread id recorded for this unit's completed first turn. */
+  /**
+   * Thread id from INDEPENDENT evidence: the fresh re-scan of the preserved
+   * turn-1 events (not the scheduler state). C-W4 (QC wave 1).
+   */
   recordedThreadId: string | null;
   /** True when the first turn ran with --ephemeral (single-turn case). */
   turn1Ephemeral: boolean;
-  /** Planned resume identity that must match the recorded unit exactly. */
+  /** Planned resume identity from the scheduler request for this unit. */
   planned: { unitId: string; threadId: string; cwd: string; sandbox: string };
+  /**
+   * Recorded identity from preserved turn-1 `argv.json` (`--cd` / `--sandbox`
+   * values) — never echoed back from the same state object the planned values
+   * come from, so the cross-arm comparisons can actually fail (C-W4).
+   */
   recordedCwd: string | null;
   recordedSandbox: string | null;
 }
 
 /**
+ * Typed evidence-integrity rejection (QC wave 1 S-C): thrown by the resume
+ * guard for cross-arm/ephemeral/tampered resume. Callers classify on this
+ * type — never on error-message text, which refactors cannot silently break.
+ */
+export class ResumeRejectionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ResumeRejectionError";
+  }
+}
+
+/**
  * Rejects cross-arm resume (thread id / unit identity / cwd / sandbox that
- * does not belong to this exact unit) and ephemeral resume. Throws with a
- * message naming the violated rule; the caller never spawns on throw.
+ * does not belong to this exact unit) and ephemeral resume. Throws
+ * {@link ResumeRejectionError} naming the violated rule; the caller never
+ * spawns on throw. `recorded*` values must come from preserved turn-1
+ * evidence (argv.json + event re-scan), not from the scheduler state, so
+ * every comparison is state-vs-evidence rather than self-comparison.
  */
 export function assertResumeAllowed(input: ResumeGuardInput): void {
   if (input.recordedThreadId === null || input.recordedThreadId === "") {
-    throw new Error(`resume rejected for ${input.planned.unitId}: no captured thread id (thread.started was never observed)`);
+    throw new ResumeRejectionError(
+      `resume rejected for ${input.planned.unitId}: no thread id in the preserved turn-1 evidence (thread.started was never observed)`,
+    );
   }
   if (input.turn1Ephemeral) {
-    throw new Error(`ephemeral resume rejected for ${input.planned.unitId}: ephemeral first turns cannot be resumed`);
+    throw new ResumeRejectionError(
+      `ephemeral resume rejected for ${input.planned.unitId}: ephemeral first turns cannot be resumed`,
+    );
   }
   if (input.planned.unitId !== input.unitId) {
-    throw new Error(
+    throw new ResumeRejectionError(
       `cross-arm resume rejected: planned unit ${input.planned.unitId} does not match recorded unit ${input.unitId}`,
     );
   }
   if (input.planned.threadId !== input.recordedThreadId) {
-    throw new Error(
-      `cross-arm resume rejected: thread id ${JSON.stringify(input.planned.threadId)} is not the id recorded for unit ${input.unitId} (${JSON.stringify(input.recordedThreadId)})`,
+    throw new ResumeRejectionError(
+      `cross-arm resume rejected: planned thread id ${JSON.stringify(input.planned.threadId)} does not match the id in preserved turn-1 evidence ${JSON.stringify(input.recordedThreadId)}`,
     );
   }
   if (input.recordedCwd !== null && input.planned.cwd !== input.recordedCwd) {
-    throw new Error(`cross-arm resume rejected: resume cwd differs from the recorded first-turn cwd for ${input.unitId}`);
+    throw new ResumeRejectionError(
+      `cross-arm resume rejected: resume cwd differs from the turn-1 argv.json cwd for ${input.unitId}`,
+    );
   }
   if (input.recordedSandbox !== null && input.planned.sandbox !== input.recordedSandbox) {
-    throw new Error(`cross-arm resume rejected: resume sandbox differs from the recorded first-turn sandbox for ${input.unitId}`);
+    throw new ResumeRejectionError(
+      `cross-arm resume rejected: resume sandbox differs from the turn-1 argv.json sandbox for ${input.unitId}`,
+    );
   }
 }
 
@@ -386,15 +424,6 @@ function eventIdOf(json: Record<string, unknown> | null): string | null {
   const item = (json.item ?? null) as Record<string, unknown> | null;
   const raw = json.id ?? item?.id ?? null;
   return typeof raw === "string" && raw !== "" ? raw : null;
-}
-
-/** Unknown/non-agent-message records are searchable for tool-read needles. */
-export function isMessageLikeRecord(record: ParsedEventRecord): boolean {
-  if (!record.json) return false;
-  const item = record.json.item as Record<string, unknown> | undefined;
-  const type = typeof record.json.type === "string" ? record.json.type : "";
-  const itemType = item && typeof item.type === "string" ? item.type : "";
-  return type === "agent_message" || itemType === "agent_message";
 }
 
 function eventIdOfRecord(record: ParsedEventRecord): string | null {
@@ -470,6 +499,48 @@ export function scanEventStream(raw: string): EventStreamScan {
   return scanEventRecords(parseEventLines(raw));
 }
 
+/**
+ * Item types whose typed fields can carry an observed tool/file read (schema
+ * verified against the real round-1 smoke streams: reads surface as
+ * `command_execution` items whose `command` is the observed shell argv;
+ * array-shaped commands from synthetic/other adapters are joined). Agent
+ * messages, error notices, thread/turn bookkeeping and file-change records
+ * are NOT read-shaped.
+ */
+const READ_ITEM_TYPES = new Set([
+  "command_execution",
+  "file_read",
+  "read_file",
+  "tool_call",
+  "function_call",
+  "local_shell_call",
+  "mcp_tool_call",
+  "shell_command",
+  "exec_command",
+]);
+
+/**
+ * Typed command text of a read-shaped record, or null. Matches ONLY the
+ * observed command argv (`item.command`, string or string array) — never the
+ * whole serialized record. A command whose *output* merely mentions the
+ * needle (e.g. `find .` listing a filename) is not an observed read; neither
+ * is an agent message claiming one.
+ */
+function observedReadCommandText(record: ParsedEventRecord): string | null {
+  if (!record.json) return null;
+  const item = (record.json.item ?? null) as Record<string, unknown> | null;
+  if (!item || typeof item !== "object") return null;
+  const itemType = typeof item.type === "string" ? item.type : "";
+  if (!READ_ITEM_TYPES.has(itemType)) return null;
+  const command = item.command;
+  if (typeof command === "string" && command !== "") return command;
+  if (Array.isArray(command)) {
+    const joined = command.filter((c) => typeof c === "string").join(" ").trim();
+    return joined === "" ? null : joined;
+  }
+  return null;
+}
+
 export interface ToolReadHit {
   turn: number;
   line: number;
@@ -477,13 +548,17 @@ export interface ToolReadHit {
 }
 
 /**
- * Search parsed event records for a needle, excluding agent-message payloads
- * (a final message merely claiming a read must not satisfy tool_read_*).
+ * Search parsed event records for an OBSERVED read of the needle: only
+ * read-shaped item records count, and only their typed command field is
+ * searched (C-W1/QC-wave-1: matched to the verified real event schema —
+ * `command_execution.command` argv — instead of raw substring over the whole
+ * serialized record).
  */
 export function findToolReadRecord(records: ParsedEventRecord[], needle: string, turn: number): ToolReadHit | null {
   for (const record of records) {
-    if (!record.json || isMessageLikeRecord(record)) continue;
-    if (JSON.stringify(record.json).includes(needle)) {
+    const commandText = observedReadCommandText(record);
+    if (commandText === null) continue;
+    if (commandText.includes(needle)) {
       return { turn, line: record.line, eventId: eventIdOfRecord(record) };
     }
   }
@@ -831,13 +906,13 @@ function gradeToolReadAssertion(
           assertionId,
           kind,
           grade: "pass",
-          evidence: { turn: hit.turn, line: hit.line, eventId: hit.eventId, detail: `tool/event stream contains ${JSON.stringify(value)}` },
+          evidence: { turn: hit.turn, line: hit.line, eventId: hit.eventId, detail: `observed read command contains ${JSON.stringify(value)}` },
         }
       : {
           assertionId,
           kind,
           grade: "fail",
-          evidence: { detail: `expected read of ${JSON.stringify(value)} never observed in tool/event stream` },
+          evidence: { detail: `expected read of ${JSON.stringify(value)} never observed as a read-shaped command` },
         };
   }
   return !hit
@@ -845,13 +920,13 @@ function gradeToolReadAssertion(
         assertionId,
         kind,
         grade: "pass",
-        evidence: { detail: `tool/event stream never contains forbidden ${JSON.stringify(value)}` },
+        evidence: { detail: `no read-shaped command ever contains forbidden ${JSON.stringify(value)}` },
       }
     : {
         assertionId,
         kind,
         grade: "fail",
-        evidence: { turn: hit.turn, line: hit.line, eventId: hit.eventId, detail: `forbidden content ${JSON.stringify(value)} observed in event stream` },
+        evidence: { turn: hit.turn, line: hit.line, eventId: hit.eventId, detail: `forbidden content ${JSON.stringify(value)} observed in a read-shaped command` },
       };
 }
 
@@ -953,6 +1028,13 @@ export interface RunArgs {
   split: RunSplit;
   variants: readonly string[];
   repeats: number;
+  /**
+   * Repository root for the disposable-root write containment check. Defaults
+   * to the root derived from the manifest path (the `<repoRoot>/.tmp/skill-eval`
+   * ancestor); a manifest outside any disposable root is rejected before any
+   * write or spawn (QC wave 1 C-W2).
+   */
+  repoRoot?: string;
   io?: RunnerIo;
   spawnFn?: SpawnFn;
   now?: () => number;
@@ -1022,7 +1104,9 @@ export function manifestIntegrityErrors(manifest: EvalManifest): string[] {
   return errors;
 }
 
-function selectCases(manifest: EvalManifest, split: RunSplit): PreparedManifestCase[] {
+/** Single selection SSOT for run AND report (QC wave 1 S-D): smoke = the
+ * smoke-marked dev cases; any other split = the cases stored with that split. */
+export function selectCases(manifest: EvalManifest, split: RunSplit): PreparedManifestCase[] {
   if (split === "smoke") return manifest.cases.filter((c) => c.provenance?.smoke === true);
   return manifest.cases.filter((c) => c.split === split);
 }
@@ -1034,6 +1118,32 @@ function unitIdOf(caseId: string, variant: string, repeat: number): string {
 function turnRunId(unitId: string, turn: number): string {
   const [caseId, variant, repeat] = unitId.split("/");
   return canonicalRunId(caseId, variant, Number(repeat), turn);
+}
+
+/**
+ * C-W4 (QC wave 1): recorded first-turn cwd/sandbox, read from the preserved
+ * turn-1 `argv.json` (`--cd` / `--sandbox` values actually passed to the
+ * child) — an evidence source independent of the scheduler state, so the
+ * resume guard's cross-arm comparisons can fail. A missing/unreadable
+ * argv.json is itself an evidence-integrity rejection: identity cannot be
+ * corroborated, so the resume never spawns.
+ */
+export function recordedTurn1Identity(io: RunnerIo, argvFile: string): { cwd: string | null; sandbox: string | null } {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(io.readText(argvFile));
+  } catch (error) {
+    throw new ResumeRejectionError(`turn-1 argv.json is unreadable, recorded cwd/sandbox unavailable: ${(error as Error).message}`);
+  }
+  const argv = (parsed as { argv?: unknown } | null)?.argv;
+  if (!Array.isArray(argv)) {
+    throw new ResumeRejectionError("turn-1 argv.json carries no argv array; recorded cwd/sandbox unavailable");
+  }
+  const flagValue = (flag: string): string | null => {
+    const index = argv.indexOf(flag);
+    return index >= 0 && typeof argv[index + 1] === "string" ? (argv[index + 1] as string) : null;
+  };
+  return { cwd: flagValue("--cd"), sandbox: flagValue("--sandbox") };
 }
 
 /**
@@ -1049,6 +1159,39 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
   const runDir = resolve(manifestPath, "..");
   const statePath = join(runDir, "scheduler", "state.json");
   const errors: string[] = [];
+
+  // -- Phase 0: disposable-root write containment (QC wave 1 C-W2) ---------
+  // The run stage materializes scheduler/, runs/ and workspaces/ beneath the
+  // manifest's parent dir; like prepare, it refuses (exit 2, zero writes,
+  // zero spawns) unless that dir is strictly inside <repoRoot>/.tmp/skill-eval/
+  // with no symlink escape. A runnable manifest copied into a durable tree
+  // can no longer pull run artifacts out of the disposable root.
+  const containmentRepoRoot = args.repoRoot ?? deriveDisposableRepoRoot(manifestPath);
+  const containment =
+    containmentRepoRoot === null
+      ? {
+          resolved: undefined,
+          errors: [
+            `run dir ${runDir} is not inside a disposable <repoRoot>/.tmp/skill-eval/ root; writes must stay in the disposable fixture root (Spec A1)`,
+          ],
+        }
+      : disposableRootContainmentErrors(runDir, containmentRepoRoot, io);
+  if (containment.errors.length > 0) {
+    return {
+      exit: 2,
+      statePath,
+      state: {
+        schemaVersion: RUNNER_SCHEMA_VERSION,
+        manifestPath,
+        manifestHash: "",
+        requested: { split: args.split, variants: [...args.variants], repeats: args.repeats },
+        interleaveSeed: 0,
+        units: {},
+      },
+      summary: { requestedUnits: 0, executedUnits: 0, skippedCompletedUnits: 0, grades: emptyGradeCounts(), spawnCount: 0, exit: 2 },
+      errors: containment.errors,
+    };
+  }
 
   // -- Phase A: validate frozen manifest + request (no spawns) -------------
   let manifest: EvalManifest;
@@ -1086,8 +1229,8 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
     errors.push(`--repeats ${args.repeats} exceeds the frozen manifest sampling lock (manifest.repeats=${manifest.repeats}); re-prepare to change sampling`);
   }
   const cases = selectCases(manifest, args.split);
-  if (args.split === "smoke" && cases.length !== 3) {
-    errors.push(`smoke selection must contain exactly 3 smoke-marked dev cases, found ${cases.length}`);
+  if (args.split === "smoke" && cases.length !== SMOKE_CASE_COUNT) {
+    errors.push(`smoke selection must contain exactly ${SMOKE_CASE_COUNT} smoke-marked dev cases, found ${cases.length}`);
   }
   if (cases.length === 0) errors.push(`split ${JSON.stringify(args.split)} selected no cases from the manifest`);
   if (errors.length > 0) {
@@ -1163,9 +1306,16 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
   ): Promise<{ record: TurnRecord; scan: EventStreamScan }> => {
     const runId = turnRunId(unit.unitId, turn);
     const turnDir = join(runDir, "runs", unit.caseId, unit.variant, `r${unit.repeat}`, `turn${turn}`);
-    // Recreate the turn dir so a re-executed turn never appends onto stale
-    // evidence bytes from an earlier aborted attempt.
-    io.removeDeep(turnDir);
+    // Re-executed turns never append onto stale evidence bytes: the previous
+    // attempt's dir (e.g. an interrupted attempt whose partial bytes were
+    // never recorded in state) is MOVED to aborted/ instead of deleted, so
+    // raw diagnostics survive while the turn dir starts fresh (QC wave 1 S-E).
+    if (io.exists(turnDir)) {
+      const abortedDir = join(runDir, "runs", unit.caseId, unit.variant, `r${unit.repeat}`, "aborted");
+      io.ensureDir(abortedDir);
+      const stamp = new Date(now()).toISOString().replace(/[:.]/g, "-");
+      io.rename(turnDir, join(abortedDir, `${stamp}-turn${turn}`));
+    }
     io.ensureDir(turnDir);
     const promptFile = join(turnDir, "prompt.txt");
     const eventsFile = join(turnDir, "events.jsonl");
@@ -1318,28 +1468,26 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
           const reason = "resume requires a captured thread id; the first turn recorded none (thread_reused stays unverified)";
           unit.failureReason = unit.failureReason ? `${unit.failureReason}; ${reason}` : reason;
         } else {
-          // Resume uses the recorded run ID's thread id only when it still
-          // matches the preserved first-turn evidence (rejects cross-arm or
-          // tampered resume). Never infer a latest session.
+          // Resume identity is checked state-vs-evidence (QC wave 1 C-W4):
+          // the thread id comes from a fresh re-scan of the preserved turn-1
+          // events; cwd/sandbox come from the preserved turn-1 argv.json
+          // (--cd/--sandbox). A hand-edited state.json can no longer resume
+          // unchallenged. Never infer a latest session.
           const turn1 = unit.turns["1"];
           if (!turn1 || turn1.status !== "completed") {
             unit.failureReason = "resume rejected: no completed, evidence-backed first turn for this run ID";
           } else {
             const freshScan = scanEventStream(safeRead(io, turn1.artifacts.events));
             try {
+              const recordedIdentity = recordedTurn1Identity(io, turn1.artifacts.argv);
               assertResumeAllowed({
                 unitId: unit.unitId,
-                recordedThreadId: unit.threadId,
+                recordedThreadId: freshScan.threadId,
                 turn1Ephemeral: unit.turn1Ephemeral,
                 planned: { unitId: unit.unitId, threadId: unit.threadId, cwd: unit.cwd, sandbox: unit.sandbox },
-                recordedCwd: turn1 ? unit.cwd : null,
-                recordedSandbox: turn1 ? unit.sandbox : null,
+                recordedCwd: recordedIdentity.cwd,
+                recordedSandbox: recordedIdentity.sandbox,
               });
-              if (freshScan.threadId !== unit.threadId) {
-                throw new Error(
-                  `cross-arm resume rejected: recorded thread id ${JSON.stringify(unit.threadId)} does not match preserved turn-1 evidence ${JSON.stringify(freshScan.threadId)}`,
-                );
-              }
               const argv = buildResumeArgv({
                 cliPath: manifest.cli.path,
                 sandbox: unit.sandbox,
@@ -1350,8 +1498,8 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
               const { record } = await runOneTurn(unit, caseRec, 2, caseRec.resumePrompt!, argv);
               unit.turns["2"] = record;
             } catch (error) {
+              if (error instanceof ResumeRejectionError) resumeRejection = true;
               const reason = (error as Error).message;
-              if (/resume rejected/.test(reason)) resumeRejection = true;
               unit.failureReason = unit.failureReason ? `${unit.failureReason}; ${reason}` : reason;
             }
             persistState(io, statePath, state);

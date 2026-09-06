@@ -17,12 +17,13 @@
  *   assertion failures only, 2 infrastructure / unverified / pending.
  */
 import { join, resolve } from "node:path";
-import { sha256Hex } from "./manifest.ts";
+import { deriveDisposableRepoRoot, disposableRootContainmentErrors, sha256Hex } from "./manifest.ts";
 import {
   exitForGrades,
   manifestIntegrityErrors,
   nodeRunnerIo,
   RUNNER_SCHEMA_VERSION,
+  selectCases,
   type EvalManifest,
   type RunnerIo,
   type SchedulerState,
@@ -98,6 +99,13 @@ export interface EvalReport {
 
 export interface ReportArgs {
   manifestPath: string;
+  /**
+   * Repository root for the disposable-root write containment check (QC wave
+   * 1 C-W2). Defaults to the root derived from the manifest path; a run dir
+   * outside any `<repoRoot>/.tmp/skill-eval/` root is refused before any
+   * report artifact is written.
+   */
+  repoRoot?: string;
   io?: RunnerIo;
 }
 
@@ -119,10 +127,9 @@ const HONESTY_NOTES = [
 ];
 
 function requestedUnitIds(state: SchedulerState, manifest: EvalManifest): string[] {
-  const cases =
-    state.requested.split === "smoke"
-      ? manifest.cases.filter((c) => c.provenance?.smoke === true)
-      : manifest.cases.filter((c) => c.split === state.requested.split);
+  // QC wave 1 S-D: the case selection is the runner's exported SSOT — the
+  // report denominator can no longer drift from the executed selection.
+  const cases = selectCases(manifest, state.requested.split);
   const ids: string[] = [];
   for (let repeat = 1; repeat <= state.requested.repeats; repeat += 1) {
     for (const c of cases) {
@@ -286,6 +293,21 @@ export function buildReport(args: ReportArgs): ReportResult {
     },
     errors,
   });
+
+  // Disposable-root write containment (QC wave 1 C-W2): the report writes
+  // report.json/report.md next to the manifest; like run/prepare, refuse
+  // (exit 2, zero writes) when that dir is not strictly inside the
+  // disposable fixture root.
+  const containmentRepoRoot = args.repoRoot ?? deriveDisposableRepoRoot(manifestPath);
+  const containment =
+    containmentRepoRoot === null
+      ? {
+          errors: [
+            `run dir ${runDir} is not inside a disposable <repoRoot>/.tmp/skill-eval/ root; writes must stay in the disposable fixture root (Spec A1)`,
+          ],
+        }
+      : disposableRootContainmentErrors(runDir, containmentRepoRoot, io);
+  if (containment.errors.length > 0) return fail(containment.errors);
 
   let manifest: EvalManifest;
   try {

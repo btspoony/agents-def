@@ -58,9 +58,10 @@ import {
   buildResumeArgv,
   defaultSpawnFn,
   findToolReadRecord,
-  isMessageLikeRecord,
   parseEventLines,
+  recordedTurn1Identity,
   rejectForbiddenFlags,
+  ResumeRejectionError,
   runManifest,
   scanEventRecords,
   scheduleOrder,
@@ -135,6 +136,9 @@ function memoryIo(symlinks: Record<string, string> = {}): {
       cur = parent;
     }
   };
+  // A symlink cannot exist without its parent chain: register the ancestors
+  // so containment checks see the same preconditions a real filesystem has.
+  for (const source of Object.keys(symlinks)) ensureAncestors(resolve(source, ".."));
   const io: Io = {
     readText: (p) => {
       const v = files.get(resolve(p));
@@ -517,7 +521,20 @@ describe("source tree reader (git argv parsing)", () => {
 
     expect(calls.length).toBe(3);
     expect(calls.every((c) => c.file === "git")).toBe(true);
-    expect(calls[0].args).toEqual(["-C", REPO_ROOT, "ls-tree", "-r", "-z", BASELINE_SHA, "--", "skills"]);
+    // C-W3: the freeze closure covers the complete reachable skill/reference
+    // closure — the skills/ tree plus the AGENTS.md and commands/ surfaces.
+    expect(calls[0].args).toEqual([
+      "-C",
+      REPO_ROOT,
+      "ls-tree",
+      "-r",
+      "-z",
+      BASELINE_SHA,
+      "--",
+      "AGENTS.md",
+      "commands",
+      "skills",
+    ]);
     expect(calls[1].args).toEqual(["-C", REPO_ROOT, "cat-file", "blob", `${BASELINE_SHA}:skills/demo/SKILL.md`]);
     expect(Object.keys(tree).sort()).toEqual(["skills/demo/SKILL.md", "skills/demo/refs/a.md"]);
     expect(tree["skills/demo/SKILL.md"]).toBe(sha256Of(`content-of-${BASELINE_SHA}:skills/demo/SKILL.md`));
@@ -585,11 +602,24 @@ function memoryRunnerIo(): RunnerIo & { files: Map<string, string>; dirs: Set<st
       for (const key of [...dirs.keys()]) if (key === base || key.startsWith(`${base}/`)) dirs.delete(key);
     },
     rename: (from, to) => {
-      const v = files.get(resolve(from));
-      if (v === undefined) throw new Error(`ENOENT: ${from}`);
-      ensureAncestors(resolve(to, ".."));
-      files.set(resolve(to), v);
-      files.delete(resolve(from));
+      const src = resolve(from);
+      const dst = resolve(to);
+      const movedFiles = [...files.keys()].filter((k) => k === src || k.startsWith(`${src}/`));
+      const movedDirs = [...dirs.keys()].filter((k) => k.startsWith(`${src}/`));
+      if (movedFiles.length === 0 && !dirs.has(src)) throw new Error(`ENOENT: ${from}`);
+      ensureAncestors(dst);
+      for (const k of movedFiles) {
+        files.set(dst + k.slice(src.length), files.get(k)!);
+        files.delete(k);
+      }
+      for (const k of movedDirs) {
+        dirs.add(dst + k.slice(src.length));
+        dirs.delete(k);
+      }
+      if (dirs.has(src)) {
+        dirs.add(dst);
+        dirs.delete(src);
+      }
     },
   };
   return io;
@@ -745,7 +775,7 @@ describe("Task 2: argv builders and guards (synthetic)", () => {
     expect(() => rejectForbiddenFlags(["codex", "--ephemeral"], "x")).toThrow(/--ephemeral/);
   });
 
-  test("assertResumeAllowed rejects ephemeral, missing-id and every cross-arm mismatch", () => {
+  test("assertResumeAllowed rejects ephemeral, missing-id and every cross-arm mismatch (typed rejections)", () => {
     const base = {
       unitId: PM_UNIT_ID,
       recordedThreadId: "thr_ok",
@@ -755,12 +785,33 @@ describe("Task 2: argv builders and guards (synthetic)", () => {
       recordedSandbox: "read-only",
     };
     expect(() => assertResumeAllowed(base)).not.toThrow();
-    expect(() => assertResumeAllowed({ ...base, recordedThreadId: null })).toThrow(/no captured thread id/);
+    expect(() => assertResumeAllowed({ ...base, recordedThreadId: null })).toThrow(ResumeRejectionError);
+    expect(() => assertResumeAllowed({ ...base, recordedThreadId: null })).toThrow(/no thread id in the preserved turn-1 evidence/);
     expect(() => assertResumeAllowed({ ...base, turn1Ephemeral: true })).toThrow(/ephemeral resume rejected/);
     expect(() => assertResumeAllowed({ ...base, planned: { ...base.planned, unitId: "other-case/minimal/1" } })).toThrow(/cross-arm resume rejected/);
+    expect(() => assertResumeAllowed({ ...base, planned: { ...base.planned, threadId: "thr_other_arm" } })).toThrow(ResumeRejectionError);
     expect(() => assertResumeAllowed({ ...base, planned: { ...base.planned, threadId: "thr_other_arm" } })).toThrow(/cross-arm resume rejected/);
     expect(() => assertResumeAllowed({ ...base, planned: { ...base.planned, cwd: "/other-workspace" } })).toThrow(/cross-arm resume rejected/);
     expect(() => assertResumeAllowed({ ...base, planned: { ...base.planned, sandbox: "workspace-write" } })).toThrow(/cross-arm resume rejected/);
+  });
+
+  test("recordedTurn1Identity parses --cd/--sandbox from preserved turn-1 argv.json (C-W4)", () => {
+    const io = memoryRunnerIo();
+    const argvFile = resolve(OUT_DIR, "argv-probe.json");
+    io.writeText(
+      argvFile,
+      `${JSON.stringify({
+        runId: "x/baseline/1/1",
+        argv: ["/opt/homebrew/bin/codex", "-a", "never", "exec", "--sandbox", "workspace-write", "--cd", "/fx/ws", "resume", "thr_1", "-"],
+        cwd: "/fx/ws",
+      }, null, 2)}\n`,
+    );
+    expect(recordedTurn1Identity(io, argvFile)).toEqual({ cwd: "/fx/ws", sandbox: "workspace-write" });
+
+    // Evidence-integrity rejection: unreadable argv evidence cannot resume.
+    expect(() => recordedTurn1Identity(io, resolve(OUT_DIR, "missing-argv.json"))).toThrow(ResumeRejectionError);
+    io.writeText(argvFile, `${JSON.stringify({ runId: "x", cwd: "/fx/ws" })}\n`);
+    expect(() => recordedTurn1Identity(io, argvFile)).toThrow(ResumeRejectionError);
   });
 });
 
@@ -823,12 +874,48 @@ describe("Task 2: event adapter (synthetic events)", () => {
     expect(other.authFailure).toBeNull();
   });
 
-  test("tool_read search skips agent-message payloads and reports event ids", () => {
-    const messageClaim = `${JSON.stringify({ type: "item.completed", id: "m1", item: { id: "m1", type: "agent_message", text: "I read skills/demo/SKILL.md (trust me)" } })}\n`;
-    expect(isMessageLikeRecord(parseEventLines(messageClaim)[0])).toBe(true);
-    const records = parseEventLines(messageClaim + toolLine);
-    // The agent-message claim at line 1 must be skipped; the hit is line 2.
-    expect(findToolReadRecord(records, "skills/demo/SKILL.md", 1)).toEqual({ turn: 1, line: 2, eventId: "item_9" });
+  test("auth classification uses word boundaries (QC wave 1 S-B)", () => {
+    // Substring hits like "14013"/"4033" must not classify as auth failures.
+    const digits = scanEventStream(`${JSON.stringify({ type: "error", message: "request 14013 failed after 4033 retries" })}\n`);
+    expect(digits.authFailure).toBeNull();
+    const realCodes = scanEventStream(`${JSON.stringify({ type: "error", message: "HTTP 401 Unauthorized" })}\n`);
+    expect(realCodes.authFailure?.detail).toContain("401");
+    const quota = scanEventStream(`${JSON.stringify({ type: "error", message: "quota exceeded for project" })}\n`);
+    expect(quota.authFailure?.detail).toContain("quota");
+  });
+
+  test("tool_read search matches only read-shaped typed command fields (QC wave 1 / C-W1)", () => {
+    // Real round-1 smoke schema: command_execution with a STRING command argv.
+    const realRead = `${JSON.stringify({
+      type: "item.completed",
+      id: "item_2",
+      item: { id: "item_2", type: "command_execution", command: `/bin/zsh -lc "sed -n '1,240p' skills/demo/SKILL.md"`, aggregated_output: "..." },
+    })}\n`;
+    // False-pass surfaces that must NOT satisfy a tool_read_contains:
+    // (a) an agent message claiming the read;
+    const claim = `${JSON.stringify({ type: "item.completed", id: "m1", item: { id: "m1", type: "agent_message", text: "I read skills/demo/SKILL.md (trust me)" } })}\n`;
+    // (b) a non-read record whose SERIALIZED JSON merely mentions the needle
+    //     (round-1 evidence: a `find` output listing the filename);
+    const outputMention = `${JSON.stringify({
+      type: "item.completed",
+      id: "item_3",
+      item: { id: "item_3", type: "command_execution", command: "find . -maxdepth 2 -type f -print", aggregated_output: "./AGENTS.md\n./skills/demo/SKILL.md" },
+    })}\n`;
+    // (c) an error/status record naming the file.
+    const errorMention = `${JSON.stringify({ type: "item.completed", id: "item_0", item: { id: "item_0", type: "error", message: "skills/demo/SKILL.md exceeds the context budget" } })}\n`;
+
+    const records = parseEventLines(claim + outputMention + errorMention + realRead);
+    const hit = findToolReadRecord(records, "skills/demo/SKILL.md", 1);
+    expect(hit).toEqual({ turn: 1, line: 4, eventId: "item_2" });
+
+    // Array-shaped commands (synthetic adapter) are joined before matching.
+    const arrayCommand = parseEventLines(
+      `${JSON.stringify({ type: "item.completed", id: "item_9", item: { id: "item_9", type: "command_execution", command: ["cat", "skills/demo/SKILL.md"] } })}\n`,
+    );
+    expect(findToolReadRecord(arrayCommand, "skills/demo/SKILL.md", 1)).toEqual({ turn: 1, line: 1, eventId: "item_9" });
+
+    // No read-shaped record -> no hit.
+    expect(findToolReadRecord(parseEventLines(claim + errorMention), "skills/demo/SKILL.md", 1)).toBeNull();
   });
 });
 
@@ -889,6 +976,50 @@ describe("Task 2: run request validation (zero spawns)", () => {
     expect(tamperedRun.exit).toBe(2);
     expect(tamperedRun.errors.join(" ")).toContain("configHash");
     expect(tamperSpawn.requests).toHaveLength(0);
+  });
+
+  test("run and report refuse a manifest outside the disposable root (QC wave 1 C-W2, zero writes/spawns)", async () => {
+    const { io, manifest } = await preparedRunDir();
+
+    // (a) A runnable manifest copied into a durable tree (the round-1 trap:
+    // eval/run/manifest.json) has no <repoRoot>/.tmp/skill-eval ancestor.
+    const durableCopy = resolve(REPO_ROOT, "eval-durable", "manifest.json");
+    io.writeText(durableCopy, io.readText(RUN_MANIFEST_PATH));
+    const outsideSpawn = syntheticSpawn(io, () => ({}));
+    const outsideRun = await runManifest({
+      manifestPath: durableCopy,
+      split: "smoke",
+      variants: ["baseline"],
+      repeats: 1,
+      io,
+      spawnFn: outsideSpawn,
+    });
+    expect(outsideRun.exit).toBe(2);
+    expect(outsideRun.errors.join(" ")).toContain("disposable");
+    expect(outsideSpawn.requests).toHaveLength(0);
+    expect(io.exists(resolve(REPO_ROOT, "eval-durable", "scheduler", "state.json"))).toBe(false);
+
+    const outsideReport = buildReport({ manifestPath: durableCopy, io });
+    expect(outsideReport.exit).toBe(2);
+    expect(outsideReport.errors.join(" ")).toContain("disposable");
+    expect(io.exists(resolve(REPO_ROOT, "eval-durable", "report.json"))).toBe(false);
+    expect(io.exists(resolve(REPO_ROOT, "eval-durable", "report.md"))).toBe(false);
+
+    // (b) Explicit repoRoot: a run dir outside THAT root's disposable root is
+    // rejected by the shape check before anything is read or written.
+    const elsewhere = resolve("/elsewhere", "run", "manifest.json");
+    io.writeText(elsewhere, io.readText(RUN_MANIFEST_PATH));
+    const shapeRun = await runManifest({
+      manifestPath: elsewhere,
+      split: "smoke",
+      variants: ["baseline"],
+      repeats: 1,
+      repoRoot: REPO_ROOT,
+      io,
+      spawnFn: syntheticSpawn(io, () => ({})),
+    });
+    expect(shapeRun.exit).toBe(2);
+    expect(shapeRun.errors.join(" ")).toContain("unsafe output target");
   });
 });
 
@@ -1204,6 +1335,72 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     const resumed = readState(io).units[PM_UNIT_ID];
     expect(resumed.grade).toBe("pass");
     expect(resumed.turns["2"].runId).toBe(`${PM_RESUME_CASE}/baseline/1/2`);
+  });
+
+  test("hand-edited state cwd/sandbox cannot resume: guard checks turn-1 argv.json evidence (QC wave 1 C-W4)", async () => {
+    const { io, manifest } = await preparedRunDir();
+    const death = syntheticSpawn(io, (req) => {
+      if (req.argv.includes("resume")) throw new Error("simulated process death between turns");
+      return basePassScript(manifest, caseIdFromCwd(manifest, req.cwd));
+    });
+    const run1 = await runSmoke(io, manifest, death);
+    expect(run1.exit).toBe(2);
+    const state = readState(io);
+    const unit = state.units[PM_UNIT_ID];
+    unit.grade = null;
+    unit.failureReason = null;
+    delete unit.turns["2"];
+    writeState(io, state);
+
+    // Tamper the SCHEDULER STATE only: cwd and sandbox now claim a different
+    // workspace/sandbox. The preserved turn-1 argv.json still records the real
+    // --cd/--sandbox values, so the guard must reject the resume.
+    const tampered = readState(io);
+    tampered.units[PM_UNIT_ID].cwd = "/tampered/other-workspace";
+    tampered.units[PM_UNIT_ID].sandbox = "workspace-write";
+    writeState(io, tampered);
+
+    const second = syntheticSpawn(io, passHandler(manifest));
+    const run2 = await runSmoke(io, manifest, second);
+    expect(run2.exit).toBe(2);
+    expect(second.requests.filter((r) => r.argv.includes("resume"))).toHaveLength(0);
+    const resumed = readState(io).units[PM_UNIT_ID];
+    expect(resumed.grade).toBe("infrastructure_error");
+    expect(resumed.failureReason).toContain("turn-1 argv.json cwd");
+  });
+
+  test("re-executed turns archive the aborted attempt's raw bytes (QC wave 1 S-E)", async () => {
+    const { io, manifest } = await preparedRunDir();
+    const first = syntheticSpawn(io, passHandler(manifest));
+    const run1 = await runSmoke(io, manifest, first);
+    expect(run1.exit).toBe(0);
+
+    // Plant diagnostics from an "aborted attempt" in the graded turn-1 dir,
+    // then reset the unit to pending so the runner re-executes turn 1.
+    const roTurn1Dir = resolve(OUT_DIR, "runs", RO_CASE, "baseline", "r1", "turn1");
+    io.writeText(resolve(roTurn1Dir, "STALE_ATTEMPT.txt"), "partial bytes from an aborted attempt\n");
+    const state = readState(io);
+    const unit = state.units[`${RO_CASE}/baseline/1`];
+    unit.grade = null;
+    unit.failureReason = null;
+    unit.turns = {};
+    writeState(io, state);
+
+    const second = syntheticSpawn(io, passHandler(manifest));
+    const run2 = await runSmoke(io, manifest, second);
+    expect(run2.exit).toBe(0);
+
+    // The stale bytes survive under aborted/<timestamp>-turn1/ ...
+    const abortedDir = resolve(OUT_DIR, "runs", RO_CASE, "baseline", "r1", "aborted");
+    const abortedEntries = io.readDir(abortedDir).filter((name) => name.endsWith("-turn1"));
+    expect(abortedEntries).toHaveLength(1);
+    expect(io.readText(resolve(abortedDir, abortedEntries[0], "STALE_ATTEMPT.txt"))).toContain("aborted attempt");
+
+    // ... and the re-executed turn 1 starts from fresh evidence.
+    const resumed = readState(io).units[`${RO_CASE}/baseline/1`];
+    expect(resumed.grade).toBe("pass");
+    expect(io.exists(resolve(resumed.turns["1"].artifacts.events))).toBe(true);
+    expect(io.exists(resolve(roTurn1Dir, "STALE_ATTEMPT.txt"))).toBe(false);
   });
 });
 
