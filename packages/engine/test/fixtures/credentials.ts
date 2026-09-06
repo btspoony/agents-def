@@ -1,8 +1,4 @@
-import { execFileSync } from "node:child_process";
 import { createHmac, generateKeyPairSync, randomBytes } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 
 /** Locally signed token: its ephemeral signing key is never issued by a service. */
 export function createJwt(): string {
@@ -18,14 +14,33 @@ export function createRsaPrivateKey(): string {
     .export({ format: "pem", type: "pkcs1" }).toString();
 }
 
-/** Exercise OpenSSH serialization as well as Node's PEM format; leave no keys on disk. */
+/** Test-only, unencrypted Ed25519 container; key generation stays in node:crypto.
+ * Format: https://github.com/openssh/openssh-portable/blob/master/PROTOCOL.key */
 export function createOpenSshPrivateKey(): string {
-  const dir = mkdtempSync(join(tmpdir(), "audit-test-key-"));
-  try {
-    const path = join(dir, "id_ed25519");
-    execFileSync("ssh-keygen", ["-q", "-t", "ed25519", "-N", "", "-f", path], { stdio: "pipe" });
-    return readFileSync(path, "utf8");
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  const key = generateKeyPairSync("ed25519").privateKey.export({ format: "jwk" });
+  const publicKey = Buffer.from(key.x!, "base64url");
+  const seed = Buffer.from(key.d!, "base64url");
+  const sshString = (value: Buffer | string): Buffer => {
+    const bytes = typeof value === "string" ? Buffer.from(value) : value;
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(bytes.length);
+    return Buffer.concat([length, bytes]);
+  };
+  const keyType = sshString("ssh-ed25519");
+  const check = randomBytes(4);
+  const privateBlock = Buffer.concat([
+    check, check, keyType, sshString(publicKey),
+    sshString(Buffer.concat([seed, publicKey])), sshString(""),
+  ]);
+  const padding = Buffer.from(Array.from({ length: 8 - privateBlock.length % 8 }, (_, i) => i + 1));
+  const container = Buffer.concat([
+    Buffer.from("openssh-key-v1\0"),
+    sshString("none"), sshString("none"), sshString(""),
+    Buffer.from([0, 0, 0, 1]),
+    sshString(Buffer.concat([keyType, sshString(publicKey)])),
+    sshString(Buffer.concat([privateBlock, padding])),
+  ]);
+  const body = container.toString("base64").match(/.{1,70}/g)!.join("\n");
+  const label = "OPENSSH PRIVATE KEY";
+  return `-----BEGIN ${label}-----\n${body}\n-----END ${label}-----\n`;
 }

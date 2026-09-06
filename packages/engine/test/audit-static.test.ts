@@ -96,6 +96,22 @@ describe("scanSecrets provider key shapes", () => {
     expect(findings[0]?.line).toBe(1);
   });
 
+  test("OpenSSH generation and redaction work without external executables", () => {
+    const script = `
+      import { createOpenSshPrivateKey } from ${JSON.stringify(join(import.meta.dir, "fixtures/credentials.ts"))};
+      import { redactSecrets } from ${JSON.stringify(join(import.meta.dir, "../src/audit.ts"))};
+      const result = redactSecrets(createOpenSshPrivateKey());
+      process.stdout.write(JSON.stringify(result.findings));
+    `;
+    const child = Bun.spawnSync([process.execPath, "-e", script], {
+      env: { ...process.env, PATH: tmp },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    expect(child.exitCode).toBe(0);
+    expect(JSON.parse(child.stdout.toString())).toEqual([{ line: 1, type: "private-key" }]);
+  });
+
   test("scanSecrets' PEM pass derives from the WHOLE_MATCH_PATTERNS private-key row (D-2 SSOT)", () => {
     const row = WHOLE_MATCH_PATTERNS.find((p) => p.type === "private-key");
     expect(row).toBeDefined();
