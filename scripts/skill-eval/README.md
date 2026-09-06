@@ -23,12 +23,18 @@ Exit codes (Spec A1):
 
 | Stage | 0 | 1 | 2 |
 |---|---|---|---|
-| `prepare` | manifest + fixtures written | — | invalid config/cases/target, **nothing written** |
+| `prepare` | manifest + fixtures written | — | invalid config/cases/target |
 | `run` | all requested units verified passes | completed assertion failures only | infrastructure failure, unverified required evidence, or pending units |
 | `report` | same conventions as `run`, over recorded evidence only | | |
 
 Usage errors (bad args, sampling-lock violations, manifest/state mismatches)
-are exit 2 with zero spawns.
+are exit 2 with zero spawns. `prepare` completes every validation (including
+the symlink-ancestor realpath walk) **before** any `mkdir`, so a rejected
+prepare creates nothing — not even the gitignored disposable root.
+`run`/`report` enforce the same disposable-root write containment: a manifest
+whose run dir is not strictly inside `<repoRoot>/.tmp/skill-eval/` (e.g. a
+runnable manifest copied into a durable evidence tree) is refused with exit 2,
+zero spawns, zero writes.
 
 ## What prepare does
 
@@ -36,16 +42,24 @@ are exit 2 with zero spawns.
 - Resolves **manifest v1**: pinned full-SHA source refs, CLI identity, config
   hash, per-arm skill/reference closure hashes (`sha256`), per-case fixture
   and integrity hashes, and a **heldout digest frozen before any tuning**.
+- **Closure scope (C-W3):** the per-arm closure is the complete reachable
+  skill/reference closure of the pinned ref — `git ls-tree -r` over
+  `skills/` **plus** the repo-root `AGENTS.md` and `commands/` surfaces skill
+  content load-bearingly references (the real smoke proved codex injects
+  AGENTS.md). Host plugin mirrors (`.cursor-plugin/`, `.codex-plugin/`, …)
+  are derived bundles and stay excluded; deep link-graph reachability
+  extraction is Plan 02's `closure.test.ts` scope (Spec A5).
 - Materializes case fixtures **only** under the disposable root
   `<repoRoot>/.tmp/skill-eval/` (gitignored). Real main/control checkouts are
   never a write target; symlink escapes are rejected.
 - Performs **zero model calls**. The only production subprocess is read-only
-  git (`git ls-tree -r -z <sha> -- skills` + `git cat-file blob`), routed
-  through a single injected exec seam so tests can spy on it (spy count = 0
-  in the prepare suite).
+  git (`git ls-tree -r -z <sha> -- AGENTS.md commands skills` +
+  `git cat-file blob`), routed through a single injected exec seam so tests
+  can spy on it (spy count = 0 in the prepare suite).
 
 Exit codes (Spec A1): `0` = immutable manifest + fixtures written; `2` =
-invalid config/cases/target, **nothing written anywhere**.
+invalid config/cases/target, nothing written anywhere (validation, including
+the containment realpath walk, completes before the first `mkdir`).
 
 Prepare is also reachable via the canonical dispatcher
 (`index.ts prepare ...`), which calls these exported functions unchanged.
@@ -103,6 +117,34 @@ seed case id; new cases carry an explicit note. Assertions use mechanical
 kinds (`final_contains`, `final_not_contains`, `tool_read_contains`,
 `tool_read_not_contains`, `diff_paths_within`, `thread_reused`); semantic
 grades still require reviewer rationale at grading time (Task 2+, Spec A1).
+
+**Corpus v2 assertion contract (QC wave 1 C-W1 re-version, 2026-09-07).**
+Corpus v1's `final_contains` literals were English prose while every prompt is
+Chinese, and 18 needles were `tool_read_contains("AGENTS.md")` — a string the
+real host injects WITHOUT a tool-read event, so those assertions graded
+host-injection mechanics instead of task success. Corpus v2 is language-neutral
+and host-observable by rule:
+
+- Final assertions are keyed to **marker/sentinel tokens the case instructs the
+  model to emit** (mirroring the closure-sentinel pattern that passed both arms
+  in the round-1 smoke): each fixture AGENTS.md (or skill file) defines a
+  marker protocol, the prompt asks for the protocol's result line, and the
+  assertion pins the exact decision-bearing token (e.g. `RESULT:
+  REFUSED-BRANCH-GATE`, `CONSOLIDATED-DECISION: UNCONFIRMED`). Fixture-derived
+  tokens (skill sentinels, decoy values, code lines, finding ids, section
+  headings) remain valid anchors because they are language-independent.
+- `tool_read_*` matches the **verified real event schema**: an observed read is
+  a read-shaped item (`command_execution` etc.) whose typed `command` argv
+  contains the needle. Command *output* that merely mentions a path is not a
+  read; agent-message claims are never reads. `AGENTS.md` is never a
+  `tool_read_*` needle — its loading is asserted only through observable
+  compliance (markers), never through injected-context assumptions.
+- `close-dev-4-resume-interrupted-close` is unchanged verbatim: its round-1
+  failure was a REAL out-of-allowed-set write (isolation finding), not a
+  case-design artifact.
+
+This re-version was adjudicated BEFORE any round-2 execution; no assertion was
+edited after seeing round-2 results.
 
 ## Manifest v1 (output `manifest.json`)
 
@@ -166,14 +208,41 @@ errors) established:
   `observedModel` stays `null` + reason and no fixed-model efficacy claim is
   possible from this evidence.
 - **Smoke exit was 1 (real assertion failures, honestly recorded).** All six
-  units completed; eight `final_contains`/`tool_read_contains` assertions
-  failed. The dominant pattern: prompts are Chinese, and the model answered
-  in Chinese, while frozen assertions expect literal English strings
-  ("root cause", "fixed", "read-only", "Scope"); the fixture AGENTS.md line
-  "reports in English" did not override conversation language. The frozen
-  case set is NOT retuned mid-evaluation — adjudication of these failures
-  belongs to PM/QA. Per Spec A1, efficacy acceptance stays blocked until the
+  units completed; the raw grading records count **10 failed assertions: 8
+  `final_contains` + 2 `tool_read_contains`** (earlier prose said "eight" —
+  corrected to the raw count during QC wave 1; per-unit evidence lives in the
+  round-1 `grading.json` files). The dominant pattern: prompts are Chinese,
+  and the model answered in Chinese, while frozen assertions expected literal
+  English strings ("root cause", "fixed", "read-only", "Scope"); the fixture
+  AGENTS.md line "reports in English" did not override conversation language.
+  The round-1 frozen case set was NOT retuned mid-evaluation — adjudication
+  produced corpus v2 (see the assertion contract above) with a full re-freeze
+  and fresh runs. Per Spec A1, efficacy acceptance stays blocked until the
   required smoke assertions pass for real.
+
+## Known limits and boundaries (QC wave 1 S-F)
+
+- **Kill boundary:** timed-out children get SIGTERM, then SIGKILL after a
+  5 s grace — the **direct child only**. A child that leaks stdio fds to
+  background grandchildren could extend the runner's `close` wait past
+  `timeoutMs + grace`; Spec A1 scopes process-group kill to Plan 03's
+  `sdd exec` launcher, so this is a documented boundary, not a contract
+  violation.
+- **Fixtures are text-only by frozen design:** fixture `content` is a JSON
+  string and the workspace copy is a utf8 text round-trip; binary fixtures are
+  unsupported (hashes stay mutually consistent, so corruption cannot pass
+  silently).
+- **AGENTS.md observability:** codex injects AGENTS.md as ambient context with
+  no tool-read event; cases therefore never assert an observed read of
+  AGENTS.md, and graded compliance rides on instructed markers instead.
+- **Resume-guard evidence:** recorded resume identity comes from preserved
+  turn-1 artifacts (`argv.json` `--cd`/`--sandbox` + a fresh event re-scan),
+  not from scheduler state; a hand-edited `state.json` cannot resume
+  unchallenged. Missing/unreadable turn-1 `argv.json` is itself a rejection.
+- **Aborted attempts are archived, not deleted:** re-executing a turn moves
+  the previous attempt's raw bytes to `runs/<case>/<variant>/r<n>/aborted/`
+  before recreating the turn dir, so stale bytes never append and aborted
+  diagnostics survive.
 
 Durable raw evidence for these runs lives under the control
 `{SDD_DIR}/eval/` directory; disposable fixtures/workspaces under
