@@ -1,9 +1,34 @@
 # skill-eval baseline (plan 20260907-skill-eval-baseline, Spec A1)
 
-Maintenance-only evaluation harness for reproducible skill comparisons. Task 1
-(this directory today) delivers the **frozen case set** and the **prepare**
-stage that resolves an immutable manifest v1. The `run`/`report` stages
-(subprocess runner, grading, metrics) arrive with Task 2.
+Maintenance-only evaluation harness for reproducible skill comparisons. This
+directory delivers the full Spec A1 pipeline: **prepare** (frozen case set +
+immutable manifest v1), **run** (argv-array subprocess execution with evidence
+capture and a resumable scheduler), and **report** (JSON + Markdown aggregation
+that never reruns a model).
+
+## Canonical CLI (Spec A1)
+
+```bash
+bun scripts/skill-eval/index.ts prepare --config <absolute-config.json> --out <absolute-run-dir> [--repo-root <dir>]
+bun scripts/skill-eval/index.ts run    --manifest <absolute-manifest.json> --split smoke|dev|heldout \
+                                       --variants baseline[,candidate[,minimal]] --repeats 1|3
+bun scripts/skill-eval/index.ts report --manifest <absolute-manifest.json>
+```
+
+`--out` must resolve strictly inside `<repoRoot>/.tmp/skill-eval/`. Unknown
+arguments are rejected. `$EVAL_MANIFEST` is the absolute prepared
+`manifest.json` path — never under HOME/CODEX_HOME.
+
+Exit codes (Spec A1):
+
+| Stage | 0 | 1 | 2 |
+|---|---|---|---|
+| `prepare` | manifest + fixtures written | — | invalid config/cases/target, **nothing written** |
+| `run` | all requested units verified passes | completed assertion failures only | infrastructure failure, unverified required evidence, or pending units |
+| `report` | same conventions as `run`, over recorded evidence only | | |
+
+Usage errors (bad args, sampling-lock violations, manifest/state mismatches)
+are exit 2 with zero spawns.
 
 ## What prepare does
 
@@ -22,20 +47,12 @@ stage that resolves an immutable manifest v1. The `run`/`report` stages
 Exit codes (Spec A1): `0` = immutable manifest + fixtures written; `2` =
 invalid config/cases/target, **nothing written anywhere**.
 
-## Usage (Task 1 staging entry)
+Prepare is also reachable via the canonical dispatcher
+(`index.ts prepare ...`), which calls these exported functions unchanged.
 
-```bash
-bun scripts/skill-eval/manifest.ts prepare \
-  --config /absolute/path/config.json \
-  --out /absolute/path/under/.tmp/skill-eval/<run-dir> \
-  --repo-root /absolute/path/to/feature/worktree
-```
-
-`--out` must resolve strictly inside `<repoRoot>/.tmp/skill-eval/`. The
-canonical dispatcher `scripts/skill-eval/index.ts prepare ...` (Spec A1 CLI)
-lands with the Task 2 runner and calls these exported functions unchanged.
-
-Example config (all fields required; no secret-shaped keys):
+Example config (all fields required; no secret-shaped keys — secret-looking
+config keys are rejected because `configHash` covers runner-owned nonsecret
+configuration only):
 
 ```json
 {
@@ -72,8 +89,8 @@ validated, not decorative — the set must include (coverage tags in
 Smoke is a **derived** selection: exactly 3 existing dev cases tagged
 `provenance.smoke` carrying the tags `smoke-readonly-closure-sentinel`,
 `smoke-isolated-relative-write`, `smoke-explicit-resume` (Spec A1 smoke
-rules). `--split smoke` in Task 2 selects these; case records themselves only
-carry `dev` / `heldout` splits — any other split is rejected as unknown.
+rules). `--split smoke` selects these; case records themselves only carry
+`dev` / `heldout` splits — any other split is rejected as unknown.
 
 Fixtures are compact inline JSON (`fixture.files[{path, content}]`), synthetic
 by design — they never clone the real AGENTS.md, credentials, or parent
@@ -107,18 +124,57 @@ belongs to the other arm) and stale hashes are rejected at prepare.
 `heldoutDigest` versions held-out integrity hashes **before tuning** —
 blinding is procedural; a heldout failure ends candidate adoption (Spec A1).
 
-Canonical run ID (consumed by Task 2): `case/variant/repeat/turn`, e.g.
+Canonical run ID: `case/variant/repeat/turn`, e.g.
 `dev-dev-1-smoke-readonly-closure-sentinel/baseline/1/1`; turn 1 = first
-turn, turn >= 2 = resume turns.
+turn, turn >= 2 = resume turns. The runner copies each prepared fixture into
+a fresh per-unit workspace (hash-verified) — the case fixture content carries
+each arm's sentinel; manifest closures remain provenance/freeze evidence and
+are not materialized into workspaces.
 
 ## Verification
 
 ```bash
-bun test scripts/skill-eval/runner.test.ts --test-name-pattern prepare
+bun test scripts/skill-eval/runner.test.ts
 ```
 
-## Task 1 boundaries
+All model-facing test suites run on a clearly tagged SYNTHETIC adapter;
+synthetic suites prove scheduler/parser/grading correctness only, never
+behavioral success (Spec A1).
 
-No `run`/`report` stages, no model invocations, no grading here. Real
-baseline/minimal evidence is a Task 3 gate; unit tests prove scheduler/parser
-correctness only, never behavioral success.
+## Real-run provenance limits (Task 3 baseline smoke, 2026-09-07)
+
+First real smoke (`--split smoke --variants baseline,minimal --repeats 1`,
+codex-cli 0.144.1 at `/opt/homebrew/bin/codex`, 8 spawns, 0 infrastructure
+errors) established:
+
+- **Harness mechanics work on the real CLI**: thread ids captured from real
+  `thread.started` events; explicit-id resume corroborated by argv + event
+  stream; workspace-write fixtures wrote only inside their allowed relative
+  paths; read-only fixtures produced zero writes; the closure sentinel was
+  read from `skills/demo/SKILL.md` and quoted exactly, with no opposite-arm
+  sentinel appearing.
+- **Usage semantics observed**: every real `turn.completed` carries a usage
+  object (`input_tokens`, `cached_input_tokens`, `output_tokens`,
+  `reasoning_output_tokens`). Resume turn 2 reported higher input tokens than
+  turn 1 in both resume units, consistent with input tokens including the
+  replayed conversation. The runner still records `usageBasis: "unknown"`
+  with aggregate counters `null + reason` (per-event values preserved) —
+  attribution is an adjudication decision, not a runner assumption.
+- **Observed model identity: not present.** No model-identity field appears
+  anywhere in the real `codex exec --json` event streams
+  (`thread.started`/`turn.started`/`item.*`/`turn.completed`), so
+  `observedModel` stays `null` + reason and no fixed-model efficacy claim is
+  possible from this evidence.
+- **Smoke exit was 1 (real assertion failures, honestly recorded).** All six
+  units completed; eight `final_contains`/`tool_read_contains` assertions
+  failed. The dominant pattern: prompts are Chinese, and the model answered
+  in Chinese, while frozen assertions expect literal English strings
+  ("root cause", "fixed", "read-only", "Scope"); the fixture AGENTS.md line
+  "reports in English" did not override conversation language. The frozen
+  case set is NOT retuned mid-evaluation — adjudication of these failures
+  belongs to PM/QA. Per Spec A1, efficacy acceptance stays blocked until the
+  required smoke assertions pass for real.
+
+Durable raw evidence for these runs lives under the control
+`{SDD_DIR}/eval/` directory; disposable fixtures/workspaces under
+`.tmp/skill-eval/` are cleaned after trace capture.
