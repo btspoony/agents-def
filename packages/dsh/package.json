@@ -32,6 +32,7 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "SECURITY.md",
     "dist",
     "bundle",
     "harness-skills",

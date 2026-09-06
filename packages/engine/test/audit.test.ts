@@ -11,6 +11,8 @@ import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, test } from "bun:test";
+import { randomBytes } from "node:crypto";
+import { createJwt, createOpenSshPrivateKey, createRsaPrivateKey } from "./fixtures/credentials.js";
 import {
   promoteAuditPlans,
   redactSecrets,
@@ -100,20 +102,25 @@ const PLAN_TWO_BLOCKS = `# Two status blocks
 `;
 
 /** Secret-laden text covering each redaction pattern. */
-const AWS_KEY = "AKIA" + "IOSFODNN7EXAMPLE";
-const SLACK_TOKEN = "xoxb-" + "123456789012-1234567890123-abcdefghijklmnopqrstuvwx";
-const JWT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" + "." + "eyJzdWIiOiIxMjM0NTY3ODkwIn0" + "." + "dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
-const OPENAI_KEY = "sk-proj-" + "0123456789abcdef0123456789abcdef";
-const API_KEY = "0123456789abcdef" + "0123456789abcdef";
+// Disposable values are generated locally, never issued by a remote service.
+const AWS_KEY = `AKIA${randomBytes(8).toString("hex").toUpperCase()}`;
+const GH_TOKEN = `ghp_${randomBytes(18).toString("hex")}`;
+const SLACK_TOKEN = `xoxb-${randomBytes(24).toString("hex")}`;
+const JWT_TOKEN = createJwt();
+const OPENAI_KEY = `sk-proj-${randomBytes(16).toString("hex")}`;
+const API_KEY = randomBytes(16).toString("hex");
+const PASSWORD = randomBytes(24).toString("hex");
+const RSA_PRIVATE_KEY = createRsaPrivateKey();
+const OPENSSH_PRIVATE_KEY = createOpenSshPrivateKey();
 
 const SECRETS_FIXTURE = `const awsKey = "${AWS_KEY}";
-const ghToken = "gho_123456789012345678901234567890123456";
+const ghToken = "${GH_TOKEN}";
 const slackToken = "${SLACK_TOKEN}";
 const jwt = "${JWT_TOKEN}";
 const openAiKey = "${OPENAI_KEY}";
-const password = "hunter2hunter2hunter2";
+const password = "${PASSWORD}";
 const apiKey = "${API_KEY}";
-const pem = "-----BEGIN RSA PRIVATE KEY-----\\nMIIEowIBAAKCAQEA...\\n-----END RSA PRIVATE KEY-----\\n";
+const pem = ${JSON.stringify(RSA_PRIVATE_KEY)};
 `;
 
 /** Text with secret-looking but SAFE content that must NOT be redacted. */
@@ -207,24 +214,24 @@ describe("redactSecrets", () => {
     // Every finding carries a 1-based line number.
     expect(result.findings.every((f) => f.line >= 1)).toBe(true);
     // The redacted text never contains the raw secrets.
-    expect(result.text).not.toContain(AWS_KEY);
-    expect(result.text).not.toContain("gho_123456789012345678901234567890123456");
-    expect(result.text).not.toContain("hunter2hunter2hunter2");
-    expect(result.text).not.toContain("BEGIN RSA PRIVATE KEY");
+    for (const secret of [AWS_KEY, GH_TOKEN, SLACK_TOKEN, JWT_TOKEN, OPENAI_KEY, API_KEY, PASSWORD]) {
+      expect(result.text).not.toContain(secret);
+    }
+    expect(result.text).not.toContain(RSA_PRIVATE_KEY.split("\n")[0]);
   });
 
   test("replacement carries the file:line + type summary", () => {
-    const result = redactSecrets('const password = "hunter2hunter2hunter2";', "src/config.ts");
+    const result = redactSecrets(`const password = "${PASSWORD}";`, "src/config.ts");
     expect(result.text).toContain("[REDACTED password@1 in src/config.ts]");
   });
 
   test("omits the file name when not provided", () => {
-    const result = redactSecrets('const password = "hunter2hunter2hunter2";');
+    const result = redactSecrets(`const password = "${PASSWORD}";`);
     expect(result.text).toContain("[REDACTED password@1]");
   });
 
   test("keeps the key= prefix and only replaces the value", () => {
-    const result = redactSecrets('const password = "hunter2hunter2hunter2";');
+    const result = redactSecrets(`const password = "${PASSWORD}";`);
     expect(result.text).toContain('const password = [REDACTED password@1]');
   });
 
@@ -235,16 +242,16 @@ describe("redactSecrets", () => {
   });
 
   test("redacts quoted JSON keys and preserves the quotes", () => {
-    const json = '{"password": "hunter2hunter2hunter2", "token": "abcdefghijklmnopqrstuvwxyz0123456789"}';
+    const json = `{"password": "${PASSWORD}", "token": "${API_KEY}"}`;
     const result = redactSecrets(json, "config.json");
     expect(result.text).toContain('{"password": [REDACTED password@1 in config.json]');
     expect(result.text).toContain('"token": [REDACTED token@1 in config.json]');
-    expect(result.text).not.toContain("hunter2hunter2hunter2");
-    expect(result.text).not.toContain("abcdefghijklmnopqrstuvwxyz0123456789");
+    expect(result.text).not.toContain(PASSWORD);
+    expect(result.text).not.toContain(API_KEY);
   });
 
   test("redacts single-quoted keys and YAML unquoted keys", () => {
-    const yaml = "password: 'hunter2hunter2hunter2'\n'token': hunter2hunter2hunter2abcdefgh";
+    const yaml = `password: '${PASSWORD}'\n'token': ${API_KEY}`;
     const result = redactSecrets(yaml);
     expect(result.text).toContain("password: [REDACTED password@1]");
     expect(result.text).toContain("'token': [REDACTED token@2]");
@@ -266,19 +273,12 @@ describe("redactSecrets", () => {
 
 describe("redactSecrets non-leakage invariants", () => {
   const probes: { type: string; value: string }[] = [
-    { type: "aws-access-key", value: "AKIAIOSFODNN7" + "EXAMPLE" },
-    { type: "github-token", value: "ghp_" + "A".repeat(36) },
-    { type: "slack-token", value: "xoxb-abcdefghijklmnopqrstuvwxyz" },
-    { type: "api-secret-key", value: "sk-abcdefghijklmnopqrstuvwxyz0123456789" },
-    {
-      type: "private-key",
-      value: "-----BEGIN RSA PRIVATE KEY-----\n" + "MIIEow".padEnd(76, "A") + "\n" + "-----END RSA PRIVATE KEY-----",
-    },
-    {
-      type: "jwt",
-      value:
-        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijklmnopqrstuvwxyz0123456789",
-    },
+    { type: "aws-access-key", value: AWS_KEY },
+    { type: "github-token", value: GH_TOKEN },
+    { type: "slack-token", value: SLACK_TOKEN },
+    { type: "api-secret-key", value: OPENAI_KEY },
+    { type: "private-key", value: RSA_PRIVATE_KEY },
+    { type: "jwt", value: JWT_TOKEN },
   ];
 
   test("never leaks a locked WHOLE_MATCH probe", () => {
@@ -320,9 +320,9 @@ describe("redactSecrets non-leakage invariants", () => {
   // redactable — a finding accepted by the scanner can appear in scaffolded
   // evidence and must not survive into artifacts with its value intact.
   test("redacts each CI/IaC shape family (detector/redactor parity)", () => {
-    const docker = "ENV API_TOKEN=supersecretvalue123";
-    const arg = "ARG GITHUB_TOKEN=injected-at-build-time-ok"; // 25 chars value
-    const terraform = `password = "S3cr3tV4lue!"`;
+    const docker = `ENV API_TOKEN=${PASSWORD}`;
+    const arg = `ARG GITHUB_TOKEN=${PASSWORD}`;
+    const terraform = `password = "${PASSWORD}"`;
     for (const [text, type] of [
       [docker, "dockerfile-credential-env"],
       [arg, "dockerfile-credential-env"],
@@ -332,10 +332,10 @@ describe("redactSecrets non-leakage invariants", () => {
       expect(result.findings.map((f) => f.type)).toContain(type);
       // The matched line region is replaced by the marker, not left as-is.
       expect(result.text).not.toBe(text);
-      expect(result.text).not.toContain(type === "terraform-hardcoded-password" ? "S3cr3tV4lue!" : "supersecretvalue123");
+      expect(result.text).not.toContain(PASSWORD);
     }
     const argResult = redactSecrets(arg);
-    expect(argResult.text).not.toContain("injected-at-build-time-ok");
+    expect(argResult.text).not.toContain(PASSWORD);
   });
 
   // qc3 W-2: the CI/IaC shapes anchor with ^/$ and must fire per LINE of a
@@ -344,16 +344,14 @@ describe("redactSecrets non-leakage invariants", () => {
   test("redacts CI/IaC shapes mid-string on multi-line text (qc3 W-2)", () => {
     const multi = [
       "line0: ordinary",
-      'env: API_TOKEN="mysecret12345678"',
+      `env: API_TOKEN="${PASSWORD}"`,
       "FROM node",
-      "ENV API_TOKEN=supersecretvalue123",
-      'password = "S3cr3tV4lue!"',
+      `ENV API_TOKEN=${PASSWORD}`,
+      `password = "${PASSWORD}"`,
       "line5: ordinary",
     ].join("\n");
     const result = redactSecrets(multi);
-    expect(result.text).not.toContain("mysecret12345678");
-    expect(result.text).not.toContain("supersecretvalue123");
-    expect(result.text).not.toContain("S3cr3tV4lue!");
+    expect(result.text).not.toContain(PASSWORD);
     expect(result.text).toContain("[REDACTED actions-plaintext-env@2]");
     expect(result.text).toContain("[REDACTED dockerfile-credential-env@4]");
     expect(result.text).toContain("[REDACTED terraform-hardcoded-password@5]");
@@ -371,56 +369,41 @@ describe("redactSecrets non-leakage invariants", () => {
   // qc3 W-3: overlapping spans must be merged (longest per overlap group)
   // before the text is rebuilt — applying ORIGINAL-length replacements
   // against already-modified text produced `[REDACTED …@1]@1]"` garbage.
-  // Synthetic Stripe live-key values are assembled from parts so the raw
-  // source never holds the full contiguous token (GitHub push-protection
-  // false positive on test data).
-  const stripeTail = "1234567890123456";
-  const stripeLive = "sk_live_" + stripeTail;
+  // A fresh provider-shaped value exercises whole-match and line-match overlap.
+  const stripeLive = `sk_live_${randomBytes(12).toString("hex")}`;
   test.each([
     // env line containing a stripe whole-match token
     [`env: API_TOKEN="${stripeLive}"`, "[REDACTED actions-plaintext-env@1]"],
     // dockerfile env line containing a stripe whole-match token
     [`ENV API_TOKEN=${stripeLive}\nRUN echo hi`, "[REDACTED dockerfile-credential-env@1]\nRUN echo hi"],
-    ['password = "mysecret12345678"\n', "[REDACTED terraform-hardcoded-password@1]\n"],
+    [`password = "${PASSWORD}"\n`, "[REDACTED terraform-hardcoded-password@1]\n"],
   ])("overlapping spans merge to a single clean marker: %j", (input, expected) => {
     const result = redactSecrets(input);
     expect(result.text).toBe(expected);
     expect((result.text.match(/\[REDACTED /g) ?? []).length).toBe(1);
     expect(result.text).not.toContain("sk_live_");
-    expect(result.text).not.toContain("mysecret12345678");
+    expect(result.text).not.toContain(PASSWORD);
   });
 
   test("private-key redaction covers header AND body until the END marker", () => {
-    const pem = [
-      "-----BEGIN OPENSSH PRIVATE KEY-----",
-      "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW",
-      "-----END OPENSSH PRIVATE KEY-----",
-      "",
-    ].join("\n");
+    const pem = OPENSSH_PRIVATE_KEY;
     const result = redactSecrets(pem);
     expect(result.findings.filter((f) => f.type === "private-key").length).toBeGreaterThanOrEqual(1);
     // Header alone is not enough: the base64 body must be gone too.
-    expect(result.text).not.toContain("b3BlbnNzaC1rZXktdjEAAAAABG5vbmU");
+    expect(result.text).not.toContain(pem.split("\n")[1]);
     expect(result.text).toContain("[REDACTED private-key@");
   });
 
   // qc3 W-3: a PEM block whose body lines match other patterns — the
   // whole-block span absorbs them into ONE private-key marker.
   test("private-key span absorbs overlapping matches inside its body (qc3 W-3)", () => {
-    const pem = [
-      "-----BEGIN RSA PRIVATE KEY-----",
-      "MIIEow" + "A".repeat(70),
-      'password = "hunter2hunter2hunter2"',
-      "xoxb-" + "abcdefghijklmnopqrstuvwxyz",
-      "-----END RSA PRIVATE KEY-----",
-      "",
-    ].join("\n");
+    const pem = RSA_PRIVATE_KEY.replace("\n", `\npassword = "${PASSWORD}"\n${SLACK_TOKEN}\n`);
     const result = redactSecrets(pem);
     const markers = result.text.match(/\[REDACTED [^\]]+@\d+\]/g) ?? [];
     expect(markers).toEqual(["[REDACTED private-key@1]"]);
-    expect(result.text).not.toContain("hunter2hunter2hunter2");
-    expect(result.text).not.toContain("xoxb-");
-    expect(result.text).not.toContain("BEGIN RSA");
+    expect(result.text).not.toContain(PASSWORD);
+    expect(result.text).not.toContain(SLACK_TOKEN);
+    expect(result.text).not.toContain(RSA_PRIVATE_KEY.split("\n")[0]);
     expect(result.findings.map((f) => f.type)).toEqual(["private-key"]);
   });
 });
@@ -1269,7 +1252,7 @@ describe("scanSecrets actions-plaintext-env YAML env: map (fix round)", () => {
     const tmp = mkdtempSync(join(tmpdir(), "engine-audit-inl-"));
     try {
       const p = join(tmp, "wf.yml");
-      writeFileSync(p, '      - run: make\n        env: API_TOKEN="literalvalue123"\n');
+      writeFileSync(p, `      - run: make\n        env: API_TOKEN="${PASSWORD}"\n`);
       const hits = scanSecrets([p]).findings.filter((f) => f.type === "actions-plaintext-env");
       expect(hits.map((h) => h.line)).toEqual([2]);
     } finally {

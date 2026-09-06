@@ -1,0 +1,67 @@
+name: Plugin Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-scanner-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: HOL scan (advisory, target 80+)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Keep the raw score/severity failure visible without blocking build CI.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run HOL AI Plugin Scanner
+        uses: hashgraph-online/ai-plugin-scanner-action@f4dddb9f9956baaef49d53e962880807416596ef # v1.2.620 / scanner 3.0.104
+        with:
+          plugin_dir: .
+          mode: scan
+          format: markdown
+          output: ${{ runner.temp }}/plugin-scanner.md
+          min_score: 80
+          fail_on_severity: high
+          install_cisco: true
+          cisco_skill_scan: on
+          cisco_policy: balanced
+          trust_repository_policy: false
+          online: false
+          pr_comment: off
+          upload_sarif: false
+          write_step_summary: false
+
+      # The action's own summary step is skipped when its threshold fails.
+      - name: Publish score and findings
+        if: ${{ always() && !cancelled() }}
+        shell: bash
+        run: |
+          SCAN_REPORT="$RUNNER_TEMP/plugin-scanner.md"
+          printf '## Advisory plugin scan\n\nTarget: score >= 80 and no high/critical findings. A failed scan is not a passing security verdict.\n\n' >> "$GITHUB_STEP_SUMMARY"
+          if [ ! -s "$SCAN_REPORT" ]; then
+            echo 'Scanner did not produce a report. Inspect the scanner step for installation or execution errors.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          cat "$SCAN_REPORT" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve scan report
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plugin-scanner-report
+          path: ${{ runner.temp }}/plugin-scanner.md
+          if-no-files-found: warn
+          retention-days: 30

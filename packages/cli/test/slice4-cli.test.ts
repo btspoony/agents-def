@@ -13,6 +13,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -753,12 +754,17 @@ describe("mstar audit secret-scan — tracked-file credential scan", () => {
   test("untracked files are not scanned; path argument must be a directory → exit 2", () => {
     withTempDir((dir) => {
       execFileSync("git", ["init", "-q"], { cwd: dir });
-      writeFileSync(join(dir, "leak.ts"), `token = "xoxb-123456789-abcdefghij"
-`);
+      const token = randomBytes(24).toString("hex");
+      writeFileSync(join(dir, "leak.ts"), `token = "${token}"\n`);
       // NOT staged → not tracked → not scanned
       const result = runCli(["audit", "secret-scan", dir]);
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("clean");
+      execFileSync("git", ["add", "leak.ts"], { cwd: dir });
+      const tracked = runCli(["audit", "secret-scan", dir]);
+      expect(tracked.exitCode).toBe(1);
+      expect(tracked.stdout).toContain('"type":"token"');
+      expect(tracked.stdout + tracked.stderr).not.toContain(token);
       const bad = runCli(["audit", "secret-scan", join(dir, "no-such-dir")]);
       expect(bad.exitCode).toBe(2);
       expect(bad.stderr).toContain("not a directory");
