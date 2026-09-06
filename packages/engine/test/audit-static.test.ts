@@ -22,6 +22,8 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, test } from "bun:test";
+import { randomBytes } from "node:crypto";
+import { createJwt, createOpenSshPrivateKey } from "./fixtures/credentials.js";
 import { scanSecrets, supplyChainChecks, WHOLE_MATCH_PATTERNS } from "../src/audit.js";
 
 // ---------------------------------------------------------------------------
@@ -82,23 +84,13 @@ describe("scanSecrets provider key shapes", () => {
   });
 
   test("jwt fires on a three-segment bearer token", () => {
-    const jwt =
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" +
-      "." +
-      "eyJzdWIiOiIxMjM0NTY3ODkwIn0" +
-      "." +
-      "dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U";
+    const jwt = createJwt();
     const { findings } = scanSecrets([fixture("jwt.txt", jwt)]);
     expect(findings.map((f) => f.type)).toEqual(["jwt"]);
   });
 
   test("private-key block header fires", () => {
-    const pem = [
-      "-----BEGIN OPENSSH PRIVATE KEY-----",
-      "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW",
-      "-----END OPENSSH PRIVATE KEY-----",
-      "",
-    ].join("\n");
+    const pem = createOpenSshPrivateKey();
     const { findings } = scanSecrets([fixture("id_server", pem)]);
     expect(findings.map((f) => f.type)).toEqual(["private-key"]);
     expect(findings[0]?.line).toBe(1);
@@ -107,11 +99,7 @@ describe("scanSecrets provider key shapes", () => {
   test("scanSecrets' PEM pass derives from the WHOLE_MATCH_PATTERNS private-key row (D-2 SSOT)", () => {
     const row = WHOLE_MATCH_PATTERNS.find((p) => p.type === "private-key");
     expect(row).toBeDefined();
-    const pem = [
-      "-----BEGIN OPENSSH PRIVATE KEY-----",
-      "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW",
-      "-----END OPENSSH PRIVATE KEY-----",
-    ].join("\n");
+    const pem = createOpenSshPrivateKey();
     // Not a *.pem/*.key basename: the never-commit filename list must not
     // add a private-key-file finding on top of the content detection.
     const file = fixture("ssot-key.txt", pem);
@@ -144,7 +132,7 @@ describe("scanSecrets safe-placeholder exclusions", () => {
   }
 
   test("${ENV_VAR} indirection is not reported", () => {
-    expectSafe("env-var.txt", `secret: "\${ENV_VAR}"`);
+    expectSafe("env-var.txt", `secret: ${JSON.stringify("${ENV_VAR}")}`);
   });
 
   test("process.env.X read is not reported", () => {
@@ -255,11 +243,10 @@ describe("scanSecrets CI/IaC leak shapes", () => {
   });
 
   test("terraform-hardcoded-password flagged alongside the generic kv hit", () => {
-    // Table composition is additive: `password = "literal"` fires BOTH the
-    // dedicated Terraform shape and the generic VALUE_PATTERNS row (same
-    // line, two documented sources). Asserting both makes the D-2 SSOT
-    // layering visible instead of hiding it behind one type.
-    const p = fixture("main.tf", [`resource "random_password" "db" {`, `  password = "S3cr3tV4lue!"`, `}`, ""].join("\n"));
+    // layering visible instead of hiding it behind one type. A random value
+    // keeps the fixture disposable while still matching the literal shape.
+    const TERRAFORM_PASSWORD = randomBytes(16).toString("hex");
+    const p = fixture("main.tf", [`resource "random_password" "db" {`, `  password = "${TERRAFORM_PASSWORD}"`, `}`, ""].join("\n"));
     const types = scanSecrets([p])
       .findings.map((f) => f.type)
       .sort();

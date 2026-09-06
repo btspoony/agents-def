@@ -12,6 +12,7 @@
  * exercise the shipping plugin path.
  */
 import { describe, expect, it, afterEach } from 'bun:test'
+import { randomBytes } from 'node:crypto'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -115,7 +116,7 @@ const AUDIT_BROKEN = AUDIT_GOOD.replace('- **Priority**: P1', '- **Priority**: P
 
 /** Valid Status block whose body reproduces a secret value (Hard Rule 4). */
 const AUDIT_SECRET = `${AUDIT_GOOD}
-const password = "hunter2hunter2hunter2";
+const password = "${randomBytes(24).toString('hex')}";
 `
 
 /** No Status block at all → `audit.status.missing-block`. */

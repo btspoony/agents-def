@@ -465,9 +465,8 @@ const SAFE_PLACEHOLDER_VALUES = ["your-api-key-here", "<your_api_key>", "<your-a
  * literal credential elsewhere on the line still fires (qc2 F-001 — the
  * former whole-line skip hid committed keys sitting next to a
  * `process.env.X` reference). Each masked span grows by one wrapping
- * quote layer when present: the placeholder is the whole value, and
- * leaving its quotes behind would let the quoted-value arm read the
- * masked gap as an 8+ char literal (e.g. `secret: "${ENV_VAR}"`).
+ * quote layer when present, so leftover empty quotes cannot be mistaken
+ * for a non-whitespace credential value.
  */
 function maskSafePlaceholders(line: string): string {
   let masked = line;
