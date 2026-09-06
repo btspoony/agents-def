@@ -239,8 +239,10 @@ function toMarkdown(report: EvalReport): string {
 
 /**
  * Build the report for one run directory (manifest.json's parent). Exit
- * conventions mirror the run stage; missing state is an exit-2 error — the
- * report never fabricates results for units that never ran.
+ * conventions mirror the run stage; missing state or state recorded against
+ * different manifest bytes is an exit-2 error — the report never fabricates
+ * results for units that never ran and never relabels one run's grades with
+ * another manifest's identity.
  */
 export function buildReport(args: ReportArgs): ReportResult {
   const io = args.io ?? nodeRunnerIo;
@@ -307,6 +309,14 @@ export function buildReport(args: ReportArgs): ReportResult {
   if (state.schemaVersion !== RUNNER_SCHEMA_VERSION) {
     return fail([`scheduler state schemaVersion must be ${RUNNER_SCHEMA_VERSION}, got ${String(state.schemaVersion)}`]);
   }
+  // Manifest binding (mirrors the runner's state guard): state may only be
+  // aggregated against the exact manifest bytes it was recorded with — a
+  // post-run manifest swap would otherwise report run A's grades under
+  // manifest B. Refusal happens before any artifact write.
+  const manifestHash = sha256Hex(io.readText(manifestPath));
+  if (state.manifestHash !== manifestHash) {
+    return fail(["scheduler state belongs to a different manifest; refusing to report its grades under the current manifest bytes"]);
+  }
 
   const requested = requestedUnitIds(state, manifest);
   const grades: Record<UnitGrade | "pending", number> = { pass: 0, fail: 0, unverified: 0, infrastructure_error: 0, pending: 0 };
@@ -366,7 +376,7 @@ export function buildReport(args: ReportArgs): ReportResult {
       repeats: manifest.repeats,
       sandbox: manifest.sandbox,
     },
-    manifestHash: sha256Hex(io.readText(manifestPath)),
+    manifestHash,
     request: state.requested,
     denominator: { requestedUnits: requested.length, recordedUnits: requested.length - grades.pending, pendingUnits: grades.pending },
     grades,

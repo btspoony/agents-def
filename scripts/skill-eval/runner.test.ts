@@ -1338,4 +1338,26 @@ describe("Task 2: report stage (synthetic state)", () => {
     expect(md).toContain("unverified until evidence adjudicated");
     expect(report.report.assertions.unverified).toBe(1);
   });
+
+  test("report refuses a post-run manifest swap: grades are never reported under another manifest", async () => {
+    const { io, manifest } = await preparedRunDir();
+    const run = await runSmoke(io, manifest, syntheticSpawn(io, passHandler(manifest)));
+    expect(run.exit).toBe(0);
+
+    // Post-run manifest swap: manifest.json's bytes now describe a different
+    // manifest than the one the scheduler state was recorded against. The
+    // mutation (a dev-case integrityHash) stays outside configHash and
+    // heldoutDigest, so manifest-internal integrity still passes — only the
+    // state-to-manifest-bytes binding can refuse this relabeling.
+    const swapped = JSON.parse(io.readText(RUN_MANIFEST_PATH)) as EvalManifest;
+    swapped.cases[0].integrityHash = "0".repeat(64);
+    io.writeText(RUN_MANIFEST_PATH, `${JSON.stringify(swapped, null, 2)}\n`);
+
+    const report = buildReport({ manifestPath: RUN_MANIFEST_PATH, io });
+    expect(report.exit).toBe(2);
+    expect(report.errors.join(" ")).toContain("different manifest");
+    // Refusal precedes any artifact write: no report lands in the run dir.
+    expect(io.exists(report.jsonPath)).toBe(false);
+    expect(io.exists(report.mdPath)).toBe(false);
+  });
 });
