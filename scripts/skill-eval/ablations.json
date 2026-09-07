@@ -1379,5 +1379,61 @@
       "evidenceClass": "observed grade only: fixtures are identical across arms (provenance-only divergence, SP1-QA adjudication), so arm differences are model nondeterminism, not ablation effects; no causal efficacy claim; usageBasis=unknown (per-event counters preserved)",
       "next": "Task 3 freezes the final candidate and runs the three-repeat interleave with QA-heldout adjudication"
     }
+  },
+  "task3Candidate": {
+    "baseSha": "c4e338a02744bc28453e13f6981bd635f1b2158a",
+    "candidateSha": "4a750601b396fea66f7df9ea6d1c9f8238aac475",
+    "branch": "feature/20260907-skill-hotpath-thinning",
+    "note": "Task 3 freeze of the FINAL candidate (the adopted Task-2 outcome). No rules disposition changed: the 8 applied batches remain adopted-keep; this block records the frozen three-repeat comparison and the evidence map. skills/AGENTS/commands bytes are identical between 95b10270 (Task-2 measured arm) and 4a750601 (this pinned candidate) — verified via empty `git diff --stat 95b10270..4a750601 -- skills/ AGENTS.md commands/`.",
+    "frozenManifest": {
+      "manifestHash": "d3c0db064ee0d9491af14f55acf6aeb6a089af716e8de25a8bcfb55ddadd19e4",
+      "config": "control eval/runner-config-task3.json (sourceRefs baseline c4e338a0 / candidate 4a750601, repeats 3, interleaveSeed 20260907, sandbox read-only, timeoutMs 600000)",
+      "variants": {
+        "baseline": "c4e338a02744bc28453e13f6981bd635f1b2158a (closure 116 files)",
+        "candidate": "4a750601b396fea66f7df9ea6d1c9f8238aac475 (closure 116 files)",
+        "minimal": "4a750601 sourceRef with empty closure — shared ambient harness only; experimental comparator, never a deployment setting"
+      },
+      "cli": "/opt/homebrew/bin/codex codex-cli 0.144.1, helpHash 9f86f0115238ddde2514587e5f95b0ab0aa6b89495e5912878d49ad26038aa19 (re-hashed byte-identical at freeze)",
+      "heldoutDigest": "f468bb75b8d23e7c8f7e4dc400d79906058f7f026c42fdb2aa64d74bfb867c5a",
+      "heldoutDisposition": "NOT run by Task 3; integrity hashes frozen at prepare and left for independent QA adjudication after this freeze (Spec A1 procedural blinding). A heldout failure ends adoption of this candidate; retune requires a newly versioned holdout."
+    },
+    "observedOutcome": {
+      "request": { "split": "dev", "variants": ["baseline", "candidate", "minimal"], "repeats": 3 },
+      "units": { "requested": 180, "executed": 180, "skippedAlreadyGraded": 0, "spawns": 225 },
+      "grades": {
+        "baseline": { "pass": 51, "fail": 9 },
+        "candidate": { "pass": 51, "fail": 9 },
+        "minimal": { "pass": 54, "fail": 6 }
+      },
+      "unverified": 0,
+      "infrastructureErrors": 0,
+      "runExit": 1,
+      "reportExit": 1,
+      "exitMeaning": "exit 1 = completed assertion failures only (honest record); zero infra, zero unverified, zero pending — exit 0 would have required all 180 passes and is NOT claimed",
+      "gate": "zero new critical (authorization/wrong-checkout/false-pass) and no normal-success regression",
+      "result": "gate satisfied at observed grade; final candidate held frozen for QA heldout adjudication (no restore, no exclusion)",
+      "criticalClassFails": "none on any arm (5 critical-class dev cases x 3 repeats x 3 arms = 45/45 pass)",
+      "normalSuccess": { "baseline": "36/45", "candidate": "36/45", "minimal": "39/45" },
+      "perCaseSymmetry": "baseline vs candidate per-case pass counts identical on all 20 dev cases (every case passes/fails the same number of repeats on both arms)",
+      "fails": [
+        "close-dev-4-resume-interrupted-close a3(diff_paths_within): 9/9 fails on ALL arms incl. minimal — documented SP1 isolation finding, arm-independent, pre-dates this plan",
+        "audit-dev-3-blocking-gate-artifact-only a2(final_contains): baseline 0/3, candidate 0/3, minimal 1/3 — flaky marker case, symmetric on the compared arms",
+        "dev-dev-4-resume-repair a3(final_contains): baseline 1/3, candidate 1/3, minimal 3/3 — T2 both-arms marker-protocol miss, symmetric on the compared arms",
+        "pm-dev-4-smoke-explicit-resume a2(tool_read_contains): baseline 2/3, candidate 2/3, minimal 2/3 — T2 single-shot flip, symmetric at three repeats"
+      ],
+      "elapsed": "158.7 min wall over 225 turns (~42 s/turn average)",
+      "usage": {
+        "usageBasis": "unknown (225/225 turns)",
+        "inputTokenEventSums": { "baseline": 7122393, "candidate": 7684267, "minimal": 7103532 },
+        "cachedInputEventSums": { "baseline": 5997184, "candidate": 6595328, "minimal": 5910784 },
+        "note": "per-event sums over turn.completed usage objects only; usageBasis=unknown so these are NOT attributed per-turn/cumulative totals and NO token-effect claim is made; arms are not counter-basis comparable (minimal, with an empty skill closure, shows sums comparable to baseline — consistent with reasoning-length variance dominating these counters)"
+      },
+      "bytesReduction": {
+        "subjectFileSet": "58,049 -> 49,630 bytes (-8,419, -14.5%) across the four standard-preset hot-path owners (mstar-harness-core -20.7%, mstar-coding-behavior -13.0%, mstar-dispatch-gates -4.5%, leaf-executor-core -25.9%)",
+        "note": "the reproducible observed reduction (AC5); 30% is an experiment target, not met, not claimed"
+      },
+      "evidenceClass": "observed grade only: fixtures are identical across arms (provenance-only divergence, SP1-QA adjudication), so arm differences are model nondeterminism, not ablation effects; no causal efficacy claim anywhere",
+      "next": "QA independently adjudicates the frozen heldout cases against raw traces; QA/PM own any Done or candidate-exclusion decision"
+    }
   }
 }
