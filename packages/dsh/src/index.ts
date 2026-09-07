@@ -228,10 +228,22 @@ function packagedCommandsDir(): string | undefined {
   }
 }
 
-/** Frontmatter field value of one command markdown (`name`/`description`/`agent`/`input`). */
+/** Static value shape after a frontmatter label: `[ \t]*` spaces, colon, non-empty value. */
+const FRONTMATTER_FIELD_RE = /^[ \t]*:[ \t]*(.+)$/
+
+/**
+ * Frontmatter field value of one command markdown
+ * (`name`/`description`/`agent`/`input`). Line-based scan — labels are
+ * matched literally and the value shape via a static regex, so no pattern is
+ * assembled from caller-supplied strings. First matching line wins.
+ */
 function commandFrontmatterField(frontmatter: string, label: string): string | undefined {
-  const match = new RegExp(`^${label}[ \\t]*:[ \\t]*(.+)$`, 'm').exec(frontmatter)
-  return match?.[1]?.trim()
+  for (const line of frontmatter.split('\n')) {
+    if (!line.startsWith(label)) continue
+    const match = FRONTMATTER_FIELD_RE.exec(line.slice(label.length))
+    if (match) return match[1].trim()
+  }
+  return undefined
 }
 
 /**
