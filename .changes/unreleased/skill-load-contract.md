@@ -1,6 +1,6 @@
 ---
 category: Harness
-packages: root
+packages: root, engine
 ---
 
 - Made **`mstar-roles` the single load-selection authority**: the roles hub owns the `Skill presets:` decision (identity-first; explicit `none` / omitted-standard / named preset / trivial routes; unknown preset refuses instead of guessing), and `mstar-harness-core` remains the lifecycle/authorization authority while pointing to the hub instead of mandating universal core reads.
