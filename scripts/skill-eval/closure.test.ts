@@ -46,6 +46,8 @@
  * This is STRUCTURAL evidence only — it never substitutes for model traces
  * (Spec A1 runner/efficacy gate separation).
  */
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -596,5 +598,252 @@ describe("closure checker red fixtures (synthetic root)", () => {
 
   afterAll(() => {
     rmSync(tmpRootParent, { recursive: true, force: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 (freeze)
+// ---------------------------------------------------------------------------
+
+type AblationRule = {
+  ruleId: string;
+  title: string;
+  owner: string;
+  sourceRef: { anchor: string; lines: string };
+  ac1Category: string;
+  provenance: { origin: string; commit: string | null; userPolicy: string | null };
+  disposition: "keep" | "delete" | "consolidate" | "experiment" | "adopted-keep" | "restored-keep";
+  removalBasis: string | null;
+  enforcementClaim: "none" | "advisory-only" | "explicit-check" | "auto-blocking";
+  enforcementLimitations: string;
+  coverageRefs: string[];
+  caseIds: string[];
+  beforeSha256: string;
+  afterSha256: string | null;
+  /** Task 2 re-freeze: true when the batch removed the row's anchor text from
+   * the owner — the anchor's ABSENCE is then asserted (removal is proven,
+   * not assumed). Absent/undefined = the anchor must still be present. */
+  removedFromSource?: boolean;
+  restore: string;
+  notes: string;
+};
+type Ablations = {
+  schemaVersion: number;
+  artifact: string;
+  frozenAt: { branch: string; gitHead: string };
+  policyProtection: { refs: Array<{ ref: string; commit: string; title: string }> };
+  rules: AblationRule[];
+};
+
+const ABLATIONS_JSON = join(REPO_ROOT, "scripts/skill-eval/ablations.json");
+const ablations = JSON.parse(read(ABLATIONS_JSON)) as Ablations;
+/** Task 1 freeze BASE (recorded in the Task 1 report and ablations.task2Refreeze).
+ * beforeSha256 values are verified against THIS tree's owner blobs via git show,
+ * so the freeze pins stay meaningful after the Task 2 re-freeze. */
+const TASK1_BASE_SHA = "c4e338a02744bc28453e13f6981bd635f1b2158a";
+const ruleIds = ablations.rules.map((r) => r.ruleId);
+const caseIdSet = new Set(cases.map((c) => c.id));
+const DISPOSITIONS = new Set(["keep", "delete", "consolidate", "experiment", "adopted-keep", "restored-keep"]);
+const AC1_CATEGORIES = new Set([
+  "model-native-generic-teaching",
+  "duplicated-rule",
+  "mechanically-covered-contract",
+  "framework-judgment-policy",
+  "necessary-negative-constraint",
+]);
+const REMOVAL_BASES = new Set(["duplicated-rule-owner-exists", "model-native-teaching-hypothesis", "onboarding-only-hypothesis"]);
+
+function ownerTextOf(rule: AblationRule): string {
+  return read(join(REPO_ROOT, rule.owner));
+}
+function sha256Of(path: string): string {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+/** sha256 of the file content at `<rev>:<relPath>` in git history (used to
+ * verify the Task 1 freeze pins against the BASE tree, independent of the
+ * working tree). */
+function sha256OfGitBlob(rev: string, relPath: string): string {
+  const bytes = execFileSync("git", ["-C", REPO_ROOT, "show", `${rev}:${relPath}`], {
+    encoding: "buffer",
+    maxBuffer: 16 * 1024 * 1024,
+  }) as Buffer;
+  return createHash("sha256").update(bytes).digest("hex");
+}
+function gitObjectType(sha: string): string {
+  return execFileSync("git", ["-C", REPO_ROOT, "cat-file", "-t", sha], { encoding: "utf8" }).trim();
+}
+
+describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 (freeze)", () => {
+  test("inventory parses: schema, enums, and per-row field contract", () => {
+    expect(ablations.schemaVersion).toBe(1);
+    expect(ablations.rules.length).toBeGreaterThanOrEqual(30);
+    for (const rule of ablations.rules) {
+      expect(DISPOSITIONS.has(rule.disposition), `${rule.ruleId} disposition`).toBe(true);
+      expect(AC1_CATEGORIES.has(rule.ac1Category), `${rule.ruleId} ac1Category`).toBe(true);
+      expect(["none", "advisory-only", "explicit-check", "auto-blocking"].includes(rule.enforcementClaim), `${rule.ruleId} enforcementClaim`).toBe(true);
+      expect(rule.enforcementLimitations.length > 0, `${rule.ruleId} enforcementLimitations non-empty`).toBe(true);
+      expect(rule.sourceRef.anchor.length > 0, `${rule.ruleId} anchor`).toBe(true);
+      expect(rule.beforeSha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(rule.restore.length > 0, `${rule.ruleId} restore`).toBe(true);
+      // Task 2 re-freeze: every owner file changed in the batch set, so every
+      // row carries a filled afterSha256 (current-bytes match is asserted by
+      // the re-freeze pin test below).
+      expect(rule.afterSha256, `${rule.ruleId} afterSha256 filled at re-freeze`).toMatch(/^[0-9a-f]{64}$/);
+      // A non-keep row must name a concrete removal basis (never an enforcement argument).
+      if (rule.disposition !== "keep") {
+        expect(REMOVAL_BASES.has(rule.removalBasis ?? ""), `${rule.ruleId} removalBasis`).toBe(true);
+      } else {
+        expect(rule.removalBasis, `${rule.ruleId} keep row has no removalBasis`).toBeNull();
+      }
+    }
+  });
+
+  test("rule IDs are unique", () => {
+    expect(new Set(ruleIds).size).toBe(ruleIds.length);
+  });
+
+  test("Task 2 re-freeze: beforeSha256 pins the BASE tree blob, afterSha256 pins current bytes, and removed anchors are proven gone", () => {
+    for (const rule of ablations.rules) {
+      const abs = join(REPO_ROOT, rule.owner);
+      expect(existsSync(abs), `${rule.ruleId} owner ${rule.owner}`).toBe(true);
+      // Freeze provenance: the Task 1 pin must equal the owner blob at the
+      // recorded BASE commit — verified from git history, not the working tree.
+      expect(sha256OfGitBlob(TASK1_BASE_SHA, rule.owner), `${rule.ruleId} beforeSha256 pins the BASE blob of ${rule.owner}`).toBe(rule.beforeSha256);
+      // Re-freeze: afterSha256 matches the current owner bytes.
+      expect(rule.afterSha256, `${rule.ruleId} afterSha256 matches current bytes`).toBe(sha256Of(abs));
+      // Anchor contract: rows marked removedFromSource must REALLY have lost
+      // their anchor text (the batch happened); every other row's anchor must
+      // still be present.
+      const present = ownerTextOf(rule).includes(rule.sourceRef.anchor);
+      if (rule.removedFromSource) {
+        expect(present, `${rule.ruleId} anchor "${rule.sourceRef.anchor}" removed from ${rule.owner}`).toBe(false);
+      } else {
+        expect(present, `${rule.ruleId} anchor "${rule.sourceRef.anchor}" in ${rule.owner}`).toBe(true);
+      }
+    }
+  });
+
+  test("every caseId resolves against the 30-case corpus (structural coverage, not a verified pass)", () => {
+    for (const rule of ablations.rules) {
+      for (const id of rule.caseIds) {
+        expect(caseIdSet.has(id), `${rule.ruleId} caseId ${id}`).toBe(true);
+      }
+    }
+  });
+
+  test("no unsupported auto-blocking deletion: enforcement claims never justify removals and carry honest limitations", () => {
+    for (const rule of ablations.rules) {
+      // A removal's basis must be duplication or a teaching/onboarding hypothesis —
+      // never an enforcement argument ("mechanically covered" is not enough while
+      // efficacy evidence is blocked and coverage is explicit-check at best).
+      if (rule.disposition !== "keep") {
+        expect(rule.removalBasis === "duplicated-rule-owner-exists" || rule.removalBasis === "model-native-teaching-hypothesis" || rule.removalBasis === "onboarding-only-hypothesis", `${rule.ruleId} removal basis is not an enforcement argument`).toBe(true);
+      }
+      // Any auto-blocking claim must state its limitations (dsh-only, opt-in,
+      // declared-caller, or no-refusal-channel) so no row reads as blanket enforcement.
+      if (rule.enforcementClaim === "auto-blocking") {
+        expect(rule.enforcementLimitations, `${rule.ruleId} auto-blocking requires stated limitations`).toMatch(/dsh|opt-in|declared|refusal|unavailable/i);
+      }
+      // No row may claim behavioral/causal evidence: the arm-materialization
+      // limitation forbids it (SP2-QA adjudication).
+      expect(rule.notes, `${rule.ruleId} no causal-effect language in notes`).not.toMatch(/causally established|behavioral effect proven|proven token savings/i);
+    }
+    // And at least the four SP2-verified coverage anchors used above exist as
+    // identifiers this inventory consumes (done-ownership, engine-absent,
+    // dispatch x2, skill-lint x2) — resolution to the control coverage map is
+    // recorded in the plan report, not via a gitignored path in tracked files.
+    const used = new Set(ablations.rules.flatMap((r) => r.coverageRefs));
+    for (const expected of ["done-ownership.authority", "engine-absent.fallback-integrity", "dispatch-authorization.delegation-boundary", "dispatch-authorization.caller-identity", "skill-lint.authoring-default", "skill-lint.write-path-authoring-default"]) {
+      expect(used.has(expected), `coverageRef ${expected} consumed`).toBe(true);
+    }
+  });
+
+  test("consolidate rows name a surviving keep-row owner in the same inventory", () => {
+    const byId = new Map(ablations.rules.map((r) => [r.ruleId, r]));
+    // Outcome dispositions keep the owner-survival check active: an adopted
+    // consolidation must still point at a row that exists and stays a keep.
+    for (const rule of ablations.rules.filter((r) => r.disposition === "consolidate" || (r.disposition === "adopted-keep" && /Surviving owner: /.test(r.notes)))) {
+      expect(rule.notes, `${rule.ruleId} names its owner`).toMatch(/Surviving owner: /);
+      const ownerMention = /Surviving owner: ([a-z][a-z0-9.-]+)/.exec(rule.notes);
+      expect(ownerMention, `${rule.ruleId} owner ruleId parseable`).not.toBeNull();
+      const owner = byId.get(ownerMention![1]);
+      expect(owner, `${rule.ruleId} owner ${ownerMention![1]} exists in inventory`).toBeDefined();
+      expect(owner!.disposition, `${rule.ruleId} owner is a keep row`).toBe("keep");
+    }
+  });
+
+  test("policy rows carry read-only git evidence: provenance commits resolve in this repo", () => {
+    for (const rule of ablations.rules) {
+      if (rule.provenance.commit) {
+        expect(gitObjectType(rule.provenance.commit), `${rule.ruleId} provenance commit ${rule.provenance.commit.slice(0, 8)} exists`).toBe("commit");
+      }
+    }
+    for (const ref of ablations.policyProtection.refs) {
+      expect(gitObjectType(ref.commit), `policyProtection ${ref.ref} commit exists`).toBe("commit");
+    }
+  });
+
+  test("AC2 pins: #153/#156/#167 user policies are present in the CURRENT subject files (not accidentally reverted)", () => {
+    // #167: core engineering rules section + the coding-behavior link line.
+    expect(coreText.includes("## 核心研发守则")).toBe(true);
+    expect(coreText.includes("Do not preserve backward compatibility.")).toBe(true);
+    const codingText = read(join(SKILLS_DIR, "mstar-coding-behavior/SKILL.md"));
+    expect(codingText.includes("**Upstream invariants**: the global engineering rules live in `mstar-harness-core`（核心研发守则）")).toBe(true);
+    // #156: caller-scoped engine-scope blockquote in dispatch-gates.
+    const dispatchText = read(join(SKILLS_DIR, "mstar-dispatch-gates/SKILL.md"));
+    expect(dispatchText.includes("> **Engine 执行范围（caller-scoped，#156）**")).toBe(true);
+    // #153's payload lives in role references outside the Task-1 subject files;
+    // the policyProtection block records that non-overlap explicitly.
+    const p153 = ablations.policyProtection.refs.find((r) => r.ref === "#153");
+    expect(p153, "#153 recorded in policyProtection").toBeDefined();
+    expect(p153!.protectedInSubjectFiles).toContain("outside this plan's Files allowlist");
+    // #144/#109: delivered preset semantics survive in their post-SP2 form.
+    const p144 = ablations.policyProtection.refs.find((r) => r.ref === "#144");
+    expect(p144, "#144 recorded in policyProtection").toBeDefined();
+  });
+
+  test("disposition mix is bounded: not every positive removable, not every NEVER a duplicate, no outright deletes at freeze", () => {
+    const counts = { keep: 0, delete: 0, consolidate: 0, experiment: 0, "adopted-keep": 0, "restored-keep": 0 } as Record<string, number>;
+    for (const rule of ablations.rules) counts[rule.disposition] += 1;
+    expect(counts.keep).toBeGreaterThanOrEqual(counts.experiment + counts.consolidate + counts.delete + counts["adopted-keep"] + counts["restored-keep"]);
+    expect(counts.delete, "freeze uses experiments/consolidations, not outright deletes").toBe(0);
+    // Negative constraints keep an authoritative home: the shared leaf NEVER
+    // blocks are keep rows while the dispatch-gates duplicate is the experiment.
+    const byId = new Map(ablations.rules.map((r) => [r.ruleId, r]));
+    expect(byId.get("leaf.anti-recursion-never")!.disposition).toBe("keep");
+    expect(byId.get("leaf.non-recursive-shared")!.disposition).toBe("keep");
+    // Task 2 outcome: the dispatch-gates duplicate batch was applied and
+    // adopted at observed grade (zero new critical, no normal-success
+    // regression in the paired dev run); the shared owner rows stay keeps.
+    expect(byId.get("dispatch.leaf-anti-recursion")!.disposition).toBe("adopted-keep");
+    // User-policy rows are untouchable keeps.
+    expect(byId.get("core.engineering-rules")!.disposition).toBe("keep");
+    expect(byId.get("coding.upstream-invariants")!.disposition).toBe("keep");
+    expect(byId.get("dispatch.caller-scope-156")!.disposition).toBe("keep");
+    // Engine-absent fallback stays (AC3).
+    expect(byId.get("core.engine-legacy-conditional")!.disposition).toBe("keep");
+  });
+
+  test("Task 2 outcome contract: adopted-keep rows record the observed gate outcome; no batch left pending or restored", () => {
+    const outcomes = { "adopted-keep": 0, "restored-keep": 0 } as Record<string, number>;
+    for (const rule of ablations.rules) {
+      if (rule.disposition === "adopted-keep" || rule.disposition === "restored-keep") {
+        outcomes[rule.disposition] += 1;
+        // Every outcome row keeps its audit trail: the applied removal basis,
+        // the restore record, and the observed-grade outcome note.
+        expect(REMOVAL_BASES.has(rule.removalBasis ?? ""), `${rule.ruleId} removal basis retained`).toBe(true);
+        expect(rule.restore.length > 0, `${rule.ruleId} restore record retained`).toBe(true);
+        expect(rule.notes, `${rule.ruleId} outcome note`).toMatch(/Task 2 outcome: (adopted|restored)-keep/);
+      }
+      // No causal-effect language anywhere, outcomes included.
+      expect(rule.notes, `${rule.ruleId} no causal-effect language in outcome`).not.toMatch(/causally established|behavioral effect proven|proven token savings/i);
+    }
+    expect(outcomes["adopted-keep"], "all applied batches recorded an outcome").toBeGreaterThanOrEqual(1);
+    expect(outcomes["adopted-keep"] + outcomes["restored-keep"], "every experiment/consolidation reached an outcome").toBe(8);
+    // The freeze record carries the observed-gate evidence block.
+    const refreeze = (ablations as unknown as { task2Refreeze?: { observedOutcome?: { result?: string; evidence?: { grades?: Record<string, unknown>; criticalClassFails?: string } } } }).task2Refreeze;
+    expect(refreeze?.observedOutcome?.result, "refreeze records the observed gate result").toMatch(/adopted/);
+    expect(refreeze?.observedOutcome?.evidence?.grades, "refreeze records per-arm observed grades").toBeDefined();
+    expect(refreeze?.observedOutcome?.evidence?.criticalClassFails, "refreeze records the critical-class scan").toMatch(/none/i);
   });
 });
