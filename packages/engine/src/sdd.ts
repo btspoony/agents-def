@@ -15,12 +15,33 @@
  * finding 2026-08-08) — the status.json probe only knows the probed names
  * (`.mstar`/`.agents`) and picks the wrong root in repos with another root;
  * the engine honors the explicit override in addition to CONTROL_ROOT.
+ *
+ * SDD execution context (spec A3, plan 20260907-sdd-execution-paths Task 1):
+ * `SddExecutionContext` / `resolveSddExecutionContext` / `checkSddAction`
+ * resolve the control harness root / feature worktree cwd / artifact
+ * destinations and gate actions at supported seams (source cwd, artifact
+ * target, launch destination) before mutation. Branch/lease/path semantics
+ * are reused from `worktree.ts` / `lease.ts` / `path.ts` — never duplicated.
+ * Checks are read-only: a refused action performs no write. Remaining blind
+ * spots are part of the contract (A3): a child can deliberately chdir, pass
+ * an overriding cwd flag, or write an absolute path; explicit check-context
+ * is a snapshot, not a future-write lock.
  */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
-import { resolveSddDir, resolveWorkflowDir } from "./path.js";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import {
+  assertPlanWritingPath,
+  assertSafePathComponent,
+  canonicalizeNearestExisting,
+  resolveSddDir,
+  resolveWorkflowDir,
+} from "./path.js";
 import { findMstarc, parseMstarc } from "./mstarc.js";
+import { readJson, type GateResult, type Severity, type ValidationResult } from "./core.js";
+import { verifyPlanExecutionLease } from "./lease.js";
+import { WORKFLOW_SNAPSHOT_FILE } from "./workflow.js";
+import { assertBranchAlignment, l1PreDispatchCheck } from "./worktree.js";
 
 /**
  * Error carrying the ported script exit code so the CLI can map validation
@@ -496,4 +517,459 @@ export function implementerSessionStickyRules(input: StickyRulesInput): StickyRu
     };
   }
   return { resume: true, reason: `sticky resume OK: host_agent_id ${session.host_agent_id}, next task ${nextTask}` };
+}
+
+/**
+ * Resolved SDD execution context (spec A3): where control artifacts live,
+ * where feature source edits happen, and which branch the feature checkout
+ * must be on. All paths normalized absolute (canonicalized on resolve);
+ * `planFile` / `sddDir` must resolve within the control harness and match
+ * `planId`; the feature branch/worktree must match the verified lease when
+ * an active workflow supplies one (standalone non-iteration contexts remain
+ * possible under the existing branch policy — no new global lease mandate).
+ * A declared control root is authoritative: it is never re-inferred from
+ * the feature cwd (mstar-branch-worktree «Harness path SSOT»).
+ */
+export type SddExecutionContext = {
+  planId: string;
+  /** Control harness dir (`<control-worktree>/{HARNESS_DIR}`), absolute. */
+  controlHarnessRoot: string;
+  /** Feature worktree — the required cwd for product/source edits, absolute. */
+  featureCwd: string;
+  /** Assignment Working branch checked out at `featureCwd`. */
+  workingBranch: string;
+  /** Control plan file (`{PLAN_DIR}/<plan-id>.md`), absolute. */
+  planFile: string;
+  /** Control `{SDD_DIR}` = `{HARNESS_DIR}/sdd/<plan-id>/`, absolute. */
+  sddDir: string;
+};
+
+/** One action seam to gate with `checkSddAction` (spec A3). */
+export type SddAction = {
+  /**
+   * Observed invocation cwd — the real cwd at the seam, never an Assignment
+   * echo. Relative `target` values resolve from this cwd.
+   */
+  cwd: string;
+  /** Path the action would touch; optional for source/launch, required for artifact. */
+  target?: string;
+  kind: SddActionKind;
+};
+
+/** Action seam kinds (spec A3): feature source write, control artifact write, child-process launch. */
+export type SddActionKind = "source" | "artifact" | "launch";
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** True when `child` is `ancestor` itself or a descendant (lexical, both absolute). */
+function isInside(child: string, ancestor: string): boolean {
+  const rel = relative(ancestor, child);
+  return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+}
+
+/** realpath of `path` when it exists and is a directory; `null` otherwise. */
+function canonicalDir(path: string): string | null {
+  try {
+    return statSync(path).isDirectory() ? realpathSync(path) : null;
+  } catch {
+    return null;
+  }
+}
+
+function contextViolation(severity: Severity, code: string, message: string, fix?: string): ValidationResult {
+  return { ok: false, severity, code, message, fix };
+}
+
+/** Throw one `SddScriptError` summarizing a failed gate (exit 1 — gate fail). */
+function throwGateFail(violations: readonly ValidationResult[]): never {
+  const detail = violations
+    .map((v) => `${v.code}: ${v.message}${v.fix ? ` (fix: ${v.fix})` : ""}`)
+    .join("\n  ");
+  throw new SddScriptError(`SDD execution context rejected:\n  ${detail}`, 1);
+}
+
+function throwUsage(message: string): never {
+  throw new SddScriptError(message, 2);
+}
+
+/**
+ * Find the plan row for `planId` across the control harness's workflow
+ * snapshots (`{WORKFLOW_DIR}/<id>/snapshot.json`, v3 SSOT — same probe shape
+ * as `probeHarnessWithStatus`). Unreadable/malformed snapshots are skipped
+ * (consistent with `hasWorkflowSnapshot`): an unreadable snapshot cannot
+ * establish an active workflow, so the standalone branch policy applies.
+ * Read-only; `null` when no snapshot mentions the plan.
+ */
+function findWorkflowPlanRow(controlHarnessRoot: string, planId: string): Record<string, unknown> | null {
+  let workflowsDir: string;
+  try {
+    workflowsDir = resolveWorkflowDir(controlHarnessRoot, { harnessDir: controlHarnessRoot });
+  } catch {
+    return null;
+  }
+  if (!isDirectory(workflowsDir)) return null;
+  let workflowIds: string[];
+  try {
+    workflowIds = readdirSync(workflowsDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  } catch {
+    return null;
+  }
+  for (const id of workflowIds) {
+    const snapshotPath = join(workflowsDir, id, WORKFLOW_SNAPSHOT_FILE);
+    if (!isFile(snapshotPath)) continue;
+    let doc: Record<string, unknown>;
+    try {
+      doc = readJson(snapshotPath);
+    } catch {
+      continue; // malformed snapshot — cannot establish an active workflow
+    }
+    const plans = doc.plans;
+    if (!Array.isArray(plans)) continue;
+    for (const row of plans) {
+      if (isPlainObject(row) && (row.id === planId || row.plan_id === planId)) return row;
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolve and validate a declared SDD execution context (spec A3) into a
+ * canonical context. Read-only — resolves/validates, never writes.
+ *
+ * Validation (reusing the existing machinery — never duplicated here):
+ * - shape: all paths absolute, `planId` a single safe path component
+ *   (`assertSafePathComponent`);
+ * - `controlHarnessRoot` exists (declared root is authoritative — never
+ *   re-inferred from the feature cwd);
+ * - `planFile` identity (basename stem = `planId`) + placement via
+ *   `assertPlanWritingPath` (inside `{PLAN_DIR}` of the control harness,
+ *   symlink escape checked against the canonical path);
+ * - `sddDir` equals `resolveSddDir(controlHarnessRoot, planId)` (the path
+ *   SSOT composition, `.mstarc` overrides included) and — when it exists —
+ *   canonicalizes inside the control harness;
+ * - `featureCwd` exists and never nests with the control checkout
+ *   (`featureCwd` inside the control checkout, or the control harness
+ *   inside the feature checkout, are both refused — L1 hard rules);
+ * - branch/lease: when the control harness's workflow snapshots supply a
+ *   plan row, its lease is verified (`verifyPlanExecutionLease`) and the
+ *   L1 checklist runs (`l1PreDispatchCheck` with the control checkout);
+ *   the context must then match the verified lease exactly. Without an
+ *   active lease (no row, or a non-InProgress row without lease), the
+ *   standalone branch policy applies (`assertBranchAlignment`) — an
+ *   InProgress row without lease is the orphan refusal.
+ *
+ * Throws `SddScriptError` — exit 2 when the declared context itself is
+ * malformed (non-absolute path, identity/composition mismatch, missing plan
+ * file), exit 1 when the environment fails the gate (missing dirs, branch
+ * mismatch, lease/orphan refusal, symlink escape). A rejected context never
+ * reaches an action check.
+ */
+export function resolveSddExecutionContext(input: SddExecutionContext): SddExecutionContext {
+  const { planId, workingBranch } = input;
+  if (typeof planId !== "string" || planId.trim() === "") {
+    throwUsage("SddExecutionContext.planId must be a non-empty string");
+  }
+  if (typeof workingBranch !== "string" || workingBranch.trim() === "") {
+    throwUsage("SddExecutionContext.workingBranch must be a non-empty string");
+  }
+  for (const field of ["controlHarnessRoot", "featureCwd", "planFile", "sddDir"] as const) {
+    const value = input[field];
+    if (typeof value !== "string" || value.trim() === "") {
+      throwUsage(`SddExecutionContext.${field} must be a non-empty string`);
+    }
+    if (!isAbsolute(value)) {
+      throwUsage(
+        `SddExecutionContext.${field} must be an absolute path (A3: all paths normalized absolute); got ${JSON.stringify(value)}`,
+      );
+    }
+  }
+  try {
+    assertSafePathComponent(planId, "SddExecutionContext.planId");
+  } catch (err) {
+    throwUsage(`SddExecutionContext rejected: ${(err as Error).message}`);
+  }
+
+  const canonicalControlHarnessRoot = canonicalDir(input.controlHarnessRoot);
+  if (canonicalControlHarnessRoot === null) {
+    throwGateFail([
+      contextViolation(
+        "high",
+        "sdd.context.control-root-missing",
+        `controlHarnessRoot "${input.controlHarnessRoot}" does not exist or is not a directory — a declared control root is authoritative and is never re-inferred from the feature cwd (A3)`,
+      ),
+    ]);
+  }
+
+  const stem = basename(input.planFile).replace(/\.md$/, "");
+  if (stem !== planId) {
+    throwUsage(
+      `SddExecutionContext.planFile "${input.planFile}" does not match plan "${planId}" — the plan file must be {PLAN_DIR}/<plan-id>.md under the declared control harness`,
+    );
+  }
+  if (!isFile(input.planFile)) {
+    throwUsage(`no such plan file: ${input.planFile}`);
+  }
+  // Declared paths on both sides — the gate's own canonical step still
+  // catches a symlink escape (canonical file vs canonical {PLAN_DIR});
+  // mixing declared with realpath'd here would false-fail on symlinked
+  // tmp roots (macOS /var → /private/var).
+  const planGate = assertPlanWritingPath(input.planFile, input.controlHarnessRoot);
+  if (!planGate.ok) {
+    if (planGate.code === "plan-path.symlink-escape") {
+      throwGateFail([planGate]); // environmental escape — gate fail
+    }
+    throwUsage(`SddExecutionContext.planFile rejected: ${planGate.code}: ${planGate.message}`);
+  }
+
+  const composedSddDir = resolveSddDir(canonicalControlHarnessRoot, planId);
+  if (canonicalizeNearestExisting(input.sddDir) !== composedSddDir) {
+    throwUsage(
+      `SddExecutionContext.sddDir "${input.sddDir}" does not match plan "${planId}" — expected the {SDD_DIR} composition ${composedSddDir}`,
+    );
+  }
+
+  const canonicalFeatureCwd = canonicalDir(input.featureCwd);
+  if (canonicalFeatureCwd === null) {
+    throwGateFail([
+      contextViolation(
+        "high",
+        "sdd.context.feature-cwd-missing",
+        `featureCwd "${input.featureCwd}" does not exist or is not a directory — the feature worktree is the required cwd for product edits`,
+        `create the feature worktree first (git worktree add ${input.featureCwd} ${workingBranch})`,
+      ),
+    ]);
+  }
+
+  // L1 hard rules — the feature cwd and the control checkout must not nest.
+  const controlCheckout = dirname(canonicalControlHarnessRoot);
+  if (isInside(canonicalFeatureCwd, controlCheckout)) {
+    throwGateFail([
+      contextViolation(
+        "critical",
+        "sdd.context.feature-in-control",
+        `featureCwd "${canonicalFeatureCwd}" is inside the control checkout "${controlCheckout}" — product edits never land in the control checkout (execution_lease.worktree_path MUST differ from metadata.control_worktree_path)`,
+        "use a distinct feature worktree for the plan",
+      ),
+    ]);
+  }
+  if (isInside(canonicalControlHarnessRoot, canonicalFeatureCwd)) {
+    throwGateFail([
+      contextViolation(
+        "critical",
+        "sdd.context.control-inside-feature",
+        `controlHarnessRoot "${canonicalControlHarnessRoot}" is inside featureCwd "${canonicalFeatureCwd}" — a feature worktree's same-looking {HARNESS_DIR} is not the SSOT; the control harness must live outside the feature checkout`,
+      ),
+    ]);
+  }
+
+  // Canonical escape check for an existing sddDir (symlinked sdd tree).
+  const canonicalSddDir = canonicalizeNearestExisting(input.sddDir);
+  if (!isInside(canonicalSddDir, canonicalControlHarnessRoot)) {
+    throwGateFail([
+      contextViolation(
+        "high",
+        "sdd.context.sdd-dir-escape",
+        `sddDir "${input.sddDir}" canonicalizes to "${canonicalSddDir}", outside the control harness "${canonicalControlHarnessRoot}" — symlink escape refused`,
+      ),
+    ]);
+  }
+
+  // Branch/lease policy: verified lease when an active workflow supplies one,
+  // standalone branch alignment otherwise (spec A3 — no new global lease mandate).
+  const row = findWorkflowPlanRow(canonicalControlHarnessRoot, planId);
+  if (row !== null && row.execution_lease !== undefined) {
+    const leaseVerify = verifyPlanExecutionLease(row, planId);
+    if (!leaseVerify.ok) throwGateFail(leaseVerify.violations);
+    const lease = leaseVerify.lease as Record<string, unknown>;
+    const l1 = l1PreDispatchCheck({
+      controlWorktreePath: controlCheckout,
+      leaseWorktreePath: lease.worktree_path as string,
+      leaseWorkingBranch: lease.working_branch as string,
+      planId,
+    });
+    if (!l1.ok) throwGateFail(l1.violations);
+    if (canonicalizeNearestExisting(lease.worktree_path as string) !== canonicalFeatureCwd) {
+      throwGateFail([
+        contextViolation(
+          "high",
+          "sdd.context.lease-worktree-mismatch",
+          `SddExecutionContext.featureCwd "${canonicalFeatureCwd}" does not match the verified execution_lease.worktree_path "${String(lease.worktree_path)}" — the context must match the verified lease (A3)`,
+        ),
+      ]);
+    }
+    if (workingBranch !== lease.working_branch) {
+      throwGateFail([
+        contextViolation(
+          "high",
+          "sdd.context.lease-branch-mismatch",
+          `SddExecutionContext.workingBranch "${workingBranch}" does not match the verified execution_lease.working_branch "${String(lease.working_branch)}" (plan "${planId}")`,
+        ),
+      ]);
+    }
+  } else if (row !== null && row.status === "InProgress") {
+    // InProgress without a lease is the orphan refusal (status-and-residuals
+    // § Orphan recovery) — fail with the reused violation, never invent a lease.
+    throwGateFail(verifyPlanExecutionLease(row, planId).violations);
+  } else {
+    // Standalone (no active workflow row, or a non-InProgress row without a
+    // lease): existing branch policy only — no lease mandate.
+    const branchGate = assertBranchAlignment(canonicalFeatureCwd, workingBranch);
+    if (!branchGate.ok) throwGateFail(branchGate.violations);
+  }
+
+  return {
+    planId,
+    controlHarnessRoot: canonicalControlHarnessRoot,
+    featureCwd: canonicalFeatureCwd,
+    workingBranch,
+    planFile: realpathSync(input.planFile),
+    sddDir: canonicalSddDir,
+  };
+}
+
+/**
+ * Gate one action seam against a resolved context (spec A3). Read-only —
+ * a refused action performs no write and the check itself never writes.
+ *
+ * - `kind: "source"` — the observed `cwd` must sit inside the feature
+ *   worktree (nested directories allowed); a relative `target` resolves from
+ *   that actual cwd. Targets outside the feature — traversal, absolute
+ *   elsewhere, wrong-cwd, or symlink escape — are refused before mutation.
+ * - `kind: "artifact"` — the `target` must stay inside the plan's control
+ *   `sddDir` or equal the declared `planFile`; legitimate control artifact
+ *   edits are allowed while arbitrary control source edits are not. A
+ *   nonexistent leaf canonicalizes through its nearest existing ancestor
+ *   (`canonicalizeNearestExisting`); symlink escapes are refused.
+ * - `kind: "launch"` — verifies the resolved launch destination
+ *   `featureCwd` (exists + on `workingBranch` via the reused
+ *   `assertBranchAlignment`); the parent's own cwd is not gated, because a
+ *   launch may legitimately run from control/main — its purpose is to bind
+ *   the child's starting cwd to the feature worktree. An optional `target`
+ *   is checked as a source target relative to `featureCwd` (where the child
+ *   will start).
+ *
+ * Violations minted here carry the `sdd.context.*` prefix; violations from
+ * the reused branch/lease helpers keep their own codes (`worktree.*`,
+ * `lease.*`, `plan-path.*`) — the rules stay single-sourced. A3 limits
+ * apply: this is a snapshot check, not a future-write lock, and offers no
+ * protection against a concurrent hostile symlink swap.
+ */
+export function checkSddAction(context: SddExecutionContext, action: SddAction): GateResult {
+  const violations: ValidationResult[] = [];
+  const add = (code: string, message: string, fix?: string): void => {
+    violations.push(contextViolation("high", code, message, fix));
+  };
+
+  if (action.kind !== "source" && action.kind !== "artifact" && action.kind !== "launch") {
+    add("sdd.context.kind-unknown", `unknown action kind ${JSON.stringify((action as { kind?: unknown }).kind)} — expected "source" | "artifact" | "launch"`);
+    return { ok: false, violations };
+  }
+  if (typeof action.cwd !== "string" || action.cwd.trim() === "") {
+    add("sdd.context.cwd-missing", "action.cwd (the observed invocation cwd) is required — never an Assignment echo");
+    return { ok: false, violations };
+  }
+
+  const featureReal = canonicalDir(context.featureCwd);
+  const canonicalSddDir = canonicalizeNearestExisting(context.sddDir);
+  const canonicalPlanFile = canonicalizeNearestExisting(context.planFile);
+  const cwdResolved = resolve(action.cwd);
+
+  /**
+   * Physical containment decision: canonicalize the target through its
+   * nearest existing ancestor (resolving symlinked ancestors and macOS
+   * `/var` → `/private/var`) and compare against the canonical base. When
+   * it escapes, the declared-prefix test (same string universe) picks the
+   * diagnostic: a declared-inside path routed elsewhere is a symlink
+   * escape, anything else is simply outside.
+   */
+  const checkTarget = (baseDir: string, target: string, kind: "source" | "launch"): void => {
+    if (featureReal === null) return; // reported by the kind-specific cwd/launch checks
+    const targetAbs = resolve(baseDir, target);
+    const canonical = canonicalizeNearestExisting(targetAbs);
+    if (!isInside(canonical, featureReal)) {
+      const declaredPrefix = targetAbs === featureReal || targetAbs.startsWith(`${featureReal}/`);
+      if (declaredPrefix) {
+        add(
+          "sdd.context.target-symlink-escape",
+          `${kind} target "${target}" canonicalizes to "${canonical}", outside the feature worktree — symlink escape refused before mutation`,
+        );
+      } else {
+        add(
+          `sdd.context.${kind}-target-outside-feature`,
+          `${kind} target "${target}" resolves to "${targetAbs}", outside the feature worktree "${featureReal}" — refused before mutation`,
+        );
+      }
+    }
+  };
+
+  if (action.kind === "source") {
+    const cwdReal = canonicalDir(cwdResolved);
+    if (cwdReal === null) {
+      add("sdd.context.cwd-missing", `observed source cwd "${action.cwd}" does not exist or is not a directory`);
+      return { ok: false, violations };
+    }
+    if (featureReal === null || !isInside(cwdReal, featureReal)) {
+      add(
+        "sdd.context.source-cwd-outside-feature",
+        `observed source cwd "${cwdReal}" is outside the feature worktree "${context.featureCwd}" — a declared-correct context does not make a wrong-checkout write safe (A3)`,
+        `run the source action from inside ${context.featureCwd}`,
+      );
+      return { ok: false, violations };
+    }
+    if (action.target !== undefined) checkTarget(cwdReal, action.target, "source");
+  } else if (action.kind === "artifact") {
+    if (typeof action.target !== "string" || action.target.trim() === "") {
+      add("sdd.context.target-missing", "artifact checks require the destination target");
+      return { ok: false, violations };
+    }
+    // Physical containment against the plan's control artifacts: the target
+    // (canonicalized through its nearest existing ancestor) must stay inside
+    // the plan's sddDir or equal the declared planFile — legitimate control
+    // artifact edits are allowed while arbitrary control source edits are not.
+    const targetAbs = resolve(cwdResolved, action.target);
+    const canonical = canonicalizeNearestExisting(targetAbs);
+    if (!isInside(canonical, canonicalSddDir) && canonical !== canonicalPlanFile) {
+      // Same-universe declared-prefix test picks the diagnostic code only.
+      const rawSddDir = resolve(context.sddDir);
+      const declaredPrefix =
+        targetAbs === rawSddDir ||
+        targetAbs.startsWith(`${rawSddDir}/`) ||
+        targetAbs === canonicalSddDir ||
+        targetAbs.startsWith(`${canonicalSddDir}/`) ||
+        targetAbs === canonicalPlanFile;
+      if (declaredPrefix) {
+        add(
+          "sdd.context.artifact-symlink-escape",
+          `artifact target "${targetAbs}" canonicalizes to "${canonical}", outside the plan's control sddDir — symlink escape refused before write`,
+        );
+      } else {
+        add(
+          "sdd.context.artifact-outside-plan",
+          `artifact target "${targetAbs}" is outside the plan's control sddDir "${context.sddDir}" and is not the declared planFile "${context.planFile}" — legitimate control artifact edits stay inside the plan's artifacts; arbitrary control source edits are not allowed (A3)`,
+        );
+      }
+    }
+  } else {
+    // launch: verify the resolved launch destination, not the parent's cwd.
+    if (featureReal === null) {
+      add(
+        "sdd.context.launch-cwd-missing",
+        `feature worktree "${context.featureCwd}" does not exist or is not a directory — cannot bind the child's starting cwd`,
+      );
+    } else {
+      // Reused branch semantics (worktree.branch-* codes) — not duplicated.
+      violations.push(...assertBranchAlignment(featureReal, context.workingBranch).violations);
+    }
+    if (action.target !== undefined && action.target.trim() !== "" && featureReal !== null) {
+      // The child starts in featureCwd: check the target the way the child
+      // would resolve it (relative values from featureCwd).
+      checkTarget(featureReal, action.target, "launch");
+    }
+  }
+
+  return { ok: violations.length === 0, violations };
 }

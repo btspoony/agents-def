@@ -29,12 +29,13 @@
  *   `.plans`/`plans`); ad-hoc names are never probed.
  */
 import { describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import {
   assertPlanWritingPath,
   assertSafePathComponent,
+  canonicalizeNearestExisting,
   emitGitignoreSnippet,
   resolveHarnessDir,
   resolveIterationDir,
@@ -1224,5 +1225,78 @@ describe("byte-parity with skill SSOT files (qc3 F-5)", () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe("canonicalizeNearestExisting — A3 nonexistent-leaf canonicalization", () => {
+  function tmpRoot(prefix: string): string {
+    return mkdtempSync(join(tmpdir(), prefix));
+  }
+
+  test("an existing path canonicalizes to its realpath (macOS /var → /private/var included)", () => {
+    const root = tmpRoot("path-can-exist-");
+    try {
+      mkdirSync(join(root, "dir"));
+      const p = join(root, "dir", "file.txt");
+      writeFileSync(p, "x\n");
+      expect(canonicalizeNearestExisting(p)).toBe(realpathSync(p));
+      expect(canonicalizeNearestExisting(join(root, "dir"))).toBe(realpathSync(join(root, "dir")));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a nonexistent leaf canonicalizes through its nearest existing ancestor", () => {
+    const root = tmpRoot("path-can-leaf-");
+    try {
+      mkdirSync(join(root, "existing"));
+      const missing = join(root, "existing", "a", "b", "new.md");
+      expect(canonicalizeNearestExisting(missing)).toBe(join(realpathSync(join(root, "existing")), "a", "b", "new.md"));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("`..` segments collapse lexically before the ancestor walk", () => {
+    const root = tmpRoot("path-can-dotdot-");
+    try {
+      mkdirSync(join(root, "a"));
+      const weird = join(root, "a", "..", "b", "missing.txt");
+      expect(canonicalizeNearestExisting(weird)).toBe(join(realpathSync(root), "b", "missing.txt"));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a symlinked ancestor canonicalizes to its target (escape becomes visible)", () => {
+    const root = tmpRoot("path-can-symlink-");
+    try {
+      const real = join(root, "real");
+      const elsewhere = join(root, "elsewhere");
+      mkdirSync(real);
+      mkdirSync(elsewhere);
+      symlinkSync(elsewhere, join(real, "link"));
+      const viaLink = join(real, "link", "sub", "new.md");
+      expect(canonicalizeNearestExisting(viaLink)).toBe(join(realpathSync(elsewhere), "sub", "new.md"));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("is read-only: the missing intermediate directories are never created", () => {
+    const root = tmpRoot("path-can-readonly-");
+    try {
+      const missing = join(root, "x", "y", "z.md");
+      expect(canonicalizeNearestExisting(missing)).toBe(join(realpathSync(root), "x", "y", "z.md"));
+      expect(existsSync(join(root, "x"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a path with no existing ancestor falls back to the lexical resolve", () => {
+    const absentRoot = join(realpathSync("/"), "no-such-ancestor-canonicalize-test");
+    const p = join(absentRoot, "a", "b.md");
+    expect(canonicalizeNearestExisting(p)).toBe(p);
   });
 });
