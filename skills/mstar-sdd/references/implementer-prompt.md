@@ -22,6 +22,15 @@ Dispatch:
 
     Read first — this is your spec (verbatim values): [BRIEF_FILE]
 
+    ## Destinations (absolute — validate before first write)
+
+    - Control harness root (briefs/reports/diffs live here): [CONTROL_ROOT]
+    - Feature worktree — cwd for all source edits, branch [WORKING_BRANCH]: [FEATURE_CWD]
+    - Plan: [PLAN_FILE] — Context file: [CONTEXT_FILE]
+    - Brief: [BRIEF_FILE] — Report: [REPORT_FILE]
+    - First step: observe `pwd` and the checked-out branch; on mismatch with [FEATURE_CWD]/[WORKING_BRANCH], stop and report BLOCKED — do not write. A declared-correct assignment does not make a wrong-checkout write safe.
+    - These destinations bind the handoff, not the host: a later deliberate `chdir`, absolute-path write outside [FEATURE_CWD], or host-native edit tool (apply_patch) is NOT blocked. CLI-launchable children are started via `mstar sdd exec --context [CONTEXT_FILE] -- <argv>` (starting cwd = feature worktree).
+
     ## Context not in the brief
 
     [Interfaces from earlier tasks, PM resolutions]

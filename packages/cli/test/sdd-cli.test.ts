@@ -392,6 +392,10 @@ function executionFixture(root: string): ExecFixture {
   git(["config", "user.email", "sdd-cli-test@example.com"], primary);
   git(["config", "user.name", "SDD CLI Test"], primary);
   writeFileSync(join(primary, "src-sentinel.txt"), "primary source sentinel\n");
+  // Mirror the real default: control artifacts (.mstar/) are gitignored, so
+  // the causal-replay suite can assert "sources clean" via git status while
+  // bound producers legitimately write into the control sddDir.
+  writeFileSync(join(primary, ".gitignore"), ".mstar/\n");
   git(["add", "-A"], primary);
   git(["commit", "-q", "-m", "primary base"], primary);
 
@@ -686,6 +690,152 @@ describe("mstar sdd task-brief/review-package --context — bound artifact produ
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("sdd.context.artifact-outside-plan");
       expect(existsSync(destination)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Causal replay (spec A3 / AC4): the historical incident was an implementer
+// writing a RELATIVE path that resolved against the wrong checkout. The SAME
+// relative source writer runs in both arms against disposable fixtures only
+// (never the real main checkout): raw launch from a disposable primary must
+// reproduce the wrong-primary write; the bound `sdd exec` launch must send
+// the identical writer to the feature worktree and leave primary/control
+// source sentinels untouched. Explicit blind spots stay untested on purpose
+// (no total-sandbox claim): a deliberate chdir, an overriding cwd flag, an
+// absolute-path write outside feature, and host-native edit tooling
+// (apply_patch/native sessions) are NOT blocked by the launcher.
+// ---------------------------------------------------------------------------
+
+/** The one writer both replay arms run — relative paths only, like the incident. */
+const RELATIVE_SOURCE_WRITER =
+  "import { mkdirSync, writeFileSync } from 'node:fs';\n" +
+  "const rel = process.argv[2] ?? 'src/probe.txt';\n" +
+  "mkdirSync('src', { recursive: true });\n" +
+  "writeFileSync(rel, 'relative source write\\n');\n";
+
+function relativeSourceWriterFixture(root: string): string {
+  const writer = join(root, "relative-source-writer.mjs");
+  writeFileSync(writer, RELATIVE_SOURCE_WRITER);
+  return writer;
+}
+
+/** Raw launch (no launcher): child cwd = wherever the parent invokes from. */
+function runRaw(argv: string[], cwd: string): RunResult {
+  const proc = Bun.spawnSync(argv, { cwd, stdout: "pipe", stderr: "pipe" });
+  return { exitCode: proc.exitCode, stdout: proc.stdout.toString(), stderr: proc.stderr.toString() };
+}
+
+function expectSourcesUntouched(f: ExecFixture): void {
+  expect(git(["status", "--porcelain"], f.primary)).toBe("");
+  expect(git(["status", "--porcelain"], f.control)).toBe("");
+  expect(readFileSync(join(f.primary, "src-sentinel.txt"), "utf8")).toBe("primary source sentinel\n");
+  expect(readFileSync(join(f.control, "src-sentinel.txt"), "utf8")).toBe("primary source sentinel\n");
+}
+
+describe("sdd exec causal replay — same relative source writer, raw vs bound (spec A3, AC4)", () => {
+  test("relative source writer launched raw from a disposable primary reproduces the wrong-primary write", () => {
+    const root = tmpRoot("mstar-sdd-replay-raw-");
+    try {
+      const f = executionFixture(root);
+      const writer = relativeSourceWriterFixture(root);
+      const raw = runRaw([process.execPath, writer], f.primary);
+      expect(raw.exitCode).toBe(0);
+      // The historical mistake, reproduced: the relative write resolved
+      // against the primary checkout, dirtying it.
+      expect(existsSync(join(f.primary, "src", "probe.txt"))).toBe(true);
+      expect(git(["status", "--porcelain", "--untracked-files=all"], f.primary)).toContain("?? src/probe.txt");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("relative source writer via bound sdd exec lands in the feature only; primary/control sentinels unchanged", () => {
+    const root = tmpRoot("mstar-sdd-replay-bound-");
+    try {
+      const f = executionFixture(root);
+      const writer = relativeSourceWriterFixture(root);
+      // A declared-correct context plus explicit source check with the actual
+      // primary cwd fails BEFORE any writer invocation (rejection precedes
+      // mutation where a blocking seam exists).
+      const preCheck = runCli(
+        ["sdd", "check-context", "--context", f.ctxFile, "--kind", "source", "--target", "src/probe.txt"],
+        { cwd: f.primary },
+      );
+      expect(preCheck.exitCode).toBe(1);
+      expect(preCheck.stderr).toContain("sdd.context.source-cwd-outside-feature");
+      expect(existsSync(join(f.feature, "src", "probe.txt"))).toBe(false);
+
+      // The same writer, bound: launched from the primary checkout (launch
+      // gates the resolved destination, not the parent cwd), child starts in
+      // the feature worktree.
+      const bound = runCli(["sdd", "exec", "--context", f.ctxFile, "--", process.execPath, writer], { cwd: f.primary });
+      expect(bound.exitCode).toBe(0);
+      expect(existsSync(join(f.feature, "src", "probe.txt"))).toBe(true);
+      expect(existsSync(join(f.primary, "src", "probe.txt"))).toBe(false);
+      expect(git(["status", "--porcelain", "--untracked-files=all"], f.feature)).toContain("?? src/probe.txt");
+      expectSourcesUntouched(f);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("relative source writer resume repeat: a second bound launch (fresh then resume) still changes the feature only", () => {
+    const root = tmpRoot("mstar-sdd-replay-resume-");
+    try {
+      const f = executionFixture(root);
+      const writer = relativeSourceWriterFixture(root);
+      const fresh = runCli(["sdd", "exec", "--context", f.ctxFile, "--", process.execPath, writer], { cwd: f.primary });
+      expect(fresh.exitCode).toBe(0);
+      const resume = runCli(
+        ["sdd", "exec", "--context", f.ctxFile, "--", process.execPath, writer, "src/probe-resume.txt"],
+        { cwd: f.primary },
+      );
+      expect(resume.exitCode).toBe(0);
+      expect(existsSync(join(f.feature, "src", "probe.txt"))).toBe(true);
+      expect(existsSync(join(f.feature, "src", "probe-resume.txt"))).toBe(true);
+      expect(existsSync(join(f.primary, "src", "probe.txt"))).toBe(false);
+      expect(existsSync(join(f.primary, "src", "probe-resume.txt"))).toBe(false);
+      expectSourcesUntouched(f);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("relative source writer bound arm plus ignored control-artifact writes: artifacts stay control-local, sources stay clean", () => {
+    const root = tmpRoot("mstar-sdd-replay-artifact-");
+    try {
+      const f = executionFixture(root);
+      const writer = relativeSourceWriterFixture(root);
+      const bound = runCli(["sdd", "exec", "--context", f.ctxFile, "--", process.execPath, writer], { cwd: f.primary });
+      expect(bound.exitCode).toBe(0);
+
+      // Bound control-artifact producers: the sddDir is gitignored in the
+      // fixture, so legitimate control writes must not dirty any git status.
+      const brief = runCli(["sdd", "task-brief", f.planFile, "1", "--context", f.ctxFile], { cwd: f.primary });
+      expect(brief.exitCode).toBe(0);
+      const briefPath = realpathSync(join(f.sddDir, "task-1-brief.md"));
+      expect(existsSync(briefPath)).toBe(true);
+
+      writeFileSync(join(f.feature, "feature-file.txt"), "feature change\n");
+      git(["add", "-A"], f.feature);
+      git(["commit", "-q", "-m", "feature commit"], f.feature);
+      const base = git(["rev-parse", "main"], f.primary);
+      const head = git(["rev-parse", "HEAD"], f.feature);
+      const rp = runCli(["sdd", "review-package", base, head, "--context", f.ctxFile], { cwd: f.primary });
+      expect(rp.exitCode).toBe(0);
+      const diffPath = realpathSync(join(f.sddDir, `review-${base.slice(0, 7)}..${head.slice(0, 7)}.diff`));
+      expect(existsSync(diffPath)).toBe(true);
+      expect(readFileSync(diffPath, "utf8")).toContain("feature-file.txt");
+
+      // Feature shows exactly the committed change; primary/control sources
+      // are untouched; the control artifacts are invisible to git (ignored).
+      expect(git(["status", "--porcelain"], f.feature)).toBe("");
+      expectSourcesUntouched(f);
+      expect(briefPath.startsWith(realpathSync(f.sddDir))).toBe(true);
+      expect(diffPath.startsWith(realpathSync(f.sddDir))).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

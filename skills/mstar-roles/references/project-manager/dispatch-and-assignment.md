@@ -77,6 +77,7 @@ The **`**You are a leaf executor. You MUST NOT:**`** section (previously just pr
 **Execution mode**: sdd | inline | N/A
 **SDD implementer session**: fresh | sticky | N/A — **default `fresh`**; `sticky` reuses same implementer subagent across tasks (reviewers stay fresh). See `mstar-sdd/references/sticky-implementer-session.md`
 **SDD dir**: absolute `<control_worktree_path>/{HARNESS_DIR}/sdd/<plan-id>/` when L1 lease gate active | `{HARNESS_DIR}/sdd/<plan-id>/` when waived / single checkout | N/A
+**SDD context file**: absolute `<SDD dir>/context.json` when `Execution mode: sdd` | N/A — destination contract consumed by `mstar sdd exec --context` / `--context` producers (`mstar-sdd/references/file-handoffs.md`)
 **Model tier**: fast | standard | capable | N/A
 **Skill presets**: `standard` | <explicit skill list> | none — activates the `Execute as` role's preset from its `Skill Preset (PM-Activated)` section; default `standard` for implementation / QC / QA rounds unless the route is trivial
 **QC mode**: full tri-review | single | N/A — **default `full tri-review` when `Execution mode: sdd`**; `single` only for `inline` / override
@@ -140,6 +141,9 @@ When the workflow snapshot top-level `control_worktree_path` is set and worktree
 | **`Control harness root`** | Absolute `<control_worktree_path>/{HARNESS_DIR}` |
 | **`Plan Path`** | Absolute under control harness (not relative from feature cwd) |
 | **`SDD dir`** | Absolute under control harness; run `mstar sdd workspace <plan-id>` with `MSTAR_CONTROL_ROOT=<control_worktree_path>` when cwd is the feature tree |
+| **`SDD context file`** | Absolute `<SDD dir>/context.json` — the bound destination contract (`controlHarnessRoot`/`featureCwd`/`workingBranch`/`planFile`/`sddDir`, all absolute) |
+
+Every implementer/reviewer handoff cites these absolute destinations; native hosted subagents observe pwd/branch first and write only to the declared destinations (`mstar-sdd` prompt templates). CLI-launchable children start via `mstar sdd exec --context <context.json> -- <argv>`. State the boundary, never overclaim: the context/launcher binds starting cwd and validated destinations — it does NOT block a later deliberate `chdir`, absolute-path write, or host-native edit tool (`apply_patch`).
 
 Do **not** waive worktree because default-gitignored `plans/` are missing under the feature checkout — see `mstar-branch-worktree` 「Harness path SSOT under default gitignore」.
 ## Completion Report Template
