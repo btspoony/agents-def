@@ -1,6 +1,6 @@
 /**
  * Task 3 — design-md / audit / compound / roles seams (plan
- * 20260808-dsh-seams-bundle): artifact-scoped `fs/write-intent` gates
+ * ): artifact-scoped `fs/write-intent` gates
  * (path patterns per artifact; warn+advisory default; hard-mode repair
  * escape on the content-blind listener — the typed `SeamVetoError` lives
  * on the known-document branch) + the on-demand `mstar_*_validate` tools

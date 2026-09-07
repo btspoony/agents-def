@@ -4,29 +4,29 @@
  *
  * Spec sources (each test cites the skill/reference section it enforces):
  * - `{HARNESS_DIR}` resolution order + `{PLAN_DIR}` composition:
- *   `skills/mstar-conventions/SKILL.md` § 路径符号 +
- *   § {HARNESS_DIR} 解析顺序（找到即停）— `.mstar/` → `.agents/` →
- *   `.plans/`/`plans/` (rung 3: `{HARNESS_DIR}={PLAN_DIR}`); harness
- *   candidates are dir-existence (the empty-dir rule applies to SPECS only).
+ * `skills/mstar-conventions/SKILL.md` § 路径符号 +
+ * § {HARNESS_DIR} 解析顺序（找到即停）— `.mstar/` → `.agents/` →
+ * `.plans/`/`plans/` (rung 3: `{HARNESS_DIR}={PLAN_DIR}`); harness
+ * candidates are dir-existence (the empty-dir rule applies to SPECS only).
  * - `{SPECS_DIR}` resolution (first non-empty candidate wins, empty-dir-as-
- *   absent, default-create `{HARNESS_DIR}/specs/` when all absent; legacy
- *   read-only `designs/` candidates `{HARNESS_DIR}/designs/` → repo-root
- *   `designs/` — 兼容读, never created by init):
- *   `skills/mstar-conventions/SKILL.md` § {SPECS_DIR} 解析（找到非空目录即停）
- *   + § {SPECS_DIR} 解析 Legacy.
+ * absent, default-create `{HARNESS_DIR}/specs/` when all absent; legacy
+ * read-only `designs/` candidates `{HARNESS_DIR}/designs/` → repo-root
+ * `designs/` — 兼容读, never created by init):
+ * `skills/mstar-conventions/SKILL.md` § {SPECS_DIR} 解析（找到非空目录即停）
+ * + § {SPECS_DIR} 解析 Legacy.
  * - Scaffold dirs + status.json empty template:
- *   `skills/mstar-conventions/SKILL.md` § 初始化 Plan 目录 +
- *   `skills/mstar-artifacts/templates/status.empty.json` (embedded as a
- *   constant — engine must not read skill files at runtime, roadmap §8.5).
+ * `skills/mstar-conventions/SKILL.md` § 初始化 Plan 目录 +
+ * `skills/mstar-artifacts/templates/status.empty.json` (embedded as a
+ * constant — engine must not read skill files at runtime, roadmap §8.5).
  * - Canonical `.gitignore` snippet + tracked/ignored sets:
- *   `skills/mstar-conventions/SKILL.md` § Git 跟踪策略.
+ * `skills/mstar-conventions/SKILL.md` § Git 跟踪策略.
  * - Plan-writing path gate: `skills/mstar-conventions/SKILL.md`
- *   § Plan-Writing Path Gate — plans live under `{PLAN_DIR}`, no external
- *   default plan directories.
+ * § Plan-Writing Path Gate — plans live under `{PLAN_DIR}`, no external
+ * default plan directories.
  * - Explicit harness-root override (`MSTAR_HARNESS_DIR` env / option):
- *   plan 20260808-slice2-sdd-iteration Finding (2026-08-08) — the probe
- *   list stays per mstar-conventions (`.mstar` → `.agents` →
- *   `.plans`/`plans`); ad-hoc names are never probed.
+ * the probe
+ * list stays per mstar-conventions (`.mstar` → `.agents` →
+ * `.plans`/`plans`); ad-hoc names are never probed.
  */
 import { describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -97,8 +97,7 @@ function gitInit(root: string): void {
 
 /**
  * Monorepo root (walk up from this test dir to the nearest ancestor holding
- * `skills/`), for byte-parity tests against the skill SSOT files (qc3 F-5).
- */
+ * `skills/`), for byte-parity tests against the skill SSOT files. */
 function findRepoRoot(): string {
   let dir = import.meta.dir;
   for (;;) {
@@ -187,9 +186,9 @@ describe("resolveHarnessDir — resolution order (plan-conventions § {HARNESS_D
       mkdirSync(join(root, ".mstar"));
       const nested = join(root, "a", "b", "c");
       mkdirSync(nested, { recursive: true });
-      // Roadmap §7c / plan 20260810-harness-root-boundary: the walk-up is
-      // now bounded — a non-git start without workspaceRoot probes only
-      // itself, so the nested probe must carry the workspace boundary.
+ // Roadmap §7c: the walk-up is
+ // now bounded — a non-git start without workspaceRoot probes only
+ // itself, so the nested probe must carry the workspace boundary.
       expect(resolveHarnessDir(nested, { workspaceRoot: root })).toBe(resolve(root, ".mstar"));
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -371,19 +370,19 @@ describe("resolveHarnessDir — `.mstarc` [config] harness_dir (plan-conventions
   });
 });
 
-describe("resolveHarnessDir — workspace-root stop boundary (roadmap §7c / plan 20260810-harness-root-boundary)", () => {
+describe("resolveHarnessDir — workspace-root stop boundary (roadmap §7c)", () => {
   test("(a) explicit workspaceRoot: a `.mstar` fixture in the parent chain ABOVE the boundary is never returned", () => {
     const root = tmpRoot("path-boundary-a-");
     try {
-      // "global" fixture: `.mstar` sits above the workspace root, exactly
-      // like the `~/.mstar` CLI-install root the defect adopted.
+ // "global" fixture: `.mstar` sits above the workspace root, exactly
+ // like the `~/.mstar` CLI-install root the defect adopted.
       mkdirSync(join(root, ".mstar"));
       const workspace = join(root, "project");
       const probe = join(workspace, "src", "deep");
       mkdirSync(probe, { recursive: true });
-      // probe starts inside the workspace; the boundary stops the walk-up.
+ // probe starts inside the workspace; the boundary stops the walk-up.
       expect(resolveHarnessDir(probe, { workspaceRoot: workspace })).toBeNull();
-      // a harness BELOW the start still wins (never the fixture above).
+ // a harness BELOW the start still wins (never the fixture above).
       mkdirSync(join(workspace, ".mstar"));
       expect(resolveHarnessDir(probe, { workspaceRoot: workspace })).toBe(resolve(workspace, ".mstar"));
     } finally {
@@ -430,8 +429,8 @@ describe("resolveHarnessDir — workspace-root stop boundary (roadmap §7c / pla
   test("(c2) default git boundary: a `.git` repo-root harness still resolves from a subdir without explicit workspaceRoot", () => {
     const root = tmpRoot("path-boundary-c2-");
     try {
-      // Real git repo fixture: default boundary = `git rev-parse
-      // --show-cdup` from the start dir = the repo root.
+ // Real git repo fixture: default boundary = `git rev-parse
+ // --show-cdup` from the start dir = the repo root.
       gitInit(root);
       mkdirSync(join(root, ".mstar"));
       const probe = join(root, "src", "deep");
@@ -448,8 +447,8 @@ describe("resolveHarnessDir — workspace-root stop boundary (roadmap §7c / pla
       mkdirSync(join(root, ".mstar"));
       const probe = join(root, "sub");
       mkdirSync(probe, { recursive: true });
-      // tmp root is not a git repo → default boundary = start → null even
-      // though `.mstar` exists one level up.
+ // tmp root is not a git repo → default boundary = start → null even
+ // though `.mstar` exists one level up.
       expect(resolveHarnessDir(probe)).toBeNull();
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -464,9 +463,9 @@ describe("resolveHarnessDir — workspace-root stop boundary (roadmap §7c / pla
       mkdirSync(probe, { recursive: true });
       const outside = join(root, "outside-harness");
       mkdirSync(outside, { recursive: true });
-      // opts.harnessDir points ABOVE the workspaceRoot → override authority.
+ // opts.harnessDir points ABOVE the workspaceRoot → override authority.
       expect(resolveHarnessDir(probe, { workspaceRoot: workspace, harnessDir: outside })).toBe(outside);
-      // env override too.
+ // env override too.
       withEnv(outside, () => {
         expect(resolveHarnessDir(probe, { workspaceRoot: workspace })).toBe(outside);
       });
@@ -481,7 +480,7 @@ describe("resolveHarnessDir — workspace-root stop boundary (roadmap §7c / pla
       mkdirSync(join(root, ".mstar"));
       const probe = join(root, "sub");
       mkdirSync(probe, { recursive: true });
-      // ".." = the parent of the start dir — a boundary at the tmp root.
+ // ".." = the parent of the start dir — a boundary at the tmp root.
       expect(resolveHarnessDir(probe, { workspaceRoot: ".." })).toBe(resolve(root, ".mstar"));
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -545,9 +544,9 @@ describe("resolveXDir — `.mstarc` [config] sub-directory keys (plan-convention
       mkdirSync(join(root, "docs", "specs"), { recursive: true });
       writeFileSync(join(root, "docs", "specs", "spec.md"), "# spec\n");
       writeFileSync(join(root, ".mstarc"), "[config]\nspecs_dir=specs/custom\n");
-      // The declared dir wins even though other candidates are non-empty.
+ // The declared dir wins even though other candidates are non-empty.
       expect(resolveSpecsDir(join(root, ".mstar"))).toBe(join(root, "specs", "custom"));
-      // create: false still returns the declared dir (no candidate fallback).
+ // create: false still returns the declared dir (no candidate fallback).
       expect(resolveSpecsDir(join(root, ".mstar"), { create: false })).toBe(join(root, "specs", "custom"));
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -582,8 +581,8 @@ describe("resolveXDir — `.mstarc` [config] sub-directory keys (plan-convention
     try {
       mkdirSync(join(root, "proj"), { recursive: true });
       writeFileSync(join(root, ".mstarc"), "[config]\nplan_dir=outer-plans\n");
-      // Harness under proj/.mstar — the walk from proj/.mstar stops at the
-      // repo root (proj), so the outer config does not apply.
+ // Harness under proj/.mstar — the walk from proj/.mstar stops at the
+ // repo root (proj), so the outer config does not apply.
       expect(resolvePlanDir(join(root, "proj", ".mstar"))).toBe(join(root, "proj", ".mstar", "plans"));
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -647,8 +646,8 @@ describe("resolveWorkflowDir / resolveProjectDir (v3 workflow lifecycle layout)"
     try {
       mkdirSync(join(root, "proj", ".mstar"), { recursive: true });
       writeFileSync(join(root, ".mstarc"), "[config]\nworkflow_dir=outer-wf\n");
-      // Harness under proj/.mstar — the override walk stops at the repo
-      // root (proj), so the outer config does not apply.
+ // Harness under proj/.mstar — the override walk stops at the repo
+ // root (proj), so the outer config does not apply.
       expect(resolveWorkflowDir(join(root, "proj"))).toBe(join(root, "proj", ".mstar", "workflows"));
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -663,7 +662,7 @@ describe("resolveWorkflowDir / resolveProjectDir (v3 workflow lifecycle layout)"
       withEnv(join(root, "custom-harness"), () => {
         expect(resolveWorkflowDir(root)).toBe(join(root, "runtime", "wf"));
         expect(resolveProjectDir(root)).toBe(join(root, "store", "projects"));
-        // No declaration: defaults compose under the explicit harness dir.
+ // No declaration: defaults compose under the explicit harness dir.
         writeFileSync(join(root, ".mstarc"), "[config]\n");
         expect(resolveWorkflowDir(root)).toBe(join(root, "custom-harness", "workflows"));
         expect(resolveProjectDir(root)).toBe(join(root, "custom-harness", "projects"));
@@ -824,15 +823,15 @@ describe("scaffoldHarness (plan-conventions § 初始化 Plan 目录 + templates
         "specs",
         "status.json",
       ]);
-      // Byte-identical to skills/mstar-artifacts/templates/status.empty.json
-      // (embedded constant — engine never reads skill files at runtime).
-      // Plan Task 3 ruling: the template is the v2 shape so a scaffolded
-      // harness is never an un-migrated (v1) tree.
+ // Byte-identical to skills/mstar-artifacts/templates/status.empty.json
+ // (embedded constant — engine never reads skill files at runtime).
+ // Ruling: the template is the v2 shape so a scaffolded
+ // harness is never an un-migrated (v1) tree.
       const statusPath = join(harnessDir, "status.json");
       expect(readFileSync(statusPath, "utf8")).toBe(
         '{\n  "version": 2,\n  "updated_at": "1970-01-01",\n  "workflows": []\n}\n',
       );
-      // The scaffolded root validates clean under the v2 validator.
+ // The scaffolded root validates clean under the v2 validator.
       expect(validateStatusV2(statusPath).ok).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -845,9 +844,9 @@ describe("scaffoldHarness (plan-conventions § 初始化 Plan 目录 + templates
       const harnessDir = scaffoldHarness(root);
       const projectDir = join(harnessDir, "projects", "_default");
       expect(readdirSync(projectDir).sort()).toEqual(["residuals.json", "roadmap.md"]);
-      // Roadmap frontmatter: project_id _default, non-empty title, status
-      // active, created_at today, plus a `## Direction` body placeholder —
-      // 0 violations (the missing goal-item task list is a warning only).
+ // Roadmap frontmatter: project_id _default, non-empty title, status
+ // active, created_at today, plus a `## Direction` body placeholder —
+ // 0 violations (the missing goal-item task list is a warning only).
       const roadmapPath = join(projectDir, "roadmap.md");
       const roadmap = validateRoadmap(roadmapPath);
       expect(roadmap.ok).toBe(true);
@@ -858,7 +857,7 @@ describe("scaffoldHarness (plan-conventions § 初始化 Plan 目录 + templates
       expect(roadmapText).toContain("status: active");
       expect(roadmapText).toContain(`created_at: ${new Date().toISOString().slice(0, 10)}`);
       expect(roadmapText).toContain("## Direction");
-      // Empty register passes the project-register validator.
+ // Empty register passes the project-register validator.
       const registerPath = join(projectDir, "residuals.json");
       expect(readFileSync(registerPath, "utf8")).toBe('{\n  "entries": {}\n}\n');
       expect(validateProjectRegister(readJson(registerPath)).ok).toBe(true);
@@ -886,7 +885,7 @@ describe("scaffoldHarness (plan-conventions § 初始化 Plan 目录 + templates
     try {
       writeFileSync(join(root, ".mstarc"), "[config]\nharness_dir=.custom\n", "utf8");
       const harnessDir = scaffoldHarness(root);
-      // Files land under the declared dir, not the default .mstar/.
+ // Files land under the declared dir, not the default .mstar/.
       expect(harnessDir).toBe(resolve(root, ".custom"));
       expect(existsSync(join(root, ".custom", "status.json"))).toBe(true);
       expect(existsSync(join(root, ".custom", "plans"))).toBe(true);
@@ -917,9 +916,9 @@ describe("scaffoldHarness (plan-conventions § 初始化 Plan 目录 + templates
     try {
       writeFileSync(join(root, ".mstarc"), "[config]\nproject_dir=process/projects\n", "utf8");
       const harnessDir = scaffoldHarness(root);
-      // Harness stays at the default .mstar/; _default lands under the
-      // RESOLVED {PROJECT_DIR} (project_dir resolved against the .mstarc
-      // file's directory), not {HARNESS_DIR}/projects.
+ // Harness stays at the default .mstar/; _default lands under the
+ // RESOLVED {PROJECT_DIR} (project_dir resolved against the .mstarc
+ // file's directory), not {HARNESS_DIR}/projects.
       expect(harnessDir).toBe(resolve(root, ".mstar"));
       expect(existsSync(join(root, ".mstar", "status.json"))).toBe(true);
       expect(existsSync(join(root, "process", "projects", "_default", "roadmap.md"))).toBe(true);
@@ -1016,7 +1015,7 @@ describe("emitGitignoreSnippet / validateGitignore (plan-conventions § Git 跟�
       mkdirSync(join(root, ".mstar"));
       writeFileSync(join(root, ".gitignore"), CANONICAL_SNIPPET);
       expect(validateGitignore(root).ok).toBe(true);
-      // The .agents/ set alone does NOT fence a .mstar harness.
+ // The .agents/ set alone does NOT fence a .mstar harness.
       writeFileSync(join(root, ".gitignore"), CANONICAL_SNIPPET_AGENTS);
       const result = validateGitignore(root);
       expect(result.ok).toBe(false);
@@ -1033,7 +1032,7 @@ describe("emitGitignoreSnippet / validateGitignore (plan-conventions § Git 跟�
       mkdirSync(join(root, ".agents"));
       writeFileSync(join(root, ".gitignore"), CANONICAL_SNIPPET_AGENTS);
       expect(validateGitignore(root).ok).toBe(true);
-      // The .mstar/ set alone does NOT fence a legacy .agents harness.
+ // The .mstar/ set alone does NOT fence a legacy .agents harness.
       writeFileSync(join(root, ".gitignore"), CANONICAL_SNIPPET);
       const result = validateGitignore(root);
       expect(result.ok).toBe(false);
@@ -1066,7 +1065,7 @@ describe("emitGitignoreSnippet / validateGitignore (plan-conventions § Git 跟�
       const result = validateGitignore(root);
       expect(result.ok).toBe(false);
       expect(result.code).toBe("gitignore.missing-entries");
-      // Unknown kind — reports the set needing the fewest additions (.mstar/ here).
+ // Unknown kind — reports the set needing the fewest additions (.mstar/ here).
       expect(result.message).toContain("!.mstar/knowledge/");
       expect(result.message).toContain("!.mstar/knowledge/**");
       expect(result.message).toContain("!.mstar/specs/");
@@ -1179,7 +1178,7 @@ describe("assertPlanWritingPath (plan-conventions § Plan-Writing Path Gate)", (
   });
 });
 
-describe("assertSafePathComponent / resolveSddDir (path traversal guard, qc2 F-001)", () => {
+describe("assertSafePathComponent / resolveSddDir (path traversal guard(", () => {
   test("safe plan ids pass and compose {HARNESS_DIR}/sdd/<plan-id>", () => {
     expect(resolveSddDir(join("/r", ".mstar"), "20260808-p1")).toBe(join("/r", ".mstar", "sdd", "20260808-p1"));
     for (const safe of ["plan-a", "2026.08.08_x-1", "P1_2.3"]) {
@@ -1200,7 +1199,7 @@ describe("assertSafePathComponent / resolveSddDir (path traversal guard, qc2 F-0
   });
 });
 
-describe("byte-parity with skill SSOT files (qc3 F-5)", () => {
+describe("byte-parity with skill SSOT files ", () => {
   const repoRoot = findRepoRoot();
 
   test("emitGitignoreSnippet(\"mstar\") is byte-identical to the plan-conventions .mstar/ fence", () => {

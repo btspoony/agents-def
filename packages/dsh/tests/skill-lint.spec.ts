@@ -1,6 +1,6 @@
 /**
  * Task 4 — skill-authoring lint on SKILL.md writes (plan
- * 20260808-dsh-host-adapter): `fs/write-intent` listener scoped to SKILL.md
+ * ): `fs/write-intent` listener scoped to SKILL.md
  * paths under the configured skill roots runs the engine skill-authoring
  * lints (lintFrontmatter + lintFiveQuestion) on write.
  *
@@ -103,8 +103,8 @@ ${BODY}
 /** No frontmatter at all (hostile input). */
 const HOSTILE_SKILL = 'not a skill document at all\nno frontmatter, no sections\n'
 
-/** Ephemeral-citation fixture builder (plan 20260816-dsh-surface-sync Task 2
- * — knowledge conventions/skill-content-porting-discipline.md §3): VALID_SKILL
+/** Ephemeral-citation fixture builder (knowledge conventions/
+ * skill-content-porting-discipline.md §3): VALID_SKILL
  * plus one calibration sentence, so an ephemeral finding is the ONLY reason
  * the doc can fail the gate. */
 const EPHEMERAL_SKILL = (citation: string) =>
@@ -181,7 +181,7 @@ description: Use when the harness lints skill writes in dev-time composition tes
   })
 })
 
-describe('lintSkillDoc — ephemeral citation wiring (plan 20260816-dsh-surface-sync Task 2)', () => {
+describe('lintSkillDoc — ephemeral citation wiring ', () => {
   it('concrete task-artifact citation → skill.ephemeral.task-artifact (medium); warn gate / hard veto via lintSkillWrite', () => {
     const doc = EPHEMERAL_SKILL('task-2-report')
     const gate = lintSkillDoc(doc)
@@ -205,7 +205,7 @@ describe('lintSkillDoc — ephemeral citation wiring (plan 20260816-dsh-surface-
   })
 
   it('concrete sdd-deeplink citation → skill.ephemeral.sdd-deeplink (medium); hard veto inherited', () => {
-    const doc = EPHEMERAL_SKILL('.mstar/sdd/20260816-example')
+    const doc = EPHEMERAL_SKILL('.mstar/sdd/00000816-example')
     const gate = lintSkillDoc(doc)
     expect(gate.ok).toBe(false)
     const hit = gate.violations.find((v) => v.code === 'skill.ephemeral.sdd-deeplink')
@@ -215,7 +215,7 @@ describe('lintSkillDoc — ephemeral citation wiring (plan 20260816-dsh-surface-
   })
 
   it('both kinds on one line → both violations in source order, all medium', () => {
-    const doc = EPHEMERAL_SKILL('.mstar/sdd/20260816-example/review/ cites task-3-report.md')
+    const doc = EPHEMERAL_SKILL('.mstar/sdd/00000816-example/review/ cites task-3-report.md')
     const gate = lintSkillDoc(doc)
     const ephemeral = gate.violations.filter((v) => v.code.startsWith('skill.ephemeral.'))
     expect(ephemeral.map((v) => v.code)).toEqual([
@@ -250,7 +250,7 @@ describe('lintSkillDoc — ephemeral citation wiring (plan 20260816-dsh-surface-
   })
 })
 
-describe('lintSkillDoc — classified profile, canonical fixture corpus (spec A4, plan 20260907-skill-lint-parity Task 2)', () => {
+describe('lintSkillDoc — classified profile, canonical fixture corpus (spec A4)', () => {
   /** The canonical fixture table produced by plan Task 1 — the SAME rows the
    * CLI suite (packages/cli/test/skill-lint-cli.test.ts) and the Guard5
    * suite (scripts/drift-lint.test.ts) consume, so per-row assertions here

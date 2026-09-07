@@ -7,7 +7,7 @@
  * `useMstarEngineStatus()` hook riding the kit's `useChat` selector (spec
  * §5) — the render body is a pure function of (source, lastUpdated, t).
  *
- * Layout (spec panel-tabs §2, plan 20260811-panel-tabs-shell): root grid
+ * Layout (spec panel-tabs §2): root grid
  * `"main sidebar"` fills the Tab (height 100%, overflow hidden — the page
  * never scrolls); the right sidebar is RESIDENT (all tabs share it, its props
  * `{ t, state, source }` unchanged); main = the fixed header nav (TabNav, 3
@@ -19,18 +19,17 @@
  * Tab state (spec §6.2): local `useState<PanelTab>` (default 'tasks', D1, no
  * routing) — `renderToStaticMarkup` renders the default tasks page, keeping
  * SSR assertions stable. The tasks tab renders the IterationTaskPage (Content
- * Head + Steps 横排/收拢 + full-width kanban, spec §3 — landed with Task 2,
+ * Head + Steps 横排/收拢 + full-width kanban, spec §3 —
  * replacing the WorkflowCanvas zone dashboard); the agents tab renders the
- * draggable AgentCanvasPage (spec §4 — landed with the agent-canvas plan,
- * replacing the muted placeholder + the AgentFlowZone); the events tab
+ * draggable AgentCanvasPage (spec §4 — replacing the muted placeholder + the AgentFlowZone); the events tab
  * renders the EventLogPage (spec §5 — the non-canvas log page with per-row
- * `<details>` expansion, landed with the event-log plan Task 2, replacing
+ * `<details>` expansion, replacing
  * the muted placeholder AND the AgentEventDock — 无双份日志).
  *
  * Empty branches (spec §2): waiting / no-harness render no tabs / no
  * sidebar. Waiting keeps the muted hint; the no-harness branch renders a
  * CENTERED inactive-state card (icon + title + hint, plan
- * 20260812-panel-f5-agent-layout T3 — replaces the left-aligned hint) with
+ *  T3 — replaces the left-aligned hint) with
  * the freshness footer; the no-harness main keeps `data-mstar-graph` on its
  * content container. Degradation stays total: `projectGraph` never throws;
  * no iteration → the IterationTaskPage's collapsed muted head (spec §8);
@@ -70,20 +69,17 @@ export interface PanelContentProps {
 /**
  * Tab → page mapping (spec §6.2): the only per-tab-switching part of the
  * layout. tasks = the IterationTaskPage (spec §3 — Content Head + Steps
- * 横排/收拢 + full-width kanban, landed with Task 2; it replaced the
+ * 横排/收拢 + full-width kanban, it replaced the
  * WorkflowCanvas zone dashboard, whose file is removed by the plan close);
  * agents = the draggable AgentCanvasPage (spec §4 — full KNOWN_AGENTS roster
- * + idle states + AgentEdge collaboration edges, landed with the agent-canvas
- * plan; it replaced the muted placeholder and the AgentFlowZone); events =
+ * + idle states + AgentEdge collaboration edges; it replaced the muted placeholder and the AgentFlowZone); events =
  * the real EventLogPage (spec §5 — non-canvas log page: Agent 流转事件 +
- * 违规记录 partitions with per-row `<details>` expansion, landed with the
- * event-log plan Task 2; it replaced the muted placeholder AND the
+ * 违规记录 partitions with per-row `<details>` expansion; it replaced the muted placeholder AND the
  * AgentEventDock — 无双份日志, the dock is removed with this plan).
  */
 export function PanelContent({ tab, source, t }: PanelContentProps) {
   if (tab === 'agents') {
-    // The SHARED iteration info section (plan 20260812-panel-f5-design-system
-    // Task 8 — user 2026-08-12 feedback #4): the agents page receives the
+    // The SHARED iteration info section : the agents page receives the
     // SAME `view.iteration` the tasks page renders (IterationInfoSection).
     const view = projectGraph(source)
     return <AgentCanvasPage view={view.agents} iteration={view.iteration} t={t} />
@@ -118,7 +114,7 @@ export function PanelView({ t, useChat }: MstarPanelViewProps) {
     // No harness → no tabs / no sidebar (spec §2 — empty branch unchanged):
     // a CENTERED inactive-state card (icon + main copy + hint) with the
     // freshness footer, in a single-column root (plan
-    // 20260812-panel-f5-agent-layout T3 — replaces the left-aligned hint).
+    //  T3 — replaces the left-aligned hint).
     // The `data-mstar-graph` anchor stays on the main container (its layout
     // contract slot).
     return (
@@ -151,7 +147,7 @@ export function PanelView({ t, useChat }: MstarPanelViewProps) {
       </div>
     )
   }
-  // Full-tab height (spec panel-tabs §2, plan 20260813-panel-quick-fixes Task
+  // Full-tab height (spec panel-tabs §2 Task
   // 4): the host only gives a view a definite height when the view opts into
   // the composer overlay. The `data-conversation-composer-overlay` attribute
   // flips the host's `.viewArea` wrapper from flow content (`min-height: auto;

@@ -1,5 +1,5 @@
 /**
- * Task 2 (plan `20260815-dsh-workflow-ledger`) — W-B2 ledger schema extension:
+ * Task 2  — W-B2 ledger schema extension:
  * the three workflow event kinds (`workflow-run`, `workflow-agent`,
  * `workflow-run-end`) narrow in `eventFromUnknown`, map through `eventView`,
  * and honor the same ledger discipline as the dispatch/settle kinds —
@@ -62,7 +62,7 @@ const VALID_PLANNED = `## Assignment
 **Delegation**: forbidden
 **Task category**: logic
 **Working branch**: feature/agent-flow
-**Plan Path**: /proj/plans/20260810-agent-flow.md
+**Plan Path**: /proj/plans/00000810-agent-flow.md
 
 ## Task 2
 
@@ -78,7 +78,7 @@ const dispatchLine = (ts: number, overrides: Record<string, unknown> = {}): stri
   kind: 'dispatch',
   agent: 'a1',
   role: 'fullstack-dev',
-  planId: '20260810-x',
+  planId: '00000810-x',
   taskId: 'T2',
   taskCategory: 'logic',
   verdict: 'ok',
@@ -90,7 +90,7 @@ const dispatchLine = (ts: number, overrides: Record<string, unknown> = {}): stri
  * Create a temp harness dir seeded with a minimal v2 tree (root status.json
  * + one active workflow `wf-1` + its snapshot) — the v3 write-path
  * precondition: the agent-flow writer / workflow-ledger consumer append only
- * to an ACTIVE workflow (plan `20260819-workflow-dsh-viz` Task 2).
+ * to an ACTIVE workflow .
  */
 async function tempHarness(prefix: string): Promise<{ root: string; harnessDir: string; workflowDir: string }> {
   const root = await mkdtemp(join(tmpdir(), prefix))
@@ -226,7 +226,7 @@ describe('agent-flow workflow kinds — malformed lines narrow to undefined', ()
         JSON.stringify({ v: 1, ts: T, kind: 'workflow-agent', runId: 'r', seq: 1, label: 42, childId: 'c' }),
         JSON.stringify({ v: 1, ts: T, kind: 'workflow-agent', runId: 'r', seq: 1, label: 'w', childId: 42 }),
         JSON.stringify({ v: 1, ts: T, kind: 'workflow-run-end', runId: 'r', stopReason: 'bogus' }),
-        // base guard: v === 1 + numeric ts are REQUIRED (plan Task 2 interface)
+        // base guard: v === 1 + numeric ts are REQUIRED ( interface)
         JSON.stringify({ ts: T, kind: 'workflow-run', runId: 'r', name: 'a' }),
         JSON.stringify({ v: 1, kind: 'workflow-run', runId: 'r', name: 'a' }),
         JSON.stringify({ v: 1, ts: `${T}`, kind: 'workflow-run', runId: 'r', name: 'a' }),
@@ -389,7 +389,7 @@ describe('agent-flow workflow kinds — truncation keeps the most recent across 
 
 /* ===========================================================================
  * 4. Session-event consumer — cold scan + live firehose → ledger rows
- *    (plan `20260815-dsh-workflow-ledger` Task 3)
+ *    
  * ========================================================================== */
 
 /** Deterministic envelope timestamps (epoch ms — the consumer's `ts` source). */
@@ -426,7 +426,7 @@ function fakeSession(events: Array<{ type: string; data: object }>, init: { id?:
 
 /**
  * Minimal in-memory `sessions` service for the workflow-ledger consumer tests
- * (plan `20260815-dsh-workflow-ledger` Task 3): implements the ONE contract
+ *  implements the ONE contract
  * the consumer reads — `get(id)` / `list()` over live sessions — plus the
  * append+emit drivers the real SessionStore owns. Sessions are STRUCTURAL
  * FAKES (plain objects): `@deepseek-ai/dsh-session` cannot construct under
@@ -495,7 +495,7 @@ class FakeSessionRegistry extends Service {
   }
 }
 
-describe('workflow-ledger consumer — cold scan over session event snapshots (plan Task 3)', () => {
+describe('workflow-ledger consumer — cold scan over session event snapshots ()', () => {
   it('records run + members + end with childId preserved; agent-end carries no ledger row', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-workflow-consumer-cold-')
     const ctx = new Context()
@@ -1056,7 +1056,7 @@ describe('workflow-ledger consumer — cold scan over session event snapshots (p
     }
   })
 
-  it('the watermark cache stays bounded across many workflow dirs — the oldest dir is evicted at the cap and re-read on revisit (qc3 S-4)', async () => {
+  it('the watermark cache stays bounded across many workflow dirs — the oldest dir is evicted at the cap and re-read on revisit ', async () => {
     const { root, harnessDir } = await tempHarness('dsh-workflow-consumer-cachecap-')
     const ctx = new Context()
     const sessions = new FakeSessionRegistry(ctx)
@@ -1098,7 +1098,7 @@ describe('workflow-ledger consumer — cold scan over session event snapshots (p
     }
   })
 
-  it('lock-timeout degrade (qc3 S-6): the durable cursor is NOT advanced, the in-memory mirror IS, the warn says so, and a re-apply stays deduped', async () => {
+  it('lock-timeout degrade : the durable cursor is NOT advanced, the in-memory mirror IS, the warn says so, and a re-apply stays deduped', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-workflow-consumer-locktimeout-')
     const ctx = new Context()
     const sessions = new FakeSessionRegistry(ctx)
@@ -1149,7 +1149,7 @@ describe('workflow-ledger consumer — cold scan over session event snapshots (p
     }
   })
 
-  it('restart after the timeout re-records the outage row ONCE from the stale durable file, then catches the cursor up (qc3 S-6 recovery)', async () => {
+  it('restart after the timeout re-records the outage row ONCE from the stale durable file, then catches the cursor up (recovery)', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-workflow-consumer-lockrestart-')
     let script = ''
     try {
@@ -1221,7 +1221,7 @@ describe('workflow-ledger consumer — cold scan over session event snapshots (p
     }
   })
 
-  it('concurrent process watermark advances serialize under the per-workflow lock — no cursor clobber, both sessions persist (qc3 W-1)', async () => {
+  it('concurrent process watermark advances serialize under the per-workflow lock — no cursor clobber, both sessions persist ', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-workflow-consumer-cursorrace-')
     let script = ''
     try {
@@ -1292,7 +1292,7 @@ describe('workflow-ledger consumer — cold scan over session event snapshots (p
 
 /* ===========================================================================
  * 5. Catalog view — workflow rows + the DISTINCT summary bucket
- *    (plan `20260815-dsh-workflow-ledger` Task 4)
+ *    
  * ========================================================================== */
 
 describe('catalog view — workflow rows + distinct summary bucket (plan W-B2 Task 4)', () => {

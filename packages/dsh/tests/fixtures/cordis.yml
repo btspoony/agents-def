@@ -1,5 +1,5 @@
 # Full dsh app composition fixture (e2e-session.spec — Task 5, plan
-# 20260808-dsh-seams-bundle). Mirrors the row set a composed dsh app mounts
+# ). Mirrors the row set a composed dsh app mounts
 # around the mstar plugin: the skill registry (dsh-skill), the tool registry
 # (dsh-tools), and the command registry (dsh-commands) rows mount before the
 # plugin so `ctx.skills`, `ctx.tools`, and `ctx.commands` exist when the

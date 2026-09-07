@@ -1,20 +1,20 @@
 /**
- * scripts/skill-eval/report.ts — Task 2 of plan 20260907-skill-eval-baseline
+ * scripts/skill-eval/report.ts — report aggregation
  * (Spec A1 report stage).
  *
  * Aggregates one run directory's scheduler state into JSON + Markdown. The
  * report NEVER reruns a model: it reads only the manifest and the evidence
  * already recorded by the runner. Honesty rules it enforces:
  * - the attempted denominator (requested units) is preserved — infrastructure
- *   failures, unverified evidence and pending units all stay counted, never
- *   averaged away;
+ * failures, unverified evidence and pending units all stay counted, never
+ * averaged away;
  * - missing usage stays an explicit null with its reason; cost stays null
- *   without a recorded price source; loaded bytes are labelled bytes and stay
- *   null until a verified event schema exists;
+ * without a recorded price source; loaded bytes are labelled bytes and stay
+ * null until a verified event schema exists;
  * - unverified assertions are listed explicitly as "unverified until evidence
- *   adjudicated" — they are never folded into passes;
+ * adjudicated" — they are never folded into passes;
  * - exit conventions mirror the run stage: 0 all-verified passes, 1 completed
- *   assertion failures only, 2 infrastructure / unverified / pending.
+ * assertion failures only, 2 infrastructure / unverified / pending.
  */
 import { join, resolve } from "node:path";
 import { deriveDisposableRepoRoot, disposableRootContainmentErrors, sha256Hex } from "./manifest.ts";
@@ -100,11 +100,10 @@ export interface EvalReport {
 export interface ReportArgs {
   manifestPath: string;
   /**
-   * Repository root for the disposable-root write containment check (QC wave
-   * 1 C-W2). Defaults to the root derived from the manifest path; a run dir
-   * outside any `<repoRoot>/.tmp/skill-eval/` root is refused before any
-   * report artifact is written.
-   */
+ * Repository root for the disposable-root write containment check. Defaults to the root derived from the manifest path; a run dir
+ * outside any `<repoRoot>/.tmp/skill-eval/` root is refused before any
+ * report artifact is written.
+ */
   repoRoot?: string;
   io?: RunnerIo;
 }
@@ -127,8 +126,8 @@ const HONESTY_NOTES = [
 ];
 
 function requestedUnitIds(state: SchedulerState, manifest: EvalManifest): string[] {
-  // QC wave 1 S-D: the case selection is the runner's exported SSOT — the
-  // report denominator can no longer drift from the executed selection.
+ // :the case selection is the runner's exported SSOT — the
+ // report denominator can no longer drift from the executed selection.
   const cases = selectCases(manifest, state.requested.split);
   const ids: string[] = [];
   for (let repeat = 1; repeat <= state.requested.repeats; repeat += 1) {
@@ -294,10 +293,10 @@ export function buildReport(args: ReportArgs): ReportResult {
     errors,
   });
 
-  // Disposable-root write containment (QC wave 1 C-W2): the report writes
-  // report.json/report.md next to the manifest; like run/prepare, refuse
-  // (exit 2, zero writes) when that dir is not strictly inside the
-  // disposable fixture root.
+ // Disposable-root write containment : the report writes
+ // report.json/report.md next to the manifest; like run/prepare, refuse
+ // (exit 2, zero writes) when that dir is not strictly inside the
+ // disposable fixture root.
   const containmentRepoRoot = args.repoRoot ?? deriveDisposableRepoRoot(manifestPath);
   const containment =
     containmentRepoRoot === null
@@ -331,10 +330,10 @@ export function buildReport(args: ReportArgs): ReportResult {
   if (state.schemaVersion !== RUNNER_SCHEMA_VERSION) {
     return fail([`scheduler state schemaVersion must be ${RUNNER_SCHEMA_VERSION}, got ${String(state.schemaVersion)}`]);
   }
-  // Manifest binding (mirrors the runner's state guard): state may only be
-  // aggregated against the exact manifest bytes it was recorded with — a
-  // post-run manifest swap would otherwise report run A's grades under
-  // manifest B. Refusal happens before any artifact write.
+ // Manifest binding (mirrors the runner's state guard): state may only be
+ // aggregated against the exact manifest bytes it was recorded with — a
+ // post-run manifest swap would otherwise report run A's grades under
+ // manifest B. Refusal happens before any artifact write.
   const manifestHash = sha256Hex(io.readText(manifestPath));
   if (state.manifestHash !== manifestHash) {
     return fail(["scheduler state belongs to a different manifest; refusing to report its grades under the current manifest bytes"]);

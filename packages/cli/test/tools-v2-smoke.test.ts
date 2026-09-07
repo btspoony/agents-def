@@ -1,10 +1,9 @@
 /**
- * Committed tools v2 smoke + hook Gate 1 regression (QC fix-wave 1 S-g).
- *
+ * Committed tools v2 smoke + hook Gate 1 regression. *
  * Covers the five rewired `tools/mstar_*` (module load + one execution per
  * tool against the rebuilt engine dist) AND the omp `hooks/pre/mstar-gates`
  * Gate 1 degrade/hard paths — replacing the one-time smoke script that only
- * existed in task-2-report.md (qc3 S-4). Fixture: a committed minimal v2
+ * existed in task-2-report.md. Fixture: a committed minimal v2
  * harness tree (`test/fixtures/tools-v2-smoke/`) copied into a temp git
  * repo with a real linked worktree, so `l1PreDispatchCheck`'s existence +
  * branch probes pass.

@@ -1,6 +1,6 @@
 /**
  * Task 2 — persona payload + seeds declaration module (plan
- * `20260816-dsh-b4-seeds`): `declareMstarSeeds` assembles the declaration
+ * ): `declareMstarSeeds` assembles the declaration
  * batch (the 13 `mode: subagent` mstar personas + merge-preserved seeded
  * non-mstar ids from the readback), gates interpolatable personas BEFORE
  * `declareSeeds` (skip + warn, never throws), and re-fires from the entry's

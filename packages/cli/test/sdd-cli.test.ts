@@ -59,7 +59,7 @@ interface RunResult {
 }
 
 /**
- * Spawn env with ambient harness env vars pinned out (qc3 F-4): the CLI
+ * Spawn env with ambient harness env vars pinned out: the CLI
  * resolves harness dirs from MSTAR_HARNESS_DIR / MSTAR_CONTROL_ROOT ahead
  * of probing (an ambient value would redirect every fixture to the env dir
  * and fail spuriously), and SDD_DIR redirects default outfile paths.
@@ -121,7 +121,7 @@ function linkedWorktreeFixture(root: string): string {
   git(["add", "-A"], root);
   git(["commit", "-q", "-m", "base commit"], root);
   // Inside the tmp root so the caller's single rmSync(root) cleans it up
-  // (qc3 S-3: a sibling dir outside the tmp root leaked on every run).
+  //(a sibling dir outside the tmp root leaked on every run).
   const linked = join(root, "linked");
   git(["worktree", "add", "-q", linked, "-b", "feature/linked"], root);
   return linked;
@@ -191,7 +191,7 @@ describe("mstar sdd workspace — resolve/ensure {SDD_DIR}", () => {
     }
   });
 
-  test("missing <plan-id> → exit 2 usage error (qc2 F-005: commander must not bypass the ported exit-2 usage contract)", () => {
+  test("missing <plan-id> → exit 2 usage error(commander must not bypass the ported exit-2 usage contract)", () => {
     const root = tmpRoot("mstar-sdd-ws-usage-");
     try {
       const result = runCli(["sdd", "workspace"], { cwd: root });
@@ -291,7 +291,7 @@ describe("mstar sdd task-brief — extract `## Task N` sections", () => {
     }
   });
 
-  test("missing required args → exit 2 usage error (qc2 F-005)", () => {
+  test("missing required args → exit 2 usage error", () => {
     const root = tmpRoot("mstar-sdd-brief-usage-");
     try {
       const result = runCli(["sdd", "task-brief"], { cwd: root });
@@ -350,7 +350,7 @@ describe("mstar sdd review-package — commits + stat + diff -U10 for BASE..HEAD
     }
   });
 
-  test("missing BASE/HEAD → exit 2 usage error (qc2 F-005)", () => {
+  test("missing BASE/HEAD → exit 2 usage error", () => {
     const root = tmpRoot("mstar-sdd-rp-usage-");
     try {
       const result = runCli(["sdd", "review-package"], { cwd: root });
@@ -363,8 +363,7 @@ describe("mstar sdd review-package — commits + stat + diff -U10 for BASE..HEAD
 });
 
 // ---------------------------------------------------------------------------
-// Spec-A3 bound execution surface (plan 20260907-sdd-execution-paths
-// Task 2): `sdd check-context`, `sdd exec` and `--context` on
+// Spec-A3 bound execution surface: `sdd check-context`, `sdd exec` and `--context` on
 // task-brief/review-package. Fixtures build disposable primary/control/
 // feature checkouts with real `git worktree add` — never the real main
 // checkout; the context JSON lives in the control sdd dir.

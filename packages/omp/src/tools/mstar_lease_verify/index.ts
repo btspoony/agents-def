@@ -17,8 +17,7 @@
  * `WORKFLOW_SNAPSHOT_FILE` is a P1-only engine export absent from the
  * published floor `^2.0.2` — it is read from a DYNAMIC engine import so a
  * stale engine yields an explicit upgrade error instead of a module-link
- * failure that silently drops the tool (qc3 F-001 / fix-wave W-B).
- * `resolveWorkflowDir` is likewise P1-only: it is loaded dynamically and
+ * failure that silently drops the tool. * `resolveWorkflowDir` is likewise P1-only: it is loaded dynamically and
  * a stale engine (or a resolver failure) falls back to the DEFAULT
  * `workflows` name (same degrade as `mstar_status_validate`).
  */
@@ -101,7 +100,7 @@ async function resolveWorkflowDirOf(harnessDir: string): Promise<string> {
 }
 
 /** Dynamic engine import guard for the P1-only `WORKFLOW_SNAPSHOT_FILE`
- * export (qc3 F-001 / fix-wave W-B): missing → explicit upgrade error. */
+ * export : missing → explicit upgrade error. */
 async function loadSnapshotFile(): Promise<{ snapshotFile: string } | { error: AgentToolResult }> {
   const engine = await import("@mstar-harness/engine");
   const snapshotFile = engine.WORKFLOW_SNAPSHOT_FILE;
@@ -144,9 +143,9 @@ export default function mstarLeaseVerify(pi: CustomToolAPI): CustomTool {
             true,
           );
         }
-        // Dynamic engine import (fix-wave W-B): see the module header —
-        // WORKFLOW_SNAPSHOT_FILE is P1-only, a static named import would
-        // fail at module link on published engines (^2.0.2 floor).
+ // Dynamic engine import : see the module header —
+ // WORKFLOW_SNAPSHOT_FILE is P1-only, a static named import would
+ // fail at module link on published engines (^2.0.2 floor).
         const snapshotFileLoad = await loadSnapshotFile();
         if ("error" in snapshotFileLoad) return snapshotFileLoad.error;
         const workflowDir = await resolveWorkflowDirOf(harnessDir);
@@ -160,9 +159,8 @@ export default function mstarLeaseVerify(pi: CustomToolAPI): CustomTool {
 
         if (params?.kind === "integration") {
           const lease = doc.integration_merge_lease;
-          // Absent lease = the normal unclaimed state (writers delete the key
-          // on release) — informational ok, NOT an engine violation (qc2
-          // F-002). Only a PRESENT lease is validated against the engine gate.
+ // Absent lease = the normal unclaimed state (writers delete the key
+ // on release) — informational ok, NOT an engine violation). Only a PRESENT lease is validated against the engine gate.
           if (lease === undefined) {
             return result(
               "no active integration merge lease (unclaimed)",

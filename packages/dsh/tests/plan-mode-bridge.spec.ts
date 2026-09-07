@@ -1,5 +1,5 @@
 /**
- * PlanMode bridge tests (plan `20260816-dsh-nb2-goal-bridge` Task 4b — N-B3):
+ * PlanMode bridge tests (plan  Task 4b — N-B3):
  * the Prepare-phase flag flip — a one-way mirror of the harness Prepare
  * state (an active steering compass `status: active|locked` AND ≥1 plan row
  * `Todo` in status.json — the Prepare window) into the host plan-mode
@@ -110,7 +110,7 @@ describe('planMode bridge — planModeTarget (Prepare-window policy)', () => {
   it('active compass + ≥1 plan row Todo → true (the Prepare window)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-target-on-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-pm', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-pm', 'active')
       await seedStatus(harnessDir, [
         { id: 'plan-a', status: 'Todo' },
         { id: 'plan-b', status: 'InProgress' },
@@ -124,7 +124,7 @@ describe('planMode bridge — planModeTarget (Prepare-window policy)', () => {
   it('a locked compass also steers → true', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-target-locked-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-pm-locked', 'locked')
+      await seedCompass(harnessDir, 'iter-00000816-pm-locked', 'locked')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       expect(planModeTarget(harnessDir)).toBe(true)
     } finally {
@@ -135,7 +135,7 @@ describe('planMode bridge — planModeTarget (Prepare-window policy)', () => {
   it('all plans ≥ InProgress (no Todo row) → false', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-target-progress-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-pm-progress', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-pm-progress', 'active')
       await seedStatus(harnessDir, [
         { id: 'plan-a', status: 'InProgress' },
         { id: 'plan-b', status: 'Done' },
@@ -153,7 +153,7 @@ describe('planMode bridge — planModeTarget (Prepare-window policy)', () => {
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       expect(planModeTarget(harnessDir)).toBe(false)
       // A completed compass does not steer (resolveCompassEnforcement parity).
-      await seedCompass(harnessDir, 'iter-20260816-pm-done', 'completed')
+      await seedCompass(harnessDir, 'iter-00000816-pm-done', 'completed')
       expect(planModeTarget(harnessDir)).toBe(false)
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -163,7 +163,7 @@ describe('planMode bridge — planModeTarget (Prepare-window policy)', () => {
   it('missing / empty / pln-less status.json → false (no plan rows to put in Prepare)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-target-nostatus-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-pm-nostatus', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-pm-nostatus', 'active')
       // No status.json at all.
       expect(planModeTarget(harnessDir)).toBe(false)
       // A snapshot without a `plans` array (selection still resolves — the
@@ -184,7 +184,7 @@ describe('planMode bridge — syncPlanMode (root filter + set)', () => {
   it('Prepare window → set(agent, true) commits one plan/mode event', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-sync-on-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-sync', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-sync', 'active')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       const planMode = new FakePlanModeService(new Context())
       const ok = syncPlanMode(rootAgent(root), { resolver: new HarnessResolver(harnessDir), planMode })
@@ -200,7 +200,7 @@ describe('planMode bridge — syncPlanMode (root filter + set)', () => {
   it('no Prepare window (all plans ≥ InProgress) → set(agent, false) — already off → noop, zero churn', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-sync-off-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-sync-off', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-sync-off', 'active')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'InReview' }])
       const planMode = new FakePlanModeService(new Context())
       const ok = syncPlanMode(rootAgent(root), { resolver: new HarnessResolver(harnessDir), planMode })
@@ -220,7 +220,7 @@ describe('planMode bridge — syncPlanMode (root filter + set)', () => {
   it('child agent → not set (root filter; false, zero set calls)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-sync-child-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-sync-child', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-sync-child', 'active')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       const planMode = new FakePlanModeService(new Context())
       const ok = syncPlanMode(childAgent(root), { resolver: new HarnessResolver(harnessDir), planMode })
@@ -251,7 +251,7 @@ describe('planMode bridge — syncPlanMode (root filter + set)', () => {
   it('planMode service absent → false (inert, no throw)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-sync-absent-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-sync-absent', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-sync-absent', 'active')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       expect(syncPlanMode(rootAgent(root), { resolver: new HarnessResolver(harnessDir), planMode: undefined })).toBe(false)
     } finally {
@@ -262,7 +262,7 @@ describe('planMode bridge — syncPlanMode (root filter + set)', () => {
   it('noop semantics: already in target → the repeated evaluation produces NO new plan/mode event (no churn)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-sync-noop-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-sync-noop', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-sync-noop', 'active')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       const planMode = new FakePlanModeService(new Context())
       const resolver = new HarnessResolver(harnessDir)
@@ -286,7 +286,7 @@ describe('planMode bridge — apply wiring (agent/session-start + subagent/start
   it('session-start mirrors the ROOT; a child session-start is filtered (no set on the child)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-wiring-start-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-wiring', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-wiring', 'active')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       const ctx = new Context()
       const planMode = new FakePlanModeService(ctx)
@@ -309,7 +309,7 @@ describe('planMode bridge — apply wiring (agent/session-start + subagent/start
   it('subagent/start decision point: the parentSession root walk re-evaluates idempotently; a mid-session Prepare flip flips the flag', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-wiring-decision-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-d1', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-d1', 'active')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       const ctx = new Context()
       const planMode = new FakePlanModeService(ctx)
@@ -346,10 +346,10 @@ describe('planMode bridge — apply wiring (agent/session-start + subagent/start
     }
   })
 
-  it('a throwing resolver on session-start → contained sync warn ("planMode bridge sync failed"), the emit never throws (qc3 F-006)', async () => {
+  it('a throwing resolver on session-start → contained sync warn ("planMode bridge sync failed"), the emit never throws ', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-catch-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-catch', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-catch', 'active')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       const ctx = new Context()
       const planMode = new FakePlanModeService(ctx)
@@ -378,7 +378,7 @@ describe('planMode bridge — apply wiring (agent/session-start + subagent/start
   it('planMode service absent → ONE debug log at registration; emits never throw (optional-unit degrade)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-planmode-wiring-absent-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-absent', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-absent', 'active')
       await seedStatus(harnessDir, [{ id: 'plan-a', status: 'Todo' }])
       const ctx = new Context()
       const captured: string[] = []

@@ -6,18 +6,17 @@
  * Exit-code contract:
  * - 0 = ok, or idempotent no-op (root status.json already at schema v2)
  * - 1 = plan-invalid (planner refused: no/unrecognized v1 status.json,
- *   unliftable or duplicate plans[] rows, unsafe ids)
+ * unliftable or duplicate plans[] rows, unsafe ids)
  * - 2 = apply-failure (executor threw mid-apply; the root v2 replacement
- *   is the commit point, so the v1 root stays intact for a re-run)
+ * is the commit point, so the v1 root stays intact for a re-run)
  *
  * `--path` defaults to the resolved `{HARNESS_DIR}` (auto-discovery, same
- * as every other command — fix-wave S-a; falls back to the cwd so a bare
+ * as every other command — S-a; falls back to the cwd so a bare
  * harness-root directory without a `.mstar/` marker still migrates);
  * an explicit `--path` always wins. `--dry-run` prints the ordered step
  * plan (source -> destination), runs the apply-time validators
  * (validateWorkflowSnapshot / validateProjectRegister) READ-ONLY on the
- * planned documents and surfaces violations as warnings (fix-wave S-f —
- * apply-time rejections are visible before any write), and writes nothing;
+ * planned documents and surfaces violations as warnings (apply-time rejections are visible before any write), and writes nothing;
  * `--json` emits the machine-readable shape on stdout for both success
  * and failure paths.
  */
@@ -41,7 +40,7 @@ export type MigrateCliOptions = {
 };
 
 /**
- * Dry-run-only validation of the planned documents (fix-wave S-f): the
+ * Dry-run-only validation of the planned documents : the
  * apply loop validates fail-closed inside `writeWorkflowSnapshot` /
  * `validateProjectRegister` — dry-run mirrors that pass read-only and
  * returns one warning line per violation, so a plan that would be rejected
@@ -70,13 +69,13 @@ function validatePlannedDocs(plan: MigratePlan): string[] {
 }
 
 export async function runMigrateCommand(options: MigrateCliOptions): Promise<void> {
-  // Fix-wave S-a: default to harness-dir discovery (like every other
-  // command), keep the cwd fallback for a bare harness-root directory.
+ // Fix-wave S-a: default to harness-dir discovery (like every other
+ // command), keep the cwd fallback for a bare harness-root directory.
   const root = options.path ? resolve(options.path) : resolveHarnessDir() ?? process.cwd();
 
-  // Store-root pinning (plan Task 4 Part B): applyMigratePlan's snapshot
-  // writes put through getArtifactStore() — pin it to the resolved root so
-  // a non-cwd --path target is written, never the cwd-resolved default store.
+ // Store-root pinning ( Part B): applyMigratePlan's snapshot
+ // writes put through getArtifactStore() — pin it to the resolved root so
+ // a non-cwd --path target is written, never the cwd-resolved default store.
   setArtifactStore(createFsStore(root));
 
   let plan: MigratePlan;

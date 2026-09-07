@@ -27,7 +27,7 @@ interface RunResult {
 }
 
 /**
- * Spawn env with ambient MSTAR_HARNESS_DIR pinned out (qc3 F-4): the CLI
+ * Spawn env with ambient MSTAR_HARNESS_DIR pinned out: the CLI
  * resolves harness dirs from that env var ahead of probing, so an ambient
  * value would redirect every fixture to the env dir and fail spuriously.
  */

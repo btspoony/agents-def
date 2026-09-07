@@ -1,5 +1,5 @@
 /**
- * Goal bridge tests (plan `20260816-dsh-nb2-goal-bridge` Task 2): the
+ * Goal bridge tests  the
  * one-way mirror of the active iteration objective into the dsh goal service
  * (`ctx.get('goals')` STRUCTURAL view — no peer dependency) with the flat
  * `maxGoalRounds` cap. The mirror is fake-testable: `mirrorIterationGoal`
@@ -126,7 +126,7 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
   it('root-like agent + active compass → create receives the complete-flow objective (iteration id + flow sequence + exit; no sub-stage wording) and the explicit maxGoalRounds', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-create-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-goal-bridge', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-goal-bridge', 'active')
       const goals = new FakeGoalsService(new Context())
       const ok = mirrorIterationGoal(rootAgent(root), { resolver: new HarnessResolver(harnessDir), goals, maxGoalRounds: 42 })
 
@@ -136,7 +136,7 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
       const request = create!.args[1] as { objective: string; maxGoalRounds: number }
       expect(request.maxGoalRounds).toBe(42)
       // Text contract (HARD): iteration id + the full keyword sequence + the exit definition.
-      expect(request.objective).toContain('iter-20260816-goal-bridge')
+      expect(request.objective).toContain('iter-00000816-goal-bridge')
       expect(request.objective).toContain(FLOW_SEQUENCE)
       expect(request.objective).toMatch(/exit/i)
       // No sub-stage wording — the goal is the COMPLETE flow, never a sub-stage.
@@ -151,14 +151,14 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
   it('a locked compass also steers → create fires with the objective', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-locked-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-locked', 'locked')
+      await seedCompass(harnessDir, 'iter-00000816-locked', 'locked')
       const goals = new FakeGoalsService(new Context())
       const ok = mirrorIterationGoal(rootAgent(root), { resolver: new HarnessResolver(harnessDir), goals, maxGoalRounds: 128 })
 
       expect(ok).toBe(true)
       expect(goals.calls.filter((c) => c.op === 'create')).toHaveLength(1)
       const request = goals.calls.find((c) => c.op === 'create')!.args[1] as { objective: string }
-      expect(request.objective).toContain('iter-20260816-locked')
+      expect(request.objective).toContain('iter-00000816-locked')
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -167,7 +167,7 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
   it('completed compass → no goal set (false, zero create/edit calls)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-completed-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-done', 'completed')
+      await seedCompass(harnessDir, 'iter-00000816-done', 'completed')
       const goals = new FakeGoalsService(new Context())
       const ok = mirrorIterationGoal(rootAgent(root), { resolver: new HarnessResolver(harnessDir), goals, maxGoalRounds: 256 })
 
@@ -194,7 +194,7 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
   it('child agent (parentSession fixture) → no goal set (false) even with an active compass', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-child-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-child', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-child', 'active')
       const goals = new FakeGoalsService(new Context())
       const ok = mirrorIterationGoal(childAgent(root), { resolver: new HarnessResolver(harnessDir), goals, maxGoalRounds: 256 })
 
@@ -211,7 +211,7 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
   it('resume: existing goal with matching objective → no duplicate create (no GOAL_ALREADY_EXISTS), no edit, mirror in place (true)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-resume-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-resume', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-resume', 'active')
       const goals = new FakeGoalsService(new Context())
       const resolver = new HarnessResolver(harnessDir)
       // First pass creates the goal (mirror on the FIRST session-start).
@@ -232,7 +232,7 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
   it('objective drift on a LIVE goal (new active iteration) → complete the old goal FIRST, then create a fresh goal (clean round budget)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-drift-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-first', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-first', 'active')
       const goals = new FakeGoalsService(new Context())
       const resolver = new HarnessResolver(harnessDir)
       expect(mirrorIterationGoal(rootAgent(root), { resolver, goals, maxGoalRounds: 64 })).toBe(true)
@@ -240,10 +240,9 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
       // The steering iteration flips (iteration-close → new iteration start):
       // the first compass stops steering, the second one steers. The old goal
       // is still LIVE (phase active) — `create` alone would throw
-      // GOAL_ALREADY_EXISTS, so the mirror completes it first (qc3 F-001:
-      // the new goal must NOT inherit the old goal's spent round budget).
-      await rm(join(harnessDir, 'iterations', 'iter-20260816-first'), { recursive: true, force: true })
-      await seedCompass(harnessDir, 'iter-20260816-second', 'active')
+      // GOAL_ALREADY_EXISTS, so the mirror completes it first (// the new goal must NOT inherit the old goal's spent round budget).
+      await rm(join(harnessDir, 'iterations', 'iter-00000816-first'), { recursive: true, force: true })
+      await seedCompass(harnessDir, 'iter-00000816-second', 'active')
 
       expect(mirrorIterationGoal(rootAgent(root), { resolver, goals, maxGoalRounds: 64 })).toBe(true)
       const completes = goals.calls.filter((c) => c.op === 'complete')
@@ -252,12 +251,12 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
       expect(completes[0]!.args[1]).toEqual({ id: 'goal-1', revision: 1 })
       const creates = goals.calls.filter((c) => c.op === 'create')
       expect(creates).toHaveLength(2)
-      // The replacement create ALWAYS carries the cap (qc3 F-008).
+      // The replacement create ALWAYS carries the cap.
       const replacement = creates[1]!.args[1] as { objective: string; maxGoalRounds: number }
-      expect(replacement.objective).toContain('iter-20260816-second')
+      expect(replacement.objective).toContain('iter-00000816-second')
       expect(replacement.maxGoalRounds).toBe(64)
       // Fresh goal: revision 1, phase active, new objective — zero round debt.
-      expect(goals.current!.objective).toContain('iter-20260816-second')
+      expect(goals.current!.objective).toContain('iter-00000816-second')
       expect(goals.current!.phase).toBe('active')
       expect(goals.current!.revision).toBe(1)
     } finally {
@@ -265,10 +264,10 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
     }
   })
 
-  it('objective drift on a COMPLETED goal (operator completed at iteration-close) → create REPLACES it directly; no edit, no complete (qc2 W-1)', async () => {
+  it('objective drift on a COMPLETED goal (operator completed at iteration-close) → create REPLACES it directly; no edit, no complete ', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-drift-completed-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-c1', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-c1', 'active')
       const goals = new FakeGoalsService(new Context())
       const resolver = new HarnessResolver(harnessDir)
       expect(mirrorIterationGoal(rootAgent(root), { resolver, goals, maxGoalRounds: 64 })).toBe(true)
@@ -281,8 +280,8 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
       // index.ts:244-257): fresh revision 1, phase active, zero rounds.
       // NEVER a CAS edit — edit preserves phase, which would leave a
       // completed goal describing the ACTIVE iteration (a false "done").
-      await rm(join(harnessDir, 'iterations', 'iter-20260816-c1'), { recursive: true, force: true })
-      await seedCompass(harnessDir, 'iter-20260816-c2', 'active')
+      await rm(join(harnessDir, 'iterations', 'iter-00000816-c1'), { recursive: true, force: true })
+      await seedCompass(harnessDir, 'iter-00000816-c2', 'active')
 
       expect(mirrorIterationGoal(rootAgent(root), { resolver, goals, maxGoalRounds: 64 })).toBe(true)
       const creates = goals.calls.filter((c) => c.op === 'create')
@@ -292,7 +291,7 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
       // `edit` path is gone from the bridge surface entirely).
       expect(goals.calls.filter((c) => c.op === 'complete')).toHaveLength(1)
       const replacement = creates[1]!.args[1] as { objective: string; maxGoalRounds: number }
-      expect(replacement.objective).toContain('iter-20260816-c2')
+      expect(replacement.objective).toContain('iter-00000816-c2')
       expect(replacement.maxGoalRounds).toBe(64)
       expect(goals.current!.phase).toBe('active')
       expect(goals.current!.revision).toBe(1)
@@ -304,13 +303,13 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
   it('stale complete (GOAL_STALE_REVISION) → re-read once and retry the drift rebuild with the fresh ref', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-stale-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-stale', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-stale', 'active')
       const goals = new FakeGoalsService(new Context())
       const resolver = new HarnessResolver(harnessDir)
       expect(mirrorIterationGoal(rootAgent(root), { resolver, goals, maxGoalRounds: 64 })).toBe(true)
       // Drift + a concurrent mutation between get and complete.
-      await rm(join(harnessDir, 'iterations', 'iter-20260816-stale'), { recursive: true, force: true })
-      await seedCompass(harnessDir, 'iter-20260816-stale2', 'active')
+      await rm(join(harnessDir, 'iterations', 'iter-00000816-stale'), { recursive: true, force: true })
+      await seedCompass(harnessDir, 'iter-00000816-stale2', 'active')
       goals.completeStaleCount = 1 // the FIRST complete stales; the fake bumps the revision as the concurrent commit
 
       expect(mirrorIterationGoal(rootAgent(root), { resolver, goals, maxGoalRounds: 64 })).toBe(true)
@@ -323,7 +322,7 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
       expect(retryRef.revision).toBe(2)
       // The drift rebuild then created the fresh goal for the new iteration.
       expect(goals.calls.filter((c) => c.op === 'create')).toHaveLength(2)
-      expect(goals.current!.objective).toContain('iter-20260816-stale2')
+      expect(goals.current!.objective).toContain('iter-00000816-stale2')
       expect(goals.current!.phase).toBe('active')
       expect(goals.current!.revision).toBe(1)
     } finally {
@@ -334,12 +333,12 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
   it('stale complete twice → warn + abandon (false; no third attempt)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-stale2-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-stale-a', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-stale-a', 'active')
       const goals = new FakeGoalsService(new Context())
       const resolver = new HarnessResolver(harnessDir)
       expect(mirrorIterationGoal(rootAgent(root), { resolver, goals, maxGoalRounds: 64 })).toBe(true)
-      await rm(join(harnessDir, 'iterations', 'iter-20260816-stale-a'), { recursive: true, force: true })
-      await seedCompass(harnessDir, 'iter-20260816-stale-b', 'active')
+      await rm(join(harnessDir, 'iterations', 'iter-00000816-stale-a'), { recursive: true, force: true })
+      await seedCompass(harnessDir, 'iter-00000816-stale-b', 'active')
       goals.completeStaleCount = 2 // BOTH the first complete AND the re-read retry stale
 
       const captured: string[] = []
@@ -360,7 +359,7 @@ describe('goal bridge — mirrorIterationGoal (objective mirror + round cap)', (
   it('goals service missing → mirror false; registerGoalBridge logs ONE debug and stays inert on emit', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-absent-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-absent', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-absent', 'active')
       // Direct call with no goals view → false, no crash.
       expect(mirrorIterationGoal(rootAgent(root), { resolver: new HarnessResolver(harnessDir), goals: undefined, maxGoalRounds: 256 })).toBe(false)
 
@@ -387,7 +386,7 @@ describe('goal bridge — apply wiring (agent/session-start + subagent/start dec
   it('absent maxGoalRounds config → create receives the module default 256', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-default-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-default', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-default', 'active')
       const ctx = new Context()
       const goals = new FakeGoalsService(ctx)
       const prior = setGoalBridgeLogger(() => {})
@@ -411,7 +410,7 @@ describe('goal bridge — apply wiring (agent/session-start + subagent/start dec
   it('session-start mirrors the ROOT agent; a child session-start is filtered (no goal on the child)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-wiring-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-wiring', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-wiring', 'active')
       const ctx = new Context()
       const goals = new FakeGoalsService(ctx)
       const prior = setGoalBridgeLogger(() => {})
@@ -422,7 +421,7 @@ describe('goal bridge — apply wiring (agent/session-start + subagent/start dec
 
         expect(goals.calls.filter((c) => c.op === 'create')).toHaveLength(1)
         const request = goals.calls.find((c) => c.op === 'create')!.args[1] as { objective: string }
-        expect(request.objective).toContain('iter-20260816-wiring')
+        expect(request.objective).toContain('iter-00000816-wiring')
       } finally {
         setGoalBridgeLogger(prior)
       }
@@ -434,7 +433,7 @@ describe('goal bridge — apply wiring (agent/session-start + subagent/start dec
   it('subagent/start decision point: the parentSession root walk re-evaluates idempotently (in place → no churn; drift → complete + fresh create)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-decision-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-d1', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-d1', 'active')
       const ctx = new Context()
       const goals = new FakeGoalsService(ctx)
       const agents = new FakeAgentRegistry(ctx)
@@ -458,14 +457,14 @@ describe('goal bridge — apply wiring (agent/session-start + subagent/start dec
 
         // The steering iteration flips mid-session → the decision point
         // completes the old goal and creates a fresh one for the new iteration.
-        await rm(join(harnessDir, 'iterations', 'iter-20260816-d1'), { recursive: true, force: true })
-        await seedCompass(harnessDir, 'iter-20260816-d2', 'active')
+        await rm(join(harnessDir, 'iterations', 'iter-00000816-d1'), { recursive: true, force: true })
+        await seedCompass(harnessDir, 'iter-00000816-d2', 'active')
         ctx.events.emit('subagent/start', { runId: 'run-2', provider: 'in-process', id: 'child-d1', local: true })
 
         const completes = goals.calls.filter((c) => c.op === 'complete')
         expect(completes).toHaveLength(1)
         expect(completes[0]!.args[1]).toEqual({ id: 'goal-1', revision: 1 })
-        expect(goals.current!.objective).toContain('iter-20260816-d2')
+        expect(goals.current!.objective).toContain('iter-00000816-d2')
         expect(goals.current!.phase).toBe('active')
         expect(goals.current!.revision).toBe(1)
       } finally {
@@ -491,7 +490,7 @@ describe('goal bridge — apply wiring (agent/session-start + subagent/start dec
   it('subagent/start decision point: a 2+ hop parentSession CYCLE in the live registry does not hang the listener (no goal mirrored)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-cycle-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-cycle', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-cycle', 'active')
       const ctx = new Context()
       const goals = new FakeGoalsService(ctx)
       const agents = new FakeAgentRegistry(ctx)
@@ -518,10 +517,10 @@ describe('goal bridge — apply wiring (agent/session-start + subagent/start dec
     }
   })
 
-  it('invalid maxGoalRounds config (non-positive / non-integer) → ONE warn + fallback to the module default; the mirror still proceeds (qc3 F-004)', async () => {
+  it('invalid maxGoalRounds config (non-positive / non-integer) → ONE warn + fallback to the module default; the mirror still proceeds ', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-badcap-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-badcap', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-badcap', 'active')
       const ctx = new Context()
       const goals = new FakeGoalsService(ctx)
       const captured: string[] = []
@@ -550,7 +549,7 @@ describe('goal bridge — apply wiring (agent/session-start + subagent/start dec
   it('negative / non-integer maxGoalRounds config → same fallback; a VALID cap passes through unwarned (control)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-badcap2-')
     try {
-      await seedCompass(harnessDir, 'iter-20260816-badcap2', 'active')
+      await seedCompass(harnessDir, 'iter-00000816-badcap2', 'active')
       for (const bad of [-5, 3.5]) {
         const ctx = new Context()
         const goals = new FakeGoalsService(ctx)
@@ -585,7 +584,7 @@ describe('goal bridge — apply wiring (agent/session-start + subagent/start dec
     }
   })
 
-  it('a throwing AGENT resolver on session-start → contained mirror warn ("goal bridge mirror failed"), the emit never throws (F-006)', async () => {
+  it('a throwing AGENT resolver on session-start → contained mirror warn ("goal bridge mirror failed"), the emit never throws', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-catch-agent-')
     try {
       const ctx = new Context()
@@ -643,7 +642,7 @@ function goalChangeEnvelope(overrides: {
         revision: 3,
         objective:
           overrides.objective ??
-          'Run iteration iter-20260816-advisory through the complete flow: iteration-start → per-plan cycles → iteration-close → PR delivery → merge-ready. Exit: merged.',
+          'Run iteration iter-00000816-advisory through the complete flow: iteration-start → per-plan cycles → iteration-close → PR delivery → merge-ready. Exit: merged.',
         phase: overrides.phase ?? 'active',
         ...(overrides.blockedReason !== undefined ? { blockedReason: overrides.blockedReason } : {}),
         maxGoalRounds: 256,
@@ -683,7 +682,7 @@ describe('goal bridge — blocked sync advisory (session/event firehose)', () =>
         const warn = captured.find((m) => m.startsWith('warn:'))!
         expect(warn).toContain('goal blocked [rounds-exhausted]')
         expect(warn).toContain('max autonomous rounds reached')
-        expect(warn).toContain('objective: Run iteration iter-20260816-advisory')
+        expect(warn).toContain('objective: Run iteration iter-00000816-advisory')
         // v3 residual pointer: the project register, never the root status.json
         // (entries keyed by plan id; no register exists in this bare harness →
         // the default project path).
@@ -853,7 +852,7 @@ describe('goal bridge — blocked sync advisory (session/event firehose)', () =>
     }
   })
 
-  it('a throwing WORKSPACE resolver in the session/event listener → contained degrade warn ("goal blocked advisory degraded"), the emit never throws (qc2 S-4)', async () => {
+  it('a throwing WORKSPACE resolver in the session/event listener → contained degrade warn ("goal blocked advisory degraded"), the emit never throws ', async () => {
     const { root, harnessDir } = await tempHarness('dsh-goal-bridge-catch-event-')
     try {
       const ctx = new Context()

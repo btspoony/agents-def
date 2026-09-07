@@ -28,7 +28,7 @@ import { join } from "node:path";
 /**
  * Every runtime export the plugin imports, throwing like a dead engine.
  * Mirrors the CURRENT import surface of src/mstar.ts (dispatch composition
- * is a single engine call now — `composeDispatchGate`; qc1 F-001).
+ * is a single engine call now — `composeDispatchGate`).
  */
 const ENGINE_STUB = `const unavailable = () => {
   throw new Error("engine unavailable");

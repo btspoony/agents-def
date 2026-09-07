@@ -5,41 +5,41 @@
  * a typed `t` seat for the panel component (dictionary keys are checked
  * against the union by `LocaleDictOf`).
  *
- * T2 (spec panel-zones §2, plan 20260810-panel-canvas-zones): the react-flow
+ * (spec panel-zones §2): the react-flow
  * graph is replaced by the zone dashboard — the `graph.phase.*` /
  * `graph.state.*` / react-flow `graph.legend.*` key families are gone with
  * the graph library; only `graph.pass` / `graph.fail` remain (the
- * gate-verdict labels reused by the tabs-shell IterationTaskPage head), and
+ * gate-verdict labels reused by the IterationTaskPage head), and
  * the new `zone.*` family covers the three zone titles/placeholders + the
  * zone-semantic legend. The `flow.*` key family (agent-flow event dock) is
  * unchanged. The old footer's violations copy (`graph.violations` /
  * `graph.no-violations`) is carried by the event-log plan — it adds its own
  * dedicated keys when that page lands, NOT reserved in this union.
  *
- * T3 (spec panel-zones §3): the iteration zone is filled in — `zone.phase.*`
+ * (spec panel-zones §3): the iteration zone is filled in — `zone.phase.*`
  * (the 5 PHASE_IDS names, the `graph.phase.*` wording moved into the zone
  * namespace), `zone.iteration.*` (Step N/5 label, Step N badge, step-state
  * chips) and `zone.branches.*` (the branch panel
  * moved from the sidebar). `zone.iteration.placeholder` is gone with the
  * placeholder.
  *
- * T4 (spec panel-zones §3): the task board kanban is filled in —
+ * (spec panel-zones §3): the task board kanban is filled in —
  * `zone.state.*` (the 5 PLAN_STATE_IDS column names — en is the raw status
  * word, zh the localized name; `blocked-unknown` is the merged
- * Blocked/unknown column, plan 20260813-panel-quick-fixes Task 1),
+ * Blocked/unknown column),
  * `zone.tasks.total` (zone header plan total), `zone.tasks.no-plans` (the
  * muted empty note), `zone.tasks.more` (the per-column `+N more` expand
  * affordance) and `zone.tasks.collapse` (the 「收起」 collapse label).
  * `zone.tasks.placeholder` is gone with the placeholder.
  *
- * T2 (spec panel-zones §4, plan 20260810-panel-agent-flow-zone): the agents
+ * (spec panel-zones §4): the agents
  * zone is filled in — `zone.agents.summary` (`N executing · M pending`).
  * `zone.agents.placeholder` is gone with the placeholder; the dashed
  * "待执行" chip (`pending-label`) and the animated next-edge label (`next`)
- * keys were removed with the AgentFlowZone in the agent-canvas QC wave
- * (S-001 — the free canvas renders neither, so they had zero consumers).
+ * keys were removed with the AgentFlowZone (the free canvas renders neither,
+ * so they had zero consumers).
  *
- * T3 (same plan): the dock is collapsible (the frame is a native <details>,
+ * (same plan): the dock is collapsible (the frame is a native <details>,
  * header = <summary>) and the legend gains the entity-status swatches —
  * `zone.legend.agent-running` / `zone.legend.agent-settled` (the status-dot
  * treatments of the entity cards; the `zone.agents.*` family itself stays
@@ -49,38 +49,38 @@
  * would conflate event status words (dispatched/settled ok) with entity
  * status words).
  *
- * T1 (spec panel-tabs §2/§6.1, plan 20260811-panel-tabs-shell): the panel is
+ * (spec panel-tabs §2/§6.1): the panel is
  * re-laid-out as Tabs + Content — `tab.*` covers the 3 fixed MenuTab labels
  * (任务迭代 / 代理执行 / 事件记录) and `page.*.placeholder` the muted
  * placeholder copy for the agents/events tabs (the real pages land with the
  * agent-canvas / event-log plans; Task 3 refines the placeholders).
  *
- * T2 (spec panel-tabs §3, plan 20260811-panel-tabs-shell Task 2): the
+ * (spec panel-tabs §3): the
  * IterationTaskPage head copy — `page.iteration.*` (the collapsed one-line
  * "not started" note + the expand/collapse toggle hints). The head reuses the
  * existing `zone.iteration.*` (step badge / Step n/5 label / step-state
  * chips), `zone.phase.*` (the 5 PHASE_IDS names) and `zone.branches.*`
  * (branch panel) keys; the kanban reuses `zone.tasks.*` / `zone.state.*`.
  *
- * T3 (spec panel-tabs §4, plan 20260811-panel-agent-canvas Task 3): the
+ * (spec panel-tabs §4): the
  * legend re-mounts on the agent canvas — `zone.legend.agent-idle` (the idle
  * card treatment) joins the swatch family and the collaboration-edge labels
  * (flow-expected / flow-actual / general) now describe the canvas rendering
  * (dashed/solid lines + the general bucket — plan
- * 20260811-panel-f3-agent-general replaced the former flow-unexpected entry)
+ *  replaced the former flow-unexpected entry)
  * instead of the retired zone-dashboard stages; `flow.settle-only` is the
  * distinct muted copy for the settle-only canvas note (review T2-Imp-2
  * restored the old zone's separate anchor).
  *
- * T2 (plan 20260811-panel-f4-agent-view): the general bucket has NO column
+ * T2 : the general bucket has NO column
  * of its own anymore — `zone.agents.general` is REPURPOSED as the small
  * in-bucket label on the general card (which sinks to the bottom of the
  * `sdd-implement` column — the value stays the user-fixed literal 'general'
  * in both locales); `zone.legend.general` rewords to the sink semantics
  * (「general 位于 sdd-implement 桶内底部」).
  *
- * T2 (plan 20260812-panel-f5-agent-layout Task 2 — the layout rework
- * supersedes the F4.2 sink): the general bucket moves to its OWN rightmost
+ * (the layout rework
+ * supersedes the earlier sink): the general bucket moves to its OWN rightmost
  * UNKNOWN column — `zone.agents.unknown` (the column label, 未知 / unknown);
  * the in-bucket general tag is gone (the general card's title + the unknown
  * column label carry it), so `zone.agents.general` is REMOVED. The
@@ -92,7 +92,7 @@
  * (the former 'general' entry is replaced by 'unknown'); `zone.legend.general`
  * is REMOVED and `zone.legend.on-demand` rewords to the badge semantics.
  *
- * T5 (plan 20260812-panel-f5-design-system Task 5 — the 2026-08-12 edge
+ * (the 2026-08-12 edge
  * rework supersedes the Task-2 unknown COLUMN): the standalone rightmost
  * unknown column is REMOVED (user feedback #3 — FOUR columns total) — the
  * general bucket sinks into an unknown SUB-PARTITION at the bottom of the
@@ -104,13 +104,13 @@
  * `unknown` reword to the bezier / port-anchored / side-gap / sub-partition
  * semantics.
  *
- * T3 (plan 20260812-panel-f5-agent-layout Task 3): the no-harness branch
+ * T3 : the no-harness branch
  * renders a CENTERED inactive-state card (icon + title + hint, no tabs /
  * no sidebar) instead of the left-aligned hint — `empty.no-harness-hint`
  * is the explanatory secondary copy under the reused `empty.no-harness`
  * title.
  *
- * T1 (plan 20260813-panel-agent-canvas-legend-layout Task 1 — 图例精简): the
+ * (图例精简): the
  * legend narrows to the 3 role-card status entries —
  * `zone.legend.flow-actual` / `port` / `group` / `sub-bucket` / `supervise` /
  * `on-demand` / `unknown` are REMOVED (the collaboration-edge / layout tech

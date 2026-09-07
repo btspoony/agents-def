@@ -1,10 +1,9 @@
 /**
  * Workflow/ralph gate policy — the P-a name allowlist + P-b lease
- * attribution + P-c first-seen ask (plan `20260815-dsh-workflow-gate`
- * Tasks 2–3, W-B3). The policy is the SINGLE
+ * attribution + P-c first-seen ask . The policy is the SINGLE
  * decision point for the four-tier `workflowGate` mode semantics
  * (`off | warn | ask | hard`, default `warn`): it turns one composed
- * {@link WorkflowGateInput} (Task 1) into `allow | warn | ask | deny` + a
+ * {@link WorkflowGateInput}  into `allow | warn | ask | deny` + a
  * reason. The dispatch-gate listener maps the verdict to the
  * `tools/pre-execute` refusal vocabulary (`PreToolDecision`) — this module
  * NEVER throws and NEVER builds an approval path: an `ask` verdict flows
@@ -21,7 +20,7 @@
  * | ralph (no `meta.name`), covered/read-only | any | allow — P-a/P-c NEVER apply to ralph (no allowlist identity); P-b applies |
  * | workflow, name ∈ `workflowNames` (non-empty list), covered | any | allow — the allowlist passes under every mode |
  * | workflow, unknown (empty/absent list ⇒ EVERY name unknown), covered | `off` | allow — the gate short-circuits `off` before the policy; kept here for a total policy |
- * | workflow, unknown, covered | `warn` | warn — advisory + one warn (Task 1 behavior, now centralized) |
+ * | workflow, unknown, covered | `warn` | warn — advisory + one warn (centralized) |
  * | workflow, unknown, covered | `hard` | deny — reason names the workflow name, veto before any child starts |
  * | workflow, unknown, covered, first-seen (no cached decision) | `ask` | ask — `{kind:'ask'}` through the approval waterfall + the name is marked asked (W-1 — the run-start observation promotes only asked names to allow) |
  * | workflow, unknown, covered, cached allow | `ask` | allow — cached decision, NO re-ask |
@@ -34,8 +33,7 @@
  * and a fresh apply starts with an empty cache. The cache records only
  * RESOLVED decisions (`allow` | `deny`) keyed by workflow name.
  *
- * Cache-key normalization (Task 5 fold-in — the Task-4 Important congruence
- * fix): every key — the gate's `metaName` (composed through
+ * Cache-key normalization (the congruence fix): every key — the gate's `metaName` (composed through
  * {@link normalizeWorkflowName} in dispatch.ts `workflowGateInputOf`), the
  * run-start observation's `runName` (workflow-ledger.ts), and the explicit
  * `record()` / `markAsked()` APIs (which normalize internally, F-302) — is
@@ -50,15 +48,14 @@
  * `serviceAsk` consumes the approval result internally (`deepseek-harness
  * packages/core/tools/src/index.ts`, `prepareExecution`/`serviceAsk`) — so
  * the ANSWER reaches the cache through the workflow-ledger consumer's
- * run-start observation (plan `20260815-dsh-workflow-gate` Task 4 fold-in —
- * the Task-2 Important handoff): an ALLOWED ask executes the call, the
+ * run-start observation : an ALLOWED ask executes the call, the
  * durable `tool-workflow/run-start` session event carries the run name, and
  * the consumer records `allow` for it (`workflow-ledger.ts`). The policy
  * marks every name that received an `ask` verdict in this apply
  * (`markAsked`, at the single ask point), and the observation promotes ONLY
  * marked names to `allow` — a run observed WITHOUT a prior ask (a P-b
  * advisory under `ask` mode, a `warn`/`off`-mode run) is NOT an approval
- * resolution and never pre-authorizes the name (qc2 W-1). A DENIED answer
+ * resolution and never pre-authorizes the name . A DENIED answer
  * produces no run → no observation → the next same-name call re-asks
  * (fail-closed — no grant evidence, never an invented allow). The explicit
  * `record()` API stays the general seam — an answerer integration or the
@@ -69,7 +66,7 @@
  * (`WorkflowGateInput` — erased at runtime, no cycle); dispatch.ts imports
  * the policy/cache values from here. The P-a vocabulary
  * (`workflowNameUnknown`, `WORKFLOW_NAME_UNKNOWN_CODE`) centralized HERE from
- * Task 1's dispatch.ts.
+ * 's dispatch.ts.
  */
 import type { Config } from './_shared.ts'
 import type { WorkflowGateInput } from './dispatch.ts'
@@ -83,20 +80,19 @@ export const WORKFLOW_NAME_UNKNOWN_CODE = 'workflow.name.unknown'
 
 /**
  * The workflow-gate advisory/deny violation code for P-b lease attribution
- * (Task 3): the calling workspace has an `InProgress` plan without
+ * : the calling workspace has an `InProgress` plan without
  * `execution_lease` coverage (warn-mode advisory / hard-mode veto reason —
  * the reason cites the uncovered plan id).
  */
 export const WORKFLOW_LEASE_UNCOVERED_CODE = 'workflow.lease.uncovered'
 
-/** ASCII control characters (C0 + DEL) — stripped from workflow names (the log-forging surface, qc2 S-1). */
+/** ASCII control characters (C0 + DEL) — stripped from workflow names (the log-forging surface(. */
 const WORKFLOW_NAME_CONTROL_CHARS = /[\u0000-\u001F\u007F]/g
 
 /**
  * Strip ASCII control characters (newlines / tabs / CR — the log-forging
- * surface, qc2 S-1) from one workflow name. THE shared P-c cache-key
- * normalization (plan `20260815-dsh-workflow-gate` Task 5 fold-in — the
- * Task-4 Important congruence fix): the gate's `metaName` (composed in
+ * surface( from one workflow name. THE shared P-c cache-key
+ * normalization : the gate's `metaName` (composed in
  * dispatch.ts `workflowGateInputOf`) and the run-start observation's
  * `runName` (workflow-ledger.ts) MUST key the ask cache through the SAME
  * function — a raw-vs-stripped mismatch (e.g. `au\u0000dit` gating under
@@ -117,7 +113,7 @@ export function normalizeWorkflowName(value: string): string {
  * `meta.name` — P-a never applies to them (callers guard on
  * `input.metaName !== undefined` first).
  *
- * Comparison boundary (qc1-S2): entries are normalized through
+ * Comparison boundary: entries are normalized through
  * {@link normalizeWorkflowName} BEFORE the comparison — the gate's
  * `metaName` is already stripped, so an operator-pasted control-char
  * variant (trailing newline, copied config value) matches the same
@@ -139,7 +135,7 @@ export type WorkflowAskCacheDecision = 'allow' | 'deny'
  * see the module doc for the lifecycle). Records ONLY resolved decisions; a
  * miss means first-seen (or an unanswered ask) → the policy asks again.
  *
- * W-1 (qc2 fix-wave): the cache ALSO tracks which names received an `ask`
+ * The cache ALSO tracks which names received an `ask`
  * verdict in this apply ({@link markAsked} — the gate marks EVERY ask
  * decision at the policy's single ask point). The run-start observation
  * (workflow-ledger.ts) records `allow` ONLY for names marked-asked — a run
@@ -147,7 +143,7 @@ export type WorkflowAskCacheDecision = 'allow' | 'deny'
  * `warn`/`off`-mode run) is NOT an approval resolution and must not
  * pre-authorize the name.
  *
- * F-302 (qc3 fix-wave): the WRITE seams ({@link record} / {@link markAsked})
+ * The WRITE seams ({@link record} / {@link markAsked})
  * normalize their keys internally — the "ONE shared normalization" contract
  * holds even for a caller that passes a raw spelling (today's production
  * callers already normalize before calling; this is defense-in-depth for the
@@ -162,8 +158,7 @@ export class WorkflowAskCache {
   // simplify: both collections are uncapped — growth is apply-scoped and only
   // via ask verdicts / resolved decisions (an unresolved first-seen re-asks
   // without inserting). Add a cap or TTL if long-lived sessions with high
-  // distinct-name ask volume ever show up in profiling (qc3 F-303).
-
+  // distinct-name ask volume ever show up in profiling.
   /** The resolved decision for `name`, or undefined when never resolved. */
   get(name: string): WorkflowAskCacheDecision | undefined {
     return this.decisions.get(name)
@@ -195,7 +190,7 @@ export class WorkflowAskCache {
   }
 }
 
-/** The four-tier policy decision vocabulary (plan W-B3, Task 2). */
+/** The four-tier policy decision vocabulary (plan W-B3). */
 export type WorkflowPolicyDecision = 'allow' | 'warn' | 'ask' | 'deny'
 
 /**
@@ -209,7 +204,7 @@ export type WorkflowPolicyVerdict =
 
 /**
  * The workflow/ralph gate policy — P-a name allowlist + P-c first-seen ask
- * (plan `20260815-dsh-workflow-gate` Task 2). `config` + cache + composed
+ * . `config` + cache + composed
  * input → verdict; the caller (dispatch gate) maps the verdict to the
  * `PreToolDecision` refusal vocabulary and owns the advisory emit/log
  * infrastructure. The ONE cache write is contained: an `ask` verdict marks
@@ -234,7 +229,7 @@ export function workflowPolicy(config: Config, cache: WorkflowAskCache, input: W
   // The gate short-circuits `off` before the policy — kept for a total
   // policy (a caller that skips the short-circuit still cannot block).
   if (mode === 'off') return { decision: 'allow' }
-  // P-b lease attribution (Task 3) — FIRST, a workspace-level red line that
+  // P-b lease attribution  — FIRST, a workspace-level red line that
   // applies to workflow AND ralph (no `meta.name` needed): the calling
   // workspace has an `InProgress` plan without `execution_lease` coverage.
   // It preempts the name-based policies — an orphan plan means NO writable
@@ -291,7 +286,7 @@ export function workflowPolicy(config: Config, cache: WorkflowAskCache, input: W
       }
       // First-seen (or an unanswered ask — no resolution recorded yet):
       // route through dsh's approval waterfall (fail-closed upstream).
-      // W-1 (qc2 fix-wave): mark the name asked BEFORE the ask verdict is
+      // Mark the name asked BEFORE the ask verdict is
       // returned — the run-start observation promotes ONLY asked names to
       // `allow`, so a run that happens without an ask (P-b advisory under
       // ask mode, warn/off-mode runs) never pre-authorizes the name. A

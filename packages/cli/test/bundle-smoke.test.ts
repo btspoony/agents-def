@@ -21,7 +21,7 @@ const CLI_ROOT = resolve(import.meta.dir, "..");
 const BUNDLE = join(CLI_ROOT, "dist/mstar-harness.js");
 
 /**
- * Spawn env with ambient harness env vars pinned out (qc3 F-4): the CLI
+ * Spawn env with ambient harness env vars pinned out: the CLI
  * resolves harness dirs from MSTAR_HARNESS_DIR ahead of probing, and
  * `dispatch validate` reads the branch from MSTAR_WORKING_BRANCH — an
  * ambient value would redirect every fixture spuriously (same convention
@@ -109,7 +109,7 @@ describe("mstar dispatch validate — built bundle (bun runtime) with non-ASCII 
 });
 
 describe("mstar dispatch validate — fix-hint UTF-8 rendering in the built bundle", () => {
-  // qc2 W-1 / qc3 F-2: plan Step 4(a) requires the fix hint to render `—`
+  // plan Step 4(a) requires the fix hint to render `—`
   // (U+2014), not `â` (the bun 1.2.17 misdecode). This is the message-string
   // path guarded by the dist escaper — the regex-parsing path above is fixed
   // by source-level \uXXXX escapes alone, so this assertion is the one that

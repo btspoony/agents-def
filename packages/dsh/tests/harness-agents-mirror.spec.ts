@@ -1,5 +1,5 @@
 /**
- * Task 2 — harness-agents mirror (plan 20260815-dsh-fallbacks-personas): the
+ * Task 2 — harness-agents mirror : the
  * `bundle-assets` sync gains a third mirror, repo-root `agents/` →
  * package `harness-agents/` (the role-persona default source Task 3
  * consumes). Importing the script must stay side-effect free — the sync only

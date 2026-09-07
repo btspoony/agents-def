@@ -1,5 +1,5 @@
 /**
- * Engine backlog-register tests (plan 20260826-backlog-register-cli Task 2):
+ * Engine backlog-register tests:
  * `appendProjectRegisterEntries` / `closeProjectRegisterEntry` — normal
  * append + validate, other-key preservation, concurrent serialization
  * (incl. B-9 ① same-day key bump under concurrency), kill-mid-write
@@ -7,13 +7,13 @@
  * fail-loud rejection (incl. B-9 ② duplicate id + Task-1 review minors).
  *
  * Spec sources (each test cites the plan/brief section it enforces):
- * - Task 2 test contract items 1–7 (plan 20260826-backlog-register-cli).
+ * - test contract items 1–7.
  * - Architect B-9 amendment ① (same-day key bump inside the lock — two
- *   concurrent same-day appends land on distinct keys, no merged array, no
- *   id collision) and ② (entry-id uniqueness within the selected key).
+ * concurrent same-day appends land on distinct keys, no merged array, no
+ * id collision) and ② (entry-id uniqueness within the selected key).
  * - Task-1 review minors: `Object.hasOwn` occupancy (prototype-name
- *   safety), empty `entries` must not write an empty key, and the
- *   uniqueness seed from the selected key's existing entries.
+ * safety), empty `entries` must not write an empty key, and the
+ * uniqueness seed from the selected key's existing entries.
  */
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -175,7 +175,7 @@ describe("appendProjectRegisterEntries — concurrent appends serialize (Task 2 
       expect([a.key, b.key].sort()).toEqual([base, `${base}-2`]);
 
       const doc = JSON.parse(readFileSync(registerPath(dir), "utf8"));
-      // Each key holds exactly its own entry — the arrays were never merged.
+ // Each key holds exactly its own entry — the arrays were never merged.
       expect(doc.entries[base].map((e: { id: string }) => e.id)).toEqual(["R-1"]);
       expect(doc.entries[`${base}-2`].map((e: { id: string }) => e.id)).toEqual(["R-1"]);
       expect(validateProjectRegister(doc).ok).toBe(true);
@@ -191,8 +191,8 @@ describe("appendProjectRegisterEntries — kill-mid-write crash safety (Task 2 c
     try {
       const before = seedRegister(dir);
 
-      // Simulate a crash during the write phase: writeJson throws before the
-      // atomic temp+rename completes. The register on disk must be untouched.
+ // Simulate a crash during the write phase: writeJson throws before the
+ // atomic temp+rename completes. The register on disk must be untouched.
       const spy = spyOn(core, "writeJson").mockImplementation(() => {
         throw new Error("simulated crash mid-write");
       });
@@ -209,7 +209,7 @@ describe("appendProjectRegisterEntries — kill-mid-write crash safety (Task 2 c
       }
 
       expect(readFileSync(registerPath(dir), "utf8")).toBe(before);
-      // Lock released on the failure path too.
+ // Lock released on the failure path too.
       expect(existsSync(join(dir, ".status-write.lockdir"))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -225,8 +225,8 @@ describe("appendProjectRegisterEntries — same-day key bump (Task 2 contract 5)
       const first = await appendProjectRegisterEntries({ projectDir: dir, basePlanKey: base, entries: [residualEntry({ id: "R-1" })] });
       expect(first.key).toBe(base);
 
-      // Close the first entry in place (mirrors the real workflow: a review
-      // completes, then a new same-day session registers more PRs).
+ // Close the first entry in place (mirrors the real workflow: a review
+ // completes, then a new same-day session registers more PRs).
       await closeProjectRegisterEntry({ projectDir: dir, planKey: base, entryId: "R-1", closureNote: "review complete" });
 
       const second = await appendProjectRegisterEntries({ projectDir: dir, basePlanKey: base, entries: [residualEntry({ id: "R-1" })] });
@@ -365,12 +365,12 @@ describe("appendProjectRegisterEntries — fail-loud rejection (Task 2 contract 
     const { dir, root } = harnessProject("backlog-seed-");
     try {
       const base = "pr-deep-review-2026-08-26";
-      // Pre-existing entry with id R-1 under the base key.
+ // Pre-existing entry with id R-1 under the base key.
       await appendProjectRegisterEntries({ projectDir: dir, basePlanKey: base, entries: [residualEntry({ id: "R-1" })] });
 
-      // A second same-day append reuses id R-1 — it lands on the bumped key,
-      // where the id is free. Uniqueness is per-key, seeded from the selected
-      // key's existing entries, never from the base key's.
+ // A second same-day append reuses id R-1 — it lands on the bumped key,
+ // where the id is free. Uniqueness is per-key, seeded from the selected
+ // key's existing entries, never from the base key's.
       const second = await appendProjectRegisterEntries({ projectDir: dir, basePlanKey: base, entries: [residualEntry({ id: "R-1" })] });
       expect(second.key).toBe(`${base}-2`);
 
@@ -384,7 +384,7 @@ describe("appendProjectRegisterEntries — fail-loud rejection (Task 2 contract 
   });
 });
 
-describe("fail-loud path agreement (qc3 F-201) — register writers vs the active store root", () => {
+describe("fail-loud path agreement  — register writers vs the active store root", () => {
   test("appendProjectRegisterEntries fails loud when projectDir lies outside the store root; nothing written", async () => {
     const root = tmpRoot("backlog-append-outside-");
     const other = tmpRoot("backlog-outside-");

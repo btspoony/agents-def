@@ -1,6 +1,6 @@
 /**
  * Artifact seam gates — design-md / audit / compound / roles (plan
- * `20260810-dsh-entry-split` §10 extraction).
+ *   §10 extraction).
  *
  * Each seam gates `fs/write-intent` on its artifact scope (registered by the
  * entry `apply` with `prepend`): the content-blind listeners lint the
@@ -8,8 +8,7 @@
  * known-document entry (`lintSeamWrite` + bound forms) implements the typed
  * hard veto (`SeamVetoError`). The per-seam validators (`validateDesignDoc` /
  * `validateAuditDoc` / `validateCompoundDoc` / `validateRolesState`) are the
- * module's wiring exports for the on-demand validate tools (Task 3).
- *
+ * module's wiring exports for the on-demand validate tools. *
  * Module boundary: no barrel — the entry and the tools module import by
  * explicit relative path; public exports are re-exported verbatim by the
  * entry.

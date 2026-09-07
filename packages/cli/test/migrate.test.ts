@@ -3,7 +3,7 @@
  * over the engine v1 -> v2 migration planner/executor (`migrateHarnessTree`
  * / `applyMigratePlan`).
  *
- * The v1 fixture is the ENGINE's committed real-tree fixture
+ * The v1 fixture is the ENGINE's committed snapshot fixture
  * (`packages/engine/test/fixtures/migrate-real/` — the repo's single v1
  * fixture; CLI tests must not fork a second one). Each case copies it into
  * a fresh temp dir and runs the real CLI entry as a subprocess.
@@ -32,7 +32,7 @@ import { join, resolve } from "node:path";
 
 const CLI_ROOT = resolve(import.meta.dir, "..");
 const SRC_ENTRY = join(CLI_ROOT, "src/index.ts");
-/** Reuse the engine's committed real-tree v1 fixture (single v1 source). */
+/** Reuse the engine's committed v1 snapshot fixture (single v1 source). */
 const V1_FIXTURE = join(CLI_ROOT, "..", "engine", "test", "fixtures", "migrate-real");
 
 interface RunResult {
@@ -42,7 +42,7 @@ interface RunResult {
 }
 
 /**
- * Spawn env with ambient harness env vars pinned out (qc3 F-4): the CLI
+ * Spawn env with ambient harness env vars pinned out: the CLI
  * resolves harness dirs from MSTAR_HARNESS_DIR / MSTAR_CONTROL_ROOT ahead
  * of probing — migrate uses --path/cwd only, but an ambient value must
  * never redirect a fixture.
@@ -127,9 +127,9 @@ describe("mstar migrate — dry-run", () => {
     }
   });
 
-  test("defaults --path to the resolved {HARNESS_DIR} when cwd is the repo root (S-a)", () => {
+  test("defaults --path to the resolved {HARNESS_DIR} when cwd is the repo root", () => {
     // Repo root with the v1 tree under `.mstar/` — every other command
-    // auto-discovers the harness; migrate must too (qc1 S-4 / qc2 S-3).
+    // auto-discovers the harness; migrate must too.
     const repoRoot = mkdtempSync(join(tmpdir(), "migrate-cli-discovery-"));
     try {
       const harness = join(repoRoot, ".mstar");
@@ -149,7 +149,7 @@ describe("mstar migrate — dry-run", () => {
   });
 });
 
-describe("mstar migrate --dry-run — planned-document validation (qc3 S-1 / fix-wave S-f)", () => {
+describe("mstar migrate --dry-run — planned-document validation", () => {
   test("valid v1 tree → dry-run emits zero validation warnings", () => {
     const root = fixtureTree();
     try {
@@ -212,32 +212,32 @@ describe("mstar migrate — real run", () => {
       // Deterministic set check: 19 iteration snapshots + 10 standalone
       // plan snapshots (ids sorted; readdirSync order is FS-dependent).
       expect([...workflows].sort()).toEqual([
-        "20260717-kimi-host",
-        "20260722-iter-wt-lease",
-        "20260728-zero-residual",
-        "20260807-agent-plugins-v1",
-        "20260808-omp-inprocess-binding",
-        "20260809-omp-engine-compat-hotfix",
-        "20260811-code-reviewer-role",
-        "20260811-gitignore-default-ignore",
-        "20260816-mechanical-verification",
-        "20260817-cli-bin-alias",
+        "00000717-kimi-host",
+        "00000722-iter-wt-lease",
+        "00000728-zero-residual",
+        "00000807-agent-plugins-v1",
+        "00000808-omp-inprocess-binding",
+        "00000809-omp-engine-compat-hotfix",
+        "00000811-code-reviewer-role",
+        "00000811-gitignore-default-ignore",
+        "00000816-mechanical-verification",
+        "00000817-cli-bin-alias",
         "iter-0000-fixture-zero-plan",
-        "iter-20260809-dsh-workflow-viz",
-        "iter-20260809-harness-root-fix",
-        "iter-20260809-mstar-panel-beautify",
-        "iter-20260810-panel-fix-agentflow",
-        "iter-20260810-panel-zones",
-        "iter-20260811-panel-f4",
-        "iter-20260811-panel-fixes",
-        "iter-20260812-sync-v211-panel-f5",
-        "iter-20260814-fallbacks-integration",
-        "iter-20260815-dsh-skills-adoption",
-        "iter-20260815-fallbacks-personas-workflow",
-        "iter-20260816-audit-mechanical-alignment",
-        "iter-20260816-dsh-inspect-adoption",
-        "iter-20260816-dsh-seeds-bridges",
-        "iter-20260817-dsh-cli-roles",
+        "iter-00000809-dsh-workflow-viz",
+        "iter-00000809-harness-root-fix",
+        "iter-00000809-mstar-panel-beautify",
+        "iter-00000810-panel-fix-agentflow",
+        "iter-00000810-panel-zones",
+        "iter-00000811-panel-f4",
+        "iter-00000811-panel-fixes",
+        "iter-00000812-sync-v211-panel-f5",
+        "iter-00000814-fallbacks-integration",
+        "iter-00000815-dsh-skills-adoption",
+        "iter-00000815-fallbacks-personas-workflow",
+        "iter-00000816-audit-mechanical-alignment",
+        "iter-00000816-dsh-inspect-adoption",
+        "iter-00000816-dsh-seeds-bridges",
+        "iter-00000817-dsh-cli-roles",
         "v2.0.0",
         "v2.1.0",
         "v3.0.0",
@@ -310,7 +310,7 @@ describe("mstar migrate — exit codes", () => {
     }
   });
 
-  test("mid-snapshot apply failure then re-run converges (qc3 S-6 / fix-wave S-h)", () => {
+  test("mid-snapshot apply failure then re-run converges", () => {
     const root = fixtureTree();
     try {
       // Fail AFTER ≥1 snapshot write: a FILE at a late-sorted workflow id
@@ -319,7 +319,7 @@ describe("mstar migrate — exit codes", () => {
       // the pre-snapshot partial state (workflows as a file).
       const workflowsDir = join(root, "workflows");
       mkdirSync(workflowsDir, { recursive: true });
-      const blocker = join(workflowsDir, "iter-20260817-dsh-cli-roles");
+      const blocker = join(workflowsDir, "iter-00000817-dsh-cli-roles");
       writeFileSync(blocker, "not a directory");
 
       const r = runCli(["migrate", "--path", root]);
@@ -329,8 +329,8 @@ describe("mstar migrate — exit codes", () => {
       // snapshot written; the blocked snapshot and later ones absent.
       expect(readJsonFile(join(root, "status.json")).version).toBe(1);
       expect(existsSync(join(root, "archived", "status.v1.json"))).toBe(true);
-      expect(existsSync(join(workflowsDir, "20260717-kimi-host", "snapshot.json"))).toBe(true);
-      expect(existsSync(join(workflowsDir, "iter-20260817-dsh-cli-roles", "snapshot.json"))).toBe(false);
+      expect(existsSync(join(workflowsDir, "00000717-kimi-host", "snapshot.json"))).toBe(true);
+      expect(existsSync(join(workflowsDir, "iter-00000817-dsh-cli-roles", "snapshot.json"))).toBe(false);
       expect(existsSync(join(workflowsDir, "v3.0.0", "snapshot.json"))).toBe(false);
 
       // Remove the blocker and re-run: the deterministic plan converges by
@@ -340,7 +340,7 @@ describe("mstar migrate — exit codes", () => {
       expect(second.exitCode).toBe(0);
       expect(readJsonFile(join(root, "status.json")).version).toBe(2);
       expect(readdirSync(workflowsDir)).toHaveLength(29);
-      expect(existsSync(join(workflowsDir, "iter-20260817-dsh-cli-roles", "snapshot.json"))).toBe(true);
+      expect(existsSync(join(workflowsDir, "iter-00000817-dsh-cli-roles", "snapshot.json"))).toBe(true);
       expect(existsSync(join(workflowsDir, "v3.0.0", "snapshot.json"))).toBe(true);
       // Converged re-run is idempotent.
       const third = runCli(["migrate", "--path", root]);

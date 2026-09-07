@@ -5,30 +5,30 @@
  * Spec sources (each test cites the skill/reference section it enforces;
  * roadmap §8.5 C2 — engine unit tests cite the source section as spec):
  * - simplify:/temporary markers: `mstar-coding-behavior` SKILL.md § Simplicity
- *   First → "Simplification markers": a deliberate shortcut with a known
- *   ceiling is marked with a `simplify:` comment naming the ceiling and the
- *   upgrade path; a workaround is labeled `simplify:` / `temporary` and the
- *   removal path is recorded in the plan/status artifact before the task is
- *   claimed complete.
+ * First → "Simplification markers": a deliberate shortcut with a known
+ * ceiling is marked with a `simplify:` comment naming the ceiling and the
+ * upgrade path; a workaround is labeled `simplify:` / `temporary` and the
+ * removal path is recorded in the plan/status artifact before the task is
+ * claimed complete.
  * - SDD TDD triple: `mstar-coding-behavior` SKILL.md § Integration Notes —
- *   SDD implementer reports carry the TDD triple (test file(s), command,
- *   output) in `task-N-report.md`; `mstar-sdd/references/file-handoffs.md` —
- *   fix subagents append covering test file(s), command run, output.
+ * SDD implementer reports carry the TDD triple (test file(s), command,
+ * output) in `task-N-report.md`; `mstar-sdd/references/file-handoffs.md` —
+ * fix subagents append covering test file(s), command run, output.
  * - Plan quality bar: `mstar-artifacts/references/plan-quality-bar.md`
- *   § Quality checklist + `templates/plan.main.md` self-review
- *   ("Placeholder scan: no TBD").
+ * § Quality checklist + `templates/plan.main.md` self-review
+ * ("Placeholder scan: no TBD").
  * - Skill frontmatter contract: `mstar-skill-authoring` SKILL.md § Frontmatter
- *   Contract — `name` stable lowercase-hyphen; `description` is the trigger
- *   contract (not a workflow summary), third person.
+ * Contract — `name` stable lowercase-hyphen; `description` is the trigger
+ * contract (not a workflow summary), third person.
  * - STRATEGY.md structure: `mstar-strategy` SKILL.md § STRATEGY.md structure —
- *   six required sections (Vision, What we build, What we don't build,
- *   Guiding Principles, Technology Direction, Decision Log).
+ * six required sections (Vision, What we build, What we don't build,
+ * Guiding Principles, Technology Direction, Decision Log).
  * - Ephemeral citations: knowledge `conventions/skill-content-porting-discipline.md`
- *   §3 ("No ephemeral citations in durable skill text") + session evaluation
- *   2026-08-16 discrimination contract — placeholder artifact refs
- *   (`task-N-*`, `<plan-id>`, `{SDD_DIR}`, `.mstar/sdd/<plan-id>/`) pass;
- *   concrete instances (`task-2-report`, `task-1.diff`,
- *   `.mstar/sdd/20260815-x/`) are flagged.
+ * §3 ("No ephemeral citations in durable skill text") + session evaluation
+ * 2026-08-16 discrimination contract — placeholder artifact refs
+ * (`task-N-*`, `<plan-id>`, `{SDD_DIR}`, `.mstar/sdd/<plan-id>/`) pass;
+ * concrete instances (`task-2-report`, `task-1.diff`,
+ * `.mstar/sdd/20260815-x/`) are flagged.
  */
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -101,7 +101,7 @@ const TEMPORARY_FIXTURE = `
 // temporary: fallback mirror while the primary is down. Removal tracked in status.json (R12).
 export const mirror = ...;
 
-// TEMPORARY — offline path; plan 20260808-slice2 removes this.
+// TEMPORARY — offline path; plan 20991231-example-plan removes this.
 const offline = true;
 
 // temporary: hot-path cache while cold starts hurt.
@@ -420,7 +420,7 @@ describe("findTemporaryMarkers", () => {
 
   test("accepts dated plan references and plan paths as removal paths", () => {
     const result = findTemporaryMarkers(TEMPORARY_FIXTURE);
-    expect(result.markers[1].removalPath).toBe("plan 20260808-slice2");
+    expect(result.markers[1].removalPath).toBe("plan 20991231-example-plan");
 
     const byPath = findTemporaryMarkers(TEMPORARY_PLAN_PATH);
     expect(byPath.ok).toBe(true);
@@ -440,8 +440,8 @@ describe("findTemporaryMarkers", () => {
   });
 
   test("regex quantifiers are not markers (regression: `\\s*temporary` in code)", () => {
-    // The `*` before "temporary" here is a quantifier, not a block-comment
-    // continuation — a bare `*` introducer would false-positive on it.
+ // The `*` before "temporary" here is a quantifier, not a block-comment
+ // continuation — a bare `*` introducer would false-positive on it.
     const result = findTemporaryMarkers('const re = /\\s*temporary\\b/;');
     expect(result.ok).toBe(true);
     expect(result.markers).toEqual([]);
@@ -500,7 +500,7 @@ describe("findEphemeralCitations", () => {
     expect(citations).toHaveLength(3);
     expect(citations[0].kind).toBe("sdd-deeplink");
     expect(citations[0].match).toBe(".agents/sdd/20260815-x");
-    // concrete first segment → deeplink, plus the concrete task artifact inside
+ // concrete first segment → deeplink, plus the concrete task artifact inside
     expect(citations[1]).toEqual({
       line: 2,
       match: ".mstar/sdd/20260816-example",

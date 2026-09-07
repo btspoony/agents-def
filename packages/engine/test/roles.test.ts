@@ -5,23 +5,23 @@
  * Spec sources (each test cites the skill/reference section it enforces;
  * roadmap §8.5 C2 — engine unit tests cite the source section as spec):
  * - Role Reference Mapping (14 agent ids → `references/<role>.md`; shared
- *   families `fullstack-dev*` / `qc-specialist*` point at ONE shared file):
- *   `mstar-roles` SKILL.md § Role Reference Mapping + § Maintenance Rules
- *   ("Keep shared-family roles (`fullstack-dev*`, `qc-specialist*`) on one
- *   shared reference file").
+ * families `fullstack-dev*` / `qc-specialist*` point at ONE shared file):
+ * `mstar-roles` SKILL.md § Role Reference Mapping + § Maintenance Rules
+ * ("Keep shared-family roles (`fullstack-dev*`, `qc-specialist*`) on one
+ * shared reference file").
  * - Parameter Table contract: `mstar-roles` SKILL.md § Parameter Table
- *   (SSOT) — dev track `primary` / `parallel_secondary`; QC reviewer_index
- *   unique 1/2/3, each seat with a focus and `qc<index>` report_suffix
- *   (`qc1.md`…`qc3.md` under `{SDD_DIR}/review/`).
+ * (SSOT) — dev track `primary` / `parallel_secondary`; QC reviewer_index
+ * unique 1/2/3, each seat with a focus and `qc<index>` report_suffix
+ * (`qc1.md`…`qc3.md` under `{SDD_DIR}/review/`).
  * - Load-order contract: `mstar-harness-core` SKILL.md § 与其它 `mstar-*`
- *   skill 的加载契约 + `mstar-roles` SKILL.md § Load Order (Spec A2 —
- *   single load-selection authority): directly-invoked topic skills declare
- *   `mstar-harness-core` as first dependency; the `mstar-roles` hub
- *   bootstrap is the ONE exception (keyed on the skill name — broad
- *   exemptions rejected) and instead must declare the identity→preset
- *   decision matrix (identity-first / `Skill presets:` none+standard /
- *   role-owned methods / unknown-preset refusal) plus the conditional core
- *   conflict-authority pointer.
+ * skill 的加载契约 + `mstar-roles` SKILL.md § Load Order (Spec A2 —
+ * single load-selection authority): directly-invoked topic skills declare
+ * `mstar-harness-core` as first dependency; the `mstar-roles` hub
+ * bootstrap is the ONE exception (keyed on the skill name — broad
+ * exemptions rejected) and instead must declare the identity→preset
+ * decision matrix (identity-first / `Skill presets:` none+standard /
+ * role-owned methods / unknown-preset refusal) plus the conditional core
+ * conflict-authority pointer.
  *
  * Corpus fixtures use the read-only control checkout (assignment: "mapping
  * fixtures with real rolesDir from control checkout read-only"), overridable
@@ -57,7 +57,7 @@ import type { GateResult } from "../src/core.js";
  * corpus tests skip instead of failing on machines without the harness
  * checkout.
  *
- * Documented trade-off (qc3 F-007, kept intentionally): the two
+ * Documented trade-off ( kept intentionally): the two
  * `test.skipIf(CORPUS === null)` corpus tests are env-conditional — a CI
  * machine without the checkout would pass with them disabled. They run in
  * this checkout via the upward walk, and the checked-in fixtures (e.g.
@@ -411,7 +411,7 @@ describe("lintLoadOrder", () => {
     expect(result.ok).toBe(true);
   });
 
-  // --- Spec A2: the one hub-bootstrap exception (mstar-roles) -------------
+ // --- Spec A2: the one hub-bootstrap exception (mstar-roles) -------------
 
   const HUB_OK =
     "## Load Order\n\n" +
@@ -492,10 +492,10 @@ describe("lintLoadOrder", () => {
   });
 
   test("negative: broad exemption rejected — an arbitrary topic with the hub-style bootstrap still needs core-first", () => {
-    // The hub exception is keyed on the skill name `mstar-roles`. A topic
-    // that copies the hub bootstrap but drops the conditional core pointer
-    // (i.e. claims the core-first exemption for itself) must still fail
-    // roles.loadorder.core.missing.
+ // The hub exception is keyed on the skill name `mstar-roles`. A topic
+ // that copies the hub bootstrap but drops the conditional core pointer
+ // (i.e. claims the core-first exemption for itself) must still fail
+ // roles.loadorder.core.missing.
     const exemptClaim = HUB_OK.replace(
       "4. Whenever `mstar-harness-core` is loaded it remains the global entry (conflict authority).\n",
       "",

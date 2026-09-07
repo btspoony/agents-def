@@ -1,6 +1,6 @@
 /**
  * Task 1 — CSS-modules selector escaping + build-time regression assertions
- * (plan 20260810-panel-css-selector-fix, AC-1): `hashClass` (FNV-1a → 8-hex)
+ * `hashClass` (FNV-1a → 8-hex)
  * starts with a digit 10/16 of the time, so an unescaped `.20fd0e45_root`
  * selector is illegal CSS and the browser silently drops the whole rule —
  * the panel "no styles" root cause. The build script now escapes the css TEXT
@@ -105,7 +105,7 @@ describe('assertion guards — negative control: injected unescaped digit-leadin
   const INJECTED = '.20fd0e45_root { display: grid; }'
 
   it('guard is pinned to every digit-leading hashClass sample (never misses its own target)', () => {
-    // Shape-contract pin (qc1 F-003): the guard assumes `hashClass`'s
+    // Shape-contract pin : the guard assumes `hashClass`'s
     // `8hex_local` output. If `hashClass` ever changes shape (hash width,
     // separator, prefix), these pins fail loudly instead of the guard silently
     // missing its own output. The samples are digit-leading by construction

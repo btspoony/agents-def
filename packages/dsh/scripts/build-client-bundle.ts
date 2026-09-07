@@ -13,8 +13,7 @@
  *   class selectors are escaped in the css TEXT only (CSSOM
  *   serialize-an-identifier): digit-leading hashes (`20fd0e45_root`) become
  *   `.\32 0fd0e45_root` so the browser never drops the rule — classMap / DOM
- *   class names stay unescaped (plan 20260810-panel-css-selector-fix).
- * - A purity gate rejects any non-external, non-inline-safe `@deepseek-ai/*`
+ *   class names stay unescaped. * - A purity gate rejects any non-external, non-inline-safe `@deepseek-ai/*`
  *   VALUE import (type-only imports are erased before resolution and never
  *   reach the gate) — cross-plugin collaboration goes through cordis
  *   services, never shared module instances.
@@ -266,7 +265,7 @@ function cssModuleContents(fileId: string): { contents: string; loader: 'js' } {
 // Run only when executed directly (`bun run build-client`): the pure
 // transform / escape / assertion functions above are exported so unit tests
 // can import this module side-effect free. Tests must never trigger a build.
-// NOTE (qc3 S-1): this guard supports direct execution under bun only —
+// NOTE: this guard supports direct execution under bun only —
 // `import.meta.main` is undefined in non-bun runtimes, so running this script
 // directly there silently no-ops (no build, no error). If the build ever moves
 // to tsdown or another runtime with direct execution, add a loud failure guard

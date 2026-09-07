@@ -1,6 +1,6 @@
 /**
  * Task 5 — end-to-end integration test: a FULL mstar-gated session in one
- * composed dsh app (plan 20260808-dsh-seams-bundle).
+ * composed dsh app.
  *
  * Boots the full-app fixture cordis.yml through the REAL-composition boot (dsh-skill +
  * dsh-system-prompt + dsh-tools + dsh-commands from the linked dsh source
@@ -410,7 +410,7 @@ describe('agent/pre-step — iteration-gate row + catalog watermark', () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-e2e-prestep-'))
     const harnessDir = join(root, 'harness')
     await mkdir(harnessDir, { recursive: true })
-    // Seeded BEFORE boot: the gate row is boot-cached (qc3 W-002). v3: the
+    // Seeded BEFORE boot: the gate row is boot-cached. The v3
     // catalog aggregates the selected workflow lifecycle (root v2
     // `workflows[]` → the workflow snapshot).
     await seedHarness(harnessDir, {
@@ -576,7 +576,7 @@ describe('bundledSkillDir — launch-cwd resolution (Task 4 reviewer note)', () 
 
 /* ===========================================================================
  * 10. Agent-flow ledger — real settle verification (plan
- *     `20260811-panel-f4-timeliness` Task 1: the REAL registry emits
+ *      Task 1: the REAL registry emits
  *     tools/post-execute — the old "settle unavailable at dev time" gate is
  *     obsolete, replaced by the paired-settle assertion)
  * ========================================================================== */

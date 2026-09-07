@@ -5,30 +5,30 @@
  * Spec sources (semantic SSOT — the skills stay authoritative; this module
  * implements their deterministic rules without forking semantics):
  * - Assignment field contract (`Execute as` / `Delegation` / `Task category`
- *   present, non-empty; paste-only assignments missing fields are flagged):
- *   `mstar-dispatch-gates` SKILL.md § "调度防串扰（强制）" + § 反模式（派发）
- *   ("Assignment 已写、invoke 为零（paste-only）").
+ * present, non-empty; paste-only assignments missing fields are flagged):
+ * `mstar-dispatch-gates` SKILL.md § "调度防串扰（强制）" + § 反模式（派发）
+ * ("Assignment 已写、invoke 为零（paste-only）").
  * - Branch-field exactly-one rule + `<base>` requirement: `mstar-branch-worktree`
- *   SKILL.md § "Assignment 要求（PM）" + § "`<base>` 与叠分支（stacked
- *   branches）" ("若写新建但未写 `<base>`：实现侧应停下问 project-manager…
- *   禁止擅自假设「一定是 main」").
+ * SKILL.md § "Assignment 要求（PM）" + § "`<base>` 与叠分支（stacked
+ * branches）" ("若写新建但未写 `<base>`：实现侧应停下问 project-manager…
+ * 禁止擅自假设「一定是 main」").
  * - Default-protected-branch gate (`main`/`master` unless an explicit
- *   `Branch policy: direct on <branch> — <reason>` exception exists):
- *   `mstar-branch-worktree` SKILL.md § "Git 功能分支门禁（业务仓库）".
+ * `Branch policy: direct on <branch> — <reason>` exception exists):
+ * `mstar-branch-worktree` SKILL.md § "Git 功能分支门禁（业务仓库）".
  * - N→seat mapping (sdd→3 tri, inline→1 single, targeted→listed seats) and
- *   tri identity (`qc-specialist` / `qc-specialist-2` / `qc-specialist-3`):
- *   `mstar-dispatch-gates` SKILL.md § "QC tri-review（SDD 强制）" / "QC
- *   单席（例外）" / "QC targeted re-review" + `mstar-roles` SKILL.md
- *   "QC reviewer" 参数表.
+ * tri identity (`qc-specialist` / `qc-specialist-2` / `qc-specialist-3`):
+ * `mstar-dispatch-gates` SKILL.md § "QC tri-review（SDD 强制）" / "QC
+ * 单席（例外）" / "QC targeted re-review" + `mstar-roles` SKILL.md
+ * "QC reviewer" 参数表.
  * - Anti-recursion NEVER red line (dispatching agent's OWN role == the
- *   dispatch's `Execute as`): `mstar-dispatch-gates` SKILL.md § "承接方反递归红线
- *   （NEVER / DO NOT；leaf executor 必读）". The precheck compares the CALLER
- *   identity against the target role; hosts that can only observe the spawn
- *   TARGET (omp `agent` / opencode `subagent` / cursor `subagent_type` carry
- *   the target, never the caller) cannot run it — see
- *   {@link ComposeDispatchGateOptions.caller}.
+ * dispatch's `Execute as`): `mstar-dispatch-gates` SKILL.md § "承接方反递归红线
+ * （NEVER / DO NOT；leaf executor 必读）". The precheck compares the CALLER
+ * identity against the target role; hosts that can only observe the spawn
+ * TARGET (omp `agent` / opencode `subagent` / cursor `subagent_type` carry
+ * the target, never the caller) cannot run it — see
+ * {@link ComposeDispatchGateOptions.caller}.
  * - Hard-gate enforcement (`Enforcement: hard` flag — per Assignment/compass,
- *   never global; rollback = unset flag): roadmap §8.5 C4 + decision D2.
+ * never global; rollback = unset flag): roadmap §8.5 C4 + decision D2.
  */
 import { applyEnforcement } from "./core.js";
 import type { GateResult, ValidationResult, Severity } from "./core.js";
@@ -53,25 +53,25 @@ export type AssignmentFields = {
 
 export type ValidateAssignmentFieldsOptions = {
   /**
-   * Whether the assignment produces repo diffs (default `true`). The
-   * branch-form exactly-one gate applies to writable assignments only —
-   * read-only assignments (explore/scout orientation) legitimately omit
-   * branch fields per mstar-branch-worktree ("每个可写 Assignment…").
-   */
+ * Whether the assignment produces repo diffs (default `true`). The
+ * branch-form exactly-one gate applies to writable assignments only —
+ * read-only assignments (explore/scout orientation) legitimately omit
+ * branch fields per mstar-branch-worktree ("每个可写 Assignment…").
+ */
   writable?: boolean;
 };
 
 /** Options for {@link assertDefaultBranchProtected}. */
 export type DefaultBranchOptions = {
-  /** Protected default branch names (project convention; default `main`/`master`). */
+ /** Protected default branch names (project convention; default `main`/`master`). */
   defaultBranches?: readonly string[];
-  /** True when the Assignment carries an explicit `Branch policy: direct on …` exception. */
+ /** True when the Assignment carries an explicit `Branch policy: direct on …` exception. */
   directOnException?: boolean;
 };
 
 /** Options for {@link executionModeToN}. */
 export type ExecutionModeToNOptions = {
-  /** Listed reviewer seats for `targeted` re-review (`QC re-review: targeted — reviewers: …`). */
+ /** Listed reviewer seats for `targeted` re-review (`QC re-review: targeted — reviewers: …`). */
   seats?: readonly string[];
 };
 
@@ -94,7 +94,7 @@ function violation(severity: Severity, code: string, message: string, fix?: stri
  * captured; values are trimmed. List-bullet prefixes (`- **Field**: value`)
  * are accepted so the engine parser is the SINGLE grammar for Assignment
  * header fields (the Slice-2 opencode presence parser tolerated bullets;
- * its acceptance is folded into this parser, not forked — qc1 F-002).
+ * its acceptance is folded into this parser, not forked —).
  */
 export function parseAssignmentFields(assignmentText: string): AssignmentFields {
   const fields: AssignmentFields = {};
@@ -140,7 +140,7 @@ function enforcementValue(raw: string): string {
 }
 
 /**
- * Assignment body markers (qc1 F-003 / qc2 F-003): the header region ends at
+ * Assignment body markers : the header region ends at
  * the FIRST of a `# Task`-style heading (any level — SDD task bodies use
  * `## Task N` / `### Task N`), a `---` horizontal-rule separator, or a
  * single-`#` heading (`# Target` / `# Goal` / `# Change`). The `## Assignment`
@@ -154,8 +154,7 @@ const ASSIGNMENT_BODY_START_RE = /^(?:#{1,6}[ \t]+Task\b|-{3,}[ \t]*$|#[ \t])/m;
  * marker (see {@link ASSIGNMENT_BODY_START_RE}). Returns the full text when
  * no marker is present. The Assignment enforcement flag is parsed against
  * THIS region only, so an example line `**Enforcement**: hard` quoted in the
- * task body cannot harden the dispatch (qc1 F-003 / qc2 F-003).
- */
+ * task body cannot harden the dispatch. */
 export function assignmentHeaderRegion(assignmentText: string): string {
   const marker = assignmentText.match(ASSIGNMENT_BODY_START_RE);
   return marker !== null ? assignmentText.slice(0, marker.index) : assignmentText;
@@ -168,9 +167,9 @@ export function assignmentHeaderRegion(assignmentText: string): string {
  *
  * Recognized forms, checked in order:
  * 1. Assignment header `**Enforcement**: hard` / `Enforcement: hard`
- *    (bold or plain, optional list bullet; value case-insensitive).
+ * (bold or plain, optional list bullet; value case-insensitive).
  * 2. Compass frontmatter YAML key `enforcement: hard` (lowercase key;
- *    value may be quoted, case-insensitive).
+ * value may be quoted, case-insensitive).
  *
  * The Assignment form wins over the compass form when both appear in the
  * input (per-Assignment precedence — a dispatch's own flag is decisive).
@@ -181,8 +180,7 @@ export function assignmentHeaderRegion(assignmentText: string): string {
  * Assignment-form callers MUST pass the header region (see
  * {@link assignmentHeaderRegion}) — this function itself scans the whole
  * input because the compass form is fed raw frontmatter, which has no
- * body markers (qc1 F-003 / qc2 F-003).
- */
+ * body markers. */
 export function parseEnforcementFlag(text: string): EnforcementFlag {
   const bold = text.match(ASSIGNMENT_ENFORCEMENT_BOLD_RE);
   if (bold !== null) return { hard: enforcementValue(bold[1]!) === "hard", source: "assignment" };
@@ -197,8 +195,7 @@ export function parseEnforcementFlag(text: string): EnforcementFlag {
  * Presence-shape helper: absent → `missing-<code>`, empty → `invalid-<code>`.
  *
  * The three core field violations carry `assignment.presence.*` ALIAS codes:
- * the Slice-2 opencode presence namespace is kept as engine aliases (qc1
- * F-002) — same single parser, one violation per missing field, both
+ * the Slice-2 opencode presence namespace is kept as engine aliases) — same single parser, one violation per missing field, both
  * namespaces observable on that one violation.
  */
 function requireField(violations: ValidationResult[], value: string | undefined, label: string, code: string): void {
@@ -229,22 +226,21 @@ function requireField(violations: ValidationResult[], value: string | undefined,
  * <base>` | `Branch policy: direct on <branch> — <reason>`. Exactly one is
  * required for writable assignments. This is the engine's SINGLE branch-form
  * grammar — CLI and host hooks consume it instead of re-implementing the
- * regexes (qc1 F-001 / qc3 F-3).
- */
+ * regexes. */
 export type AssignmentBranchForms = {
   /**
-   * `Working branch: <existing>` — the value's first token (create-form
-   * values are excluded and land in {@link createForm} instead).
-   */
+ * `Working branch: <existing>` — the value's first token (create-form
+ * values are excluded and land in {@link createForm} instead).
+ */
   workingBranch?: string;
-  /** `Working branch: create <new> from <base>` — created branch name (+ base when written). */
+ /** `Working branch: create <new> from <base>` — created branch name (+ base when written). */
   createForm?: { name: string; base?: string };
   /**
-   * `Branch policy: direct on <branch> — <reason>` — branch captured by the
-   * loose `direct on <branch>` prefix; `reason` is the strict-form reason
-   * ("" when the value is not a well-formed direct-on form, i.e. no
-   * separator + non-empty reason — mirror of `validateAssignmentFields`).
-   */
+ * `Branch policy: direct on <branch> — <reason>` — branch captured by the
+ * loose `direct on <branch>` prefix; `reason` is the strict-form reason
+ * ("" when the value is not a well-formed direct-on form, i.e. no
+ * separator + non-empty reason — mirror of `validateAssignmentFields`).
+ */
   directOn?: { branch: string; reason: string };
 };
 
@@ -255,7 +251,7 @@ export type AssignmentBranchForms = {
  * existing-branch names. Dangling create-form typos — `create <new> from`
  * (trailing `from`, no base) and `create from <base>` (name missing) — are
  * recognized as create-forms so `validateAssignmentFields` can flag them
- * (qc2 S-1 / qc3 F-5, fail-open fixed).
+ * (fail-open fixed).
  */
 function parseWorkingBranchValue(
   value: string,
@@ -263,10 +259,10 @@ function parseWorkingBranchValue(
   if (value === "") return {};
   const create = value.match(/^create\s+(\S+)(?:\s+from\s+(\S+))?$/i);
   if (create) return { createForm: { name: create[1]!, base: create[2] } };
-  // Dangling `from` with no `<base>`: "create feature/x from".
+ // Dangling `from` with no `<base>`: "create feature/x from".
   const danglingFrom = value.match(/^create\s+(\S+)\s+from$/i);
   if (danglingFrom) return { createForm: { name: danglingFrom[1]!, base: "" } };
-  // `from` with no `<new>` name: "create from main".
+ // `from` with no `<new>` name: "create from main".
   const missingName = value.match(/^create\s+from\s+(\S+)$/i);
   if (missingName) return { createForm: { name: "", base: missingName[1]! } };
   return { workingBranch: value.split(/\s+/)[0]! };
@@ -287,12 +283,12 @@ export function parseAssignmentBranchForms(assignmentText: string): AssignmentBr
     else forms.workingBranch = parsed.workingBranch;
   }
   if (fields.branchPolicy !== undefined && fields.branchPolicy !== "") {
-    // Loose prefix capture (gate target) + strict full-form capture (reason).
-    // simplify: separator `\s*` on both sides permits zero-width pathological
-    // spacing ("direct on main -hotfix — reason" splits into branch "main" +
-    // reason "hotfix — reason"); accepted (qc2 S-6) — greedy `\S+` parses
-    // realistic hyphenated branch names correctly. Tighten to `\s+(?:[—–]|--|-)\s*`
-    // if mis-splits ever surface.
+ // Loose prefix capture (gate target) + strict full-form capture (reason).
+ // simplify: separator `\s*` on both sides permits zero-width pathological
+ // spacing ("direct on main -hotfix — reason" splits into branch "main" +
+ // reason "hotfix — reason"); accepted — greedy `\S+` parses
+ // realistic hyphenated branch names correctly. Tighten to `\s+(?:[—–]|--|-)\s*`
+ // if mis-splits ever surface.
     const direct = fields.branchPolicy.match(/^direct\s+on\s+(\S+)/i);
     if (direct) {
       const strict = fields.branchPolicy.match(/^direct\s+on\s+(\S+)(?:\s*(?:[\u2014\u2013]|--|-)\s*(.+))?$/);
@@ -308,8 +304,7 @@ export function parseAssignmentBranchForms(assignmentText: string): AssignmentBr
  * form (branch + non-empty reason; separator set [—–]|--|-); undefined when
  * absent or malformed — the default-branch gate recognizes explicit
  * direct-on exceptions only. Single engine grammar shared by CLI + plugin
- * (qc1 F-001).
- */
+ *. */
 export function parseBranchPolicyDirectOnBranch(assignmentText: string): string | undefined {
   const directOn = parseAssignmentBranchForms(assignmentText).directOn;
   return directOn !== undefined && directOn.reason !== "" ? directOn.branch : undefined;
@@ -320,8 +315,7 @@ export function parseBranchPolicyDirectOnBranch(assignmentText: string): string 
  * role (`scout` / `explore`, case-insensitive). Read-only assignments
  * legitimately omit branch forms (mstar-branch-worktree § "每个可写
  * Assignment…") — callers pass `validateAssignmentFields(text, { writable:
- * false })` and skip the default-branch gate for them (qc3 F-1 / qc2 S-5).
- */
+ * false })` and skip the default-branch gate for them. */
 export function isReadOnlyAssignmentRole(roleId: string): boolean {
   const role = roleId.trim().toLowerCase();
   return role === "scout" || role === "explore";
@@ -337,8 +331,7 @@ export function isReadOnlyAssignmentRole(roleId: string): boolean {
  * from <base>` without `<base>` (incl. the dangling `create <new> from`
  * / `create from <base>` typos) and `Branch policy` without branch/reason
  * are flagged. The three core-field violations carry the legacy
- * `assignment.presence.*` codes as aliases (qc1 F-002).
- */
+ * `assignment.presence.*` codes as aliases. */
 export function validateAssignmentFields(assignmentText: string, opts: ValidateAssignmentFieldsOptions = {}): GateResult {
   const violations: ValidationResult[] = [];
   const fields = parseAssignmentFields(assignmentText);
@@ -373,10 +366,10 @@ export function validateAssignmentFields(assignmentText: string, opts: ValidateA
         ),
       );
     } else if (workingPresent) {
-      // `create <new-branch> from <base>` — <base> is mandatory, never assume
-      // `main`. Case-insensitive create-form token match; values that do not
-      // match the exact form (e.g. "created", "create/foo", "create-user-flow")
-      // are existing-branch names and pass.
+ // `create <new-branch> from <base>` — <base> is mandatory, never assume
+ // `main`. Case-insensitive create-form token match; values that do not
+ // match the exact form (e.g. "created", "create/foo", "create-user-flow")
+ // are existing-branch names and pass.
       const create = forms.createForm;
       if (create !== undefined && (create.base === undefined || create.base.trim() === "" || create.name.trim() === "")) {
         violations.push(
@@ -459,8 +452,8 @@ export function executionModeToN(executionMode: string, opts: ExecutionModeToNOp
   } else if (mode === "inline") {
     n = 1;
   } else if (mode === "targeted") {
-    // Dedupe the listed reviewer seats before counting (qc2 S-3): the same
-    // seat listed twice is still one dispatch seat — N = distinct seats.
+ // Dedupe the listed reviewer seats before counting : the same
+ // seat listed twice is still one dispatch seat — N = distinct seats.
     const seats = [...new Set((opts.seats ?? []).map((s) => s.trim()).filter((s) => s !== ""))];
     if (seats.length === 0) {
       violations.push(
@@ -498,7 +491,7 @@ export function executionModeToN(executionMode: string, opts: ExecutionModeToNOp
 }
 
 /**
- * Assert the initial QC wave's reviewer roles are exactly
+ * Assert the initial review wave's reviewer roles are exactly
  * `qc-specialist` / `qc-specialist-2` / `qc-specialist-3`
  * (mstar-dispatch-gates § QC tri-review; mstar-roles QC reviewer 参数表).
  * Any other composition — missing seat, duplicate, or foreign role — fails.
@@ -527,7 +520,7 @@ export function assertTriIdentity(reviewerRoles: readonly string[]): GateResult 
 }
 
 /**
- * `## Assignment` heading marker (shared shape-guard — qc1 F-006): a
+ * `## Assignment` heading marker (shared shape-guard —): a
  * document carrying this heading is treated as Assignment-shaped and linted
  * even when none of the three core fields is found.
  */
@@ -548,8 +541,7 @@ const ASSIGNMENT_FIELD_RE =
  * heading or at least one core field line (`Execute as` / `Delegation` /
  * `Task category`). Non-Assignment prompts stay silent — no false positives.
  * This is the SINGLE shape-guard grammar shared by the omp hook and the
- * opencode adapter via {@link composeDispatchGate} (qc1 F-006).
- */
+ * opencode adapter via {@link composeDispatchGate}. */
 function isAssignmentShaped(assignmentText: string): boolean {
   return ASSIGNMENT_HEADING_RE.test(assignmentText) || assignmentText.match(ASSIGNMENT_FIELD_RE) !== null;
 }
@@ -559,28 +551,28 @@ function isAssignmentShaped(assignmentText: string): boolean {
  */
 export type ComposeDispatchGateOptions = {
   /**
-   * Dispatching agent's OWN harness role (dsh `Config.dispatchBinding`).
-   * When non-empty, the anti-recursion precheck compares it against the
-   * Assignment's `Execute as` — equality is self-recursion
-   * (`dispatch.anti-recursion.self-type`, critical). Leave unset on hosts
-   * whose tool-call event cannot report the dispatching agent's identity
-   * (omp/opencode/cursor): the precheck is skipped there and the NEVER red
-   * line stays prompt-level (mstar-dispatch-gates).
-   */
+ * Dispatching agent's OWN harness role (dsh `Config.dispatchBinding`).
+ * When non-empty, the anti-recursion precheck compares it against the
+ * Assignment's `Execute as` — equality is self-recursion
+ * (`dispatch.anti-recursion.self-type`, critical). Leave unset on hosts
+ * whose tool-call event cannot report the dispatching agent's identity
+ * (omp/opencode/cursor): the precheck is skipped there and the NEVER red
+ * line stays prompt-level (mstar-dispatch-gates).
+ */
   caller?: string;
   /**
-   * True on hosts whose contract declares the caller binding mandatory
-   * (dsh): an empty/missing `caller` then fails closed with
-   * `dispatch.anti-recursion.empty-binding` (critical) — the host could
-   * have declared the binding, so an absent one proves nothing and the
-   * dispatch must not proceed as if the NEVER red line held. Default
-   * `false`: the precheck is skipped entirely when `caller` is empty.
-   */
+ * True on hosts whose contract declares the caller binding mandatory
+ * (dsh): an empty/missing `caller` then fails closed with
+ * `dispatch.anti-recursion.empty-binding` (critical) — the host could
+ * have declared the binding, so an absent one proves nothing and the
+ * dispatch must not proceed as if the NEVER red line held. Default
+ * `false`: the precheck is skipped entirely when `caller` is empty.
+ */
   callerRequired?: boolean;
   /**
-   * `false` for read-only roles (scout/explore) — skips the branch-form and
-   * default-branch gates. Default: `true` (writable).
-   */
+ * `false` for read-only roles (scout/explore) — skips the branch-form and
+ * default-branch gates. Default: `true` (writable).
+ */
   writable?: boolean;
 };
 
@@ -589,38 +581,37 @@ export type ComposeDispatchGateOptions = {
  * and the header-region enforcement flag.
  */
 export type ComposeDispatchGateResult = GateResult & {
-  /** Assignment-shaped text was recognized (heading or core-field regex). */
+ /** Assignment-shaped text was recognized (heading or core-field regex). */
   shaped: boolean;
-  /** Enforcement parsed from the Assignment HEADER region only (never the body). */
+ /** Enforcement parsed from the Assignment HEADER region only (never the body). */
   enforcement: EnforcementFlag;
 };
 
 /**
- * Shared host dispatch-gate composition (qc1 F-001/F-006, qc2 F-005/F-007,
- * qc3 F-007/F-008) — the SINGLE dispatch-validation composition consumed by
+ * Shared host dispatch-gate composition — the SINGLE dispatch-validation composition consumed by
  * the opencode adapter (`validateDispatchAssignment`), the omp blocking hook
  * (Gate 2) and the `mstar_dispatch_validate` tool:
  *
  * 1. Shape guard: `## Assignment` heading OR any core field line
- *    (`Execute as` / `Delegation` / `Task category`). Text that is not
- *    Assignment-shaped passes silently (`shaped: false`).
+ * (`Execute as` / `Delegation` / `Task category`). Text that is not
+ * Assignment-shaped passes silently (`shaped: false`).
  * 2. `validateAssignmentFields` with `writable: false` when `opts.writable
- *    === false` (read-only roles), else the writable default.
+ * === false` (read-only roles), else the writable default.
  * 3. Anti-recursion precheck — CALLER semantics (issue #156): runs only
- *    when the host supplies its own role binding (`caller`), or fails
- *    closed on an empty one when the host contract requires it
- *    (`callerRequired`, dsh). A caller equal to `Execute as` is the
- *    `dispatch.anti-recursion.self-type` critical; a required-but-empty
- *    caller is `dispatch.anti-recursion.empty-binding`. Target-only hosts
- *    (omp/opencode/cursor) skip the leg — their binding field carries the
- *    spawn TARGET, which equals `Execute as` on every compliant dispatch.
+ * when the host supplies its own role binding (`caller`), or fails
+ * closed on an empty one when the host contract requires it
+ * (`callerRequired`, dsh). A caller equal to `Execute as` is the
+ * `dispatch.anti-recursion.self-type` critical; a required-but-empty
+ * caller is `dispatch.anti-recursion.empty-binding`. Target-only hosts
+ * (omp/opencode/cursor) skip the leg — their binding field carries the
+ * spawn TARGET, which equals `Execute as` on every compliant dispatch.
  * 4. Default-branch gate for writable text: the branch comes from the
- *    Assignment's own branch forms (create-form name / Working branch /
- *    Branch policy branch), else `$MSTAR_WORKING_BRANCH`; a well-formed
- *    `Branch policy: direct on <branch> — <reason>` exception is honored
- *    only when its branch is the one being checked.
+ * Assignment's own branch forms (create-form name / Working branch /
+ * Branch policy branch), else `$MSTAR_WORKING_BRANCH`; a well-formed
+ * `Branch policy: direct on <branch> — <reason>` exception is honored
+ * only when its branch is the one being checked.
  * 5. Enforcement flag parsed from the Assignment HEADER region only; the
- *    result carries `hardBlocked` via `applyEnforcement`.
+ * result carries `hardBlocked` via `applyEnforcement`.
  *
  * Never throws on text errors: unexpected failures degrade to the same
  * silent non-shaped result.
@@ -638,23 +629,23 @@ export function composeDispatchGate(text: string, opts: ComposeDispatchGateOptio
     const violations: ValidationResult[] = [];
     const writable = opts.writable !== false;
 
-    // (2) Engine full field validation — read-only roles skip the branch-form gate.
+ // (2) Engine full field validation — read-only roles skip the branch-form gate.
     violations.push(...validateAssignmentFields(text, { writable }).violations);
 
-    // (3) Anti-recursion NEVER red line — CALLER identity vs the dispatch's
-    // `Execute as` (issue #156: the spawn-target binding omp/opencode/cursor
-    // carry can never run this check soundly — target == `Execute as` is the
-    // documented compliant pattern, so those hosts skip the leg). Runs when
-    // the host supplies its own role (`caller`), or fails closed when the
-    // host contract makes that binding mandatory (`callerRequired`, dsh).
+ // (3) Anti-recursion NEVER red line — CALLER identity vs the dispatch's
+ // `Execute as` (issue #156: the spawn-target binding omp/opencode/cursor
+ // carry can never run this check soundly — target == `Execute as` is the
+ // documented compliant pattern, so those hosts skip the leg). Runs when
+ // the host supplies its own role (`caller`), or fails closed when the
+ // host contract makes that binding mandatory (`callerRequired`, dsh).
     const caller = opts.caller ?? "";
     if (caller.trim() !== "" || opts.callerRequired === true) {
       violations.push(...antiRecursionPrecheck(caller, parseAssignmentFields(text).executeAs ?? "").violations);
     }
 
-    // (4) Default-branch gate for writable text — branch from the
-    // Assignment's own forms, else $MSTAR_WORKING_BRANCH (env fallback
-    // shared by all adapters, qc1 F-002 / qc2 F-007 / qc3 F-008).
+ // (4) Default-branch gate for writable text — branch from the
+ // Assignment's own forms, else $MSTAR_WORKING_BRANCH (env fallback
+ // shared by all adapters / ).
     if (writable) {
       const forms = parseAssignmentBranchForms(text);
       const branch =
@@ -665,8 +656,8 @@ export function composeDispatchGate(text: string, opts: ComposeDispatchGateOptio
       }
     }
 
-    // (5) Header region only: an example `**Enforcement**: hard` line quoted
-    // in the task body must not harden the dispatch (qc1 F-003 / qc2 F-003).
+ // (5) Header region only: an example `**Enforcement**: hard` line quoted
+     // in the task body must not harden the dispatch.
     const enforcement = parseEnforcementFlag(assignmentHeaderRegion(text));
     const gate: GateResult = { ok: violations.length === 0, violations };
     return { ...applyEnforcement(gate, { hard: enforcement.hard }), shaped: true, enforcement };

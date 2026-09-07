@@ -30,7 +30,7 @@ const sharedReference = path.resolve(
 // commands' convention: `mstar-*` assets are named without the `skills/`
 // prefix; only bundled non-`mstar-*` assets like grill-me use `skills/`).
 const SHARED_REFERENCE_POINTER = "mstar-iteration/references/command-shared-invariants.md";
-// Quoted placeholder (qc2 W-2): agent-substituted paths must not enter the
+// Quoted placeholder : agent-substituted paths must not enter the
 // shell unquoted — the snippet itself is the documented safe form.
 const PREFLIGHT_SNIPPET = 'command -v mstar-harness >/dev/null 2>&1 && mstar-harness dispatch validate "<latest-assignment-file>"';
 // Slice 5 (roadmap §8.5 D2): fail-fast variant when the iteration compass

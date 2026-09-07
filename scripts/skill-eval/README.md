@@ -1,4 +1,4 @@
-# skill-eval baseline (plan 20260907-skill-eval-baseline, Spec A1)
+# skill-eval baseline (Spec A1)
 
 Maintenance-only evaluation harness for reproducible skill comparisons. This
 directory delivers the full Spec A1 pipeline: **prepare** (frozen case set +
@@ -118,7 +118,7 @@ kinds (`final_contains`, `final_not_contains`, `tool_read_contains`,
 `tool_read_not_contains`, `diff_paths_within`, `thread_reused`); semantic
 grades still require reviewer rationale at grading time (Task 2+, Spec A1).
 
-**Corpus v2 assertion contract (QC wave 1 C-W1 re-version, 2026-09-07).**
+**Corpus v2 assertion contract.**
 Corpus v1's `final_contains` literals were English prose while every prompt is
 Chinese, and 18 needles were `tool_read_contains("AGENTS.md")` — a string the
 real host injects WITHOUT a tool-read event, so those assertions graded
@@ -210,7 +210,7 @@ errors) established:
 - **Smoke exit was 1 (real assertion failures, honestly recorded).** All six
   units completed; the raw grading records count **10 failed assertions: 8
   `final_contains` + 2 `tool_read_contains`** (earlier prose said "eight" —
-  corrected to the raw count during QC wave 1; per-unit evidence lives in the
+  corrected to the raw count; per-unit evidence lives in the
   round-1 `grading.json` files). The dominant pattern: prompts are Chinese,
   and the model answered in Chinese, while frozen assertions expected literal
   English strings ("root cause", "fixed", "read-only", "Scope"); the fixture
@@ -220,7 +220,7 @@ errors) established:
   and fresh runs. Per Spec A1, efficacy acceptance stays blocked until the
   required smoke assertions pass for real.
 
-## Known limits and boundaries (QC wave 1 S-F)
+## Known limits and boundaries
 
 - **Kill boundary:** timed-out children get SIGTERM, then SIGKILL after a
   5 s grace — the **direct child only**. A child that leaks stdio fds to
@@ -276,4 +276,4 @@ as-is — no assertion was edited after these results:
   the round-2 streams either, usage aggregates stay null with
   `usageBasis: "unknown"`).
 - Re-version provenance and per-finding dispositions: control
-  `{SDD_DIR}/eval/r2-corpus-reversion.md` and the QC fix-wave-1 report.
+  `{SDD_DIR}/eval/r2-corpus-reversion.md` and the QC-1 report.

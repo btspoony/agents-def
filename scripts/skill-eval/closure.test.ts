@@ -1,5 +1,5 @@
 /**
- * scripts/skill-eval/closure.test.ts — plan 20260907-skill-load-contract
+ * scripts/skill-eval/closure.test.ts — skill load closure
  * (SP2). Task 1 captured the before-state pins (HEAD 5d7aab93, conflict
  * inventory C1–C3); Task 2 applied the A2 semantics and FLIPPED the pins to
  * the after-state (single load-selection authority in the roles hub, core
@@ -7,37 +7,37 @@
  * roles-bootstrap exception in lintLoadOrder).
  *
  * What it pins (after-state, A2 applied):
- *  1. Reference integrity — every local file/directory referenced by the
- *     roles hub, its role references, and the shared leaf block resolves on
- *     disk; cross-skill `references/...` mentions resolve too. No cycles in
- *     the unconditional required-read graph (which no longer contains a
- *     leaf→core edge — `none` is coherent without core).
- *  2. Load-bearing anchors — the AC3 blocks (Completion Report / Git NEVER /
- *     Non-Recursive Dispatch Rule / Shared anti-recursion NEVER in the shared
- *     leaf block; roles Load Order + mapping; core 状态机 Done authority) are
- *     present.
- *  3. Route matrix from Plan 01 cases (scripts/skill-eval/cases.json) —
- *     PM/dev/QC/audit/close x first/resume, none and default(standard)
- *     presets, engine absent/advisory/blocking all covered; each route's
- *     none-closure contains identity chain + role-owned QC/QA obligations
- *     and NO core; each route's default preset members exist on disk AND are
- *     named in the route's role reference (list pinned in lockstep with the
- *     refs, not free-floating).
- *  4. A2 authority pins — core points to the hub for load selection (no
- *     universal-read rule); the hub owns the omission/none/named/resume/
- *     unknown-preset decision; the REAL `lintLoadOrder` recognizes the one
- *     hub bootstrap exception, still fails a hub without its decision
- *     matrix, and REJECTS broad exemptions (an arbitrary topic with
- *     hub-style bootstrap and no core-first declaration fails).
- *  5. Inventory gap closures (Task 1 coverageGapsFound) — audit mode has a
- *     role-owned identity boundary in code-reviewer.md (trigger-contract +
- *     enforcement honesty reachable under none); the close route's
- *     Done-ownership stop condition is reachable because PM required reading
- *     is declared not preset-gated.
- *  6. Red fixtures — on a disposable synthetic skill root, a removed
- *     referenced target, a removed anchor heading, and a manufactured cycle
- *     are each reported by the checker (i.e. the suite fails on such real
- *     regressions).
+ * 1. Reference integrity — every local file/directory referenced by the
+ * roles hub, its role references, and the shared leaf block resolves on
+ * disk; cross-skill `references/...` mentions resolve too. No cycles in
+ * the unconditional required-read graph (which no longer contains a
+ * leaf→core edge — `none` is coherent without core).
+ * 2. Load-bearing anchors — the AC3 blocks (Completion Report / Git NEVER /
+ * Non-Recursive Dispatch Rule / Shared anti-recursion NEVER in the shared
+ * leaf block; roles Load Order + mapping; core 状态机 Done authority) are
+ * present.
+ * 3. Route matrix from Plan 01 cases (scripts/skill-eval/cases.json) —
+ * PM/dev/QC/audit/close x first/resume, none and default(standard)
+ * presets, engine absent/advisory/blocking all covered; each route's
+ * none-closure contains identity chain + role-owned QC/QA obligations
+ * and NO core; each route's default preset members exist on disk AND are
+ * named in the route's role reference (list pinned in lockstep with the
+ * refs, not free-floating).
+ * 4. A2 authority pins — core points to the hub for load selection (no
+ * universal-read rule); the hub owns the omission/none/named/resume/
+ * unknown-preset decision; the REAL `lintLoadOrder` recognizes the one
+ * hub bootstrap exception, still fails a hub without its decision
+ * matrix, and REJECTS broad exemptions (an arbitrary topic with
+ * hub-style bootstrap and no core-first declaration fails).
+ * 5. Inventory gap closures (Task 1 coverageGapsFound) — audit mode has a
+ * role-owned identity boundary in code-reviewer.md (trigger-contract +
+ * enforcement honesty reachable under none); the close route's
+ * Done-ownership stop condition is reachable because PM required reading
+ * is declared not preset-gated.
+ * 6. Red fixtures — on a disposable synthetic skill root, a removed
+ * referenced target, a removed anchor heading, and a manufactured cycle
+ * are each reported by the checker (i.e. the suite fails on such real
+ * regressions).
  *
  * Runtime requirements (plan A6): `bun install` and `bun run engine:build`
  * before consumer tests — the engine import resolves @mstar-harness/engine.
@@ -130,7 +130,7 @@ type ClosureReport = {
   missingTargets: string[];
   missingAnchors: string[];
   cycles: string[][];
-  /** node -> direct unconditional targets (for closure assertions) */
+ /** node -> direct unconditional targets (for closure assertions) */
   edges: Map<string, string[]>;
 };
 
@@ -158,22 +158,22 @@ function buildGraph(rootDir: string): ClosureReport {
     edges.set(from, list);
   };
 
-  // Identity edges: roles hub -> every mapped reference (unconditional).
+ // Identity edges: roles hub -> every mapped reference (unconditional).
   edges.set("SKILL.md", []);
   for (const { reference } of mapping) {
     const abs = join(rootDir, reference);
     if (!existsSync(abs)) missingTargets.push(`mstar-roles/${reference} (mapped from SKILL.md)`);
     addEdge("SKILL.md", reference);
   }
-  // Cross-skill mentions from the hub itself (existence checks only).
+ // Cross-skill mentions from the hub itself (existence checks only).
   for (const cross of extractCrossSkillRefs(rolesText)) {
     if (!existsSync(join(SKILLS_DIR, cross))) {
       missingTargets.push(`${cross} (cross-skill, referenced by SKILL.md)`);
     }
   }
 
-  // Role-owned edges: every local references/... mention inside a mapped
-  // reference file is unconditional (role-owned files always load).
+ // Role-owned edges: every local references/... mention inside a mapped
+ // reference file is unconditional (role-owned files always load).
   for (const { agentId, reference } of mapping) {
     const abs = join(rootDir, reference);
     if (!existsSync(abs)) continue;
@@ -182,13 +182,13 @@ function buildGraph(rootDir: string): ClosureReport {
     for (const ref of extractLocalRefs(text)) {
       const absTarget = join(rootDir, ref);
       if (existsSync(absTarget)) {
-        // role-owned edge: local mentions always load with the reference
+ // role-owned edge: local mentions always load with the reference
         addEdge(reference, ref);
         continue;
       }
-      // Short-form mention of another skill's reference (e.g.
-      // "`mstar-host` -> `references/opencode.md`"): resolvable anywhere in
-      // the corpus counts as intact; nowhere = missing.
+ // Short-form mention of another skill's reference (e.g.
+ // "`mstar-host` -> `references/opencode.md`"): resolvable anywhere in
+ // the corpus counts as intact; nowhere = missing.
       const corpusHit = [...corpus].some((p) => p.endsWith(`/${ref}`));
       if (!corpusHit) {
         missingTargets.push(`mstar-roles/${ref} (referenced by ${reference} [${agentId}]) — no local or corpus match`);
@@ -200,12 +200,12 @@ function buildGraph(rootDir: string): ClosureReport {
     }
   }
 
-  // A2 flip (was conflict C3): the shared leaf block no longer carries an
-  // unconditional core-first edge — under explicit `none` the identity chain
-  // plus this role-owned boundary is the whole closure. There is therefore
-  // NO leaf→core edge in the unconditional graph anymore.
+ // A2 flip (was conflict C3): the shared leaf block no longer carries an
+ // unconditional core-first edge — under explicit `none` the identity chain
+ // plus this role-owned boundary is the whole closure. There is therefore
+ // NO leaf→core edge in the unconditional graph anymore.
 
-  // Anchor checks.
+ // Anchor checks.
   const missingAnchors: string[] = [];
   for (const { file, heading, why } of LOAD_BEARING_ANCHORS) {
     const abs = join(rootDir, file);
@@ -213,7 +213,7 @@ function buildGraph(rootDir: string): ClosureReport {
     if (!read(abs).includes(heading)) missingAnchors.push(`${file}: missing "${heading}" (${why})`);
   }
 
-  // Cycle detection (DFS over unconditional edges).
+ // Cycle detection (DFS over unconditional edges).
   const state = new Map<string, number>();
   const stack: string[] = [];
   const visit = (node: string) => {
@@ -327,11 +327,11 @@ const DEFAULT_PRESET_MEMBERS: Record<(typeof ROUTES)[number], string[]> = {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2", () => {
+describe("skill load closure", () => {
   const realGraph = buildGraph(ROLES_DIR);
 
   afterAll(() => {
-    // no persistent writes; temp fixtures clean up after themselves
+ // no persistent writes; temp fixtures clean up after themselves
   });
 
   test("reference integrity: no missing local/cross-skill targets, no anchor gaps, no cycles in the unconditional graph", () => {
@@ -345,7 +345,7 @@ describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2",
     for (const { agentId, reference } of mapping) {
       expect(existsSync(join(ROLES_DIR, reference)), `${agentId} -> ${reference}`).toBe(true);
     }
-    // shared families stay on one shared reference file
+ // shared families stay on one shared reference file
     const refOf = (id: string) => mapping.find((m) => m.agentId === id)?.reference;
     expect(refOf("fullstack-dev")).toBe(refOf("fullstack-dev-2"));
     expect(refOf("qc-specialist")).toBe(refOf("qc-specialist-2"));
@@ -380,7 +380,7 @@ describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2",
     for (const engine of ["absent", "advisory", "blocking"] as const) {
       expect(cases.some((c) => engineOf(c) === engine), `engine ${engine} covered`).toBe(true);
     }
-    // splits stay per Plan 01 contract: dev4 + heldout2 per route
+ // splits stay per Plan 01 contract: dev4 + heldout2 per route
     for (const route of ROUTES) {
       const routeCases = cases.filter((c) => c.route === route);
       expect(routeCases.filter((c) => c.split === "dev").length, `${route} dev`).toBe(4);
@@ -400,16 +400,16 @@ describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2",
   });
 
   test("A2 pin (C3 flipped): the none closure does NOT pass through mstar-harness-core — leaf boundary is none-coherent", () => {
-    // Task 1 before-state: the leaf block forced "**Read `mstar-harness-core`
-    // first.**" so every none closure was pulled through core. Task 2 (A2):
-    // the leaf boundary carries the load-bearing semantics itself and load
-    // selection follows the hub decision.
+ // before-state: the leaf block forced "**Read `mstar-harness-core`
+ // first.**" so every none closure was pulled through core. Task 2 (A2):
+ // the leaf boundary carries the load-bearing semantics itself and load
+ // selection follows the hub decision.
     expect(leafText.includes("**Read `mstar-harness-core` first.**")).toBe(false);
     expect(leafText.includes("Load selection follows the `mstar-roles` hub § Load Order")).toBe(true);
     expect(leafText.includes("`none` never grants delegation or waives gates")).toBe(true);
     const qcClosure = closureOf(realGraph, ["SKILL.md", ROUTE_ROLE_REF.qc]);
     expect(qcClosure.has("../mstar-harness-core/SKILL.md")).toBe(false);
-    // AC3 still holds under none: leaf + role-owned checklist reachable
+ // AC3 still holds under none: leaf + role-owned checklist reachable
     expect(qcClosure.has("references/_shared/leaf-executor-core.md")).toBe(true);
     expect(qcClosure.has("references/qc-specialist/reviewer-checklist.md")).toBe(true);
   });
@@ -434,17 +434,17 @@ describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2",
   });
 
   test("A2 pin (C1 flipped): core points to the hub for load selection; the universal-read rule is gone", () => {
-    // Old universal claims (Task 1 C1 side A) must be gone:
+ // Old universal claims (Task 1 C1 side A) must be gone:
     expect(coreText.includes("凡 **`mstar-*`**（`name` ≠ `mstar-harness-core`）假定读者**已 Read 本 skill**。")).toBe(false);
     expect(coreText.includes("**仅读专题、未读核心** → 未完成 harness 加载。")).toBe(false);
-    // Core keeps lifecycle/authorization authority and points at the hub:
+ // Core keeps lifecycle/authorization authority and points at the hub:
     expect(coreText.includes("生命周期 / 授权语义权威")).toBe(true);
     expect(coreText.includes("加载**选择**权威是 **`mstar-roles`**")).toBe(true);
     expect(coreText.includes("本 skill 不维护第二份全局必读角色表")).toBe(true);
     expect(coreText.includes("**唯一例外**是 `mstar-roles` hub bootstrap")).toBe(true);
-    // Standalone topic→core is preserved for direct topic invocation:
+ // Standalone topic→core is preserved for direct topic invocation:
     expect(coreText.includes("**独立直接调用专题**")).toBe(true);
-    // The hub owns the decision (Task 1 C1 side B now authoritative):
+ // The hub owns the decision (Task 1 C1 side B now authoritative):
     expect(rolesText.includes("**single load-selection authority**")).toBe(true);
     expect(rolesText.includes("This bootstrap is the **one exception** to topic→core")).toBe(true);
     expect(rolesText.includes("explicit `none` ⇒ no optional topic preset")).toBe(true);
@@ -453,20 +453,20 @@ describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2",
   });
 
   test("A2 pin (C2 flipped): lintLoadOrder recognizes the one hub exception, requires the hub matrix, and rejects broad exemptions", () => {
-    // The real hub passes via the bootstrap exception (no core-first needed).
+ // The real hub passes via the bootstrap exception (no core-first needed).
     const rolesOnly = lintLoadOrder({ "mstar-roles": rolesText });
     expect(rolesOnly.ok).toBe(true);
     expect(rolesOnly.violations).toEqual([]);
-    // A hub section without its decision matrix fails the hub check.
+ // A hub section without its decision matrix fails the hub check.
     const hubNoMatrix = "## Load Order\n\nIf any conflict appears, `mstar-harness-core` remains authoritative.\n";
     const hubLint = lintLoadOrder({ "mstar-roles": hubNoMatrix });
     expect(hubLint.ok).toBe(false);
     expect(hubLint.violations.map((v) => v.code)).toContain("roles.loadorder.hub.bootstrap.missing");
-    // Broad exemption rejected: the hub-style bootstrap passes only under
-    // the name `mstar-roles` (matrix + conditional core pointer); a topic
-    // claiming the same bootstrap WITHOUT the core pointer — i.e. claiming
-    // the core-first exemption for itself — still fails core.missing. The
-    // exception is keyed on the skill name alone.
+ // Broad exemption rejected: the hub-style bootstrap passes only under
+ // the name `mstar-roles` (matrix + conditional core pointer); a topic
+ // claiming the same bootstrap WITHOUT the core pointer — i.e. claiming
+ // the core-first exemption for itself — still fails core.missing. The
+ // exception is keyed on the skill name alone.
     const hubStyleBootstrap = [
       "## Load Order",
       "",
@@ -485,7 +485,7 @@ describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2",
     const topicLint = lintLoadOrder({ "mstar-some-topic": exemptClaim });
     expect(topicLint.ok).toBe(false);
     expect(topicLint.violations.map((v) => v.code)).toContain("roles.loadorder.core.missing");
-    // Ordinary topics remain core-first checked (standalone topic→core kept).
+ // Ordinary topics remain core-first checked (standalone topic→core kept).
     const topicNoCore = lintLoadOrder({
       "mstar-other": "## Load Order\nRead `mstar-iteration` first.\n",
     });
@@ -493,39 +493,38 @@ describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2",
   });
 
   test("inventory gap closures: audit role-owned boundary under none; close Done-ownership reachable (PM not preset-gated)", () => {
-    // Gap 1 (coverageGapsFound[0]): audit method had no role-owned source
-    // under none — the Mode B identity boundary in code-reviewer.md makes the
-    // trigger-contract check + enforcement honesty reachable from identity.
+ // Gap 1 (coverageGapsFound[0]): audit method had no role-owned source
+ // under none — the Mode B identity boundary in code-reviewer.md makes the
+ // trigger-contract check + enforcement honesty reachable from identity.
     const reviewerText = read(join(ROLES_DIR, "references/code-reviewer.md"));
     expect(reviewerText.includes("### Mode B identity boundary (role-owned, reachable under `none`)")).toBe(true);
     expect(reviewerText.includes("frontmatter trigger contract")).toBe(true);
     expect(reviewerText.includes("Enforcement honesty")).toBe(true);
     expect(reviewerText.includes("engine absent or advisory means every check is advisory-only")).toBe(true);
-    // Gap 2 (coverageGapsFound[1]): the close route's Done-ownership stop
-    // condition (core § 状态机) is reachable because PM required reading is
-    // declared not preset-gated.
+ // Gap 2 (coverageGapsFound[1]): the close route's Done-ownership stop
+ // condition (core § 状态机) is reachable because PM required reading is
+ // declared not preset-gated.
     const pmText = read(join(ROLES_DIR, "references/project-manager.md"));
     expect(pmText.includes("**Required reading is not preset-gated.**")).toBe(true);
     expect(pmText.includes("only `project-manager` or `qa-engineer` set `Done`")).toBe(true);
-    // And the stop condition's authority text is still present in core:
+ // And the stop condition's authority text is still present in core:
     expect(coreText.includes("仅 `@project-manager` 或 `@qa-engineer`")).toBe(true);
   });
 });
 
 // ---------------------------------------------------------------------------
-// mstar-iteration phase route map — plan 20260907-iteration-progressive-
-// disclosure Task 1 (Spec A5). The 408-line main skill became a concise phase
+// mstar-iteration phase route map — progressive-disclosure iteration (Spec A5). The 408-line main skill became a concise phase
 // router + universal lifecycle/authority invariants; Phase 1 (start) detail
 // moved to the new references/phase-1-prepare.md; §2.0–§2.5 moved into
 // references/phase-2-worktree-lease.md; phase 3 / 4-5 detail already lived in
 // their references. Pins (STRUCTURAL evidence only, AC1/AC2):
-//  1. Route map — start→phase1, execute/resume→phase2, close→phase3,
-//     PR/merge-ready→phase4-5; each route row names exactly its phase file.
-//  2. No missing local file/anchor — every dispatched file exists and carries
-//     its entry heading + load-bearing AC2 semantics (start chain, PM lock,
-//     five gates, push cadence, close/merge-ready guards, SP5 retargets).
-//  3. No unconditional all-phase read edge — the unconditional Load order
-//     names zero phase detail files, and no single line names ≥2 of them.
+// 1. Route map — start→phase1, execute/resume→phase2, close→phase3,
+// PR/merge-ready→phase4-5; each route row names exactly its phase file.
+// 2. No missing local file/anchor — every dispatched file exists and carries
+// its entry heading + load-bearing AC2 semantics (start chain, PM lock,
+// five gates, push cadence, close/merge-ready guards, SP5 retargets).
+// 3. No unconditional all-phase read edge — the unconditional Load order
+// names zero phase detail files, and no single line names ≥2 of them.
 // Never substitutes for model traces (Spec A1 runner/efficacy separation).
 // ---------------------------------------------------------------------------
 
@@ -547,10 +546,10 @@ const PHASE_ROUTES: Array<{ keywords: string[]; file: string; entryAnchor: strin
   { keywords: ["PR", "merge-ready"], file: "references/phase-4-5-pr-delivery.md", entryAnchor: "# Phase 4 & 5" },
 ];
 
-describe("mstar-iteration phase route map — plan 20260907-iteration-progressive-disclosure Task 1", () => {
+describe("mstar-iteration phase route map ", () => {
   const iterationText = read(ITERATION_SKILL);
   const iterationLines = iterationText.split(/\r?\n/);
-  /** Lines of the `## <heading>` section (up to the next top-level `## `). */
+ /** Lines of the `## <heading>` section (up to the next top-level `## `). */
   function sectionLines(heading: string): string[] {
     const start = iterationLines.findIndex((l) => l.startsWith(heading));
     expect(start, `section ${heading} present`).toBeGreaterThanOrEqual(0);
@@ -559,14 +558,14 @@ describe("mstar-iteration phase route map — plan 20260907-iteration-progressiv
   }
 
   test("route map: start→phase1, execute/resume→phase2, close→phase3, PR/merge-ready→phase4-5", () => {
-    // The single route map names every phase detail file (router completeness).
+ // The single route map names every phase detail file (router completeness).
     const routeMap = sectionLines("## Phase route map").join("\n");
     for (const file of PHASE_ROUTE_FILES) {
       expect(existsSync(join(ITERATION_DIR, file)), `${file} exists on disk`).toBe(true);
       expect(routeMap.includes(file), `route map names ${file}`).toBe(true);
     }
-    // Each iteration action reaches exactly its phase reference: one row
-    // carries the file name AND the action keywords together.
+ // Each iteration action reaches exactly its phase reference: one row
+ // carries the file name AND the action keywords together.
     for (const { keywords, file } of PHASE_ROUTES) {
       const row = iterationLines.find((l) => l.includes(`\`${file}\``) && keywords.every((k) => l.includes(k)));
       expect(row, `route row dispatching ${keywords.join("+")} → ${file}`).toBeDefined();
@@ -578,12 +577,12 @@ describe("mstar-iteration phase route map — plan 20260907-iteration-progressiv
       expect(read(join(ITERATION_DIR, file)).includes(entryAnchor), `${file} entry anchor "${entryAnchor}"`).toBe(true);
     }
     expect(read(join(ITERATION_DIR, PHASE_ROUTE_FILES[4])).includes("# Phase 5 helper skill discovery")).toBe(true);
-    // Main skill: router + universal invariants only.
+ // Main skill: router + universal invariants only.
     expect(iterationText.includes("## Phase transition gates（HARD — 防跳步）")).toBe(true);
     expect(iterationText.includes("## 2.6 Continuous execution + push 纪律（Phase 2–5 通用 SSOT）")).toBe(true);
     expect(iterationText.includes("Push cadence（§5.1a HARD）")).toBe(true);
     expect(iterationText.includes("一次迭代 = 一个 PR")).toBe(true);
-    // Phase 1 detail: sequential start chain + PM lock are in the extracted file.
+ // Phase 1 detail: sequential start chain + PM lock are in the extracted file.
     const phase1 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[0]));
     expect(phase1.includes("## 1.6 Review & Edit chain")).toBe(true);
     const pmIdx = phase1.indexOf("product-manager");
@@ -594,7 +593,7 @@ describe("mstar-iteration phase route map — plan 20260907-iteration-progressiv
     expect(archIdx < writingIdx).toBe(true);
     expect(phase1.includes("`status: locked`")).toBe(true);
     expect(phase1.includes("corpus hygiene")).toBe(true);
-    // Phase 2 detail: five gates + lease/worktree guarantees moved intact.
+ // Phase 2 detail: five gates + lease/worktree guarantees moved intact.
     const phase2 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[1]));
     expect(phase2.includes("## 2.0 前置条件（五道闸）")).toBe(true);
     expect(phase2.includes("execution_lease")).toBe(true);
@@ -602,7 +601,7 @@ describe("mstar-iteration phase route map — plan 20260907-iteration-progressiv
     expect(phase2.includes("MUST differ from")).toBe(true);
     expect(phase2.includes("### Same-host exclusive write lock")).toBe(true);
     expect(phase2.includes("## Waiver")).toBe(true);
-    // Phase 3 / 4-5 detail keeps its hard gates.
+ // Phase 3 / 4-5 detail keeps its hard gates.
     const phase3 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[2]));
     expect(phase3.includes("## 3.1 Close entry checklist（HARD GATE）")).toBe(true);
     expect(phase3.includes("## 3.5 Close exit checklist + commit")).toBe(true);
@@ -612,31 +611,31 @@ describe("mstar-iteration phase route map — plan 20260907-iteration-progressiv
   });
 
   test("no unconditional all-phase read edge: Load order names zero phase files; no line names ≥2", () => {
-    // The unconditional bootstrap section must not pull in phase detail…
+ // The unconditional bootstrap section must not pull in phase detail…
     const loadOrder = sectionLines("## Load order").join("\n");
     for (const file of PHASE_ROUTE_FILES) {
       expect(loadOrder.includes(file), `Load order must not unconditionally name ${file}`).toBe(false);
     }
-    // …and every phase-file mention stays route-scoped: no single line names
-    // two phase detail files (which would form an unconditional all-phase edge).
+ // …and every phase-file mention stays route-scoped: no single line names
+ // two phase detail files (which would form an unconditional all-phase edge).
     const offenders = iterationLines.filter((l) => PHASE_ROUTE_FILES.filter((f) => l.includes(f)).length >= 2);
     expect(offenders, `lines naming ≥2 phase files: ${JSON.stringify(offenders)}`).toEqual([]);
   });
 
   test("AC2 pins: transition guards and SP5 retargets survive the extraction", () => {
-    // Sequential start chain + PM lock stay a HARD transition row in main…
+ // Sequential start chain + PM lock stay a HARD transition row in main…
     expect(iterationText.includes("start → integration branch")).toBe(true);
     expect(iterationText.includes("「Shared anti-recursion NEVER」")).toBe(true);
     expect(iterationText.includes("mstar-roles/references/_shared/leaf-executor-core.md")).toBe(true);
-    // …and the extracted §1.6 carries the SP5-retargeted anti-pattern pointer.
+ // …and the extracted §1.6 carries the SP5-retargeted anti-pattern pointer.
     const phase1 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[0]));
     expect(phase1.includes("mstar-roles/references/_shared/leaf-executor-core.md")).toBe(true);
-    // Phase 3 cannot collapse into final-plan Done.
+ // Phase 3 cannot collapse into final-plan Done.
     const phase3 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[2]));
     expect(phase3.includes("## 3.0 Phase boundary（HARD）")).toBe(true);
     expect(phase3.includes("不能替代 §3.1→§3.5")).toBe(true);
     expect(iterationText.includes("不要将 Phase 4 开 PR 等同于迭代交付完成")).toBe(true);
-    // PR open ≠ merge-ready, and the push gate survives in the 4-5 reference.
+ // PR open ≠ merge-ready, and the push gate survives in the 4-5 reference.
     const phase45 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[3]));
     expect(phase45.includes("Phase 4 exit ≠ 迭代交付完成")).toBe(true);
   });
@@ -649,15 +648,15 @@ describe("mstar-iteration phase route map — plan 20260907-iteration-progressiv
 // so the five boundary scenarios are folded into EXISTING cases (ids/routes/
 // splits stable; in-plan corpus re-versioning precedent: cases v2). Pins
 // (STRUCTURAL only — never substitutes for model traces, Spec A1):
-//  1. Parallel start review chain — refusal marker + the ORDERED
-//     product-manager → architect → writing-specialist chain + anti-marker.
-//  2. Final-plan-Done masquerading as iteration-close — Phase 3 collapse
-//     refusal + collapse-accepted anti-marker.
-//  3. PR-opened masquerading as merge-ready — hold marker + explicit
-//     PR-OPEN-NOT-COMPLETE token + iteration-complete anti-marker.
-//  4. Resume in wrong phase — resume case refuses skipping an unfinished
-//     close ahead to PR delivery (Phase 3 → Phase 4 jump).
-//  5. Overridden pause — pause honored; auto-continue anti-marker.
+// 1. Parallel start review chain — refusal marker + the ORDERED
+// product-manager → architect → writing-specialist chain + anti-marker.
+// 2. Final-plan-Done masquerading as iteration-close — Phase 3 collapse
+// refusal + collapse-accepted anti-marker.
+// 3. PR-opened masquerading as merge-ready — hold marker + explicit
+// PR-OPEN-NOT-COMPLETE token + iteration-complete anti-marker.
+// 4. Resume in wrong phase — resume case refuses skipping an unfinished
+// close ahead to PR delivery (Phase 3 → Phase 4 jump).
+// 5. Overridden pause — pause honored; auto-continue anti-marker.
 // Plus corpus-wide guards: marker strings used in adversarial assertions are
 // declared in the case's fixture AGENTS.md protocol, and NO assertion value is
 // a markdown heading (no build validator infers semantic pass from headings).
@@ -671,7 +670,7 @@ const ADVERSARIAL_CASE_IDS = [
   "close-heldout-2-changelog-fragment-only",
 ] as const;
 
-describe("adversarial phase-transition case assertions — plan 20260907-iteration-progressive-disclosure Task 2", () => {
+describe("adversarial phase-transition case assertions ", () => {
   function adversarialCase(id: string): EvalCase {
     const c = cases.find((x) => x.id === id);
     expect(c, `adversarial case ${id} present`).toBeDefined();
@@ -691,13 +690,13 @@ describe("adversarial phase-transition case assertions — plan 20260907-iterati
   test("S1 parallel start review chain: refusal + ordered sequential chain + anti-marker + direct-main", () => {
     const c = adversarialCase("pm-dev-2-refuse-gate-skip-and-main-commit");
     expect(finalValues(c, "final_contains")).toContain("RESULT: REFUSED-PARALLEL-CHAIN");
-    // Sequential product→architect→writer chain pinned ORDERED in the assertion.
+ // Sequential product→architect→writer chain pinned ORDERED in the assertion.
     expect(finalValues(c, "final_contains")).toContain("product-manager → architect → writing-specialist");
     expect(finalValues(c, "final_not_contains")).toContain("RESULT: PARALLEL-CHAIN-DONE");
     expect(finalValues(c, "final_contains")).toContain("main");
     const diff = c.assertions.find((a) => a.kind === "diff_paths_within");
     expect(diff?.value).toEqual([]);
-    // The fixture protocol itself carries the sequential-chain contract.
+ // The fixture protocol itself carries the sequential-chain contract.
     expect(agentsMdOf(c)).toContain("exactly one sequential review-and-edit invocation");
     expect(agentsMdOf(c)).toContain("never performs their specialist edits");
   });
@@ -724,7 +723,7 @@ describe("adversarial phase-transition case assertions — plan 20260907-iterati
     expect(finalValues(c, "final_contains")).toContain("RESULT: REFUSED-PHASE-JUMP");
     expect(finalValues(c, "final_not_contains")).toContain("RESULT: PR-OPENED-EARLY");
     expect(agentsMdOf(c)).toContain("an unfinished close forbids jumping ahead to PR delivery");
-    // recorded close state is a fixture file the resume turn must read
+ // recorded close state is a fixture file the resume turn must read
     expect(c.fixture.files.some((f) => f.path === "iteration/state.md")).toBe(true);
   });
 
@@ -808,7 +807,7 @@ describe("closure checker red fixtures (synthetic root)", () => {
       join(fixtureRoot, "references/_shared/leaf-executor-core.md"),
       "# Leaf Executor Core\n\n**Read `mstar-harness-core` first.**\n\n## Git NEVER (repo writes)\n\nnever\n\n## Plan & Documentation Rules\n\nrules\n\n## Non-Recursive Dispatch Rule (shared shape)\n\nrule\n\n## Shared anti-recursion NEVER\n\nnever\n",
     );
-    // the leaf's core-first edge needs the sibling skill to exist
+ // the leaf's core-first edge needs the sibling skill to exist
     mkdirSync(join(fixtureRoot, "../mstar-harness-core"), { recursive: true });
     writeFileSync(join(fixtureRoot, "../mstar-harness-core/SKILL.md"), "# core\n");
   }
@@ -826,7 +825,7 @@ describe("closure checker red fixtures (synthetic root)", () => {
     const report = buildGraph(fixtureRoot);
     expect(report.missingTargets.length).toBe(1);
     expect(report.missingTargets[0]).toContain("references/beta.md");
-    // restore for the next fixture
+ // restore for the next fixture
     writeFileSync(join(fixtureRoot, "references/beta.md"), "Role beta. Shared blocks -> `references/_shared/leaf-executor-core.md`\n");
   });
 
@@ -835,7 +834,7 @@ describe("closure checker red fixtures (synthetic root)", () => {
     writeFileSync(leafPath, read(leafPath).replace("## Shared anti-recursion NEVER\n", "## Renamed Section\n"));
     const report = buildGraph(fixtureRoot);
     expect(report.missingAnchors.some((a) => a.includes("Shared anti-recursion NEVER"))).toBe(true);
-    // restore
+ // restore
     writeFileSync(
       leafPath,
       read(leafPath).replace("## Renamed Section\n", "## Shared anti-recursion NEVER\n"),
@@ -861,7 +860,7 @@ describe("closure checker red fixtures (synthetic root)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 (freeze)
+// A5 ablation inventory (frozen)
 // ---------------------------------------------------------------------------
 
 type AblationRule = {
@@ -880,8 +879,8 @@ type AblationRule = {
   beforeSha256: string;
   afterSha256: string | null;
   /** Task 2 re-freeze: true when the batch removed the row's anchor text from
-   * the owner — the anchor's ABSENCE is then asserted (removal is proven,
-   * not assumed). Absent/undefined = the anchor must still be present. */
+ * the owner — the anchor's ABSENCE is then asserted (removal is proven,
+ * not assumed). Absent/undefined = the anchor must still be present. */
   removedFromSource?: boolean;
   restore: string;
   notes: string;
@@ -932,7 +931,7 @@ function gitObjectType(sha: string): string {
   return execFileSync("git", ["-C", REPO_ROOT, "cat-file", "-t", sha], { encoding: "utf8" }).trim();
 }
 
-describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 (freeze)", () => {
+describe("A5 ablation inventory (frozen)", () => {
   test("inventory parses: schema, enums, and per-row field contract", () => {
     expect(ablations.schemaVersion).toBe(1);
     expect(ablations.rules.length).toBeGreaterThanOrEqual(30);
@@ -944,11 +943,11 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
       expect(rule.sourceRef.anchor.length > 0, `${rule.ruleId} anchor`).toBe(true);
       expect(rule.beforeSha256).toMatch(/^[0-9a-f]{64}$/);
       expect(rule.restore.length > 0, `${rule.ruleId} restore`).toBe(true);
-      // Task 2 re-freeze: every owner file changed in the batch set, so every
-      // row carries a filled afterSha256 (current-bytes match is asserted by
-      // the re-freeze pin test below).
+ // re-freeze: every owner file changed in the batch set, so every
+ // row carries a filled afterSha256 (current-bytes match is asserted by
+ // the re-freeze pin test below).
       expect(rule.afterSha256, `${rule.ruleId} afterSha256 filled at re-freeze`).toMatch(/^[0-9a-f]{64}$/);
-      // A non-keep row must name a concrete removal basis (never an enforcement argument).
+ // A non-keep row must name a concrete removal basis (never an enforcement argument).
       if (rule.disposition !== "keep") {
         expect(REMOVAL_BASES.has(rule.removalBasis ?? ""), `${rule.ruleId} removalBasis`).toBe(true);
       } else {
@@ -965,14 +964,14 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
     for (const rule of ablations.rules) {
       const abs = join(REPO_ROOT, rule.owner);
       expect(existsSync(abs), `${rule.ruleId} owner ${rule.owner}`).toBe(true);
-      // Freeze provenance: the Task 1 pin must equal the owner blob at the
-      // recorded BASE commit — verified from git history, not the working tree.
+ // Freeze provenance: the Task 1 pin must equal the owner blob at the
+ // recorded BASE commit — verified from git history, not the working tree.
       expect(sha256OfGitBlob(TASK1_BASE_SHA, rule.owner), `${rule.ruleId} beforeSha256 pins the BASE blob of ${rule.owner}`).toBe(rule.beforeSha256);
-      // Re-freeze: afterSha256 matches the current owner bytes.
+ // Re-freeze: afterSha256 matches the current owner bytes.
       expect(rule.afterSha256, `${rule.ruleId} afterSha256 matches current bytes`).toBe(sha256Of(abs));
-      // Anchor contract: rows marked removedFromSource must REALLY have lost
-      // their anchor text (the batch happened); every other row's anchor must
-      // still be present.
+ // Anchor contract: rows marked removedFromSource must REALLY have lost
+ // their anchor text (the batch happened); every other row's anchor must
+ // still be present.
       const present = ownerTextOf(rule).includes(rule.sourceRef.anchor);
       if (rule.removedFromSource) {
         expect(present, `${rule.ruleId} anchor "${rule.sourceRef.anchor}" removed from ${rule.owner}`).toBe(false);
@@ -992,25 +991,25 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
 
   test("no unsupported auto-blocking deletion: enforcement claims never justify removals and carry honest limitations", () => {
     for (const rule of ablations.rules) {
-      // A removal's basis must be duplication or a teaching/onboarding hypothesis —
-      // never an enforcement argument ("mechanically covered" is not enough while
-      // efficacy evidence is blocked and coverage is explicit-check at best).
+ // A removal's basis must be duplication or a teaching/onboarding hypothesis —
+ // never an enforcement argument ("mechanically covered" is not enough while
+ // efficacy evidence is blocked and coverage is explicit-check at best).
       if (rule.disposition !== "keep") {
         expect(rule.removalBasis === "duplicated-rule-owner-exists" || rule.removalBasis === "model-native-teaching-hypothesis" || rule.removalBasis === "onboarding-only-hypothesis", `${rule.ruleId} removal basis is not an enforcement argument`).toBe(true);
       }
-      // Any auto-blocking claim must state its limitations (dsh-only, opt-in,
-      // declared-caller, or no-refusal-channel) so no row reads as blanket enforcement.
+ // Any auto-blocking claim must state its limitations (dsh-only, opt-in,
+ // declared-caller, or no-refusal-channel) so no row reads as blanket enforcement.
       if (rule.enforcementClaim === "auto-blocking") {
         expect(rule.enforcementLimitations, `${rule.ruleId} auto-blocking requires stated limitations`).toMatch(/dsh|opt-in|declared|refusal|unavailable/i);
       }
-      // No row may claim behavioral/causal evidence: the arm-materialization
-      // limitation forbids it (SP2-QA adjudication).
+ // No row may claim behavioral/causal evidence: the arm-materialization
+ // limitation forbids it (SP2-QA adjudication).
       expect(rule.notes, `${rule.ruleId} no causal-effect language in notes`).not.toMatch(/causally established|behavioral effect proven|proven token savings/i);
     }
-    // And at least the four SP2-verified coverage anchors used above exist as
-    // identifiers this inventory consumes (done-ownership, engine-absent,
-    // dispatch x2, skill-lint x2) — resolution to the control coverage map is
-    // recorded in the plan report, not via a gitignored path in tracked files.
+ // And at least the four SP2-verified coverage anchors used above exist as
+ // identifiers this inventory consumes (done-ownership, engine-absent,
+ // dispatch x2, skill-lint x2) — resolution to the control coverage map is
+ // recorded in the plan report, not via a gitignored path in tracked files.
     const used = new Set(ablations.rules.flatMap((r) => r.coverageRefs));
     for (const expected of ["done-ownership.authority", "engine-absent.fallback-integrity", "dispatch-authorization.delegation-boundary", "dispatch-authorization.caller-identity", "skill-lint.authoring-default", "skill-lint.write-path-authoring-default"]) {
       expect(used.has(expected), `coverageRef ${expected} consumed`).toBe(true);
@@ -1019,8 +1018,8 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
 
   test("consolidate rows name a surviving keep-row owner in the same inventory", () => {
     const byId = new Map(ablations.rules.map((r) => [r.ruleId, r]));
-    // Outcome dispositions keep the owner-survival check active: an adopted
-    // consolidation must still point at a row that exists and stays a keep.
+ // Outcome dispositions keep the owner-survival check active: an adopted
+ // consolidation must still point at a row that exists and stays a keep.
     for (const rule of ablations.rules.filter((r) => r.disposition === "consolidate" || (r.disposition === "adopted-keep" && /Surviving owner: /.test(r.notes)))) {
       expect(rule.notes, `${rule.ruleId} names its owner`).toMatch(/Surviving owner: /);
       const ownerMention = /Surviving owner: ([a-z][a-z0-9.-]+)/.exec(rule.notes);
@@ -1043,20 +1042,20 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
   });
 
   test("AC2 pins: #153/#156/#167 user policies are present in the CURRENT subject files (not accidentally reverted)", () => {
-    // #167: core engineering rules section + the coding-behavior link line.
+ // #167: core engineering rules section + the coding-behavior link line.
     expect(coreText.includes("## 核心研发守则")).toBe(true);
     expect(coreText.includes("Do not preserve backward compatibility.")).toBe(true);
     const codingText = read(join(SKILLS_DIR, "mstar-coding-behavior/SKILL.md"));
     expect(codingText.includes("**Upstream invariants**: the global engineering rules live in `mstar-harness-core`（核心研发守则）")).toBe(true);
-    // #156: caller-scoped engine-scope blockquote in dispatch-gates.
+ // #156: caller-scoped engine-scope blockquote in dispatch-gates.
     const dispatchText = read(join(SKILLS_DIR, "mstar-dispatch-gates/SKILL.md"));
     expect(dispatchText.includes("> **Engine 执行范围（caller-scoped，#156）**")).toBe(true);
-    // #153's payload lives in role references outside the Task-1 subject files;
-    // the policyProtection block records that non-overlap explicitly.
+ // #153's payload lives in role references outside the Task-1 subject files;
+ // the policyProtection block records that non-overlap explicitly.
     const p153 = ablations.policyProtection.refs.find((r) => r.ref === "#153");
     expect(p153, "#153 recorded in policyProtection").toBeDefined();
     expect(p153!.protectedInSubjectFiles).toContain("outside this plan's Files allowlist");
-    // #144/#109: delivered preset semantics survive in their post-SP2 form.
+ // #144/#109: delivered preset semantics survive in their post-SP2 form.
     const p144 = ablations.policyProtection.refs.find((r) => r.ref === "#144");
     expect(p144, "#144 recorded in policyProtection").toBeDefined();
   });
@@ -1066,20 +1065,20 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
     for (const rule of ablations.rules) counts[rule.disposition] += 1;
     expect(counts.keep).toBeGreaterThanOrEqual(counts.experiment + counts.consolidate + counts.delete + counts["adopted-keep"] + counts["restored-keep"]);
     expect(counts.delete, "freeze uses experiments/consolidations, not outright deletes").toBe(0);
-    // Negative constraints keep an authoritative home: the shared leaf NEVER
-    // blocks are keep rows while the dispatch-gates duplicate is the experiment.
+ // Negative constraints keep an authoritative home: the shared leaf NEVER
+ // blocks are keep rows while the dispatch-gates duplicate is the experiment.
     const byId = new Map(ablations.rules.map((r) => [r.ruleId, r]));
     expect(byId.get("leaf.anti-recursion-never")!.disposition).toBe("keep");
     expect(byId.get("leaf.non-recursive-shared")!.disposition).toBe("keep");
-    // Task 2 outcome: the dispatch-gates duplicate batch was applied and
-    // adopted at observed grade (zero new critical, no normal-success
-    // regression in the paired dev run); the shared owner rows stay keeps.
+ // outcome: the dispatch-gates duplicate batch was applied and
+ // adopted at observed grade (zero new critical, no normal-success
+ // regression in the paired dev run); the shared owner rows stay keeps.
     expect(byId.get("dispatch.leaf-anti-recursion")!.disposition).toBe("adopted-keep");
-    // User-policy rows are untouchable keeps.
+ // User-policy rows are untouchable keeps.
     expect(byId.get("core.engineering-rules")!.disposition).toBe("keep");
     expect(byId.get("coding.upstream-invariants")!.disposition).toBe("keep");
     expect(byId.get("dispatch.caller-scope-156")!.disposition).toBe("keep");
-    // Engine-absent fallback stays (AC3).
+ // Engine-absent fallback stays (AC3).
     expect(byId.get("core.engine-legacy-conditional")!.disposition).toBe("keep");
   });
 
@@ -1088,18 +1087,18 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
     for (const rule of ablations.rules) {
       if (rule.disposition === "adopted-keep" || rule.disposition === "restored-keep") {
         outcomes[rule.disposition] += 1;
-        // Every outcome row keeps its audit trail: the applied removal basis,
-        // the restore record, and the observed-grade outcome note.
+ // Every outcome row keeps its audit trail: the applied removal basis,
+ // the restore record, and the observed-grade outcome note.
         expect(REMOVAL_BASES.has(rule.removalBasis ?? ""), `${rule.ruleId} removal basis retained`).toBe(true);
         expect(rule.restore.length > 0, `${rule.ruleId} restore record retained`).toBe(true);
         expect(rule.notes, `${rule.ruleId} outcome note`).toMatch(/Task 2 outcome: (adopted|restored)-keep/);
       }
-      // No causal-effect language anywhere, outcomes included.
+ // No causal-effect language anywhere, outcomes included.
       expect(rule.notes, `${rule.ruleId} no causal-effect language in outcome`).not.toMatch(/causally established|behavioral effect proven|proven token savings/i);
     }
     expect(outcomes["adopted-keep"], "all applied batches recorded an outcome").toBeGreaterThanOrEqual(1);
     expect(outcomes["adopted-keep"] + outcomes["restored-keep"], "every experiment/consolidation reached an outcome").toBe(8);
-    // The freeze record carries the observed-gate evidence block.
+ // The freeze record carries the observed-gate evidence block.
     const refreeze = (ablations as unknown as { task2Refreeze?: { observedOutcome?: { result?: string; evidence?: { grades?: Record<string, unknown>; criticalClassFails?: string } } } }).task2Refreeze;
     expect(refreeze?.observedOutcome?.result, "refreeze records the observed gate result").toMatch(/adopted/);
     expect(refreeze?.observedOutcome?.evidence?.grades, "refreeze records per-arm observed grades").toBeDefined();

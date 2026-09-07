@@ -1,6 +1,5 @@
 /**
- * Native-first role-persona delivery (plan `20260831-dsh-alpha2-optional-fallbacks`
- * Task 3): a role-matched subagent start merges the persona into the request's
+ * Native-first role-persona delivery : a role-matched subagent start merges the persona into the request's
  * NATIVE `persona` slot (`@deepseek-ai/dsh-subagent`
  * `SubagentStartRequest.persona`) — the additive `mstar:role-persona`
  * system-prompt section is gone. Native semantics: the request persona
@@ -37,7 +36,7 @@
  * parsers the dispatch gate uses (`assignmentHeaderRegion` +
  * `parseAssignmentFields`) — over the start request's prompt text (the
  * `ContentBlock[]` the child receives as its first user message). Persona
- * lookup (plan `20260815-dsh-fallbacks-personas` Task 3) is the single
+ * lookup  is the single
  * {@link personaFor} surface — `Config.rolePersonas[executeAs]` →
  * `harness-agents/` mirror default → skip (never gated on `roleMap` or on
  * the fallbacks mounted state: persona delivery is fallbacks-independent).
@@ -415,7 +414,7 @@ function log(level: RolePersonaLogLevel, message: string): void {
   try {
     rolePersonaLogSink(level, message)
   } catch {
-    // Never-throws invariant (plan QC F-002): a throwing log sink must not
+    // Never-throws invariant : a throwing log sink must not
     // escape the channel — the subagent start is never affected.
   }
 }

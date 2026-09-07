@@ -9,8 +9,8 @@ iteration_base_branch: main
 target_branch: main
 owner: "some one"
 plans:
-  - plan-20260808-dsh-seams-bundle
-  - plan-20260808-other
+  - plan-00000808-dsh-seams-bundle
+  - plan-00000808-other
 ---
 
 # v2.1.0 Delivery Compass

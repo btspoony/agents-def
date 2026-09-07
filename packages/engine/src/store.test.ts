@@ -2,32 +2,28 @@
  * Engine artifact store — ArtifactStore contract + FsStore + injection.
  *
  * Spec sources (each test cites the section it enforces; roadmap §8.5 C2
- * — engine unit tests cite the source section as spec):
- * - Contract + FsStore path table + key discipline + async-only store:
- *   `iter-20260827-cli-artifact-store` SP2 (iteration spec `artifact-store`)
- *   § Default FsStore (local IDE adapter) + § Architecture decisions
- *   1–5 (async-only, locks stay with callers, single path table, key
- *   discipline, default store resolution).
+ * — engine unit tests cover each contract area):
+ * - Contract + FsStore path table + key discipline + async-only store
+ * (async-only, locks stay with callers, single path table, key
+ * discipline, default store resolution).
  * - Review path table (plan-shaped → `{HARNESS_DIR}/sdd/<key>/review/
- *   report.json`, other keys → `{HARNESS_DIR}/sdd/_reviews/<key>.json`):
- *   SP2 § Default FsStore — product-locked, shared with SP3.
- * - `json` escape hatch (absolute path only; reject `..` / non-absolute):
- *   SP2 § Default FsStore — not a user-facing AC.
+ * report.json`, other keys → `{HARNESS_DIR}/sdd/_reviews/<key>.json`) —
+ * product-locked.
+ * - `json` escape hatch (absolute path only; reject `..` / non-absolute)
+ * — not a user-facing acceptance criterion.
  * - Default store resolution (`setArtifactStore(undefined)` resets; a
- *   `null` harness-dir resolution throws fail-loud, never a silent cwd
- *   fallback): SP2 § Architecture decisions 5.
+ * `null` harness-dir resolution throws fail-loud, never a silent cwd
+ * fallback).
  * - Module loader (`loadStoreModule` — named export / default factory /
- *   default object; URI-scheme rejection before import; missing file and
- *   non-store shape throw): SP2 § Injection 2–3 + SP2-AC6 / SP2-AC7.
+ * default object; URI-scheme rejection before import; missing file and
+ * non-store shape throw).
  * - `put` schema guard (throw on `doc.schema !== undefined`, canonical
- *   message; `payload.schema` unaffected): `iter-20260828-store-completeness`
- *   spec `store-contract-completion` § D3.
+ * message; `payload.schema` unaffected).
  * - `list?` interface + FsStore enumeration (exists-conditional status,
- *   snapshot/residuals dir scans through the single path table, review
- *   union with the one PLAN_SHAPED_KEY_RE detector, json non-enumerable,
- *   `[]` on missing backing, sorted ascending, listed keys round-trip
- *   through `get`): `iter-20260828-store-completeness` spec
- *   `store-contract-completion` § D4 + § Architecture lock 4.
+ * snapshot/residuals dir scans through the single path table, review
+ * union with the one PLAN_SHAPED_KEY_RE detector, json non-enumerable,
+ * `[]` on missing backing, sorted ascending, listed keys round-trip
+ * through `get`).
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -52,7 +48,7 @@ function tmpRoot(prefix: string): string {
 
 /**
  * Run `fn` with `MSTAR_HARNESS_DIR` set to `value` (undefined deletes it),
- * restoring the previous env in all paths. Caller rule (qc1 S-003): `fn`
+ * restoring the previous env in all paths. Caller rule : `fn`
  * must read `process.env` synchronously before its first `await` — the env
  * window closes as soon as `fn` returns, which for an async callback is
  * immediately.
@@ -69,7 +65,7 @@ function withEnv<T>(value: string | undefined, fn: () => T): T {
 	}
 }
 
-/** Recording store for the injection tests (SP2-AC3 pattern — no D1). */
+/** Recording store for the injection tests (recording-store pattern). */
 function recordingStore(): ArtifactStore & { puts: ArtifactDoc[] } {
   const puts: ArtifactDoc[] = [];
   return {
@@ -94,7 +90,7 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// FsStore path mapping — SP2 § Default FsStore (single kind→path table)
+// FsStore path mapping (single kind→path table)
 // ---------------------------------------------------------------------------
 
 describe("createFsStore path mapping", () => {
@@ -180,7 +176,7 @@ describe("createFsStore path mapping", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Round-trip — SP2-AC2 (put then get returns the payload; missing → undefined)
+// Round-trip (put then get returns the payload; missing → undefined)
 // ---------------------------------------------------------------------------
 
 describe("FsStore round-trip", () => {
@@ -196,9 +192,9 @@ describe("FsStore round-trip", () => {
       await store.put({ kind: "snapshot", key: "wf-1", payload: snapshot });
       await store.put({ kind: "residuals", key: "proj-1", payload: residuals });
       await store.put({ kind: "review", key: "20260827-artifact-store", payload: review });
-      // Intermediate variables: a nested `expect(await store.get(...))` lets
-      // TS infer the get<T> type parameter from the expect overload (never)
-      // and narrows the actual to undefined — assign first, then assert.
+ // Intermediate variables: a nested `expect(await store.get(...))` lets
+ // TS infer the get<T> type parameter from the expect overload (never)
+ // and narrows the actual to undefined — assign first, then assert.
       const gotStatus = await store.get({ kind: "status", key: "root" });
       const gotSnapshot = await store.get({ kind: "snapshot", key: "wf-1" });
       const gotResiduals = await store.get({ kind: "residuals", key: "proj-1" });
@@ -247,7 +243,7 @@ describe("FsStore round-trip", () => {
       expect(await store.get({ kind: "status", key: "root" })).toBeDefined();
       await store.delete?.({ kind: "status", key: "root" });
       expect(await store.get({ kind: "status", key: "root" })).toBeUndefined();
-      // deleting a missing artifact is a no-op
+ // deleting a missing artifact is a no-op
       await store.delete?.({ kind: "status", key: "root" });
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -276,7 +272,7 @@ describe("FsStore schema guard (D3)", () => {
         schema: "mstar.review/v1",
       };
       await expect(store.put(doc)).rejects.toThrow(SCHEMA_GUARD_MESSAGE);
-      // Fail-loud means refuse-before-write: nothing may land on disk.
+ // Fail-loud means refuse-before-write: nothing may land on disk.
       expect(existsSync(resolveArtifactPath(root, doc))).toBe(false);
       expect(await store.get({ kind: "review", key: "r-1" })).toBeUndefined();
     } finally {
@@ -341,10 +337,10 @@ describe("FsStore list (D4)", () => {
       expect(await store.list!("snapshot")).toEqual([]);
       await store.put({ kind: "snapshot", key: "wf-2", payload: { id: "wf-2" } });
       await store.put({ kind: "snapshot", key: "wf-10", payload: { id: "wf-10" } });
-      // Stray subdir without snapshot.json and a loose file: never listed.
+ // Stray subdir without snapshot.json and a loose file: never listed.
       mkdirSync(join(root, "workflows", "wf-empty"));
       writeFileSync(join(root, "workflows", "stray.json"), "{}", "utf8");
-      // Ascending means lexicographic by key (wf-10 < wf-2), never numeric.
+ // Ascending means lexicographic by key (wf-10 < wf-2), never numeric.
       expect(await store.list!("snapshot")).toEqual([
         { kind: "snapshot", key: "wf-10" },
         { kind: "snapshot", key: "wf-2" },
@@ -378,9 +374,9 @@ describe("FsStore list (D4)", () => {
       expect(await store.list!("review")).toEqual([]); // missing sdd backing
       await store.put({ kind: "review", key: "review-inline", payload: { verdict: "approve" } });
       await store.put({ kind: "review", key: "20260828-store-engine", payload: { verdict: "approve" } });
-      // Plan-shaped dir without report.json: not listed (no backing).
+ // Plan-shaped dir without report.json: not listed (no backing).
       mkdirSync(join(root, "sdd", "20260828-empty-plan"), { recursive: true });
-      // Non-plan-shaped dir directly under sdd: not part of the union.
+ // Non-plan-shaped dir directly under sdd: not part of the union.
       mkdirSync(join(root, "sdd", "scratch"));
       expect(await store.list!("review")).toEqual([
         { kind: "review", key: "20260828-store-engine" },
@@ -397,7 +393,7 @@ describe("FsStore list (D4)", () => {
       const store = createFsStore(root);
       mkdirSync(join(root, "sdd", "_reviews"), { recursive: true });
       writeFileSync(join(root, "sdd", "_reviews", "20260828-orphan.json"), "{}", "utf8");
-      // Empty case: existing but non-qualifying backing → [].
+ // Empty case: existing but non-qualifying backing → [].
       expect(await store.list!("review")).toEqual([]);
       await store.put({ kind: "review", key: "20260828-orphan", payload: { verdict: "approve" } });
       expect(await store.list!("review")).toEqual([{ kind: "review", key: "20260828-orphan" }]);
@@ -406,14 +402,14 @@ describe("FsStore list (D4)", () => {
     }
   });
 
-  test("snapshot: a stray unsafe dir name is skipped without throwing, never advertised (qc1-S/qc3-S)", async () => {
+  test("snapshot: a stray unsafe dir name is skipped without throwing, never advertised", async () => {
     const root = tmpRoot("store-list-unsafe-dir-");
     try {
       const store = createFsStore(root);
       await store.put({ kind: "snapshot", key: "wf-1", payload: { id: "wf-1" } });
-      // Unsafe name (space) WITH a backing snapshot.json: skipped for the
-      // name itself — a get on such a key would throw, so list must not
-      // advertise it (and must not throw either).
+ // Unsafe name (space) WITH a backing snapshot.json: skipped for the
+ // name itself — a get on such a key would throw, so list must not
+ // advertise it (and must not throw either).
       mkdirSync(join(root, "workflows", "bad name"), { recursive: true });
       writeFileSync(join(root, "workflows", "bad name", "snapshot.json"), "{}", "utf8");
       expect(await store.list!("snapshot")).toEqual([{ kind: "snapshot", key: "wf-1" }]);
@@ -422,12 +418,12 @@ describe("FsStore list (D4)", () => {
     }
   });
 
-  test("review: an unsafe _reviews filename is skipped without throwing, never advertised (qc1-S/qc3-S)", async () => {
+  test("review: an unsafe _reviews filename is skipped without throwing, never advertised", async () => {
     const root = tmpRoot("store-list-unsafe-review-");
     try {
       const store = createFsStore(root);
       await store.put({ kind: "review", key: "review-inline", payload: { verdict: "approve" } });
-      // Garbage flat filename: advertised pre-fix, then get threw.
+ // Garbage flat filename: advertised pre-fix, then get threw.
       writeFileSync(join(root, "sdd", "_reviews", "bad name.json"), "{}", "utf8");
       expect(await store.list!("review")).toEqual([{ kind: "review", key: "review-inline" }]);
     } finally {
@@ -452,9 +448,9 @@ describe("FsStore list (D4)", () => {
       await store.put({ kind: "review", key: "review-inline", payload: payloads.review });
       for (const kind of ["status", "snapshot", "residuals", "review"] as const) {
         for (const ref of await store.list!(kind)) {
-          // Intermediate variable: a nested `expect(await store.get(...))` lets
-          // TS infer the get<T> type parameter from the expect overload (never)
-          // — assign first, then assert.
+ // Intermediate variable: a nested `expect(await store.get(...))` lets
+ // TS infer the get<T> type parameter from the expect overload (never)
+ // — assign first, then assert.
           const got = await store.get(ref);
           expect(got).toEqual(payloads[kind]);
         }
@@ -478,20 +474,20 @@ describe("FsStore list (D4)", () => {
     const root = tmpRoot("store-list-race-");
     try {
       const store = createFsStore(root);
-      // Deterministic stand-in for the existsSync→readdirSync race: a
-      // regular file where the backing dir is expected makes readdirSync
-      // throw ENOTDIR — the same "path gone" class as ENOENT when the dir
-      // vanishes between check and read. Pre-fix list threw; post-fix [].
+ // Deterministic stand-in for the existsSync→readdirSync race: a
+ // regular file where the backing dir is expected makes readdirSync
+ // throw ENOTDIR — the same "path gone" class as ENOENT when the dir
+ // vanishes between check and read. Pre-fix list threw; post-fix [].
       writeFileSync(join(root, "workflows"), "not a dir", "utf8");
       expect(await store.list!("snapshot")).toEqual([]);
       writeFileSync(join(root, "projects"), "not a dir", "utf8");
       expect(await store.list!("residuals")).toEqual([]);
-      // Same for the review union: sdd/_reviews as a file.
+ // Same for the review union: sdd/_reviews as a file.
       mkdirSync(join(root, "sdd"), { recursive: true });
       writeFileSync(join(root, "sdd", "_reviews"), "not a dir", "utf8");
       expect(await store.list!("review")).toEqual([]);
-      // ENOENT proper: the whole backing tree removed after store
-      // creation — readdirSync throws ENOENT with no existsSync pre-check.
+ // ENOENT proper: the whole backing tree removed after store
+ // creation — readdirSync throws ENOENT with no existsSync pre-check.
       rmSync(root, { recursive: true, force: true });
       expect(await store.list!("snapshot")).toEqual([]);
       expect(await store.list!("review")).toEqual([]);
@@ -511,7 +507,7 @@ describe("FsStore list (D4)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Key discipline — SP2 § Architecture decisions 4
+// Key discipline
 // ---------------------------------------------------------------------------
 
 describe("FsStore key discipline", () => {
@@ -542,7 +538,7 @@ describe("FsStore key discipline", () => {
 });
 
 // ---------------------------------------------------------------------------
-// json escape hatch — SP2 § Default FsStore (absolute path; reject .. / non-absolute)
+// json escape hatch (absolute path; reject .. / non-absolute)
 // ---------------------------------------------------------------------------
 
 describe("FsStore json escape hatch", () => {
@@ -576,7 +572,7 @@ describe("FsStore json escape hatch", () => {
     const root = tmpRoot("store-json-dotdot-");
     try {
       const store = createFsStore(root);
-      // join() would normalize the ".." away — build the key literally.
+ // join() would normalize the ".." away — build the key literally.
       await expect(store.put({ kind: "json", key: `${root}/../escape.json`, payload: {} })).rejects.toThrow(
         /must not contain "\.\." segments/,
       );
@@ -587,7 +583,7 @@ describe("FsStore json escape hatch", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Injection — SP2 § Injection 1 + § Architecture decisions 5
+// Injection
 // ---------------------------------------------------------------------------
 
 describe("setArtifactStore / getArtifactStore", () => {
@@ -642,10 +638,10 @@ describe("setArtifactStore / getArtifactStore", () => {
 });
 
 // ---------------------------------------------------------------------------
-// assertFsStorePath — fail-loud path agreement (qc3 F-201)
+// assertFsStorePath — fail-loud path agreement 
 // ---------------------------------------------------------------------------
 
-describe("assertFsStorePath - fail-loud path agreement (qc3 F-201)", () => {
+describe("assertFsStorePath - fail-loud path agreement ", () => {
   test("FsStore with the store-resolved path equal to the expected path passes", () => {
     const root = tmpRoot("store-assert-ok-");
     try {
@@ -681,7 +677,7 @@ describe("assertFsStorePath - fail-loud path agreement (qc3 F-201)", () => {
     expect(() => assertFsStorePath(recordingStore(), { kind: "status", key: "root" }, "/anywhere/status.json")).not.toThrow();
   });
 });
-// loadStoreModule — SP2 § Injection 2–3 + SP2-AC6 / SP2-AC7 (trust boundary)
+// loadStoreModule (trust boundary)
 // ---------------------------------------------------------------------------
 
 describe("loadStoreModule", () => {
@@ -705,8 +701,8 @@ describe("loadStoreModule", () => {
       const store = await loadStoreModule(filePath);
       const payload = { version: 2, updated_at: "2026-08-27", workflows: [] };
       await store.put({ kind: "status", key: "root", payload });
-      // Intermediate variable: a nested `expect(await store.get(...))` lets
-      // TS infer get<T> from the expect overload (never) — assign first.
+ // Intermediate variable: a nested `expect(await store.get(...))` lets
+ // TS infer get<T> from the expect overload (never) — assign first.
       const gotStatus = await store.get({ kind: "status", key: "root" });
       expect(gotStatus).toEqual(payload);
     } finally {

@@ -38,7 +38,7 @@ import type { GateResult, ValidationResult, Severity } from "./core.js";
 /**
  * Git probe timeout — bounded so a hung git (dead NFS mount, pathological
  * repo, stray hook) cannot block `mstar worktree check` or engine callers
- * indefinitely (qc3 F-4). Default 10s; override via the
+ * indefinitely . Default 10s; override via the
  * `MSTAR_GIT_PROBE_TIMEOUT_MS` env var or a per-call `timeoutMs`.
  */
 const DEFAULT_PROBE_TIMEOUT_MS = 10_000;
@@ -92,8 +92,7 @@ export type BranchProbeOptions = {
   /**
    * Git probe timeout in ms (default 10s; `MSTAR_GIT_PROBE_TIMEOUT_MS` env
    * overrides; per-call value wins). On timeout the probe fails closed into
-   * `branch-probe-failed` — never hangs, never guesses a branch (qc3 F-4).
-   */
+   * `branch-probe-failed` — never hangs, never guesses a branch.   */
   timeoutMs?: number;
 };
 
@@ -146,7 +145,7 @@ function probeBranch(worktreePath: string, opts: BranchProbeOptions): BranchProb
   } catch (err) {
     const e = err as { message?: string; stderr?: string | Buffer; status?: number; killed?: boolean; signal?: string };
     // execFileSync throws with killed=true + SIGTERM when the timeout fires —
-    // fail closed with an explicit timeout error (qc3 F-4).
+        // fail closed with an explicit timeout error.
     if (e.killed === true || e.signal !== undefined) {
       return { error: `git probe timed out after ${timeout}ms (killed by ${e.signal ?? "SIGTERM"})` };
     }
@@ -195,7 +194,7 @@ export function l1PreDispatchCheck(input: L1PreDispatchInput, opts: BranchProbeO
       ),
     );
   }
-  // Normalized comparison (qc2 S-4): trailing slashes / `.` / `..` aliases
+  // Normalized comparison : trailing slashes / `.` / `..` aliases
   // of the same directory are the same path — resolve before string equality.
   if (controlWorktreePath !== "" && leaseWorktreePath !== "" && resolve(controlWorktreePath) === resolve(leaseWorktreePath)) {
     violations.push(
@@ -291,7 +290,7 @@ export function l2PreDispatchCheck(input: L2PreDispatchInput, opts: BranchProbeO
       );
       return;
     }
-    // Normalized collision check (qc2 S-4): '/a/b/' and '/a/b/../b' alias the
+    // Normalized collision check : '/a/b/' and '/a/b/../b' alias the
     // same directory as '/a/b' — resolve before the seen-set comparison.
     const normalized = resolve(track.worktreePath);
     if (seenPaths.has(normalized)) {
@@ -350,7 +349,7 @@ export function l2PreDispatchCheck(input: L2PreDispatchInput, opts: BranchProbeO
  */
 export function assertControlVsFeaturePath(controlWorktreePath: string, featureWorktreePath: string): GateResult {
   const violations: ValidationResult[] = [];
-  // Normalized comparison (qc2 S-4): trailing slashes / `.` / `..` aliases
+  // Normalized comparison : trailing slashes / `.` / `..` aliases
   // of the same directory are the same path; both-empty stays a match
   // (nothing recorded, per the lease validator contract).
   const samePath =

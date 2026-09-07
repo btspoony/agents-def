@@ -1,12 +1,12 @@
 /**
  * Task 5 — mstar-engine-status catalog at agent/pre-step (plan
- * 20260808-dsh-host-adapter), extended by plan
- * `20260811-panel-f4-timeliness` Task 2: the catalog TTL invalidation — a
+ * ), extended by plan
+ *  Task 2: the catalog TTL invalidation — a
  * ledger change (recordDispatch) deletes the workspace cache entry so the
  * next pre-step rebuilds fresh sources and the digest re-emits the changed
  * row within the REAL TTL (AC-2); a non-record out-of-band ledger write
  * stays TTL-bounded (cache-hit behavior unchanged — only the record path
- * invalidates). Extended by plan `20260811-panel-f4-iteration-zone` Task 1:
+ * invalidates). Extended by:
  * the optional `iteration.compassStatus` surface (steering compass
  * frontmatter `status` — active/locked present, non-steering status
  * omits the whole iteration row; spec panel-f4 §5 D5).
@@ -18,7 +18,7 @@
  * with the terminal `next()` standing in for the loop's default step decision
  * (`{ kind: 'enter', messages: payload.messages }`).
  *
- * Contract under test (brief + plan Task 5): the listener is advisory — it
+ * Contract under test (brief + : the listener is advisory — it
  * MUST call `next()` and build on the delegated decision; it never returns
  * `reject` (would block the step) and never replaces the delegated messages
  * (would drop them). It appends one `catalog`-form MessageSource named
@@ -27,9 +27,9 @@
  * compass enforcement mode (`resolveCompassEnforcement`), the harness dir,
  * — so the model-visible row is reconstructable from the session log
  * (MessageSource form; model-visible ⟺ logged). The watermark is
- * boot/workspace-resolved (qc3 W-002) and the append is error-contained
- * (qc3 W-003); an aborted step returns the delegated decision unchanged
- * (qc2 S-001). Fiber disposal removes the listener (HMR-safe).
+ * boot/workspace-resolved  and the append is error-contained
+ * ; an aborted step returns the delegated decision unchanged
+ * . Fiber disposal removes the listener (HMR-safe).
  */
 import { describe, expect, it, afterEach } from 'bun:test'
 import { readFileSync } from 'node:fs'
@@ -129,7 +129,7 @@ describe('mstar-engine-status catalog — pre-step composition (REAL-composition
     const harnessDir = join(root, 'harness')
     await mkdir(harnessDir, { recursive: true })
     await seedHarness(harnessDir, {
-      'iterations/20260808-catalog-test/delivery-compass.md': [
+      'iterations/00000808-catalog-test/delivery-compass.md': [
         '---',
         'status: active',
         'enforcement: hard',
@@ -153,14 +153,14 @@ describe('mstar-engine-status catalog — pre-step composition (REAL-composition
     expect(text).toContain('enforcement: hard (compass)')
   })
 
-  it('keeps the watermark stable within the catalog TTL — a compass appearing after boot does not re-watermark immediately (qc3 W-002, TTL-bounded)', async () => {
+  it('keeps the watermark stable within the catalog TTL — a compass appearing after boot does not re-watermark immediately (TTL-bounded)', async () => {
     const app = booted = await bootApp()
     // The cache is built at boot for the explicit config; a compass that
     // appears after boot does not change the catalog row until the catalog
     // TTL expires (Config `catalogTtlMs`, default 60000 — the documented
     // staleness tradeoff for keeping disk I/O off the hot path).
     await seedHarness(app.harnessDir, {
-      'iterations/20260808-catalog-test/delivery-compass.md': '---\nstatus: active\nenforcement: hard\n---\n',
+      'iterations/00000808-catalog-test/delivery-compass.md': '---\nstatus: active\nenforcement: hard\n---\n',
     })
 
     const decision = await app.ctx.waterfall('agent/pre-step', stepPayload([]), defaultEnter([]))
@@ -227,7 +227,7 @@ describe('mstar-engine-status catalog — pre-step composition (REAL-composition
     expect(catalog?.source).toMatchObject({ kind: 'mstar-engine-status' })
   })
 
-  it('observes the step abort signal — an aborted step publishes no catalog and returns the delegated decision (qc2 S-001)', async () => {
+  it('observes the step abort signal — an aborted step publishes no catalog and returns the delegated decision ', async () => {
     const app = booted = await bootApp()
     const controller = new AbortController()
     controller.abort()
@@ -240,7 +240,7 @@ describe('mstar-engine-status catalog — pre-step composition (REAL-composition
     expect(decision).toEqual({ kind: 'enter', messages: [] })
   })
 
-  it('contains a third-party decider with non-iterable messages — the step still delegates unchanged (qc3 W-003)', async () => {
+  it('contains a third-party decider with non-iterable messages — the step still delegates unchanged ', async () => {
     const app = booted = await bootApp()
     // A downstream (third-party) pre-step decider returns an enter decision
     // whose messages are not iterable (cordis waterfalls do not validate
@@ -257,9 +257,9 @@ describe('mstar-engine-status catalog — pre-step composition (REAL-composition
   })
 })
 
-describe('mstar-engine-status catalog — iteration compassStatus (spec panel-f4 §5 D5, plan 20260811-panel-f4-iteration-zone Task 1)', () => {
+describe('mstar-engine-status catalog — iteration compassStatus (spec panel-f4 §5 D5)', () => {
   /** The iteration workflow id the steering compass registers. */
-  const ITERATION_WORKFLOW = 'iter-20260811-catalog-compass'
+  const ITERATION_WORKFLOW = 'iter-00000811-catalog-compass'
   /** Minimal v2 root status.json (one active iteration workflow). */
   const VALID_STATUS_JSON = v2Root([v2WorkflowEntry(ITERATION_WORKFLOW, 'iteration')])
 
@@ -267,7 +267,7 @@ describe('mstar-engine-status catalog — iteration compassStatus (spec panel-f4
   function compassDoc(status: 'active' | 'locked' | 'completed'): string {
     return [
       '---',
-      'iteration_id: iter-20260811-catalog-compass',
+      'iteration_id: iter-00000811-catalog-compass',
       'start_date: 2026-08-11',
       `status: ${status}`,
       'iteration_base_branch: dev-dsh',
@@ -287,7 +287,7 @@ describe('mstar-engine-status catalog — iteration compassStatus (spec panel-f4
     await seedHarness(harnessDir, {
       'status.json': VALID_STATUS_JSON,
       [`workflows/${ITERATION_WORKFLOW}/snapshot.json`]: v2Snapshot(ITERATION_WORKFLOW, { type: 'iteration' }),
-      'iterations/iter-20260811-catalog-compass/delivery-compass.md': compassDoc(status),
+      'iterations/iter-00000811-catalog-compass/delivery-compass.md': compassDoc(status),
     })
     const app = booted = await bootApp({ root })
     const decision = await app.ctx.waterfall('agent/pre-step', stepPayload([]), defaultEnter([]))
@@ -298,7 +298,7 @@ describe('mstar-engine-status catalog — iteration compassStatus (spec panel-f4
     const source = await sourceWithCompass('active')
     expect(source.iteration).toBeDefined()
     expect(source.iteration!.compassStatus).toBe('active')
-    expect(source.iteration!.iterationId).toBe('iter-20260811-catalog-compass')
+    expect(source.iteration!.iterationId).toBe('iter-00000811-catalog-compass')
     // The empty-plans fixture: engine emits phase-2-execute + ok:true during
     // Phase 1 — `iteration.active` is true, only the current step re-derives
     // from compassStatus (projection side).
@@ -321,7 +321,7 @@ describe('mstar-engine-status catalog — iteration compassStatus (spec panel-f4
   })
 })
 
-describe('mstar-engine-status catalog — plan iterationRefs (plan 20260813-panel-quick-fixes Task 2)', () => {
+describe('mstar-engine-status catalog — plan iterationRefs ', () => {
   /** Boot with a v2 tree whose selected snapshot plans carry (or omit) `metadata.iteration_refs`, then return the state section. */
   async function stateWithPlans(plans: unknown[]): Promise<NonNullable<MstarEngineStatusSource['state']>> {
     const root = await mkdtemp(join(tmpdir(), 'dsh-mstar-catalog-iterationrefs-'))
@@ -341,13 +341,13 @@ describe('mstar-engine-status catalog — plan iterationRefs (plan 20260813-pane
 
   it('projects each plan\'s metadata.iteration_refs into `iterationRefs` (string[]; missing → [])', async () => {
     const state = await stateWithPlans([
-      { id: 'plan-a', status: 'Done', metadata: { iteration_refs: ['iter-20260812', 'iter-20260813'] } },
+      { id: 'plan-a', status: 'Done', metadata: { iteration_refs: ['iter-00000812', 'iter-00000813'] } },
       { id: 'plan-b', status: 'Done', metadata: { iteration_refs: [] } },
       { id: 'plan-c', status: 'Done', metadata: {} },
       { id: 'plan-d', status: 'Done' },
     ])
     expect(state.plans.map((p) => p.iterationRefs)).toEqual([
-      ['iter-20260812', 'iter-20260813'],
+      ['iter-00000812', 'iter-00000813'],
       [],
       [],
       [],
@@ -363,7 +363,7 @@ describe('mstar-engine-status catalog — plan iterationRefs (plan 20260813-pane
   })
 })
 
-describe('catalog TTL invalidation — ledger change refreshes within the TTL (plan 20260811-panel-f4-timeliness Task 2)', () => {
+describe('catalog TTL invalidation — ledger change refreshes within the TTL ', () => {
   /** A minimal Assignment for the ledger record (role derives to `fullstack-dev`). */
   const ASSIGNMENT = `## Assignment
 
@@ -422,7 +422,7 @@ Implement the invalidation.
     expect(textOf(row)).toContain('by role: fullstack-dev 1')
   })
 
-  it('cross-workspace isolation: a ledger record in workspace A invalidates ONLY A — B\'s cached entry survives within the TTL (qc1 F-103 / qc2 F-003 / qc3 F-004 fix-wave)', async () => {
+  it('cross-workspace isolation: a ledger record in workspace A invalidates ONLY A — B\'s cached entry survives within the TTL ', async () => {
     // Two workspaces, each with its OWN probed harness root — no explicit
     // config, so each session cwd resolves its own `{HARNESS_DIR}` and its own
     // cache key (the session cwd) + reverse-map entry (D3: per-workspace
@@ -520,7 +520,7 @@ Implement the invalidation.
 })
 
 /* ===========================================================================
- * v3 per-lifecycle aggregation (plan 20260819-workflow-dsh-viz Task 1) —
+ * v3 per-lifecycle aggregation  —
  * the catalog row aggregates the SELECTED workflow lifecycle (compass
  * v3.0.0 § Catalog selection rule): active `workflows[]` first (multi-active
  * → first + a structured warning), else the latest terminal snapshot by
@@ -528,7 +528,7 @@ Implement the invalidation.
  * (the golden test pins the legacy-row shape).
  * ========================================================================== */
 
-describe('mstar-engine-status catalog — v3 per-lifecycle aggregation (plan 20260819-workflow-dsh-viz Task 1)', () => {
+describe('mstar-engine-status catalog — v3 per-lifecycle aggregation ', () => {
   /** The selected workflow id of the golden fixture. */
   const GOLDEN_WORKFLOW = 'wf-golden'
   /** The golden fixture's snapshot plans[] (legacy PlanRow shape verbatim). */
@@ -854,7 +854,7 @@ describe('mstar-engine-status catalog — v3 per-lifecycle aggregation (plan 202
   })
 })
 
-describe('mstar-engine-status catalog — state plans/leases join cap (plan 20260830-dsh-catalog-cap Task 2, spec D4)', () => {
+describe('mstar-engine-status catalog — state plans/leases join cap (spec D4)', () => {
   /** The pinned cap value (spec D1) — intentionally hardcoded, NOT imported,
    * so a drift of `CATALOG_STATE_JOIN_LIMIT` fails this matrix. */
   const CAP = 8

@@ -1,8 +1,8 @@
 /**
- * IterationTaskPage (spec panel-tabs §3, plan 20260811-panel-tabs-shell
- * Task 2) — the 任务迭代 tab: the SHARED IterationInfoSection (iteration
+ * IterationTaskPage (spec panel-tabs §3
+ * — the 任务迭代 tab: the SHARED IterationInfoSection (iteration
  * summary + the 5 horizontal iteration steps + branches — the same block the
- * agents tab renders, plan 20260812-panel-f5-design-system Task 8, user
+ * agents tab renders, user
  * 2026-08-12 feedback #4) above the full-width standard kanban. Replaces the
  * WorkflowCanvas zone dashboard on the tasks tab (WorkflowCanvas is removed
  * by the plan close; its zone-level components stay untouched here).
@@ -44,8 +44,7 @@ export interface IterationTaskPageProps {
 export function IterationTaskPage({ view, t }: IterationTaskPageProps) {
   return (
     <div className={css.iterationPage} data-mstar-page="tasks">
-      {/* The SHARED iteration info section (plan 20260812-panel-f5-design-system
-          Task 8 — user 2026-08-12 feedback #4): the same block the agents tab
+      {/* The SHARED iteration info section (): the same block the agents tab
           renders, from the same `view.iteration` data. */}
       <IterationInfoSection iteration={view.iteration} t={t} />
 
@@ -54,8 +53,7 @@ export function IterationTaskPage({ view, t }: IterationTaskPageProps) {
       <div className={css.iterationTasks} data-mstar-tasks-scroll>
         <TaskBoard view={view.tasks} t={t} />
 
-        {/* The ADDITIVE project rollup zone (plan 20260819-workflow-dsh-viz
-            Task 3 — compass AC-4): roadmap milestones + open residuals from
+        {/* The ADDITIVE project rollup zone (compass AC-4): roadmap milestones + open residuals from
             the project layer, below the kanban in the same scroll body. The
             four existing ZoneView shapes are untouched. */}
         <ProjectRollup view={view.project} t={t} />

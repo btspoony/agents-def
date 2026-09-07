@@ -4,19 +4,19 @@
  *
  * Spec sources (each test cites the plan/brief section it enforces):
  * - Roadmap frontmatter schema `{ project_id, title, status:
- *   active|paused|completed, created_at, milestones[]?, residuals_ref }`
- *   (plan Task 4; compass v3.0.0 § Scope "Project layer": compass-style
- *   frontmatter + engine validator). Body conventions (direction section +
- *   goal-item task list) are documented conventions surfaced as validator
- *   **warnings only** — not a hard gate (compass Non-Goal / AC-P1).
+ * active|paused|completed, created_at, milestones[]?, residuals_ref }`
+ * (; compass-style
+ * frontmatter + engine validator). Body conventions (direction section +
+ * goal-item task list) are documented conventions surfaced as validator
+ * **warnings only** — not a hard gate (compass Non-Goal / AC-P1).
  * - Register file `projects/<id>/residuals.json` shape
- *   `{ entries: { [key]: ResidualEntry & { source_plan, registered_at,
- *   lifecycle_id? } } }` (plan Task 4). Entry validation delegates verbatim
- *   to `validateResidual` (status.ts) — severity enum + lifecycle semantics
- *   preserved at the new address, no copy.
- * - `_DEFAULT_PROJECT` fallback constant + PROJECT_FILE names (plan Task 4;
- *   compass ruling 2 — `projects/_default/` fallback for project-less
- *   flows).
+ * `{ entries: { [key]: ResidualEntry & { source_plan, registered_at,
+ * lifecycle_id? } } }` (). Entry validation delegates verbatim
+ * to `validateResidual` (status.ts) — severity enum + lifecycle semantics
+ * preserved at the new address, no copy.
+ * - `_DEFAULT_PROJECT` fallback constant + PROJECT_FILE names (;
+ * compass ruling 2 — `projects/_default/` fallback for project-less
+ * flows).
  */
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -99,7 +99,7 @@ function residualEntry(overrides: Record<string, unknown> = {}): Record<string, 
   };
 }
 
-/** Valid project register fixture — entries keyed by plan id, each value an ARRAY (QC wave-1 W-E). */
+/** Valid project register fixture — entries keyed by plan id, each value an ARRAY . */
 function registerDoc(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     entries: {
@@ -119,7 +119,7 @@ function registerDoc(overrides: Record<string, unknown> = {}): Record<string, un
   };
 }
 
-describe("validateRoadmap — frontmatter schema (plan Task 4)", () => {
+describe("validateRoadmap — frontmatter schema ()", () => {
   test("valid roadmap fixture passes with zero violations and zero warnings", () => {
     const file = roadmapPath();
     try {
@@ -360,7 +360,7 @@ Ship the layout.
   });
 });
 
-describe("validateProjectRegister — register entries keyed by plan-id (plan Task 4)", () => {
+describe("validateProjectRegister — register entries keyed by plan-id ()", () => {
   test("valid register with mixed severities and a closed lifecycle passes", () => {
     const result = validateProjectRegister(registerDoc());
     expect(result.ok).toBe(true);
@@ -483,7 +483,7 @@ describe("validateProjectRegister — register entries keyed by plan-id (plan Ta
     expectViolations(validateProjectRegister(badLifecycleId), "project.register.invalid-lifecycle-id");
   });
 
-  test("entries values must be arrays (QC wave-1 W-E array schema)", () => {
+  test("entries values must be arrays(array schema)", () => {
     const single = registerDoc({
       entries: { "20260819-workflow-engine-core": residualEntry() },
     });
@@ -512,7 +512,7 @@ describe("validateProjectRegister — register entries keyed by plan-id (plan Ta
       },
     });
     expect(validateProjectRegister(multi).ok).toBe(true);
-    // A bad entry anywhere in the array is caught.
+ // A bad entry anywhere in the array is caught.
     const badSecond = registerDoc({
       entries: {
         "20260819-workflow-engine-core": [
@@ -525,7 +525,7 @@ describe("validateProjectRegister — register entries keyed by plan-id (plan Ta
   });
 });
 
-describe("project file names + _default fallback constants (plan Task 4)", () => {
+describe("project file names + _default fallback constants ()", () => {
   test("PROJECT_ROADMAP_FILE / PROJECT_REGISTER_FILE name the project layer files", () => {
     expect(PROJECT_ROADMAP_FILE).toBe("roadmap.md");
     expect(PROJECT_REGISTER_FILE).toBe("residuals.json");
@@ -536,7 +536,7 @@ describe("project file names + _default fallback constants (plan Task 4)", () =>
   });
 });
 
-describe("listProjectReferenceFiles — theme-scoped research listing (plan 20260820-project-research-corpus Task 1)", () => {
+describe("listProjectReferenceFiles — theme-scoped research listing ", () => {
   test("PROJECT_REFERENCES_DIR names the references subdirectory", () => {
     expect(PROJECT_REFERENCES_DIR).toBe("references");
   });

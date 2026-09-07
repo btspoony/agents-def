@@ -1,8 +1,7 @@
 /**
  * Sidebar / Done-column plan ordering (spec panel-zones §3): the hard-coded
- * digitized sort keys shared by the sidebar plan board (this plan, Task 3)
- * and the canvas Done column (plan 20260810-panel-canvas-zones reuses the
- * same rule). Pure function — no rendering, no state.
+ * digitized sort keys shared by the sidebar plan board (this plan)
+ * and the canvas Done column . Pure function — no rendering, no state.
  *
  * Keys, compared in order (all DESC):
  *   1. `doneAt` matching /^\d{4}-\d{2}-\d{2}$/ → '.replaceAll('-','')'
@@ -59,9 +58,7 @@ export function sortPlans<T extends { readonly id: string; readonly doneAt: stri
 }
 
 /**
- * The「最近一次迭代」recency comparator (plan 20260813-panel-quick-fixes Task
- * 2 — shared by the current-iteration filter in `project-graph.ts`, which
- * previously duplicated this order as a local `moreRecentPlan`). DIFFERENT
+ * The「最近一次迭代」recency comparator . DIFFERENT
  * key order from {@link comparePlans}: the 8-digit id-date prefix is PRIMARY,
  * doneAt SECONDARY — the projection's former `moreRecentPlan` behavior, kept
  * EXACTLY. All keys DESC: `< 0` means `a` is more recent than `b` (id-date

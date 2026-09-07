@@ -1,7 +1,6 @@
 /**
  * On-demand model-facing tools — the v2 seam + sdd/iteration registrations
- * (plan `20260810-dsh-entry-split` §15 extraction).
- *
+ *. *
  * `registerSddIterationTools` (mstar_sdd_workspace / mstar_sdd_task_brief /
  * mstar_iteration_gate) and `registerSeamTools` (mstar_design_md_validate /
  * mstar_audit_validate / mstar_compound_validate / mstar_roles_validate) are
@@ -266,7 +265,7 @@ export function registerSddIterationTools(ctx: Context, resolver: HarnessResolve
 
 /**
  * Register the on-demand seam validation tools (
- * 20260808-dsh-seams-bundle): `mstar design-md validate` / `mstar compound
+ * : `mstar design-md validate` / `mstar compound
  * validate` CLI mirrors plus the audit / roles validators — thin wrappers
  * running the engine in-app. The registrations are deferred with
  * `ctx.inject(['tools'], …)` (same optional-unit pattern as the sdd tools),

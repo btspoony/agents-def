@@ -1,6 +1,6 @@
 /**
  * ensureGlobalCli — post-init helper that installs the matching-version
- * @mstar-harness/cli globally. Contract pinned here (SP1-AC1..AC5):
+ * @mstar-harness/cli globally. Contract pinned here:
  * - --no-global-cli skips entirely (reason: "flag"), install never called,
  * - --dry-run prints the exact npm command and never spawns (reason: "dry-run"),
  * - a matching `mstar-harness --version` on PATH skips (reason: "already-matching"),
@@ -125,7 +125,7 @@ describe("ensureGlobalCli", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 3 doctor note — pure three-state formatter (SP1-AC6). The detected
+// Task 3 doctor note — pure three-state formatter. The detected
 // value is injected (a literal here): no PATH probing, no subprocesses, no
 // dependence on the machine's PATH.
 // ---------------------------------------------------------------------------
@@ -250,7 +250,7 @@ describe("init wiring (end-to-end CLI harness)", () => {
     writeFakeBin("npm", `printf '%s\\n' "$*" >> "${npmLog}"\nexec sleep 10`);
   }
 
-  test("dry-run prints the exact npm command and never spawns npm (SP1-AC3)", () => {
+  test("dry-run prints the exact npm command and never spawns npm", () => {
     fakeNpm(0);
     const configPath = path.join(tmp, "opencode.json");
     const result = runInitCli(["--dry-run", "--yes", "--target", "opencode", "--output", configPath], cliEnv());
@@ -261,7 +261,7 @@ describe("init wiring (end-to-end CLI harness)", () => {
     expect(existsSync(configPath)).toBe(false);
   });
 
-  test("config-mode success installs the exact pinned spec (SP1-AC5)", () => {
+  test("config-mode success installs the exact pinned spec", () => {
     fakeNpm(0);
     fakeMstarHarness();
     const configPath = path.join(tmp, "opencode.json");
@@ -273,7 +273,7 @@ describe("init wiring (end-to-end CLI harness)", () => {
     expect(existsSync(configPath)).toBe(true);
   });
 
-  test("config-mode stays exit 0 when the global install fails (SP1-AC4)", () => {
+  test("config-mode stays exit 0 when the global install fails", () => {
     fakeNpm(1);
     fakeMstarHarness();
     const configPath = path.join(tmp, "opencode.json");
@@ -283,7 +283,7 @@ describe("init wiring (end-to-end CLI harness)", () => {
     expect(result.stdout).toContain("Status: configured");
   });
 
-  test("install-mode success installs the exact pinned spec (SP1-AC5)", () => {
+  test("install-mode success installs the exact pinned spec", () => {
     fakeNpm(0);
     fakeMstarHarness();
     fakeDsh();
@@ -294,7 +294,7 @@ describe("init wiring (end-to-end CLI harness)", () => {
     expect(readFileSync(npmLog, "utf8").trim()).toBe(`i -g @mstar-harness/cli@${PACKAGE_VERSION}`);
   });
 
-  test("install-mode stays exit 0 when the global install fails (SP1-AC4)", () => {
+  test("install-mode stays exit 0 when the global install fails", () => {
     fakeNpm(1);
     fakeMstarHarness();
     fakeDsh();
@@ -304,7 +304,7 @@ describe("init wiring (end-to-end CLI harness)", () => {
     expect(result.stdout).toContain("Status: configured");
   });
 
-  test("--no-global-cli skips the global install entirely (SP1-AC2)", () => {
+  test("--no-global-cli skips the global install entirely", () => {
     fakeNpm(0);
     const configPath = path.join(tmp, "opencode.json");
     const result = runInitCli(["--yes", "--target", "opencode", "--output", configPath, "--no-global-cli"], cliEnv());

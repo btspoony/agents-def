@@ -4,29 +4,29 @@
  *
  * Spec sources (each test cites the skill/reference section it enforces):
  * - L1/L2 layer split + stacking — control worktree + per-plan feature
- *   worktrees + `plans[].execution_lease` (L1); within-plan parallel writable
- *   tracks need their own distinct worktrees (L2, L1 does not replace L2):
- *   `mstar-branch-worktree` SKILL.md § "Worktree isolation layers (L1 vs L2)"
- *   § "Stacking rules".
+ * worktrees + `plans[].execution_lease` (L1); within-plan parallel writable
+ * tracks need their own distinct worktrees (L2, L1 does not replace L2):
+ * `mstar-branch-worktree` SKILL.md § "Worktree isolation layers (L1 vs L2)"
+ * § "Stacking rules".
  * - Control vs feature worktree roles — `execution_lease.worktree_path` MUST
- *   differ from `metadata.control_worktree_path`; the feature worktree is the
- *   required cwd for product edits (control checkout is Forbidden for
- *   writable edits); never bootstrap a second plans/status/SDD tree under the
- *   feature checkout (harness SSOT resolves from the control worktree):
- *   SKILL.md § "Control worktree vs feature worktree (iteration / L1)" +
- *   § "Harness path SSOT under default gitignore (L1)" § "Hard rules".
+ * differ from `metadata.control_worktree_path`; the feature worktree is the
+ * required cwd for product edits (control checkout is Forbidden for
+ * writable edits); never bootstrap a second plans/status/SDD tree under the
+ * feature checkout (harness SSOT resolves from the control worktree):
+ * SKILL.md § "Control worktree vs feature worktree (iteration / L1)" +
+ * § "Harness path SSOT under default gitignore (L1)" § "Hard rules".
  * - L2 pre-dispatch checklist — per-track worktree dirs exist and
- *   `git -C <path> branch --show-current` matches the Assignment Working
- *   branch before the first concurrent writable dispatch; N parallel invokes
- *   ≠ isolation; emit zero until ready:
- *   `mstar-branch-worktree` `references/parallel-writable-pre-dispatch.md`
- *   § "Pre-dispatch checklist (HARD)".
+ * `git -C <path> branch --show-current` matches the Assignment Working
+ * branch before the first concurrent writable dispatch; N parallel invokes
+ * ≠ isolation; emit zero until ready:
+ * `mstar-branch-worktree` `references/parallel-writable-pre-dispatch.md`
+ * § "Pre-dispatch checklist (HARD)".
  * - QC/QA alignment — `plan_id` + `Review range`/`Diff basis` byte-identical
- *   (逐字相同) across the QC tri + QA assignments; single review snapshot
- *   precondition (all reviewable commits on ONE Working branch HEAD before
- *   QC tri + QA):
- *   SKILL.md § "QC / QA 检出对齐与多 worktree 门禁衔接" § 对齐字段契约 +
- *   § "单一待审 Git 快照（派 QC 前置条件）".
+ * (逐字相同) across the QC tri + QA assignments; single review snapshot
+ * precondition (all reviewable commits on ONE Working branch HEAD before
+ * QC tri + QA):
+ * SKILL.md § "QC / QA 检出对齐与多 worktree 门禁衔接" § 对齐字段契约 +
+ * § "单一待审 Git 快照（派 QC 前置条件）".
  */
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
@@ -132,7 +132,7 @@ describe("l1PreDispatchCheck — L1 cross-plan checklist", () => {
     }
   });
 
-  test("trailing-slash alias of the control path → worktree.l1.lease-equals-control (qc2 S-4 normalization)", () => {
+  test("trailing-slash alias of the control path → worktree.l1.lease-equals-control (normalization)", () => {
     const result = l1PreDispatchCheck({
       controlWorktreePath: "/a/b/",
       leaseWorktreePath: "/a/b",
@@ -142,7 +142,7 @@ describe("l1PreDispatchCheck — L1 cross-plan checklist", () => {
     expect(codesOf(result)).toContain("worktree.l1.lease-equals-control");
   });
 
-  test("dot-dot alias of the control path → worktree.l1.lease-equals-control (qc2 S-4 normalization)", () => {
+  test("dot-dot alias of the control path → worktree.l1.lease-equals-control (normalization)", () => {
     const result = l1PreDispatchCheck({
       controlWorktreePath: "/a/b/../b",
       leaseWorktreePath: "/a/b",
@@ -331,7 +331,7 @@ describe("l2PreDispatchCheck — within-plan parallel track checklist", () => {
         ],
       });
       expect(result.ok).toBe(false);
-      // exactly one collision violation, nothing else — the duplicate short-circuits before dir/probe checks
+ // exactly one collision violation, nothing else — the duplicate short-circuits before dir/probe checks
       expect(codesOf(result)).toEqual(["worktree.l2.track-path-collision"]);
       expect(severitiesOf(result)).toEqual(["high"]);
     } finally {
@@ -344,13 +344,13 @@ describe("l2PreDispatchCheck — within-plan parallel track checklist", () => {
       tracks: [{ worktreePath: "worktrees/track-a", workingBranch: "track/a" }],
     });
     expect(result.ok).toBe(false);
-    // the relative path short-circuits before dir/probe checks — no track-missing
+ // the relative path short-circuits before dir/probe checks — no track-missing
     expect(codesOf(result)).toEqual(["worktree.l2.track-path-relative"]);
     const v = findViolation(result, "worktree.l2.track-path-relative");
     expect(v?.severity).toBe("high");
   });
 
-  test("trailing-slash alias of a track path collides → worktree.l2.track-path-collision (qc2 S-4 normalization)", () => {
+  test("trailing-slash alias of a track path collides → worktree.l2.track-path-collision (normalization)", () => {
     const root = tmpRoot("worktree-l2-cols-");
     try {
       const wts = worktreeFixture(root, ["track/a"]);
@@ -362,20 +362,20 @@ describe("l2PreDispatchCheck — within-plan parallel track checklist", () => {
         ],
       });
       expect(result.ok).toBe(false);
-      // exactly one collision violation, nothing else — the duplicate short-circuits
+ // exactly one collision violation, nothing else — the duplicate short-circuits
       expect(codesOf(result)).toEqual(["worktree.l2.track-path-collision"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  test("dot-dot alias of a track path collides → worktree.l2.track-path-collision (qc2 S-4 normalization)", () => {
+  test("dot-dot alias of a track path collides → worktree.l2.track-path-collision (normalization)", () => {
     const root = tmpRoot("worktree-l2-cold-");
     try {
       const wts = worktreeFixture(root, ["track/a"]);
       const a = wts.get("track/a")!;
-      // a == <root>/wt-track/a; <root>/wt-track/../wt-track/a is the same
-      // directory via a dot-dot segment.
+ // a == <root>/wt-track/a; <root>/wt-track/../wt-track/a is the same
+ // directory via a dot-dot segment.
       const alias = join(a, "..", "..", "wt-track", "a");
       expect(resolve(alias)).toBe(resolve(a));
       const result = l2PreDispatchCheck({
@@ -480,7 +480,7 @@ describe("assertControlVsFeaturePath — lease worktree ≠ control path", () =>
     expect(result.violations).toEqual([]);
   });
 
-  test("path aliases of the same dir collide → worktree.control-feature.same (qc2 S-4 normalization)", () => {
+  test("path aliases of the same dir collide → worktree.control-feature.same (normalization)", () => {
     expect(codesOf(assertControlVsFeaturePath("/repo/control/", "/repo/control"))).toContain("worktree.control-feature.same");
     expect(codesOf(assertControlVsFeaturePath("/repo/control/../control", "/repo/control"))).toContain("worktree.control-feature.same");
   });
@@ -664,11 +664,11 @@ describe("singleReviewSnapshot — one review snapshot precondition (派 QC 前�
   });
 });
 
-describe("git probe timeout — bounded probes fail closed (qc3 F-4)", () => {
+describe("git probe timeout — bounded probes fail closed ", () => {
   /**
-   * A deliberately slow fake `git` executable: sleeps far beyond the probe
-   * timeout so the probe must be killed by the engine's bounded timeout.
-   */
+ * A deliberately slow fake `git` executable: sleeps far beyond the probe
+ * timeout so the probe must be killed by the engine's bounded timeout.
+ */
   function slowGitFixture(fn: (gitPath: string, lease: string) => void): void {
     const root = tmpRoot("worktree-probe-timeout-");
     try {

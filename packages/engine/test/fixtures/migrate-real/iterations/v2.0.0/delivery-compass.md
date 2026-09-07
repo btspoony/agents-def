@@ -6,11 +6,11 @@ status: completed
 iteration_base_branch: main
 target_branch: main
 plans:
-  - 20260808-slice1-engine-foundation
-  - 20260808-slice2-sdd-iteration
-  - 20260808-slice3-dispatch-git-gates
-  - 20260808-slice4-lints-scaffolds
-  - 20260808-slice5-hardgates-close
+  - 00000808-slice1-engine-foundation
+  - 00000808-slice2-sdd-iteration
+  - 00000808-slice3-dispatch-git-gates
+  - 00000808-slice4-lints-scaffolds
+  - 00000808-slice5-hardgates-close
 ---
 
 # v2.0.0 Delivery Compass (fixture: real frontmatter, trimmed body)

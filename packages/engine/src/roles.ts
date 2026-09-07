@@ -5,22 +5,22 @@
  * Source skills (semantic SSOT — this module implements their deterministic
  * rules, it never redefines them; roadmap §8.5 C2):
  * - `mstar-roles` SKILL.md § Role Reference Mapping — the 14 agent ids →
- *   `references/<role>.md` table (shared families `fullstack-dev*` /
- *   `qc-specialist*` on ONE shared file per § Maintenance Rules).
+ * `references/<role>.md` table (shared families `fullstack-dev*` /
+ * `qc-specialist*` on ONE shared file per § Maintenance Rules).
  * - `mstar-roles` SKILL.md § Parameter Table (SSOT) — dev track
- *   `primary` / `parallel_secondary`; QC seats `reviewer_index` 1/2/3,
- *   each with a `focus` and a `qc<index>` `report_suffix` landing at
- *   `{SDD_DIR}/review/qc1.md`…`qc3.md`.
+ * `primary` / `parallel_secondary`; QC seats `reviewer_index` 1/2/3,
+ * each with a `focus` and a `qc<index>` `report_suffix` landing at
+ * `{SDD_DIR}/review/qc1.md`…`qc3.md`.
  * - `mstar-harness-core` SKILL.md § 与其它 `mstar-*` skill 的加载契约 —
- *   core stays the lifecycle/authorization semantic authority; the LOAD
- *   SELECTION authority is `mstar-roles` (Spec A2: single load-selection
- *   authority, no second mandatory-role table). Topics reached by direct
- *   invocation declare `mstar-harness-core` first in their Load Order /
- *   First action section; the `mstar-roles` hub bootstrap is the ONE
- *   exception — instead of a core-first declaration it must declare its
- *   identity→preset decision matrix (identity-first, `Skill presets:`
- *   none/standard arms, role-owned methods, unknown-preset refusal) and
- *   keep the conditional core conflict-authority pointer.
+ * core stays the lifecycle/authorization semantic authority; the LOAD
+ * SELECTION authority is `mstar-roles` (Spec A2: single load-selection
+ * authority, no second mandatory-role table). Topics reached by direct
+ * invocation declare `mstar-harness-core` first in their Load Order /
+ * First action section; the `mstar-roles` hub bootstrap is the ONE
+ * exception — instead of a core-first declaration it must declare its
+ * identity→preset decision matrix (identity-first, `Skill presets:`
+ * none/standard arms, role-owned methods, unknown-preset refusal) and
+ * keep the conditional core conflict-authority pointer.
  *
  * The parameter tables live here as machine data (roadmap §4.3:
  * "parameter tables → data"); `validateRoleMapping` checks the tables'
@@ -117,14 +117,14 @@ export type RoleMappingOptions = {
  * layout (mstar-roles § Role Reference Mapping / § Parameter Table (SSOT)
  * / § Maintenance Rules):
  * - every mapped agent id resolves to `references/<role>.md` under
- *   `rolesDir`;
+ * `rolesDir`;
  * - shared families (`fullstack-dev*`, `qc-specialist*`) resolve to ONE
- *   shared reference file each;
+ * shared reference file each;
  * - every parameter row references a mapped role, exactly once;
  * - dev track values are `primary` / `parallel_secondary`;
  * - the QC parameter table contract holds: reviewer_index is exactly
- *   {1, 2, 3} across the three seats, each seat has a focus, and
- *   `report_suffix === qc<reviewer_index>`.
+ * {1, 2, 3} across the three seats, each seat has a focus, and
+ * `report_suffix === qc<reviewer_index>`.
  *
  * Violations:
  * - `roles.mapping.reference.missing` — mapped reference file not on disk
@@ -146,7 +146,7 @@ export function validateRoleMapping(rolesDir: string, options: RoleMappingOption
 
   const referenceById = new Map(mapping.map((m) => [m.agentId, m.reference]));
 
-  // 1) Every mapped agent id resolves to references/<role>.md on disk.
+ // 1) Every mapped agent id resolves to references/<role>.md on disk.
   for (const { agentId, reference } of mapping) {
     if (!existsSync(join(rolesDir, reference))) {
       violations.push(
@@ -160,7 +160,7 @@ export function validateRoleMapping(rolesDir: string, options: RoleMappingOption
     }
   }
 
-  // 2) Shared families point at ONE shared reference file.
+ // 2) Shared families point at ONE shared reference file.
   for (const { family, memberIds } of families) {
     const absent = memberIds.filter((id) => !referenceById.has(id));
     for (const id of absent) {
@@ -188,7 +188,7 @@ export function validateRoleMapping(rolesDir: string, options: RoleMappingOption
     }
   }
 
-  // 3) Parameter rows reference mapped roles, exactly once per role.
+ // 3) Parameter rows reference mapped roles, exactly once per role.
   const tableByRole = new Map<string, string>();
   const checkParamRoles = (rows: readonly { roleId: string }[], table: string): void => {
     for (const row of rows) {
@@ -220,7 +220,7 @@ export function validateRoleMapping(rolesDir: string, options: RoleMappingOption
   checkParamRoles(devTrack, "dev track");
   checkParamRoles(qcReviewers, "QC reviewer");
 
-  // 4) Dev track values.
+ // 4) Dev track values.
   for (const row of devTrack) {
     if (row.track !== "primary" && row.track !== "parallel_secondary") {
       violations.push(
@@ -234,8 +234,8 @@ export function validateRoleMapping(rolesDir: string, options: RoleMappingOption
     }
   }
 
-  // 5) QC parameter table contract: reviewer_index exactly {1, 2, 3} with
-  //    matching focus / report_suffix.
+ // 5) QC parameter table contract: reviewer_index exactly {1, 2, 3} with
+ // matching focus / report_suffix.
   const indices = qcReviewers.map((r) => r.reviewerIndex).sort((a, b) => a - b);
   const unique = new Set(indices);
   if (indices.length !== 3 || unique.size !== 3 || indices[0] !== 1 || indices[1] !== 2 || indices[2] !== 3) {
@@ -332,22 +332,22 @@ function extractLoadOrderSection(text: string): string | null {
  * core` itself and non-`mstar-*` skills are exempt.
  *
  * - Every `mstar-*` topic skill (reached by direct invocation) must have a
- *   Load Order / First action section (heading Load Order / Load order /
- *   First action) that names `mstar-harness-core` as its first dependency
- *   (mentions in later sections do not count).
+ * Load Order / First action section (heading Load Order / Load order /
+ * First action) that names `mstar-harness-core` as its first dependency
+ * (mentions in later sections do not count).
  * - The `mstar-roles` hub bootstrap is the ONE exception (narrow, keyed on
- *   the skill name — broad exemptions are rejected): it does not declare
- *   core-first; instead its Load Order section must declare the preset
- *   decision matrix (`roles.loadorder.hub.bootstrap.missing` when tokens
- *   are missing) and keep the conditional `mstar-harness-core`
- *   conflict-authority pointer (`roles.loadorder.core.missing`).
+ * the skill name — broad exemptions are rejected): it does not declare
+ * core-first; instead its Load Order section must declare the preset
+ * decision matrix (`roles.loadorder.hub.bootstrap.missing` when tokens
+ * are missing) and keep the conditional `mstar-harness-core`
+ * conflict-authority pointer (`roles.loadorder.core.missing`).
  *
  * Violations:
  * - `roles.loadorder.section.missing` — no Load Order / First action section
  * - `roles.loadorder.core.missing` — topic section without the core-first
- *   declaration, or hub section without the core conflict-authority pointer
+ * declaration, or hub section without the core conflict-authority pointer
  * - `roles.loadorder.hub.bootstrap.missing` — hub section missing the
- *   identity→none/standard/methods/unknown-preset decision matrix
+ * identity→none/standard/methods/unknown-preset decision matrix
  */
 export function lintLoadOrder(skillTexts: Record<string, string>): GateResult {
   const violations: ValidationResult[] = [];
@@ -366,12 +366,12 @@ export function lintLoadOrder(skillTexts: Record<string, string>): GateResult {
       continue;
     }
     if (name === "mstar-roles") {
-      // The one hub-bootstrap exception (Spec A2): the hub OWNS load
-      // selection, so it does not declare core-first; it must declare the
-      // identity→preset decision matrix and keep the conditional core
-      // conflict-authority pointer. The exemption is keyed on the skill
-      // name — any other topic claiming this bootstrap style still fails
-      // the core-first check below (broad exemptions are rejected).
+ // The one hub-bootstrap exception (Spec A2): the hub OWNS load
+ // selection, so it does not declare core-first; it must declare the
+ // identity→preset decision matrix and keep the conditional core
+ // conflict-authority pointer. The exemption is keyed on the skill
+ // name — any other topic claiming this bootstrap style still fails
+ // the core-first check below (broad exemptions are rejected).
       const lower = section.toLowerCase();
       const missing = HUB_BOOTSTRAP_ASSERTIONS.filter((a) => !lower.includes(a.marker.toLowerCase()));
       if (missing.length > 0) {

@@ -4,15 +4,15 @@
  *
  * Spec sources (all embedded as constants — no runtime skill-file reads):
  * - mstar-audit SKILL.md Hard Rules (read-only; never reproduce secret
- *   values — reference file:line + credential type only).
+ * values — reference file:line + credential type only).
  * - mstar-audit SKILL.md § Plan output (all variants): plan-file output
- *   layout (`{PLAN_DIR}/audit-<YYYY-MM-DD>/` README index + numbered plan
- *   files) and Status block fields. The full-audit variant adds the
- *   reconcile rule (keep numbering monotonic across re-runs) and the audit
- *   index format → mstar-audit references/codebase-audit.md (Phase 4 /
- *   Output format).
+ * layout (`{PLAN_DIR}/audit-<YYYY-MM-DD>/` README index + numbered plan
+ * files) and Status block fields. The full-audit variant adds the
+ * reconcile rule (keep numbering monotonic across re-runs) and the audit
+ * index format → mstar-audit references/codebase-audit.md (Phase 4 /
+ * Output format).
  * - mstar-audit/references/finding-format.md: category codes, evidence
- *   requirements.
+ * requirements.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync, writeFileSync, type Dirent } from "node:fs";
@@ -101,13 +101,13 @@ function parseStatusBlocks(planText: string): StatusBlock[] {
  * - `Effort`: XS | S | M | L | XL
  * - `Risk`: LOW | MED | HIGH
  * - `Depends on`: `none` or `plans/NNN-*.md` (the `*` is a literal
- *   wildcard form — the documented scaffolded scheme; concrete
- *   `plans/NNN-<slug>.md` paths are accepted too)
+ * wildcard form — the documented scaffolded scheme; concrete
+ * `plans/NNN-<slug>.md` paths are accepted too)
  * - `Category`: bug | security | perf | tests | tech-debt | migration |
- *   dx | docs | direction
+ * dx | docs | direction
  * - `Planned at`: `commit <short SHA>, <YYYY-MM-DD>` — `commit unknown`
- *   is accepted as the documented fallback (`scaffoldAuditPlan` default
- *   when the CLI runs outside a git repo)
+ * is accepted as the documented fallback (`scaffoldAuditPlan` default
+ * when the CLI runs outside a git repo)
  *
  * Every `## Status` block in the document is checked; a document without
  * any block gets `audit.status.missing-block`. Violation codes:
@@ -189,23 +189,23 @@ export type RedactResult = { text: string; findings: SecretFinding[] };
  * behavior of the dsh audit seam (`validateAuditDoc`) stays byte-identical.
  */
 export const WHOLE_MATCH_PATTERNS: readonly { type: string; re: RegExp }[] = [
-  // qc1 W-004: the whole PEM/OpenSSH block (header through END marker) is
-  // one credential — redacting only the header left the base64 body raw.
-  // [\s\S] (not `.`) spans newlines; single alternation keeps it linear.
+  // the whole PEM/OpenSSH block (header through END marker) is
+ // one credential — redacting only the header left the base64 body raw.
+ // [\s\S] (not `.`) spans newlines; single alternation keeps it linear.
   { type: "private-key", re: /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g },
   { type: "aws-access-key", re: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g },
   { type: "github-token", re: /\bgh[pousr]_[A-Za-z0-9]{36,}\b/g },
-  // Fine-grained PATs: github_pat_<22 alnum>_<59 alnum>. A flat floor on the
-  // combined tail stays conservative without encoding GitHub's split lengths.
+ // Fine-grained PATs: github_pat_<22 alnum>_<59 alnum>. A flat floor on the
+ // combined tail stays conservative without encoding GitHub's split lengths.
   { type: "github-pat", re: /\bgithub_pat_[A-Za-z0-9_]{40,}\b/g },
-  // Stripe secret keys: sk_live_<24+ alnum>. Test-mode keys (sk_test_) are
-  // deliberately NOT flagged — they hold no production authority.
+ // Stripe secret keys: sk_live_<24+ alnum>. Test-mode keys (sk_test_) are
+ // deliberately NOT flagged — they hold no production authority.
   { type: "stripe-live-key", re: /\bsk_live_[A-Za-z0-9]{16,}\b/g },
   { type: "slack-token", re: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g },
-  // Segments are capped ({10,1024}) so a dot-less run of eyJ-prefixed text
-  // cannot backtrack quadratically — per-start work is bounded, keeping the
-  // whole scan linear. 1024 chars covers ES/RS-family signatures (RS256
-  // ~342 chars); only oversized exotic JWTs fall outside.
+ // Segments are capped ({10,1024}) so a dot-less run of eyJ-prefixed text
+ // cannot backtrack quadratically — per-start work is bounded, keeping the
+ // whole scan linear. 1024 chars covers ES/RS-family signatures (RS256
+ // ~342 chars); only oversized exotic JWTs fall outside.
   { type: "jwt", re: /\beyJ[A-Za-z0-9_-]{10,1024}\.[A-Za-z0-9_-]{10,1024}\.[A-Za-z0-9_-]{10,1024}\b/g },
   { type: "api-secret-key", re: /\bsk-[A-Za-z0-9-]{20,}\b/g },
 ];
@@ -238,8 +238,8 @@ export const VALUE_PATTERNS: readonly { typeOf: (key: string) => string; re: Reg
  * matched against the path BASENAME, never the full path.
  */
 export const NEVER_COMMIT_FILENAMES: readonly { type: string; re: RegExp }[] = [
-  // `.env*` glob semantics: basename STARTS with ".env" — covers `.env`,
-  // `.env.production`, `.envrc`; does NOT flag `foo.env` / `config.env`.
+ // `.env*` glob semantics: basename STARTS with ".env" — covers `.env`,
+ // `.env.production`, `.envrc`; does NOT flag `foo.env` / `config.env`.
   { type: "env-file", re: /^\.env/i },
   { type: "private-key-file", re: /\.(?:pem|key)$/i },
   { type: "ssh-private-key-file", re: /^id_(?:rsa|ed25519|ecdsa|dsa)$/ },
@@ -255,28 +255,28 @@ export const NEVER_COMMIT_FILENAMES: readonly { type: string; re: RegExp }[] = [
  * secret VALUES into findings (Hard Rule 4) — only file:line + type.
  */
 export const CI_IAC_LEAK_SHAPES: readonly { kind: string; description: string; re: RegExp }[] = [
-  // GitHub Actions plaintext `env:` assignment of a secret-looking var:
-  // `env: API_TOKEN="literal"` — literals carry no `${{ }}` interpolation.
+ // GitHub Actions plaintext `env:` assignment of a secret-looking var:
+ // `env: API_TOKEN="literal"` — literals carry no `${{ }}` interpolation.
   {
     kind: "actions-plaintext-env",
     description: 'GitHub Actions env assignment with plaintext literal',
     re: /^\s*(?:-\s+)?env:\s*[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|KEY)[A-Z0-9_]*\s*[:=]\s*["']?[A-Za-z0-9_/+=-]{8,}["']?\s*$/,
   },
-  // `echo ${{ secrets.X }}` / `printf` exposure: piping a context secret to
-  // stdout can land in build logs (masking is best-effort).
+ // `echo ${{ secrets.X }}` / `printf` exposure: piping a context secret to
+ // stdout can land in build logs (masking is best-effort).
   {
     kind: "actions-secret-echo",
     description: 'echo of a GitHub Actions secrets context value',
     re: /\becho\b[^#\n]*\$\{\{\s*secrets\.[A-Za-z0-9_]+\s*\}\}/,
   },
-  // Dockerfile ENV/ARG whose NAME looks like a credential: values bake into
-  // image layers even when the build arg intent was injection at build time.
+ // Dockerfile ENV/ARG whose NAME looks like a credential: values bake into
+ // image layers even when the build arg intent was injection at build time.
   {
     kind: "dockerfile-credential-env",
     description: 'Dockerfile ENV/ARG with credential-looking name',
     re: /^\s*(?:ENV|ARG)\s+[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY)[A-Z0-9_]*\b/i,
   },
-  // Terraform hardcoded password: `password = "literal"` in any block.
+ // Terraform hardcoded password: `password = "literal"` in any block.
   {
     kind: "terraform-hardcoded-password",
     description: 'Terraform hardcoded password attribute',
@@ -322,20 +322,20 @@ function lineStartOf(text: string, index: number): number {
  * line-sorted findings summary (`{ line, type }`).
  */
 export function redactSecrets(text: string, filePath?: string): RedactResult {
-  // simplify: single linear scan — line starts are precomputed once (O(n))
-  // and per-match lookups are O(log n); the JWT whole-match pattern bounds
-  // its segments ({10,1024}) so per-position backtracking is constant.
+ // simplify: single linear scan — line starts are precomputed once (O(n))
+ // and per-match lookups are O(log n); the JWT whole-match pattern bounds
+ // its segments ({10,1024}) so per-position backtracking is constant.
   const starts = buildLineStarts(text);
   const marker = (type: string, index: number) =>
     `[REDACTED ${type}@${lineAt(starts, index)}${filePath === undefined ? "" : ` in ${filePath}`}]`;
 
-  // One span per regex match over the ORIGINAL text: {start, end} plus the
-  // precomputed replacement. Every table feeds the same list so overlaps are
-  // merged before any replacement is applied — applying ORIGINAL lengths
-  // against already-modified text corrupted output (qc3 W-3). `priority`
-  // breaks exact ties (same start AND end): the CI/IaC span wins over the
-  // value span over the whole-match span — a bare `password = "…"` line
-  // keeps the Terraform shape, matching what scanSecrets reports for it.
+ // One span per regex match over the ORIGINAL text: {start, end} plus the
+ // precomputed replacement. Every table feeds the same list so overlaps are
+ // merged before any replacement is applied — applying ORIGINAL lengths
+ // against already-modified text corrupted output . `priority`
+ // breaks exact ties (same start AND end): the CI/IaC span wins over the
+ // value span over the whole-match span — a bare `password = "…"` line
+ // keeps the Terraform shape, matching what scanSecrets reports for it.
   type RedactSpan = { start: number; end: number; priority: number; text: string; type: string };
   const spans: RedactSpan[] = [];
 
@@ -355,32 +355,32 @@ export function redactSecrets(text: string, filePath?: string): RedactResult {
     for (const match of text.matchAll(pattern.re)) {
       if (match.index === undefined) continue;
       const type = pattern.typeOf(match[2]);
-      // match[1]/match[3] = optional key quotes, match[4] = separator —
-      // all preserved; the value (match[5]) is dropped and replaced by the
-      // marker.
+ // match[1]/match[3] = optional key quotes, match[4] = separator —
+ // all preserved; the value (match[5]) is dropped and replaced by the
+ // marker.
       const replacement = `${match[1]}${match[2]}${match[3]}${match[4]}${marker(type, match.index)}`;
       spans.push({ start: match.index, end: match.index + match[0].length, priority: 1, text: replacement, type });
     }
   }
-  // qc1 W-004: the CI/IaC shapes are part of the scan contract, so the
-  // redactor consumes them too — a finding shape that can be detected must
-  // never survive redaction with its value intact. These shapes are
-  // LINE-scoped (matched against one line at a time by `scanSecrets`), so
-  // here each match is replaced up to its line end; leading indentation is
-  // preserved. Additive on top of the two tables above, so every whole-
-  // match/value match still lands exactly as before (the dsh audit seam
-  // keeps its pre-existing behavior for those outcomes).
+  // the CI/IaC shapes are part of the scan contract, so the
+ // redactor consumes them too — a finding shape that can be detected must
+ // never survive redaction with its value intact. These shapes are
+ // LINE-scoped (matched against one line at a time by `scanSecrets`), so
+ // here each match is replaced up to its line end; leading indentation is
+ // preserved. Additive on top of the two tables above, so every whole-
+ // match/value match still lands exactly as before (the dsh audit seam
+ // keeps its pre-existing behavior for those outcomes).
   for (const shape of CI_IAC_LEAK_SHAPES) {
-    // 'm' flag (qc3 W-2): the ^/$ anchors are line-scoped — a shape must
-    // fire on ANY line of a multi-line evidence text, not only at the
-    // string edges.
+ // 'm' flag : the ^/$ anchors are line-scoped — a shape must
+ // fire on ANY line of a multi-line evidence text, not only at the
+ // string edges.
     const lineScoped = new RegExp(shape.re.source, shape.re.ignoreCase ? "gim" : "gm");
     for (const match of text.matchAll(lineScoped)) {
       if (match.index === undefined) continue;
-      // Each regex above anchors at a line start — replace through
-      // end-of-line. Clamping at the line end also keeps a `\s*$`-swallowed
-      // trailing newline out of the replacement, so line structure stays
-      // intact.
+ // Each regex above anchors at a line start — replace through
+ // end-of-line. Clamping at the line end also keeps a `\s*$`-swallowed
+ // trailing newline out of the replacement, so line structure stays
+ // intact.
       const lineEnd = text.indexOf("\n", match.index);
       const end = lineEnd === -1 ? text.length : lineEnd;
       spans.push({
@@ -393,13 +393,13 @@ export function redactSecrets(text: string, filePath?: string): RedactResult {
     }
   }
 
-  // Merge overlapping spans: sort by start asc, end desc (longer first),
-  // priority desc (the exact-tie order above). Each overlap group keeps its
-  // LONGEST span — nested whole-match/value matches inside a PEM block or
-  // an env line are absorbed by the outer span. Deterministic: a tie in
-  // start resolves to the longer span; an exact tie to the higher priority.
-  // Dropped spans produce no finding — their marker never appears in the
-  // output.
+ // Merge overlapping spans: sort by start asc, end desc (longer first),
+ // priority desc (the exact-tie order above). Each overlap group keeps its
+ // LONGEST span — nested whole-match/value matches inside a PEM block or
+ // an env line are absorbed by the outer span. Deterministic: a tie in
+ // start resolves to the longer span; an exact tie to the higher priority.
+ // Dropped spans produce no finding — their marker never appears in the
+ // output.
   spans.sort((a, b) => a.start - b.start || b.end - a.end || b.priority - a.priority);
   const merged: RedactSpan[] = [];
   let groupMaxEnd = -1;
@@ -416,7 +416,7 @@ export function redactSecrets(text: string, filePath?: string): RedactResult {
   }
   if (best !== null) merged.push(best);
 
-  // Apply from the end so earlier indices stay valid in the original text.
+ // Apply from the end so earlier indices stay valid in the original text.
   let out = text;
   for (let i = merged.length - 1; i >= 0; i--) {
     const r = merged[i];
@@ -447,7 +447,7 @@ export type ScannedSecret = { file: string; line: number; type: string };
  * `<your_api_key>`-style literals are documentation placeholders.
  *
  * The exclusion applies to the MATCHED VALUE REGION only, never to the
- * whole line (qc2 F-001): `process.env.X ?? "sk_live_…"` shares a line
+ * whole line : `process.env.X ?? "sk_live_…"` shares a line
  * with a real key, so a line-wide skip would hide committed credentials.
  */
 const SAFE_PLACEHOLDER_SHAPES: readonly RegExp[] = [
@@ -462,7 +462,7 @@ const SAFE_PLACEHOLDER_VALUES = ["your-api-key-here", "<your_api_key>", "<your-a
 /**
  * Mask every safe-placeholder occurrence in `line` with spaces before
  * pattern evaluation: only the placeholder span itself is exempted, so a
- * literal credential elsewhere on the line still fires (qc2 F-001 — the
+ * literal credential elsewhere on the line still fires (the
  * former whole-line skip hid committed keys sitting next to a
  * `process.env.X` reference). Each masked span grows by one wrapping
  * quote layer when present, so leftover empty quotes cannot be mistaken
@@ -482,8 +482,8 @@ function maskSafePlaceholders(line: string): string {
         at = masked.toLowerCase().indexOf(shape);
       }
     } else {
-      // matchAll clones the regex, so the tables' lastIndex state is never
-      // mutated here — same guarantee `redactSecrets` relies on.
+ // matchAll clones the regex, so the tables' lastIndex state is never
+ // mutated here — same guarantee `redactSecrets` relies on.
       for (const match of masked.matchAll(shape)) {
         if (match.index === undefined) continue;
         let from = match.index;
@@ -507,8 +507,7 @@ function maskSafePlaceholders(line: string): string {
  * pattern evaluation (only the span — a key beside it still fires). Files
  * that cannot be read are counted in `unreadableFiles` instead of being
  * silently skipped: a security gate must never report clean over input it
- * could not inspect (qc1 W-002).
- */
+ * could not inspect. */
 
 /** Result of {@link scanSecrets}: findings plus how many selected files
  * could not be read (fail-closed signal for CLI gates). */
@@ -537,8 +536,8 @@ function scanActionsEnvMap(lines: readonly string[]): number[] {
       if (indent <= mapIndent) {
         inMap = false; // dedent closes the env map
       } else if (line.trim() !== "") {
-        // Only the placeholder span is masked — a literal key sharing the
-        // line with a `${ENV_VAR}` reference still fires (qc2 F-001).
+ // Only the placeholder span is masked — a literal key sharing the
+         // line with a `${ENV_VAR}` reference still fires.
         const child = /^\s*(?:["']?)([A-Za-z0-9_-]+)(?:["']?)\s*:\s*(.+?)\s*$/.exec(line);
         const value = child?.[2] ?? "";
         if (
@@ -552,8 +551,8 @@ function scanActionsEnvMap(lines: readonly string[]): number[] {
       }
       if (inMap) continue;
     }
-    // Opener: bare `env:` mapping (no inline value on the same line);
-    // a trailing YAML comment does not stop `env:` opening a map.
+ // Opener: bare `env:` mapping (no inline value on the same line);
+ // a trailing YAML comment does not stop `env:` opening a map.
     if (/^\s*(?:-\s+)?env:\s*(?:#.*)?$/.test(line)) {
       inMap = true;
       mapIndent = indent;
@@ -565,10 +564,10 @@ function scanActionsEnvMap(lines: readonly string[]): number[] {
 export function scanSecrets(files: readonly string[]): ScanSecretsResult {
   const findings: ScannedSecret[] = [];
   let unreadableFiles = 0;
-  // D-2 SSOT: the private-key row spans the whole PEM block, so it needs a
-  // full-file pass (the per-line loop below can never see it). The regex
-  // comes from the exported table — the same row redactSecrets uses — so
-  // table edits propagate instead of drifting from a second copy.
+ // D-2 SSOT: the private-key row spans the whole PEM block, so it needs a
+ // full-file pass (the per-line loop below can never see it). The regex
+ // comes from the exported table — the same row redactSecrets uses — so
+ // table edits propagate instead of drifting from a second copy.
   const privateKeyRow = WHOLE_MATCH_PATTERNS.find((pattern) => pattern.type === "private-key");
   if (privateKeyRow === undefined) {
     throw new Error("scanSecrets: WHOLE_MATCH_PATTERNS is missing its private-key row (full-text PEM pass)");
@@ -578,45 +577,45 @@ export function scanSecrets(files: readonly string[]): ScanSecretsResult {
     try {
       text = readFileSync(file, "utf8");
     } catch {
-      // Fail closed: the file was selected (tracked) but could not be
-      // inspected — surface the gap instead of implying a clean read.
+ // Fail closed: the file was selected (tracked) but could not be
+ // inspected — surface the gap instead of implying a clean read.
       unreadableFiles++;
       continue;
     }
     const base = basename(file);
-    // Never-commit filenames fire regardless of content.
+ // Never-commit filenames fire regardless of content.
     for (const entry of NEVER_COMMIT_FILENAMES) {
       if (entry.re.test(base)) findings.push({ file, line: 1, type: entry.type });
     }
     const starts = buildLineStarts(text);
-    // Full-text pass for the private-key row: a PEM block spans multiple
-    // lines, so the per-line loop below can never see it. Reported once at
-    // the header line. Pattern and type both come from the SSOT row above.
+ // Full-text pass for the private-key row: a PEM block spans multiple
+ // lines, so the per-line loop below can never see it. Reported once at
+ // the header line. Pattern and type both come from the SSOT row above.
     for (const match of text.matchAll(privateKeyRow.re)) {
       if (match.index === undefined) continue;
       findings.push({ file, line: lineAt(starts, match.index), type: privateKeyRow.type });
     }
     const lines = text.split("\n");
-    // Canonical YAML block mapping — `env:` opener + indented children —
-    // is invisible to single-line shapes; scan it before the line loop.
+ // Canonical YAML block mapping — `env:` opener + indented children —
+ // is invisible to single-line shapes; scan it before the line loop.
     for (const lineNo of scanActionsEnvMap(lines)) {
       findings.push({ file, line: lineNo, type: "actions-plaintext-env" });
     }
     for (let i = 0; i < lines.length; i++) {
-      // qc2 F-001: the safe-placeholder vocab masks only ITS OWN span —
-      // the rest of the line stays live for pattern evaluation, so a real
-      // key beside a `process.env.X` reference is still reported.
+  // the safe-placeholder vocab masks only ITS OWN span —
+ // the rest of the line stays live for pattern evaluation, so a real
+ // key beside a `process.env.X` reference is still reported.
       const line = maskSafePlaceholders(lines[i] ?? "");
-      // str.match never leaks lastIndex between calls; the VALUE_PATTERNS
-      // exec below resets it explicitly because /g exec advances it.
+ // str.match never leaks lastIndex between calls; the VALUE_PATTERNS
+ // exec below resets it explicitly because /g exec advances it.
       for (const pattern of WHOLE_MATCH_PATTERNS) {
         if (line.match(pattern.re) !== null) findings.push({ file, line: i + 1, type: pattern.type });
       }
       for (const pattern of VALUE_PATTERNS) {
         const match = pattern.re.exec(line);
         pattern.re.lastIndex = 0;
-        // Skip env-indirection VALUES (safe form): the whole value is
-        // `${...}` indirection rather than an inline literal.
+ // Skip env-indirection VALUES (safe form): the whole value is
+ // `${...}` indirection rather than an inline literal.
         if (match !== null && !/^\$\{[^}]*\}$/.test(match[5])) {
           findings.push({ file, line: i + 1, type: pattern.typeOf(match[2]) });
         }
@@ -671,10 +670,10 @@ function rootLockfiles(root: string): string[] {
   const names = new Set<string>(LOCKFILE_NAMES);
   const present = entries.filter((entry) => entry.isFile() && names.has(entry.name)).map((entry) => join(root, entry.name));
   if (present.length === 0) return [];
-  // qc1 W-005: inside a git repository the AUTHORITATIVE install input is
-  // the tracked file set — a worktree-but-ignored lockfile is still a
-  // reproducibility gap. Outside a repo (no git / bare directory), fall
-  // back to filesystem presence.
+  // inside a git repository the AUTHORITATIVE install input is
+ // the tracked file set — a worktree-but-ignored lockfile is still a
+ // reproducibility gap. Outside a repo (no git / bare directory), fall
+ // back to filesystem presence.
   try {
     const tracked = new Set(
       execFileSync("git", ["ls-files", "-z", "--", "."], {
@@ -694,14 +693,14 @@ function rootLockfiles(root: string): string[] {
 /**
  * Deterministic supply-chain checks over `repoRoot` (read-only):
  * - `lockfile-missing`: no recognized lockfile at the repo root
- *   (package-lock.json / pnpm-lock.yaml / yarn.lock / bun.lock[b] /
- *   Cargo.lock / poetry.lock / uv.lock / Gemfile.lock / composer.lock).
+ * (package-lock.json / pnpm-lock.yaml / yarn.lock / bun.lock[b] /
+ * Cargo.lock / poetry.lock / uv.lock / Gemfile.lock / composer.lock).
  * - `lockfile-duplicate`: two or more distinct lockfiles at the root —
- *   ambiguous install boundaries.
+ * ambiguous install boundaries.
  * - `action-unpinned`: `.github/workflows/*.yml` steps using mutable refs
- *   (`@main`, `@master`, `@latest` or any non-SHA ref).
+ * (`@main`, `@master`, `@latest` or any non-SHA ref).
  * - `pull_request_target-head`: a workflow triggers on `pull_request_target`
- *   AND checks out the PR head — untrusted code with secrets access.
+ * AND checks out the PR head — untrusted code with secrets access.
  *
  * Tri-age judgment (reachable / runtime-relevant) is deliberately left to
  * the reviewer (C-class). Violation codes mirror finding kinds with the
@@ -711,7 +710,7 @@ export function supplyChainChecks(repoRoot: string): SupplyChainResult {
   const findings: SupplyChainFinding[] = [];
   const violations: ValidationResult[] = [];
 
-  // Lockfile existence / duplication at the repo root.
+ // Lockfile existence / duplication at the repo root.
   const lockfiles = rootLockfiles(repoRoot);
   if (lockfiles.length === 0) {
     findings.push({ kind: "lockfile-missing", file: repoRoot });
@@ -725,7 +724,7 @@ export function supplyChainChecks(repoRoot: string): SupplyChainResult {
     );
   }
 
-  // Workflow scans: unpinned actions + pull_request_target PR-head checkout.
+ // Workflow scans: unpinned actions + pull_request_target PR-head checkout.
   const workflowsDir = join(repoRoot, ".github", "workflows");
   let wfEntries: Dirent[] = [];
   try {
@@ -744,30 +743,30 @@ export function supplyChainChecks(repoRoot: string): SupplyChainResult {
       continue;
     }
     const lines = text.split("\n");
-    // A pull_request_target trigger grants the invoked workflow access to
-    // repo secrets; combined with an EXPLICIT PR-head checkout
-    // (`ref: github.event.pull_request.head.sha|ref`) it runs untrusted
-    // code with those secrets. Plain checkout under pull_request_target
-    // defaults to the base ref — that safe shape is NOT flagged.
+ // A pull_request_target trigger grants the invoked workflow access to
+ // repo secrets; combined with an EXPLICIT PR-head checkout
+ // (`ref: github.event.pull_request.head.sha|ref`) it runs untrusted
+ // code with those secrets. Plain checkout under pull_request_target
+ // defaults to the base ref — that safe shape is NOT flagged.
     const hasPrt =
-      // Trigger forms of the `on:` key: block (trigger on its own indented
-      // line under `on:`, with or without a `- ` marker), inline scalar
-      // (`on: pull_request_target`) and inline flow sequence
-      // (`on: [push, pull_request_target]`). Inline forms stay anchored to
-      // the line start so comments or differently-named keys do not fire.
+ // Trigger forms of the `on:` key: block (trigger on its own indented
+ // line under `on:`, with or without a `- ` marker), inline scalar
+ // (`on: pull_request_target`) and inline flow sequence
+ // (`on: [push, pull_request_target]`). Inline forms stay anchored to
+ // the line start so comments or differently-named keys do not fire.
       /(?:^|\n)\s*(?:(?:-\s+)?pull_request_target\b|on:\s*(?:\[[^\]]*\s*)?pull_request_target\b)/.test(text);
-    // qc2 F-002: pair each checkout step with its OWN `with:` map (scanned
-    // until the map dedents) instead of a fixed ±6-line window — a verbose
-    // `with:` block places the head ref far below the `uses:` line. A step
-    // is a PR-head checkout iff its paired map contains a head.sha/head.ref
-    // expression.
+  // pair each checkout step with its OWN `with:` map (scanned
+ // until the map dedents) instead of a fixed ±6-line window — a verbose
+ // `with:` block places the head ref far below the `uses:` line. A step
+ // is a PR-head checkout iff its paired map contains a head.sha/head.ref
+ // expression.
     const prtHeadSteps = new Set<number>();
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? "";
       if (!/uses:\s*actions\/checkout\b/.test(line)) continue;
-      // Step boundary: a verbose `with:` map is a SIBLING of the `uses:` key
-      // (same indent), so the step ends only when a line dedents to or above
-      // the STEP-ITEM indent (the `- ` list marker), not at `with:` itself.
+ // Step boundary: a verbose `with:` map is a SIBLING of the `uses:` key
+ // (same indent), so the step ends only when a line dedents to or above
+ // the STEP-ITEM indent (the `- ` list marker), not at `with:` itself.
       let stepIndent = line.length - line.trimStart().length;
       for (let k = i - 1; k >= 0; k--) {
         const up = lines[k] ?? "";
@@ -788,9 +787,9 @@ export function supplyChainChecks(repoRoot: string): SupplyChainResult {
     }
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i] ?? "";
-      // Mutable-ref action usage: @main/@master/@latest and any non-version,
-      // non-full-SHA ref are flagged (pin-to-SHA is the fix). A trailing
-      // YAML comment after the ref does not hide the unpinned ref.
+ // Mutable-ref action usage: @main/@master/@latest and any non-version,
+ // non-full-SHA ref are flagged (pin-to-SHA is the fix). A trailing
+ // YAML comment after the ref does not hide the unpinned ref.
       const uses = /^\s*(?:-\s+)?uses:\s*(\S+)@(\S+)\s*(?:#.*)?$/.exec(line);
       if (uses !== null) {
         const ref = uses[2].replace(/^["']|["']$/g, "");
@@ -808,7 +807,7 @@ export function supplyChainChecks(repoRoot: string): SupplyChainResult {
           );
         }
       }
-      // pull_request_target + explicit PR-head checkout, structurally paired.
+ // pull_request_target + explicit PR-head checkout, structurally paired.
       if (hasPrt && prtHeadSteps.has(i)) {
         findings.push({ kind: "pull_request_target-head", file: relPath, line: i + 1 });
         violations.push(
@@ -912,7 +911,7 @@ function renderPlanFile(finding: AuditFinding, plannedAt: { commit: string; date
 /**
  * One redaction wrapper for every free-text scaffold channel: finding
  * fields (via {@link redactFinding}) AND the non-finding README channels
- * (rejected findings, `needsVerification`, `hardeningChecked` — qc1 W-003).
+ * (rejected findings, `needsVerification`, `hardeningChecked` —).
  * All user-supplied strings pass through this before any rendering, so no
  * channel can reach an artifact with raw credential material.
  */
@@ -955,12 +954,12 @@ function readPlanFileSummary(filePath: string): { title: string; fields: Map<str
  * unless the caller supplies fresh ones. Entry lines start with `- `. */
 function extractSecurityDispositionSections(text: string): { needsVerification: string[]; hardeningChecked: string[] } {
   const grab = (heading: string): string[] => {
-    // No `m` flag: `$` must match only at end of string — with `m`, `$`
-    // also matches at every line ending, so the lazy group would stop
-    // after the FIRST entry line and silently drop the rest.
-    // Tolerances for hand-edited indexes: case-insensitive heading,
-    // flexible spacing inside the ATX heading, blank line(s) before the
-    // body, and CRLF line endings.
+ // No `m` flag: `$` must match only at end of string — with `m`, `$`
+ // also matches at every line ending, so the lazy group would stop
+ // after the FIRST entry line and silently drop the rest.
+ // Tolerances for hand-edited indexes: case-insensitive heading,
+ // flexible spacing inside the ATX heading, blank line(s) before the
+ // body, and CRLF line endings.
     const match = text.match(
       new RegExp(`(?:^|\\r?\\n)##[ \\t]+${heading}[ \\t]*\\r?\\n(?:[ \\t]*\\r?\\n)?([\\s\\S]*?)(?=\\r?\\n## |$)`, "i"),
     );
@@ -1070,14 +1069,14 @@ export function scaffoldAuditPlan(
   const existing = readdirSync(outDir).filter((f) => /^\d{3}-.*\.md$/.test(f));
   let next = existing.reduce((max, f) => Math.max(max, Number(f.slice(0, 3))), 0) + 1;
 
-  // D-1 + qc1 S-002: redact ONCE up front — plan files and index rows share
-  // these redacted copies instead of calling redactFinding twice per input.
+ // D-1 +: redact ONCE up front — plan files and index rows share
+ // these redacted copies instead of calling redactFinding twice per input.
   const redactedFindings = findings.map(redactFinding);
 
   const written: string[] = [];
-  // Slug collision guard: two findings whose titles slugify identically
-  // (e.g. "Fix N+1 query" / "Fix N+1 query!") get a `-2`/`-3` suffix instead
-  // of silently overwriting the earlier plan file (qc3 F-001).
+ // Slug collision guard: two findings whose titles slugify identically
+ // (e.g. "Fix N+1 query" / "Fix N+1 query!") get a `-2`/`-3` suffix instead
+   // of silently overwriting the earlier plan file.
   const usedSlugs = new Set<string>();
   for (const finding of redactedFindings) {
     const num = String(next).padStart(3, "0");
@@ -1112,7 +1111,7 @@ export function scaffoldAuditPlan(
     };
   });
 
-  // New findings carry full detail; existing rows keep their parsed fields.
+ // New findings carry full detail; existing rows keep their parsed fields.
   const byNum = new Map(rows.map((r) => [r.num, r]));
   written.forEach((file, i) => {
     const finding = redactedFindings[i];
@@ -1125,22 +1124,22 @@ export function scaffoldAuditPlan(
       row.risk = finding.risk;
       row.confidence = finding.confidence;
       row.evidence = finding.evidence[0] ?? "";
-      // priority/dependsOn are finding-authoritative too (regression from
-      // the D-1 redaction wave: these two were dropped from the override,
-      // leaving the row dependent on re-parsing the just-written Status
-      // block instead of the redacted finding).
+ // priority/dependsOn are finding-authoritative too (regression from
+ // the D-1 redaction wave: these two were dropped from the override,
+ // leaving the row dependent on re-parsing the just-written Status
+ // block instead of the redacted finding).
       row.priority = finding.priority;
       row.dependsOn = finding.dependsOn ?? "none";
     }
   });
 
-  // Disposition policy: an option that IS supplied is the caller's
-  // authoritative current set — it REPLACES the section, so resolved leads
-  // can be removed and revised entries can be updated on a rerun. An
-  // OMITTED option carries the previous section over, protecting hand-added
-  // or earlier-run entries from being wiped by the README rebuild.
-  // Every supplied entry passes the shared redaction wrapper first (qc1
-  // W-003): carried-over lines were already redacted when written.
+ // Disposition policy: an option that IS supplied is the caller's
+ // authoritative current set — it REPLACES the section, so resolved leads
+ // can be removed and revised entries can be updated on a rerun. An
+ // OMITTED option carries the previous section over, protecting hand-added
+ // or earlier-run entries from being wiped by the README rebuild.
+ // Every supplied entry passes the shared redaction wrapper first: carried-over lines were
+ // already redacted when written.
   const needsVerificationLines =
     options.needsVerification !== undefined
       ? options.needsVerification.map(
@@ -1179,9 +1178,9 @@ export function scaffoldAuditPlan(
 /** Options for `promoteAuditPlans`. `harnessDir` is required — the snapshot
  * and `status.json` live under the harness, never beside the audit dir. */
 export type PromoteAuditPlansOptions = {
-  /** Absolute harness dir that contains `status.json` + `workflows/`. Required. */
+ /** Absolute harness dir that contains `status.json` + `workflows/`. Required. */
   harnessDir: string;
-  /** Default: basename of `outDir` (e.g. `audit-2026-08-22`). */
+ /** Default: basename of `outDir` (e.g. `audit-2026-08-22`). */
   workflowId?: string;
 };
 
@@ -1230,14 +1229,14 @@ export async function promoteAuditPlans(
   const workflowId = options.workflowId ?? basename(resolve(outDir));
   assertSafePathComponent(workflowId, "workflow id");
 
-  // W-001 (QC wave 1): refuse re-promote instead of silently whole-rewriting
-  // the snapshot and dropping previously promoted Todo rows. The workflow
-  // dir is the existence probe — a second promote would otherwise overwrite
-  // (snapshot) / upsert (status.json) with a fresh set, losing the prior
-  // subset. Recovery: remove the workflow first (`mstar sdd`/manual
-  // `unregisterWorkflow` + snapshot removal). Greptile (fix-1): this guard
-  // is check-then-act — it must run INSIDE the root write lock, atomically
-  // with the snapshot write + root upsert below.
+ // Refuse re-promote instead of silently whole-rewriting
+ // the snapshot and dropping previously promoted Todo rows. The workflow
+ // dir is the existence probe — a second promote would otherwise overwrite
+ // (snapshot) / upsert (status.json) with a fresh set, losing the prior
+ // subset. Recovery: remove the workflow first (`mstar sdd`/manual
+ // `unregisterWorkflow` + snapshot removal). Greptile (fix-1): this guard
+ // is check-then-act — it must run INSIDE the root write lock, atomically
+ // with the snapshot write + root upsert below.
   const harnessDir = resolve(options.harnessDir);
   const statusPath = join(harnessDir, "status.json");
   const workflowDir = join(harnessDir, "workflows", workflowId);
@@ -1281,15 +1280,15 @@ export async function promoteAuditPlans(
     );
   }
 
-  // Greptile (fix-1): the re-promote guard, the snapshot write, and the root
-  // upsert are ONE atomic section under the root status.json write lock —
-  // the same serialization point `registerWorkflow` uses. The guard is the
-  // lock's first statement, so two concurrent same-id promotes cannot both
-  // pass it (check-then-act closed). The snapshot is written directly with
-  // writeJson (atomic temp+rename) instead of `writeWorkflowSnapshot`, whose
-  // own snapshot-dir lock would split the serialization point; nesting that
-  // second lock is technically safe (different lockdir) but would let the
-  // re-promote guard and the snapshot write serialize separately.
+ // Greptile (fix-1): the re-promote guard, the snapshot write, and the root
+ // upsert are ONE atomic section under the root status.json write lock —
+ // the same serialization point `registerWorkflow` uses. The guard is the
+ // lock's first statement, so two concurrent same-id promotes cannot both
+ // pass it (check-then-act closed). The snapshot is written directly with
+ // writeJson (atomic temp+rename) instead of `writeWorkflowSnapshot`, whose
+ // own snapshot-dir lock would split the serialization point; nesting that
+ // second lock is technically safe (different lockdir) but would let the
+ // re-promote guard and the snapshot write serialize separately.
   await withStatusWriteLock(statusPath, async () => {
     if (existsSync(snapshotPath)) {
       throw new Error(
@@ -1305,16 +1304,16 @@ export async function promoteAuditPlans(
     } catch (error) {
       rmSync(snapshotPath, { force: true });
       try {
-        // Remove the workflow dir only when empty — a concurrent writer's
-        // snapshot/rows are never destroyed; rmdirSync throws ENOTEMPTY if
-        // content appeared between the readdir and the removal, and the
-        // re-promote guard would refuse the retry anyway, keeping this
-        // promote's partial state out of the way.
+ // Remove the workflow dir only when empty — a concurrent writer's
+ // snapshot/rows are never destroyed; rmdirSync throws ENOTEMPTY if
+ // content appeared between the readdir and the removal, and the
+ // re-promote guard would refuse the retry anyway, keeping this
+ // promote's partial state out of the way.
         if (readdirSync(workflowDir).length === 0) {
           rmdirSync(workflowDir);
         }
       } catch {
-        // Dir non-empty or already gone — leave it; never force-remove.
+ // Dir non-empty or already gone — leave it; never force-remove.
       }
       throw error;
     }
@@ -1330,11 +1329,11 @@ export async function promoteAuditPlans(
  * a usage error — do not silently promote a subset.
  */
 function resolveSelectedPlanFiles(outDir: string, selected: readonly string[]): string[] {
-  // S-03 (QC wave 1): readdirSync order is filesystem-dependent — sort so a
-  // duplicate numeric prefix (e.g. manual `001-foo.md` + `001-bar.md`) is
-  // resolved deterministically: the FIRST (lowest) filename wins for a bare
-  // numeric prefix (`001`), instead of by directory order. Exact-stem
-  // lookups (`001-foo`) still resolve to their own file via byStem.
+ // readdirSync order is filesystem-dependent — sort so a
+ // duplicate numeric prefix (e.g. manual `001-foo.md` + `001-bar.md`) is
+ // resolved deterministically: the FIRST (lowest) filename wins for a bare
+ // numeric prefix (`001`), instead of by directory order. Exact-stem
+ // lookups (`001-foo`) still resolve to their own file via byStem.
   const files = readdirSync(outDir)
     .filter((f) => /^\d{3}-.*\.md$/.test(f))
     .sort();
@@ -1342,8 +1341,8 @@ function resolveSelectedPlanFiles(outDir: string, selected: readonly string[]): 
   const byStem = new Map<string, string>();
   for (const file of files) {
     const stem = file.replace(/\.md$/, "");
-    // Keep the first (lowest) file per numeric prefix — a later `set` would
-    // overwrite it and resolve `001` to the highest duplicate instead.
+ // Keep the first (lowest) file per numeric prefix — a later `set` would
+ // overwrite it and resolve `001` to the highest duplicate instead.
     if (!byNum.has(stem.slice(0, 3))) {
       byNum.set(stem.slice(0, 3), file);
     }
@@ -1367,7 +1366,7 @@ function resolveSelectedPlanFiles(outDir: string, selected: readonly string[]): 
 }
 
 /** Parse the README index `## Execution order & status` table into
- *  `num -> { title }` rows (Plan column = `001`, Title column adjacent). */
+ * `num -> { title }` rows (Plan column = `001`, Title column adjacent). */
 function readExecutionOrderIndex(outDir: string): Map<string, { title: string }> {
   const readmePath = join(outDir, "README.md");
   let text: string;
@@ -1388,8 +1387,8 @@ function readExecutionOrderIndex(outDir: string): Map<string, { title: string }>
       break;
     }
     if (!inSection) continue;
-    // Split on unescaped `|` (the index escapes literal pipes in titles as
-    // `\|`, matching escapeCell in renderIndex).
+ // Split on unescaped `|` (the index escapes literal pipes in titles as
+ // `\|`, matching escapeCell in renderIndex).
     const cells = line.split(/(?<!\\)\|/).map((c) => c.trim());
     if (cells.length >= 3 && /^\d{3}$/.test(cells[1])) {
       rows.set(cells[1], { title: cells[2].replace(/\\\|/g, "|") });

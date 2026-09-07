@@ -1,5 +1,5 @@
 /**
- * TabNav (spec panel-tabs §2/§6.1, plan 20260811-panel-tabs-shell Task 1) —
+ * TabNav (spec panel-tabs §2/§6.1) —
  * the fixed header nav: 3 MenuTabs (任务迭代 / 代理执行 / 事件记录, F1.2)
  * switching the main content. Tab state is owned by PanelView
  * (`useState<PanelTab>`, default 'tasks', no routing — SSR-stable under
@@ -10,7 +10,7 @@
  * every tab and `data-mstar-tab-active="true|false"` (activation state). The
  * active tab gets the business-token underline; inactive tabs stay secondary.
  *
- * A11y (QC wave): the nav is a WAI-ARIA tablist and each tab is a
+ * A11y: the nav is a WAI-ARIA tablist and each tab is a
  * `role="tab"` button with `aria-selected` (APG Tabs pattern, replacing the
  * former `aria-pressed` toggle). Deliberately minimal: every tab stays Tab-
  * reachable (no roving tabindex / arrow-key handling — that behavior would

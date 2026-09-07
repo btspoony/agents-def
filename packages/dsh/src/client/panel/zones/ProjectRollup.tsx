@@ -1,6 +1,5 @@
 /**
- * ProjectRollup (plan `20260819-workflow-dsh-viz` Task 3 — compass v3.0.0
- * AC-4/AC-P3): the ADDITIVE project rollup zone of the tasks page — roadmap
+ * ProjectRollup : the ADDITIVE project rollup zone of the tasks page — roadmap
  * milestones + open-residual severity counts from the project layer
  * (`state.project`, produced by the catalog from `projects/<id>/roadmap.md`
  * frontmatter `milestones[]` + `projects/<id>/residuals.json` registers).

@@ -50,9 +50,9 @@ const INDEX_HEADER = "| Iteration | Path | Description | Status |";
  * Loose shape of a parsed workflow snapshot (`workflows/<id>/snapshot.json`).
  * All fields are `unknown` because documents come from JSON at runtime;
  * validators narrow them. `plans[]` rows are the legacy PlanRow shape
- * verbatim (plan Task 2) — `findPlanRow` accepts `id` or `plan_id`.
+ * verbatim () — `findPlanRow` accepts `id` or `plan_id`.
  *
- * Deliberate decoupling (qc wave-1 S-f): this is a loose LOCAL re-declaration,
+ * Deliberate decoupling: this is a loose LOCAL re-declaration,
  * NOT an import of `WorkflowSnapshot` from workflow.ts. This module only
  * reads `plans[].status`; importing the full schema would add a module edge
  * to workflow.ts (which imports status.ts, which workflow.ts cycles back
@@ -105,7 +105,7 @@ export type PhaseGateOptions = {
  *   required; missing items listed in `violations`).
  * - all plans Done and both checklists clean → `phase-4-pr-delivery`.
  *
- * Note (qc2 F-003): during the Phase-3 window `ok` is false because the
+ * Note : during the Phase-3 window `ok` is false because the
  * §3.4 close items (`status: completed` + `end_date`) are only written at
  * the END of close — the exit checklist gates Phase 4, not the Phase-3
  * entry, so callers (e.g. the CLI, which exits 1) must treat that as "close

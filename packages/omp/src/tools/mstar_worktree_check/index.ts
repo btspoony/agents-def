@@ -18,11 +18,11 @@
  *
  * `workflowId` is a single safe path component — reject separators and
  * `..` before joining (parity with the CLI `resolveSnapshotPath` and
- * `mstar_lease_verify`, fix-wave W-A). `WORKFLOW_SNAPSHOT_FILE` is a
+ * `mstar_lease_verify`, W-A). `WORKFLOW_SNAPSHOT_FILE` is a
  * P1-only engine export absent from the published floor `^2.0.2`, read
  * from a DYNAMIC engine import so a stale engine yields an explicit
  * upgrade error instead of a module-link failure that silently drops the
- * tool (qc3 F-001 / fix-wave W-B). `resolveWorkflowDir` is likewise
+ * tool . `resolveWorkflowDir` is likewise
  * P1-only: it is loaded dynamically and a stale engine (or a resolver
  * failure) falls back to the DEFAULT `workflows` name (same degrade as
  * `mstar_status_validate`).
@@ -62,7 +62,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Workflow-id guard (fix-wave W-A): reject "", ".", "..", separators. */
+/** Workflow-id guard : reject "", ".", "..", separators. */
 function assertSafeWorkflowId(workflowId: string): string | null {
   if (workflowId === "" || workflowId === "." || workflowId === ".." || workflowId.includes("/") || workflowId.includes("\\")) {
     return `mstar_worktree_check: invalid workflowId ${JSON.stringify(workflowId)}`;
@@ -108,11 +108,11 @@ async function resolveWorkflowDirOf(harnessDir: string): Promise<string> {
 }
 
 /** Dynamic engine import guard for the P1-only `WORKFLOW_SNAPSHOT_FILE`
- * export (qc3 F-001 / fix-wave W-B): missing → explicit upgrade error. */
+ * export : missing → explicit upgrade error. */
 async function loadSnapshotFile(): Promise<{ snapshotFile: string } | { error: AgentToolResult }> {
-  // Dynamic import (fix-wave W-B): a static named import of
-  // WORKFLOW_SNAPSHOT_FILE would fail at module link on published engines
-  // (^2.0.2 floor) and silently drop the tool from /extensions.
+ // Dynamic import : a static named import of
+ // WORKFLOW_SNAPSHOT_FILE would fail at module link on published engines
+ // (^2.0.2 floor) and silently drop the tool from /extensions.
   const engine = await import("@mstar-harness/engine");
   const snapshotFile = engine.WORKFLOW_SNAPSHOT_FILE;
   if (typeof snapshotFile !== "string") {

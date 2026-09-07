@@ -1,15 +1,15 @@
 /**
  * Task 2 — system-prompt module + harness-rules injection (plan
- * `20260816-dsh-nb1-systemprompt`): the GLOBAL-layer `mstar:harness-rules`
+ * ): the GLOBAL-layer `mstar:harness-rules`
  * pointer section (order 2, live provider text — never "static" since Task
  * 3; zero complete `{{...}}` groups via `stripInterpolationHazard`
- * screening, plan QC fix wave W-1) plus the `mstar:engine-status`
+ * screening) plus the `mstar:engine-status`
  * PromptContext (bounded machine summary over the catalog's
  * `buildCatalogSources` source — never the full status.json), visible to
  * the root session AND every dispatched child. The structural existence
  * check degrades (missing `ctx.systemPrompt` → `false` + one debug log;
  * boot unaffected), and the child persona is delivered through the NATIVE
- * subagent persona channel since plan `20260831-dsh-alpha2-optional-fallbacks`
+ * subagent persona channel since
  * Task 3 — NO child-scoped `mstar:role-persona` section exists anymore (g
  * pins the cutover). Task 3 (nb1): the section's enforcement word is LIVE —
  * a text provider re-reads the compass per assembly (soft/hard), so a
@@ -126,7 +126,7 @@ async function settleInjectChild(): Promise<void> {
   await promise
 }
 
-describe('mstar:harness-rules global section + mstar:engine-status context (plan 20260816-dsh-nb1-systemprompt Task 2)', () => {
+describe('mstar:harness-rules global section + mstar:engine-status context ', () => {
   it('(a) global registration — the root assembly carries the mstar:harness-rules section (name/order/minimal pointer content)', async () => {
     booted = await bootApp()
     const assembly = await booted.ctx.systemPrompt.assemble()
@@ -249,7 +249,7 @@ describe('mstar:harness-rules global section + mstar:engine-status context (plan
   })
 
   it('(g) persona-channel cutover — NO child-scoped mstar:role-persona section exists; the global harness-rules section still reaches children', async () => {
-    // Plan `20260831-dsh-alpha2-optional-fallbacks` Task 3: the child persona
+    // The child persona
     // moved to the NATIVE subagent persona channel (`SubagentStartRequest.persona`,
     // role-persona.ts) — the old additive section is GONE. The global
     // harness-rules section must keep reaching dispatched children (the
@@ -499,7 +499,7 @@ describe('mstar:harness-rules global section + mstar:engine-status context (plan
   })
 })
 
-describe('stripInterpolationHazard (STRICT {{variable}} screening — plan QC fix wave W-1)', () => {
+describe('stripInterpolationHazard (STRICT {{variable}} screening)', () => {
   it('breaks complete {{...}} groups so no pair survives the renderer scan', () => {
     expect(stripInterpolationHazard('{{x}}')).toBe('{ {x} }')
     expect(stripInterpolationHazard('a {{x}} b')).toBe('a { {x} } b')
@@ -519,7 +519,7 @@ describe('stripInterpolationHazard (STRICT {{variable}} screening — plan QC fi
   })
 })
 
-describe('mstar:engine-status slim digest (plan 20260820-dsh-engine-status-slim)', () => {
+describe('mstar:engine-status slim digest ', () => {
   /** Boot an app seeded with the given harness files and return its context digest text + assembly. */
   async function bootSlim(seed: Record<string, string>) {
     const root = await mkdtemp(join(tmpdir(), 'dsh-system-prompt-slim-'))
@@ -581,7 +581,7 @@ describe('mstar:engine-status slim digest (plan 20260820-dsh-engine-status-slim)
     expect(text).toContain('workflow v2.2.0 (iteration) completed')
   })
 
-  it('(slim-5) missing snapshot — an active entry with no workflows/ dir degrades to the version line and never throws (S-d fix-wave)', async () => {
+  it('(slim-5) missing snapshot — an active entry with no workflows/ dir degrades to the version line and never throws ', async () => {
     const { text, assembly } = await bootSlim({
       'status.json': v2Root([v2WorkflowEntry('wf-1')]),
     })

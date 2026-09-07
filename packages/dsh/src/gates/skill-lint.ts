@@ -1,7 +1,6 @@
 /**
  * Skill-authoring lint gate — `SKILL.md` write-intent gating under the
- * configured skill roots (plan `20260810-dsh-entry-split` §9 extraction).
- *
+ * configured skill roots. *
  * The content-blind `fs/write-intent` listener (`skillWriteIntentListener`,
  * registered by the entry `apply` with `prepend`) lints the pre-write
  * on-disk document and applies the status-gate repair-escape policy; the

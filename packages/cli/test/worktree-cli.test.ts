@@ -29,7 +29,7 @@ const SRC_ENTRY = join(CLI_ROOT, "src/index.ts");
 const WORKFLOW_ID = "wf-1";
 
 /**
- * Spawn env with ambient harness env vars pinned out (qc3 F-4): the CLI
+ * Spawn env with ambient harness env vars pinned out: the CLI
  * resolves harness dirs from MSTAR_HARNESS_DIR ahead of probing — an
  * ambient value would redirect every fixture spuriously.
  */
@@ -224,7 +224,7 @@ describe("mstar worktree check — L1 (control/feature isolation + branch alignm
     }
   });
 
-  test("hostile workflow id (path traversal) is rejected before any read, exit 1 (qc2 S-2)", () => {
+  test("hostile workflow id (path traversal) is rejected before any read, exit 1", () => {
     const root = tmpRoot("mstar-wt-l1-traversal-");
     try {
       writeSnapshot(root, snapshotDoc([]));

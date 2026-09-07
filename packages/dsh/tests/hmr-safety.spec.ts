@@ -150,7 +150,7 @@ describe('HMR safety — fiber.dispose removes every gate contribution', () => {
       expect(writeAfter).toBeUndefined()
       const editAfter = await ctx.waterfall('fs/edit-intent', statusTarget(harnessDir), {}, () => undefined)
       expect(editAfter).toBeUndefined()
-      expect(advisories.length).toBe(before) // edit-intent post-dispose: no advisory (qc1 S-003 / qc3 F-6)
+      expect(advisories.length).toBe(before) // edit-intent post-dispose: no advisory 
       const dispatchAfter = await ctx.waterfall('tools/pre-execute', subagentExec(MISSING_EXECUTE_AS), defaultAllow)
       expect(dispatchAfter).toEqual({ kind: 'allow' })
 

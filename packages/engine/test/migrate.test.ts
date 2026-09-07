@@ -1,21 +1,22 @@
 /**
- * Engine migrate module — v1 -> v2 migration planner + executor (plan
- * `20260819-workflow-engine-core.md` Task 6). Fixtures are built from this
- * repo's REAL legacy tree snapshot (`fixtures/migrate-real/`): the live
- * `status.json` copied verbatim (40 rows: 36 Done / 1 InProgress / 3 Todo,
- * 11 `plan_id`-keyed rows, zero `execution_lease` on Done rows, empty
- * `residual_findings`), every canonical iteration compass frontmatter
- * verbatim (18 iterations incl. the `v2.1.0` review-chain VARIANT
- * `delivery-compass.code-reviewer-role.md` which is NOT a grouping
- * source), two real archived residual files (legacy history — not lifted),
- * plus ONE synthetic zero-plan compass (`iter-0000-fixture-zero-plan`) —
- * the real tree has no zero-plan compass, and the brief requires the
- * fixture to cover that shape.
+ * Engine migrate module — v1 -> v2 migration planner + executor.
  *
- * Spec sources (each test cites the frozen migrate semantics):
+ * Fixtures live in `fixtures/migrate-real/`: a legacy-tree snapshot with
+ * obviously-synthetic ids (all plan/iteration ids use a `0000MMDD-` date
+ * prefix). It contains a v1 `status.json` copied verbatim in shape (40
+ * rows: 36 Done / 1 InProgress / 3 Todo, 11 `plan_id`-keyed rows, zero
+ * `execution_lease` on Done rows, empty `residual_findings`), every
+ * canonical iteration compass frontmatter verbatim (18 iterations incl.
+ * the `v2.1.0` review-chain VARIANT `delivery-compass.code-reviewer-role.md`
+ * which is NOT a grouping source), two archived residual files (legacy
+ * history — not lifted), plus ONE synthetic zero-plan compass
+ * (`iter-0000-fixture-zero-plan`) — the snapshot has no zero-plan compass,
+ * and the fixture must cover that shape.
+ *
+ * Frozen migrate semantics exercised below:
  * - Grouping: compass frontmatter is the SSOT; row id from `id` OR legacy
  *   `plan_id`; registered-but-missing ids -> owning snapshot
- *   `legacy_metadata.compact_missing[]` (23 observed — never fabricated).
+ *   `legacy_metadata.compact_missing[]` (never fabricated).
  * - Status mapping: compass `active|locked` -> `running`, `completed` ->
  *   `completed`; standalone `Done` -> `completed`, `InProgress|InReview` ->
  *   `running`, `Blocked` -> `paused`, `Todo` -> `paused` + not-started
@@ -27,9 +28,9 @@
  *   root-metadata keys -> `legacy_metadata` (nothing dropped silently).
  * - Residuals: open `residual_findings` -> `projects/_default/residuals.json`
  *   (keyed by plan id, each value an ARRAY of ALL open entries with
- *   `source_plan`/`registered_at` provenance — QC wave-1 W-E: v1
- *   multi-finding semantics preserved verbatim, nothing collapsed or
- *   skipped). Archived residuals are never lifted.
+ *   `source_plan`/`registered_at` provenance — v1 multi-finding semantics
+ *   preserved verbatim, nothing collapsed or skipped). Archived residuals
+ *   are never lifted.
  * - Notes: per-plan `notes` ARRAYS -> `workflows/<id>/notes.jsonl` initial
  *   entries; string `notes` stay on the row (not lifted).
  * - Ordering/idempotence: additive-first steps; root v2 replacement LAST
@@ -63,11 +64,11 @@ afterEach(() => {
   setArtifactStore(undefined);
 });
 
-/** Copy the committed real-tree fixture into a fresh tmp harness dir. */
+/** Copy the committed snapshot fixture into a fresh tmp harness dir. */
 function fixtureTree(): string {
   const root = tmpRoot("migrate-fixture-");
   cpSync(FIXTURES, root, { recursive: true });
-  // Task 2: the apply loop routes snapshot writes through the active
+  // The apply loop routes snapshot writes through the active
   // ArtifactStore — point it at the migrated root so the store resolves the
   // same paths the plan writes to.
   setArtifactStore(createFsStore(root));
@@ -105,39 +106,39 @@ function residual(overrides: Record<string, unknown> = {}): Record<string, unkno
 }
 
 const REAL_ITERATION_IDS = [
-  "iter-20260809-dsh-workflow-viz",
-  "iter-20260809-harness-root-fix",
-  "iter-20260809-mstar-panel-beautify",
-  "iter-20260810-panel-fix-agentflow",
-  "iter-20260810-panel-zones",
-  "iter-20260811-panel-f4",
-  "iter-20260811-panel-fixes",
-  "iter-20260812-sync-v211-panel-f5",
-  "iter-20260814-fallbacks-integration",
-  "iter-20260815-fallbacks-personas-workflow",
-  "iter-20260815-dsh-skills-adoption",
-  "iter-20260816-dsh-seeds-bridges",
-  "iter-20260816-dsh-inspect-adoption",
-  "iter-20260816-audit-mechanical-alignment",
-  "iter-20260817-dsh-cli-roles",
+  "iter-00000809-dsh-workflow-viz",
+  "iter-00000809-harness-root-fix",
+  "iter-00000809-mstar-panel-beautify",
+  "iter-00000810-panel-fix-agentflow",
+  "iter-00000810-panel-zones",
+  "iter-00000811-panel-f4",
+  "iter-00000811-panel-fixes",
+  "iter-00000812-sync-v211-panel-f5",
+  "iter-00000814-fallbacks-integration",
+  "iter-00000815-fallbacks-personas-workflow",
+  "iter-00000815-dsh-skills-adoption",
+  "iter-00000816-dsh-seeds-bridges",
+  "iter-00000816-dsh-inspect-adoption",
+  "iter-00000816-audit-mechanical-alignment",
+  "iter-00000817-dsh-cli-roles",
   "v2.0.0",
   "v2.1.0",
 ];
 
 const REAL_STANDALONE_IDS = [
-  "20260717-kimi-host",
-  "20260722-iter-wt-lease",
-  "20260728-zero-residual",
-  "20260807-agent-plugins-v1",
-  "20260808-omp-inprocess-binding",
-  "20260809-omp-engine-compat-hotfix",
-  "20260811-code-reviewer-role",
-  "20260811-gitignore-default-ignore",
-  "20260816-mechanical-verification",
-  "20260817-cli-bin-alias",
+  "00000717-kimi-host",
+  "00000722-iter-wt-lease",
+  "00000728-zero-residual",
+  "00000807-agent-plugins-v1",
+  "00000808-omp-inprocess-binding",
+  "00000809-omp-engine-compat-hotfix",
+  "00000811-code-reviewer-role",
+  "00000811-gitignore-default-ignore",
+  "00000816-mechanical-verification",
+  "00000817-cli-bin-alias",
 ];
 
-describe("migrateHarnessTree — planner on the real-tree fixture", () => {
+describe("migrateHarnessTree — planner on the snapshot fixture", () => {
   test("plans 29 snapshots (18 completed iterations incl. zero-plan compass + 1 running v3.0.0 + 10 standalone), ids sorted", () => {
     const root = fixtureTree();
     try {
@@ -185,7 +186,7 @@ describe("migrateHarnessTree — planner on the real-tree fixture", () => {
         push_policy: "push to mirror dev-dsh authorized (2026-08-09)",
       });
       expect(data.branch).toEqual({ base: "main", integration: "iteration/v3.0.0", target: "main" });
-      expect(data.control_worktree_path).toBe("/Users/bibi/workspace/ai/mstar-harness");
+      expect(data.control_worktree_path).toBe("/Users/dev/workspace/ai/mstar-harness");
       expect(data.integration_merge_lease).toBeUndefined();
 
       expect(data.legacy_metadata).toMatchObject({
@@ -202,15 +203,15 @@ describe("migrateHarnessTree — planner on the real-tree fixture", () => {
 
       // 4 registered plans, rows sorted by id, statuses + lease verbatim.
       expect(data.plans.map((row) => row.id)).toEqual([
-        "20260819-workflow-dsh-viz",
-        "20260819-workflow-engine-core",
-        "20260819-workflow-migrate-cli",
-        "20260819-workflow-skills-thinning",
+        "00000819-workflow-dsh-viz",
+        "00000819-workflow-engine-core",
+        "00000819-workflow-migrate-cli",
+        "00000819-workflow-skills-thinning",
       ]);
-      const engineCore = data.plans.find((row) => row.id === "20260819-workflow-engine-core")!;
+      const engineCore = data.plans.find((row) => row.id === "00000819-workflow-engine-core")!;
       expect(engineCore.status).toBe("InProgress");
       expect(engineCore.execution_lease).toMatchObject({ holder: "omp-pm-v3.0.0" });
-      const todoRow = data.plans.find((row) => row.id === "20260819-workflow-migrate-cli")!;
+      const todoRow = data.plans.find((row) => row.id === "00000819-workflow-migrate-cli")!;
       expect(todoRow.status).toBe("Todo");
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -227,11 +228,11 @@ describe("migrateHarnessTree — planner on the real-tree fixture", () => {
       expect(data.status).toBe("completed");
       expect(data.ended_at).toBe("2026-08-08");
       expect(data.plans.map((row) => row.plan_id)).toEqual([
-        "20260808-slice1-engine-foundation",
-        "20260808-slice2-sdd-iteration",
-        "20260808-slice3-dispatch-git-gates",
-        "20260808-slice4-lints-scaffolds",
-        "20260808-slice5-hardgates-close",
+        "00000808-slice1-engine-foundation",
+        "00000808-slice2-sdd-iteration",
+        "00000808-slice3-dispatch-git-gates",
+        "00000808-slice4-lints-scaffolds",
+        "00000808-slice5-hardgates-close",
       ]);
       for (const row of data.plans) {
         expect(row.id).toBeUndefined(); // legacy plan_id-only rows stay verbatim
@@ -258,14 +259,14 @@ describe("migrateHarnessTree — planner on the real-tree fixture", () => {
 
       const v21 = plan.snapshots.find((s) => s.id === "v2.1.0")!;
       expect(v21.data.legacy_metadata!.compact_missing).toEqual([
-        "20260808-dsh-host-adapter",
-        "20260808-dsh-package-core",
-        "20260808-dsh-seams-bundle",
+        "00000808-dsh-host-adapter",
+        "00000808-dsh-package-core",
+        "00000808-dsh-seams-bundle",
       ]);
       expect(v21.data.plans).toEqual([]);
 
-      const viz = plan.snapshots.find((s) => s.id === "iter-20260809-dsh-workflow-viz")!;
-      expect(viz.data.legacy_metadata!.compact_missing).toEqual(["20260809-dsh-workflow-viz-panel"]);
+      const viz = plan.snapshots.find((s) => s.id === "iter-00000809-dsh-workflow-viz")!;
+      expect(viz.data.legacy_metadata!.compact_missing).toEqual(["00000809-dsh-workflow-viz-panel"]);
       expect(viz.data.plans).toEqual([]);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -276,13 +277,13 @@ describe("migrateHarnessTree — planner on the real-tree fixture", () => {
     const root = fixtureTree();
     try {
       const plan = migrateHarnessTree(root);
-      // 20260811-code-reviewer-role is registered only in the v2.1.0 VARIANT
+      // 00000811-code-reviewer-role is registered only in the v2.1.0 VARIANT
       // compass (never the canonical one) -> standalone plan snapshot.
-      const row = plan.snapshots.find((s) => s.id === "20260811-code-reviewer-role");
+      const row = plan.snapshots.find((s) => s.id === "00000811-code-reviewer-role");
       expect(row).toBeDefined();
       expect(row!.type).toBe("plan");
       expect(plan.snapshots.find((s) => s.id === "v2.1.0")!.data.legacy_metadata!.compact_missing).not.toContain(
-        "20260811-code-reviewer-role",
+        "00000811-code-reviewer-role",
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -320,14 +321,14 @@ describe("migrateHarnessTree — planner on the real-tree fixture", () => {
       }
       // plan_id-keyed row with no dates: every timestamp falls back to the
       // root v1 updated_at (deterministic — no clock reads).
-      const kimi = standalone.find((s) => s.id === "20260717-kimi-host")!;
+      const kimi = standalone.find((s) => s.id === "00000717-kimi-host")!;
       expect(kimi.data.started_at).toBe("2026-08-19");
       expect(kimi.data.ended_at).toBe("2026-08-19");
       expect(kimi.data.updated_at).toBe("2026-08-19");
-      expect(kimi.data.plans[0]!.plan_id).toBe("20260717-kimi-host");
+      expect(kimi.data.plans[0]!.plan_id).toBe("00000717-kimi-host");
       expect(kimi.data.plans[0]!.id).toBeUndefined();
 
-      const zeroResidual = standalone.find((s) => s.id === "20260728-zero-residual")!;
+      const zeroResidual = standalone.find((s) => s.id === "00000728-zero-residual")!;
       expect(zeroResidual.data.started_at).toBe("2026-07-28");
       expect(zeroResidual.data.ended_at).toBe("2026-07-28");
       expect(zeroResidual.data.plans[0]!.notes).toHaveLength(2);
@@ -377,16 +378,16 @@ describe("migrateHarnessTree — planner on the real-tree fixture", () => {
       const plan = migrateHarnessTree(root);
       const files = plan.notesFiles.map((n) => n.file);
       expect(files).toEqual([
-        "workflows/20260728-zero-residual/notes.jsonl",
-        "workflows/20260807-agent-plugins-v1/notes.jsonl",
-        "workflows/20260808-omp-inprocess-binding/notes.jsonl",
-        "workflows/20260809-omp-engine-compat-hotfix/notes.jsonl",
-        "workflows/20260811-code-reviewer-role/notes.jsonl",
-        "workflows/20260811-gitignore-default-ignore/notes.jsonl",
+        "workflows/00000728-zero-residual/notes.jsonl",
+        "workflows/00000807-agent-plugins-v1/notes.jsonl",
+        "workflows/00000808-omp-inprocess-binding/notes.jsonl",
+        "workflows/00000809-omp-engine-compat-hotfix/notes.jsonl",
+        "workflows/00000811-code-reviewer-role/notes.jsonl",
+        "workflows/00000811-gitignore-default-ignore/notes.jsonl",
         "workflows/v2.0.0/notes.jsonl",
       ]);
 
-      const zero = plan.notesFiles.find((n) => n.file === "workflows/20260728-zero-residual/notes.jsonl")!;
+      const zero = plan.notesFiles.find((n) => n.file === "workflows/00000728-zero-residual/notes.jsonl")!;
       expect(zero.lines).toHaveLength(2);
       for (const line of zero.lines) {
         const parsed = JSON.parse(line) as { kind: string; ts: string; text: string };
@@ -396,8 +397,8 @@ describe("migrateHarnessTree — planner on the real-tree fixture", () => {
       expect(JSON.parse(zero.lines[0]!).text).toBe("2026-07-28 registered from CreatePlan zero_residual_mode");
 
       // string-typed notes are NOT lifted (they stay verbatim on the row).
-      expect(files).not.toContain("workflows/20260816-inspect-redteam-consolidation/notes.jsonl");
-      const inspect = plan.snapshots.find((s) => s.id === "iter-20260816-dsh-inspect-adoption")!;
+      expect(files).not.toContain("workflows/00000816-inspect-redteam-consolidation/notes.jsonl");
+      const inspect = plan.snapshots.find((s) => s.id === "iter-00000816-dsh-inspect-adoption")!;
       expect(typeof inspect.data.plans[2]!.notes).toBe("string");
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -465,8 +466,8 @@ describe("applyMigratePlan — executor on a copied fixture tree", () => {
       }
 
       // Archived residual files stay untouched (legacy history, not lifted).
-      expect(existsSync(join(root, "archived", "residuals", "20260722-iter-wt-lease.json"))).toBe(true);
-      expect(existsSync(join(root, "archived", "residuals", "20260811-gitignore-default-ignore.json"))).toBe(true);
+      expect(existsSync(join(root, "archived", "residuals", "00000722-iter-wt-lease.json"))).toBe(true);
+      expect(existsSync(join(root, "archived", "residuals", "00000811-gitignore-default-ignore.json"))).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -523,7 +524,7 @@ describe("applyMigratePlan — executor on a copied fixture tree", () => {
       expect(readJson(join(root, "status.json"))).toEqual(v1Before);
       expect(existsSync(join(root, ARCHIVED_STATUS_V1_FILE))).toBe(true);
 
-      // Additive contract (qc2 F-004): snapshots BEFORE the failure point
+      // Additive contract: snapshots BEFORE the failure point
       // may exist on disk (additive-first apply, no rollback)…
       for (let i = 0; i < failureIndex; i++) {
         expect(existsSync(join(root, poisoned.snapshots[i]!.file))).toBe(true);
@@ -567,7 +568,7 @@ describe("applyMigratePlan — executor on a copied fixture tree", () => {
     }
   });
 
-  test("constructed empty register ({ entries: {} }) applies but writes no register file or parent dir (audit-20260821-f3)", async () => {
+  test("constructed empty register ({ entries: {} }) applies but writes no register file or parent dir", async () => {
     const root = fixtureTree();
     try {
       const plan = migrateHarnessTree(root);
@@ -592,7 +593,7 @@ describe("applyMigratePlan — executor on a copied fixture tree", () => {
     }
   });
 
-  test("constructed register with >=1 entry writes the doc verbatim (audit-20260821-f3 control)", async () => {
+  test("constructed register with >=1 entry writes the doc verbatim", async () => {
     const root = fixtureTree();
     try {
       const plan = migrateHarnessTree(root);
@@ -618,7 +619,7 @@ describe("applyMigratePlan — executor on a copied fixture tree", () => {
     }
   });
 
-  test("constructed register with data {} (missing entries) still throws and writes nothing (audit-20260821-f3)", async () => {
+  test("constructed register with data {} (missing entries) still throws and writes nothing", async () => {
     const root = fixtureTree();
     try {
       const plan = migrateHarnessTree(root);
@@ -635,7 +636,7 @@ describe("applyMigratePlan — executor on a copied fixture tree", () => {
     }
   });
 
-  test("constructed register with data { entries: null } still throws and writes nothing (audit-20260821-f3)", async () => {
+  test("constructed register with data { entries: null } still throws and writes nothing", async () => {
     const root = fixtureTree();
     try {
       const plan = migrateHarnessTree(root);
@@ -681,11 +682,11 @@ describe("applyMigratePlan — executor on a copied fixture tree", () => {
   });
 });
 
-describe("residual lift + status-mapping fixture (derived from the real tree)", () => {
+describe("residual lift + status-mapping fixture (derived from the snapshot fixture)", () => {
   /** Real fixture + synthetic standalone rows (Todo/InProgress/Blocked) + a
    * non-empty residual_findings map covering: single-entry plan (iteration-
    * grouped -> lifecycle_id), multi-entry plan (ALL open residuals kept,
-   * sorted by id — QC wave-1 W-E array schema), closed entries (never
+   * sorted by id, array schema), closed entries (never
    * lifted), and empty arrays (skipped). */
   function mappedTree(): string {
     const root = fixtureTree();
@@ -693,22 +694,22 @@ describe("residual lift + status-mapping fixture (derived from the real tree)", 
     const doc = readJson(statusPath);
     const plans = (doc.plans as Record<string, unknown>[]).concat([
       {
-        id: "20260819-fixture-standalone-todo",
-        file: ".mstar/plans/20260819-fixture-standalone-todo.md",
+        id: "00000819-fixture-standalone-todo",
+        file: ".mstar/plans/00000819-fixture-standalone-todo.md",
         title: "Fixture standalone Todo row",
         status: "Todo",
         created_at: "2026-08-19",
       },
       {
-        id: "20260819-fixture-standalone-running",
-        file: ".mstar/plans/20260819-fixture-standalone-running.md",
+        id: "00000819-fixture-standalone-running",
+        file: ".mstar/plans/00000819-fixture-standalone-running.md",
         title: "Fixture standalone InProgress row",
         status: "InProgress",
         created_at: "2026-08-19",
       },
       {
-        id: "20260819-fixture-standalone-blocked",
-        file: ".mstar/plans/20260819-fixture-standalone-blocked.md",
+        id: "00000819-fixture-standalone-blocked",
+        file: ".mstar/plans/00000819-fixture-standalone-blocked.md",
         title: "Fixture standalone Blocked row",
         status: "Blocked",
         created_at: "2026-08-19",
@@ -716,9 +717,9 @@ describe("residual lift + status-mapping fixture (derived from the real tree)", 
     ]);
     doc.plans = plans;
     doc.residual_findings = {
-      "20260814-dsh-fallbacks-integration": [residual({ id: "R1" })],
-      "20260728-zero-residual": [residual({ id: "R2", title: "second" }), residual({ id: "R1" }), residual({ id: "R3", lifecycle: "resolved", closed_at: "2026-08-19" })],
-      "20260816-mechanical-verification": [],
+      "00000814-dsh-fallbacks-integration": [residual({ id: "R1" })],
+      "00000728-zero-residual": [residual({ id: "R2", title: "second" }), residual({ id: "R1" }), residual({ id: "R3", lifecycle: "resolved", closed_at: "2026-08-19" })],
+      "00000816-mechanical-verification": [],
     };
     writeJson(statusPath, doc);
     return root;
@@ -728,59 +729,59 @@ describe("residual lift + status-mapping fixture (derived from the real tree)", 
     const root = mappedTree();
     try {
       const plan = migrateHarnessTree(root);
-      const todo = plan.snapshots.find((s) => s.id === "20260819-fixture-standalone-todo")!;
+      const todo = plan.snapshots.find((s) => s.id === "00000819-fixture-standalone-todo")!;
       expect(todo.status).toBe("paused");
       expect(todo.data.status).toBe("paused");
       expect(todo.data.ended_at).toBeUndefined();
       expect(todo.data.plans[0]!.status).toBe("Todo"); // row verbatim
 
-      const blocked = plan.snapshots.find((s) => s.id === "20260819-fixture-standalone-blocked")!;
+      const blocked = plan.snapshots.find((s) => s.id === "00000819-fixture-standalone-blocked")!;
       expect(blocked.status).toBe("paused");
       // Blocked -> paused WITHOUT a not-started note (the note is Todo-only).
-      expect(plan.notesFiles.map((n) => n.file)).not.toContain("workflows/20260819-fixture-standalone-blocked/notes.jsonl");
+      expect(plan.notesFiles.map((n) => n.file)).not.toContain("workflows/00000819-fixture-standalone-blocked/notes.jsonl");
 
-      const running = plan.snapshots.find((s) => s.id === "20260819-fixture-standalone-running")!;
+      const running = plan.snapshots.find((s) => s.id === "00000819-fixture-standalone-running")!;
       expect(running.status).toBe("running");
 
       // Not-started note on the Todo workflow's notes ledger.
-      const todoNotes = plan.notesFiles.find((n) => n.file === "workflows/20260819-fixture-standalone-todo/notes.jsonl")!;
+      const todoNotes = plan.notesFiles.find((n) => n.file === "workflows/00000819-fixture-standalone-todo/notes.jsonl")!;
       expect(todoNotes.lines).toHaveLength(1);
       const parsed = JSON.parse(todoNotes.lines[0]!) as { kind: string; text: string };
       expect(parsed.kind).toBe("note");
-      expect(parsed.text).toContain("20260819-fixture-standalone-todo not started");
+      expect(parsed.text).toContain("00000819-fixture-standalone-todo not started");
       expect(parsed.text).toContain("paused");
 
       const result = await applyMigratePlan(plan);
       expect(result.applied).toBe(true);
-      expect(readJson(join(root, "workflows", "20260819-fixture-standalone-todo", WORKFLOW_SNAPSHOT_FILE)).status).toBe("paused");
+      expect(readJson(join(root, "workflows", "00000819-fixture-standalone-todo", WORKFLOW_SNAPSHOT_FILE)).status).toBe("paused");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  test("open residuals lift into projects/_default/residuals.json keyed by plan id with provenance (QC wave-1 W-E: arrays)", async () => {
+  test("open residuals lift into projects/_default/residuals.json keyed by plan id with provenance (arrays)", async () => {
     const root = mappedTree();
     try {
       const plan = migrateHarnessTree(root);
       expect(plan.register).not.toBeNull();
       const register = plan.register!;
       expect(register.file).toBe("projects/_default/residuals.json");
-      expect(Object.keys(register.data.entries)).toEqual(["20260728-zero-residual", "20260814-dsh-fallbacks-integration"]);
+      expect(Object.keys(register.data.entries)).toEqual(["00000728-zero-residual", "00000814-dsh-fallbacks-integration"]);
 
-      const grouped = register.data.entries["20260814-dsh-fallbacks-integration"]!;
+      const grouped = register.data.entries["00000814-dsh-fallbacks-integration"]!;
       expect(grouped).toHaveLength(1);
-      expect(grouped[0]!.source_plan).toBe("20260814-dsh-fallbacks-integration");
+      expect(grouped[0]!.source_plan).toBe("00000814-dsh-fallbacks-integration");
       expect(grouped[0]!.registered_at).toBe("2026-08-19");
-      expect(grouped[0]!.lifecycle_id).toBe("iter-20260814-fallbacks-integration");
+      expect(grouped[0]!.lifecycle_id).toBe("iter-00000814-fallbacks-integration");
       expect(grouped[0]!.id).toBe("R1");
 
       // Multi-entry plan: ALL open residuals are kept (v1 multi-finding
       // semantics preserved verbatim — sorted by residual id, closed entries
       // never lifted, nothing skipped, no collapse migration_notes).
-      const multi = register.data.entries["20260728-zero-residual"]!;
+      const multi = register.data.entries["00000728-zero-residual"]!;
       expect(multi.map((e) => e.id)).toEqual(["R1", "R2"]);
       for (const entry of multi) {
-        expect(entry.source_plan).toBe("20260728-zero-residual");
+        expect(entry.source_plan).toBe("00000728-zero-residual");
         expect(entry.registered_at).toBe("2026-08-19");
         expect(entry.lifecycle_id).toBeUndefined(); // standalone plan
       }
@@ -834,8 +835,8 @@ describe("residual lift + status-mapping fixture (derived from the real tree)", 
       // The register holds only the synthetic residual_findings entries.
       const registerDoc = readJson(join(root, "projects", "_default", "residuals.json")) as { entries: Record<string, unknown> };
       expect(Object.keys(registerDoc.entries)).toEqual([
-        "20260728-zero-residual",
-        "20260814-dsh-fallbacks-integration",
+        "00000728-zero-residual",
+        "00000814-dsh-fallbacks-integration",
       ]);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -843,7 +844,7 @@ describe("residual lift + status-mapping fixture (derived from the real tree)", 
   });
 });
 
-describe("QC wave-1 — migrate path-safety and duplicate-id guards (W-B / S-b)", () => {
+describe("migrate path-safety and duplicate-id guards", () => {
   test("a plans[] row id that traverses out of the harness dir refuses to migrate", () => {
     const root = fixtureTree();
     try {
@@ -913,7 +914,7 @@ describe("QC wave-1 — migrate path-safety and duplicate-id guards (W-B / S-b)"
   });
 });
 
-describe("QC wave-1 — roadmap frontmatter safety (S-d)", () => {
+describe("roadmap frontmatter safety", () => {
   test("a title with line breaks is sanitized for the flat-subset frontmatter parse", () => {
     const root = fixtureTree();
     try {
@@ -935,7 +936,7 @@ describe("QC wave-1 — roadmap frontmatter safety (S-d)", () => {
   });
 });
 
-describe("QC wave-1 — migration commit point under the root write lock (W-A)", () => {
+describe("migration commit point under the root write lock", () => {
   test("the root v2 replacement is serialized by withStatusWriteLock (never a bare writeJson)", async () => {
     const root = fixtureTree();
     try {
@@ -1041,7 +1042,7 @@ describe("QC wave-1 — migration commit point under the root write lock (W-A)",
   });
 });
 
-describe("Phase-5 F1 — custom workflow_dir/project_dir layout (Bugbot b1f402ec)", () => {
+describe("custom workflow_dir/project_dir layout", () => {
   /** Write a `.mstarc` at the harness root declaring a custom v3 layout. */
   function withCustomLayout(root: string, workflowDir = "wf", projectDir = "pj"): void {
     writeFileSync(join(root, ".mstarc"), `[config]\nworkflow_dir=${workflowDir}\nproject_dir=${projectDir}\n`, "utf8");
@@ -1090,7 +1091,7 @@ describe("Phase-5 F1 — custom workflow_dir/project_dir layout (Bugbot b1f402ec
     try {
       withCustomLayout(root, "wf", "pj");
       const doc = readJson(join(root, "status.json"));
-      (doc as Record<string, unknown>).residual_findings = { "20260728-zero-residual": [residual()] };
+      (doc as Record<string, unknown>).residual_findings = { "00000728-zero-residual": [residual()] };
       writeJson(join(root, "status.json"), doc);
 
       const plan = migrateHarnessTree(root);
@@ -1127,7 +1128,7 @@ describe("Phase-5 F1 — custom workflow_dir/project_dir layout (Bugbot b1f402ec
   });
 });
 
-describe("Phase-5 F2 — cross-class lifecycle-id collisions (Greptile P1)", () => {
+describe("cross-class lifecycle-id collisions", () => {
   test("an iteration id equal to a standalone plan id refuses to migrate with the conflict list", () => {
     const root = fixtureTree();
     try {

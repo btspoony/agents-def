@@ -15,7 +15,7 @@
  * `degraded.transition` is merged into `iteration.active === false`);
  * Step 5 stays schema-only (the engine gate never emits that transition —
  * a known limitation, not a defect, spec §2.3). Plan
- * `20260811-panel-f4-iteration-zone` Task 1 (spec panel-f4 §2.3 R9 / §5 D5):
+ *  Task 1 (spec panel-f4 §2.3 R9 / §5 D5):
  * `iteration.compassStatus` re-derives the current step during Phase 1 —
  * `'active'` → Step 1 (iteration-start) current + verdict unknown (Phase 1
  * has no gate evaluation → no PASS/FAIL badge) + next Step 2; `'locked'` or
@@ -26,7 +26,7 @@
  * The shared plan-sort rule lives in `plan-sort.ts` (its own unit tests stay
  * untouched); this file adds the projection-side integration: the Done column
  * applies `sortPlans` (no slice — every row is KEPT, plan
- * 20260813-panel-quick-fixes Task 1), every column reports `capped` (PLAN_CAP)
+ *  Task 1), every column reports `capped` (PLAN_CAP)
  * when it overflows, and `tasks.truncated` = any column rows > 5.
  *
  * No React / ReactFlow imports — the projection is DOM-free and fully
@@ -53,9 +53,9 @@ const fullSource: MstarEngineStatusSource = {
   harnessDir: '/proj/.mstar',
   enforcement: { hard: true, source: 'iteration compass' as EnforcementSource },
   iteration: {
-    iterationId: 'iter-20260810-panel-zones',
+    iterationId: 'iter-00000810-panel-zones',
     statusPath: '/proj/.mstar/status.json',
-    compassPath: '/proj/.mstar/iterations/iter-20260810-example/delivery-compass.md',
+    compassPath: '/proj/.mstar/iterations/iter-00000810-example/delivery-compass.md',
     gate: {
       transition: 'phase-2-execute',
       all_plans_done: false,
@@ -84,7 +84,7 @@ const fullSource: MstarEngineStatusSource = {
     project: { milestones: [], openResiduals: [] },
     iterationBaseBranch: 'dev-dsh',
     targetBranch: 'dev-dsh',
-    specIntegrationBranch: 'iteration/iter-20260810-panel-zones',
+    specIntegrationBranch: 'iteration/iter-00000810-panel-zones',
     pushPolicy: 'push authorized',
     worktreeMode: 'feature-worktree',
     controlWorktreePath: '/proj',
@@ -132,7 +132,7 @@ describe('projectGraph — iteration zone (spec §3)', () => {
     expect(byId.get('autonomous-execute')!.state).toBe('current')
     expect(byId.get('iteration-close')!.state).toBe('next')
     // Steps BEFORE the current step are `done` (plan
-    // 20260812-panel-f5-iteration-zone-fix Task 1 — a completed Step 1 must
+    // A completed Step 1 must
     // not read as idle「待命」); only post-current schema-only steps stay idle
     // (Phase 5 never lights — the engine gate emits 2→3→4 only).
     expect(byId.get('iteration-start')!.state).toBe('done')
@@ -155,12 +155,12 @@ describe('projectGraph — iteration zone (spec §3)', () => {
 
   it('carries the iteration id, active flag, Step N and branches on a full source', () => {
     expect(view.iteration.active).toBe(true)
-    expect(view.iteration.iterationId).toBe('iter-20260810-panel-zones')
+    expect(view.iteration.iterationId).toBe('iter-00000810-panel-zones')
     expect(view.iteration.currentStep).toBe(2) // phase-2-execute → autonomous-execute
     expect(view.iteration.branches).toEqual({
       iterationBase: 'dev-dsh',
       target: 'dev-dsh',
-      specIntegration: 'iteration/iter-20260810-panel-zones',
+      specIntegration: 'iteration/iter-00000810-panel-zones',
     })
     expect(view.degraded).toEqual({ iteration: false, state: false, plans: false })
   })
@@ -261,11 +261,11 @@ describe('projectGraph — iteration zone (spec §3)', () => {
     expect(v.iteration.branches).toEqual({
       iterationBase: 'dev-dsh',
       target: 'dev-dsh',
-      specIntegration: 'iteration/iter-20260810-panel-zones',
+      specIntegration: 'iteration/iter-00000810-panel-zones',
     })
   })
 
-  it('compassStatus active + transition past phase-2-execute (inconsistent window) → the Phase-1 override does NOT fire: transition-driven Step 3 + REAL gate verdict (QC wave F-001)', () => {
+  it('compassStatus active + transition past phase-2-execute (inconsistent window) → the Phase-1 override does NOT fire: transition-driven Step 3 + REAL gate verdict ', () => {
     const v = projectGraph({
       ...fullSource,
       iteration: {
@@ -278,7 +278,7 @@ describe('projectGraph — iteration zone (spec §3)', () => {
     // Compass and gate are mutually inconsistent — compass still `active`
     // while the gate advanced past Phase 2 (e.g. all compass-registered plans
     // Done but the compass not yet locked). The Phase-1 override is restricted
-    // to `phase-2-execute` (qc2 F-001), so the gate wins: Step 3 current +
+    // to `phase-2-execute` , so the gate wins: Step 3 current +
     // the REAL ok/violations verdict — no verdict suppression.
     expect(byId.get('iteration-close')!.state).toBe('current')
     expect(byId.get('pr-delivery')!.state).toBe('next')
@@ -327,7 +327,7 @@ describe('projectGraph — iteration zone (spec §3)', () => {
   })
 })
 
-describe('projectGraph — iteration steps done state (plan 20260812-panel-f5-iteration-zone-fix T1)', () => {
+describe('projectGraph — iteration steps done state ', () => {
   /** The 5 step states of a PROJECTED view, in PHASE_IDS order. */
   const statesOf = (view: ZoneView): string[] => view.iteration.steps.map((s) => s.state)
 
@@ -560,9 +560,9 @@ describe('projectGraph — Done column sort + per-column cap (spec §3, shared p
   it('doneAt missing/garbage sorts last; id-date fallback + id tie-break still apply (integration with plan-sort)', () => {
     const rows = [
       { id: 'plan-b', doneAt: '2026-08-08' },
-      { id: '20260810-x', doneAt: null },
+      { id: '00000810-x', doneAt: null },
       { id: 'plan-a', doneAt: '2026-08-10' },
-      { id: '20260809-y', doneAt: null },
+      { id: '00000809-y', doneAt: null },
       { id: 'plan-z', doneAt: 'garbage-date' },
     ]
     const v = projectGraph(doneSource(rows))
@@ -570,7 +570,7 @@ describe('projectGraph — Done column sort + per-column cap (spec §3, shared p
     // The projection applies sortPlans — assert the same order the shared
     // module produces (single implementation, no drift).
     expect(got).toEqual(sortPlans(rows).map((r) => r.id))
-    expect(got).toEqual(['plan-a', 'plan-b', '20260810-x', '20260809-y', 'plan-z'])
+    expect(got).toEqual(['plan-a', 'plan-b', '00000810-x', '00000809-y', 'plan-z'])
   })
 
   it('cap 5: 7 Done plans → ALL 7 kept (no slice), count 7, capped 5, truncated true, total 7', () => {
@@ -673,7 +673,7 @@ function dispatchRow(over: {
   }
 }
 
-/** One settle row as the T1 ledger view emits it (spec §2.2 — carries the PAIRED dispatch identity when `role` is given, plan `20260811-panel-f4-timeliness` Task 1). */
+/** One settle row as the T1 ledger view emits it (spec §2.2 — carries the PAIRED dispatch identity when `role` is given,). */
 function settleRow(over: {
   ts: number
   agent?: string
@@ -765,7 +765,7 @@ describe('projectGraph — agents zone skeleton (spec §4, plan 2)', () => {
     expect(projectGraph(noHarnessSource).agents.degraded).toBe(true)
   })
 
-  it('agentFlow empty view (0 events) → empty, NOT degraded (qc1 F-001 fix-wave: a MISSING ledger file now reads as this empty view — the panel shows the no-dispatches-yet state)', () => {
+  it('agentFlow empty view (0 events) → empty, NOT degraded (a MISSING ledger file now reads as this empty view — the panel shows the no-dispatches-yet state)', () => {
     const agents = projectGraph(flowSource([])).agents
     expect(agents.degraded).toBe(false)
     expect(agents.empty).toBe(true)
@@ -885,7 +885,7 @@ describe('projectGraph — agents zone status derivation (spec §4)', () => {
     expect(view.agents.entities.find((e) => e.key === 'fullstack-dev')!.status).toBe('denied')
   })
 
-  it('advisory verdict is NOT terminal — with a paired ok settle it projects settled (plan 20260813-panel-quick-fixes Task 2)', () => {
+  it('advisory verdict is NOT terminal — with a paired ok settle it projects settled ', () => {
     const view = projectGraph(flowSource([
       settleRow({ ts: 8, agent: 'a1', outcome: 'ok', role: 'fullstack-dev' }),
       dispatchRow({ ts: 7, role: 'fullstack-dev', agent: 'a1', verdict: 'advisory' }),
@@ -969,16 +969,15 @@ describe('projectGraph — agents zone status derivation (spec §4)', () => {
 })
 
 /* ---------------------------------------------------------------------------
- * Agents zone current-iteration filter (plan 20260813-panel-quick-fixes Task
- * 2): entities/actual edges derive ONLY from the current iteration's dispatch
+ * Agents zone current-iteration filter: entities/actual edges derive ONLY from the current iteration's dispatch
  * rows — a cross-iteration plan's events produce no entity/edge, the roster
  * still renders all KNOWN_AGENTS (cross-iteration roles fall back to idle);
  * `projectFlowEvents` (view.events) stays unfiltered.
  * ------------------------------------------------------------------------- */
 
-describe('projectGraph — agents current-iteration filter (plan 20260813-panel-quick-fixes T2)', () => {
+describe('projectGraph — agents current-iteration filter ', () => {
   /** A source with the given plans + events, keeping `fullSource`'s ACTIVE
-   * iteration (iterationId 'iter-20260810-panel-zones' → the compass branch). */
+   * iteration (iterationId 'iter-00000810-panel-zones' → the compass branch). */
   function iterSource(plans: readonly unknown[], events: readonly unknown[]): MstarEngineStatusSource {
     return {
       ...fullSource,
@@ -993,8 +992,8 @@ describe('projectGraph — agents current-iteration filter (plan 20260813-panel-
   it('a cross-iteration plan\'s dispatch produces no entity/edge; the current plan\'s does (roster never hidden)', () => {
     const source = iterSource(
       [
-        { id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-20260810-panel-zones'] },
-        { id: 'plan-old', status: 'Done', doneAt: '2026-08-08', iterationRefs: ['iter-20260801-old'] },
+        { id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-00000810-panel-zones'] },
+        { id: 'plan-old', status: 'Done', doneAt: '2026-08-08', iterationRefs: ['iter-00000801-old'] },
       ],
       [
         dispatchRow({ ts: 5, role: 'fullstack-dev', agent: 'a1', planId: 'plan-current' }),
@@ -1019,8 +1018,8 @@ describe('projectGraph — agents current-iteration filter (plan 20260813-panel-
   it('cross-iteration events form no actual edge even when the same roles are current', () => {
     const source = iterSource(
       [
-        { id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-20260810-panel-zones'] },
-        { id: 'plan-old', status: 'Done', doneAt: '2026-08-08', iterationRefs: ['iter-20260801-old'] },
+        { id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-00000810-panel-zones'] },
+        { id: 'plan-old', status: 'Done', doneAt: '2026-08-08', iterationRefs: ['iter-00000801-old'] },
       ],
       [
         dispatchRow({ ts: 4, role: 'fullstack-dev', agent: 'a1', planId: 'plan-current' }),
@@ -1042,23 +1041,23 @@ describe('projectGraph — agents current-iteration filter (plan 20260813-panel-
       state: {
         ...fullSource.state!,
         plans: [
-          { id: '20260813-standalone', status: 'InProgress', doneAt: null, iterationRefs: [] },
-          { id: '20260812-recent', status: 'Done', doneAt: '2026-08-12', iterationRefs: ['iter-20260812'] },
-          { id: '20260810-old', status: 'Done', doneAt: '2026-08-10', iterationRefs: ['iter-20260810'] },
+          { id: '00000813-standalone', status: 'InProgress', doneAt: null, iterationRefs: [] },
+          { id: '00000812-recent', status: 'Done', doneAt: '2026-08-12', iterationRefs: ['iter-00000812'] },
+          { id: '00000810-old', status: 'Done', doneAt: '2026-08-10', iterationRefs: ['iter-00000810'] },
         ],
         agentFlow: {
           events: [
-            dispatchRow({ ts: 3, role: 'frontend-dev', agent: 'a1', planId: '20260813-standalone' }),
-            dispatchRow({ ts: 2, role: 'fullstack-dev', agent: 'a2', planId: '20260812-recent' }),
-            dispatchRow({ ts: 1, role: 'qc-specialist', agent: 'a3', planId: '20260810-old' }),
+            dispatchRow({ ts: 3, role: 'frontend-dev', agent: 'a1', planId: '00000813-standalone' }),
+            dispatchRow({ ts: 2, role: 'fullstack-dev', agent: 'a2', planId: '00000812-recent' }),
+            dispatchRow({ ts: 1, role: 'qc-specialist', agent: 'a3', planId: '00000810-old' }),
           ],
           summary: [],
         } as unknown as AgentFlowView,
       },
     } as unknown as MstarEngineStatusSource
     const byKey = new Map(projectGraph(source).agents.entities.map((e) => [e.key, e]))
-    // most-recent iteration = iter-20260812 (plan id date prefix 20260812 is the
-    // max) → fullstack-dev (20260812-recent) is lit; the older iter-20260810 is
+    // most-recent iteration = iter-00000812 (plan id date prefix 00000812 is the
+    // max) → fullstack-dev () is lit; the older iter-00000810 is
     // cross → qc-specialist idle; the empty-refs standalone plan is never
     // hidden → frontend-dev lit.
     expect(byKey.get('fullstack-dev')!.idle).toBe(false)
@@ -1073,20 +1072,20 @@ describe('projectGraph — agents current-iteration filter (plan 20260813-panel-
       state: {
         ...fullSource.state!,
         plans: [
-          { id: '20260812-old', status: 'Done', doneAt: '2026-08-12', iterationRefs: ['iter-20260812-old'] },
-          { id: '20260812-new', status: 'Done', doneAt: '2026-08-14', iterationRefs: ['iter-20260812-new'] },
+          { id: '00000812-old', status: 'Done', doneAt: '2026-08-12', iterationRefs: ['iter-00000812-old'] },
+          { id: '00000812-new', status: 'Done', doneAt: '2026-08-14', iterationRefs: ['iter-00000812-new'] },
         ],
         agentFlow: {
           events: [
-            dispatchRow({ ts: 2, role: 'qc-specialist', agent: 'a1', planId: '20260812-new' }),
-            dispatchRow({ ts: 1, role: 'fullstack-dev', agent: 'a2', planId: '20260812-old' }),
+            dispatchRow({ ts: 2, role: 'qc-specialist', agent: 'a1', planId: '00000812-new' }),
+            dispatchRow({ ts: 1, role: 'fullstack-dev', agent: 'a2', planId: '00000812-old' }),
           ],
           summary: [],
         } as unknown as AgentFlowView,
       },
     } as unknown as MstarEngineStatusSource
     const byKey = new Map(projectGraph(source).agents.entities.map((e) => [e.key, e]))
-    // Same 8-digit date prefix (20260812): the more-recent doneAt (2026-08-14)
+    // Same 8-digit date prefix (00000812): the more-recent doneAt (2026-08-14)
     // names the current iteration → qc-specialist (new) lit; fullstack-dev (old)
     // is cross-iteration → idle.
     expect(byKey.get('qc-specialist')!.idle).toBe(false)
@@ -1124,7 +1123,7 @@ describe('projectGraph — agents current-iteration filter (plan 20260813-panel-
   // QC F-3 — the plan-less branch: `planId: null` is never cross-iteration.
   it('compass active keeps a plan-less dispatch (planId null → never cross-iteration)', () => {
     const source = iterSource(
-      [{ id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-20260810-panel-zones'] }],
+      [{ id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-00000810-panel-zones'] }],
       // `dispatchRow` leaves planId null by default — no plan identity at all.
       [dispatchRow({ ts: 1, role: 'fullstack-dev', agent: 'a1' })],
     )
@@ -1138,8 +1137,8 @@ describe('projectGraph — agents current-iteration filter (plan 20260813-panel-
   it("a settle from a cross-iteration plan stays UNPAIRED (does not settle the same-role current dispatch)", () => {
     const source = iterSource(
       [
-        { id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-20260810-panel-zones'] },
-        { id: 'plan-old', status: 'Done', doneAt: '2026-08-08', iterationRefs: ['iter-20260801-old'] },
+        { id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-00000810-panel-zones'] },
+        { id: 'plan-old', status: 'Done', doneAt: '2026-08-08', iterationRefs: ['iter-00000801-old'] },
       ],
       [
         dispatchRow({ ts: 3, role: 'fullstack-dev', agent: 'a1', planId: 'plan-current' }),
@@ -1158,8 +1157,8 @@ describe('projectGraph — agents current-iteration filter (plan 20260813-panel-
   it("a newer cross-iteration dispatch does not overwrite an already-lit role's ts/verdict", () => {
     const source = iterSource(
       [
-        { id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-20260810-panel-zones'] },
-        { id: 'plan-old', status: 'Done', doneAt: '2026-08-08', iterationRefs: ['iter-20260801-old'] },
+        { id: 'plan-current', status: 'InProgress', doneAt: null, iterationRefs: ['iter-00000810-panel-zones'] },
+        { id: 'plan-old', status: 'Done', doneAt: '2026-08-08', iterationRefs: ['iter-00000801-old'] },
       ],
       [
         // The cross-iteration dispatch is NEWER (ts 5) — filtered out BEFORE
@@ -1182,8 +1181,8 @@ describe('projectGraph — agents current-iteration filter (plan 20260813-panel-
  * handoffs / next determination (multiple-running rule).
  * ------------------------------------------------------------------------- */
 
-describe('projectGraph — agents zone edges (spec §4 + plan 20260812-panel-f5-design-system T5)', () => {
-  it('expected skeleton edges are REMOVED — no stage→stage arrows (design doc §2.2, user 2026-08-12 #1)', () => {
+describe('projectGraph — agents zone edges (spec §4)', () => {
+  it('expected skeleton edges are REMOVED — no stage→stage arrows (design doc §2.2)', () => {
     const agents = projectGraph(flowSource([dispatchRow({ ts: 1, role: 'fullstack-dev' })])).agents
     // The AgentEdgeKind union dropped `expected` — the projection can only
     // emit actual/supervise (compile-time) and never emits an expected arrow
@@ -1256,8 +1255,8 @@ describe('projectGraph — agents zone edges (spec §4 + plan 20260812-panel-f5-
   })
 })
 
-describe('projectGraph — agents zone next edge REMOVED (plan 20260812-panel-f5-design-system T5, design doc §2.2)', () => {
-  it('no `next` edge in ANY view — the projection no longer emits the running animation edge (user 2026-08-12 #1/#5)', () => {
+describe('projectGraph — agents zone next edge REMOVED (design doc §2.2)', () => {
+  it('no `next` edge in ANY view — the projection no longer emits the running animation edge', () => {
     // The running-position semantic moved to the running-card glow + status
     // point (design doc §2.4); the projection never fabricates a next arrow.
     const views = [
@@ -1394,12 +1393,12 @@ describe('projectGraph — agents zone degradation matrix (spec §8)', () => {
     // 11 expected roles across the 4 stages (sdd-implement now incl. code-reviewer).
     expect(agents.pending).toBe(11)
     expect(agents.stages).toHaveLength(4)
-    // F-002: the projection classifies the ledger — settle rows but no
+    // The projection classifies the ledger — settle rows but no
     // dispatch rows → the settle-only note (never UI-inferred).
     expect(agents.note).toBe('settle-only')
   })
 
-  it('F-002: the canvas note is PROJECTED — empty (0 events) / settle-only (rows but no dispatch) / null (dispatch evidence)', () => {
+  it('the canvas note is PROJECTED — empty (0 events) / settle-only (rows but no dispatch) / null (dispatch evidence)', () => {
     // 0 events → 'empty'.
     expect(projectGraph(flowSource([])).agents.note).toBe('empty')
     // Events but NO dispatch row (settle rows only) → 'settle-only'.
@@ -1418,7 +1417,7 @@ describe('projectGraph — agents zone degradation matrix (spec §8)', () => {
     expect(projectGraph(noHarnessSource).agents.note).toBeNull()
   })
 
-  it('F-002: a garbage-only ledger never fakes evidence — note settle-only (no dispatch rows to show)', () => {
+  it('a garbage-only ledger never fakes evidence — note settle-only (no dispatch rows to show)', () => {
     // All rows unclassifiable (kind ∉ dispatch|settle) → no dispatch
     // evidence at all → the honest settle-only note (the old UI-side
     // allIdle heuristic produced the same anchor; the projection now owns it).
@@ -1466,7 +1465,7 @@ describe('projectGraph — agents zone degradation matrix (spec §8)', () => {
 
 /* ---------------------------------------------------------------------------
  * KNOWN_AGENTS full roster (spec §4 / §6.2 / decision point D3 + plan
- * 20260811-panel-f3-agent-general + plan 20260812-panel-f5-agent-layout Task
+ *  Task
  * 1): exactly 14 roles — every EXPECTED_ROLE_FLOW role (11, incl. the SDD L2
  * task reviewer `code-reviewer` — v2.1.1, the former `generalPurpose` seat)
  * + ops-engineer / prompt-engineer (off-pipeline, on-demand zone —
@@ -1474,7 +1473,7 @@ describe('projectGraph — agents zone degradation matrix (spec §8)', () => {
  * bucket — the unmatched/anonymous catch-all; zone 'general'); project-manager
  * is EXCLUDED (the primary orchestration agent, never an assignable subagent
  * — F2 plan Item 2) and `explore` is EXCLUDED too (scout adjunct, no
- * presentation value — user F3 feedback); stages pinned to the flow (first
+ * presentation value); stages pinned to the flow (first
  * constant-order match), null for the off-pipeline roles with an explicit
  * `zone` ('on-demand' / 'general').
  * ------------------------------------------------------------------------- */
@@ -1488,10 +1487,10 @@ describe('projectGraph — KNOWN_AGENTS full roster (spec §4 / §6.2 / D3)', ()
       'ops-engineer', 'writing-specialist', 'prompt-engineer', 'general',
     ])
     expect(new Set(KNOWN_AGENTS.map((a) => a.id)).size).toBe(14)
-    // F2 Item 2 (user F2 feedback): project-manager is the PRIMARY orchestration
+    // project-manager is the PRIMARY orchestration
     // agent — NOT an assignable subagent, so it is not in the roster.
     expect(KNOWN_AGENTS.some((a) => a.id === 'project-manager')).toBe(false)
-    // F3 (user feedback): explore is a scout adjunct with no presentation
+    // explore is a scout adjunct with no presentation
     // value — removed from the roster (a stray dispatch folds into `general`).
     expect(KNOWN_AGENTS.some((a) => a.id === 'explore')).toBe(false)
     expect(KNOWN_AGENTS.some((a) => a.id === 'generalPurpose')).toBe(false)
@@ -1624,7 +1623,7 @@ describe('projectGraph — agents roster full coverage (spec §6.2)', () => {
 })
 
 /* ---------------------------------------------------------------------------
- * Off-pipeline zones (plan 20260811-panel-f3-agent-general): the projected
+ * Off-pipeline zones : the projected
  * `entity.zone` is the ONLY column authority the render layer consumes —
  * ops-engineer / prompt-engineer dispatches stay stage-null but project as
  * 'on-demand'; scout / unregistered / anonymous roles project as 'general'
@@ -1635,7 +1634,7 @@ describe('projectGraph — agents roster full coverage (spec §6.2)', () => {
  * unexpected badge" convention, not a defect.
  * ------------------------------------------------------------------------- */
 
-describe('projectGraph — off-pipeline zones (plan 20260811-panel-f3-agent-general)', () => {
+describe('projectGraph — off-pipeline zones ', () => {
   it('on-demand dispatch (ops-engineer) → stage null + zone on-demand + event expected false (off-pipeline)', () => {
     const view = projectGraph(flowSource([dispatchRow({ ts: 10, role: 'ops-engineer', agent: 'a1' })]))
     const lit = view.agents.entities.find((e) => e.key === 'ops-engineer')!
@@ -1646,8 +1645,7 @@ describe('projectGraph — off-pipeline zones (plan 20260811-panel-f3-agent-gene
     // EXPECTED_ROLE_FLOW union): ops-engineer left the union → off-pipeline.
     expect(view.events[0]!.expected).toBe(false)
     expect(view.events[0]!.stage).toBeNull()
-    // The `next` animation edge is REMOVED (plan 20260812-panel-f5-design-system
-    // Task 5) — the running position rides the card glow/status point; the
+    // The `next` animation edge is REMOVED — the running position rides the card glow/status point; the
     // projection never emits a next arrow for an off-pipeline running entity.
     expect(view.agents.edges.every((e) => e.kind === 'actual' || e.kind === 'supervise')).toBe(true)
   })
@@ -1687,7 +1685,7 @@ describe('projectGraph — off-pipeline zones (plan 20260811-panel-f3-agent-gene
 })
 
 /* ---------------------------------------------------------------------------
- * SDD sub-buckets (plan 20260812-panel-f5-agent-layout Task 1): every entity
+ * SDD sub-buckets : every entity
  * carries a projected `bucket` — 'implementor' (SDD_BUCKET_ROLES.implementor:
  * the implementer roles PLUS the on-demand ops-engineer / prompt-engineer),
  * 'reviewer' (SDD_BUCKET_ROLES.reviewer: code-reviewer) or null (every other
@@ -1697,7 +1695,7 @@ describe('projectGraph — off-pipeline zones (plan 20260811-panel-f3-agent-gene
  * data) and their events stay `unexpected`.
  * ------------------------------------------------------------------------- */
 
-describe('projectGraph — SDD sub-buckets (plan 20260812-panel-f5-agent-layout T1)', () => {
+describe('projectGraph — SDD sub-buckets ', () => {
   it('idle cards derive the bucket from SDD_BUCKET_ROLES: implementor/reviewer roles bucketed, everything else null', () => {
     const agents = projectGraph(flowSource([])).agents
     const byId = new Map(agents.entities.map((e) => [e.key, e]))
@@ -1784,7 +1782,7 @@ describe('projectGraph — SDD sub-buckets (plan 20260812-panel-f5-agent-layout 
 })
 
 /* ---------------------------------------------------------------------------
- * Agent emphasis tiers (plan 20260812-panel-f5-design-system Task 4 — design
+ * Agent emphasis tiers (design
  * doc §3): the TIME dimension — the iteration's current phase
  * (`currentStep` → PHASE_IDS rank) vs the entity's pipeline-stage phase.
  * Derived from projected fields only (zero new catalog reads): current /
@@ -1803,7 +1801,7 @@ function phaseSource(
   }
 }
 
-describe('projectGraph — agents emphasis tiers (plan 20260812-panel-f5-design-system T4)', () => {
+describe('projectGraph — agents emphasis tiers ', () => {
   /** entity key → emphasis (the projection is the only source of truth). */
   const emphasisByKey = (view: ZoneView) =>
     new Map(view.agents.entities.map((e) => [e.key, e.emphasis]))
@@ -1872,8 +1870,7 @@ describe('projectGraph — agents emphasis tiers (plan 20260812-panel-f5-design-
 })
 
 /* ---------------------------------------------------------------------------
- * The Phase-2 current-plan annotation (plan 20260812-panel-f5-design-system
- * Task 8 — user 2026-08-12 feedback #2): the projection exposes the FIRST
+ * The current-plan annotation: the projection exposes the FIRST
  * `state.plans[]` InProgress row (`activePlanId`, catalog order) + the full
  * InProgress count (`activePlanCount`) — the render annotates the Phase 2
  * group with the current plan (and an honest `+N more` when several plans
@@ -1881,7 +1878,7 @@ describe('projectGraph — agents emphasis tiers (plan 20260812-panel-f5-design-
  * row → null / 0, never fabricated.
  * ------------------------------------------------------------------------- */
 
-describe('projectGraph — agents activePlanId / activePlanCount (plan 20260812-panel-f5-design-system T8)', () => {
+describe('projectGraph — agents activePlanId / activePlanCount ', () => {
   /** A ledger-evidence source whose state.plans carries the given rows. */
   function planRowsSource(rows: readonly { id?: string; status?: string }[]): MstarEngineStatusSource {
     return {
@@ -1941,17 +1938,17 @@ describe('projectGraph — agents activePlanId / activePlanCount (plan 20260812-
 })
 
 /* ---------------------------------------------------------------------------
- * The sub-bucket supervision edge (plan 20260812-panel-f5-agent-layout Task
- * 1): ONE static design-knowledge line between the sdd-implement column's
+ * The sub-bucket supervision edge: ONE static design-knowledge line between
+ * the sdd-implement column's
  * implementor and reviewer sub-buckets (mstar-sdd mutual supervision — the
- * render draws it as a bidirectional double arrow, Task 2). Presence is
+ * render draws it as a bidirectional double arrow). Presence is
  * STATIC (emitted even with no evidence, degraded/empty included); lighting
  * is evidence-driven via `AgentEdge.evidenced` — dim (false) without any
  * implement/review dispatch evidence, lit (true) with it. Anchors embed the
  * column id: `<stage-id>:implementor` / `<stage-id>:reviewer`.
  * ------------------------------------------------------------------------- */
 
-describe('projectGraph — supervise edge (plan 20260812-panel-f5-agent-layout T1)', () => {
+describe('projectGraph — supervise edge ', () => {
   const supervise = (agents: ZoneView['agents']) => agents.edges.filter((e) => e.kind === 'supervise')
 
   it('exists STATICALLY with the sub-bucket anchor shape, dimmed (evidenced false) without any evidence', () => {
@@ -2018,8 +2015,7 @@ describe('projectGraph — supervise edge (plan 20260812-panel-f5-agent-layout T
 })
 
 /* ---------------------------------------------------------------------------
- * Entity key uniqueness (F-001 — qc1/qc2 Warning): since plan
- * 20260811-panel-f3-agent-general keys are ROLE-based (not session ids), the
+ * Entity key uniqueness: keys are ROLE-based (not session ids), the
  * collision class moved from "session id vs roster id" to "lit `general` key
  * vs the idle roster `general` member": a NON-roster dispatch (scout,
  * anonymous, the former generalPurpose) produces a lit card keyed `general`
@@ -2028,7 +2024,7 @@ describe('projectGraph — supervise edge (plan 20260812-panel-f5-agent-layout T
  * never collide and `executing` stays consistent with the visible cards.
  * ------------------------------------------------------------------------- */
 
-describe('projectGraph — agents entity key uniqueness (F-001)', () => {
+describe('projectGraph — agents entity key uniqueness', () => {
   it('a non-roster dispatch produces a lit `general` key; the idle general twin is suppressed', () => {
     // role 'scout' is not a KNOWN_AGENTS id → the general bucket card; the
     // roster `general` member has no literal evidence → without the litKeys
@@ -2187,7 +2183,7 @@ describe('projectGraph — events / unexpected (spec §3 migration)', () => {
 })
 
 /* ---------------------------------------------------------------------------
- * Workflow rows (plan `20260815-dsh-workflow-ledger` Task 4): the three
+ * Workflow rows  the three
  * workflow kinds project as workflow rows (run identity — name / member
  * count / stopReason — no gate status), UNKNOWN kinds degrade to GENERIC
  * rows (never dropped, never guessed); workflow rows never become agent
@@ -2249,7 +2245,7 @@ function workflowEndRow(over: { ts: number; runId?: string; stopReason?: 'comple
   }
 }
 
-describe('projectGraph — workflow rows + unknown-kind degradation (plan 20260815-dsh-workflow-ledger T4)', () => {
+describe('projectGraph — workflow rows + unknown-kind degradation ', () => {
   it('projects the three workflow kinds with the run identity; status unknown; never unexpected; no agent entities', () => {
     const view = projectGraph(flowSource([
       workflowEndRow({ ts: 6, runId: 'run-1', stopReason: 'completed' }),
@@ -2319,7 +2315,7 @@ describe('projectGraph — workflow rows + unknown-kind degradation (plan 202608
   })
 })
 
-describe('projectGraph — settle pairing (identity-based, plan 20260811-panel-f4-timeliness T1)', () => {
+describe('projectGraph — settle pairing (identity-based)', () => {
   it('a paired settle lands on the most recent same-IDENTITY dispatch BEFORE it in file order', () => {
     // File order: D1(a1, fullstack-dev, t1) → D2(a1, fullstack-dev, t3) →
     // S1(a1, fullstack-dev, t4); the catalog is latest-first. The settle
@@ -2500,7 +2496,7 @@ describe('projectGraph — ZoneView shape (spec §3)', () => {
 })
 
 /* ---------------------------------------------------------------------------
- * Event-log assembly (spec panel-tabs §5 — plan 20260811-panel-event-log
+ * Event-log assembly (spec panel-tabs §5
  * Task 1): the pure eventLogEntries(view) → EventLogEntry[] mapping. Consumes
  * ZoneView slices unchanged (zero projection changes); missing fields degrade
  * to '' / 0 / null (the render side shows「—」); unexpected dispatches fold in
@@ -2528,7 +2524,7 @@ describe('eventLogEntries — event rows (spec §5, plan event-log Task 1)', () 
       kind: 'event',
       id: '9-settle-0',
       eventKind: 'settle',
-      role: 'fullstack-dev', // the PAIRED dispatch identity (plan 20260811-panel-f4-timeliness T1)
+      role: 'fullstack-dev', // the PAIRED dispatch identity 
       agent: 'a1',
       stage: 'autonomous-execute:sdd-implement',
       task: 'plan-x#T2',
@@ -2669,7 +2665,7 @@ describe('eventLogEntries — unexpected folding + window invariant (spec §5, p
   })
 })
 
-describe('eventLogEntries — workflow rows (plan 20260815-dsh-workflow-ledger T4)', () => {
+describe('eventLogEntries — workflow rows ', () => {
   it('carries the workflow run identity; agent/end rows get the run name via the window lookup', () => {
     const view = projectGraph(flowSource([
       workflowEndRow({ ts: 9, runId: 'run-1', stopReason: 'completed' }),
@@ -2698,7 +2694,7 @@ describe('eventLogEntries — workflow rows (plan 20260815-dsh-workflow-ledger T
 })
 
 /* ---------------------------------------------------------------------------
- * Project rollup zone (plan 20260819-workflow-dsh-viz Task 3 — compass
+ * Project rollup zone (compass
  * AC-4): the ADDITIVE fifth zone — roadmap milestones + open-residual
  * severity counts projected from `state.project`; the four existing
  * ZoneView shapes stay byte-compatible (the fullSource golden is

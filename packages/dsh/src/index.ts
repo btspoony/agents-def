@@ -375,8 +375,7 @@ export function apply(ctx: Context, config: Config): void {
   // The Service constructor registers itself on the fiber via reflect.provide,
   // so construction alone exposes `ctx.dshMstar` (dsh service convention).
   new DshMstar(ctx, { harnessDir: bootHarnessDir })
-  // Agent-flow settle pairing store (plan `20260811-panel-f4-timeliness`
-  // Task 1, decision D1): apply-scoped in-memory Maps, SAME lifetime as the
+  // Agent-flow settle pairing store : apply-scoped in-memory Maps, SAME lifetime as the
   // catalog cache below — an HMR restart resets them and completions outside
   // the window stay unpaired (documented honest degrade; no cross-apply
   // pairing). Shared by the dispatch recording (callId → dispatchRef via the
@@ -394,10 +393,7 @@ export function apply(ctx: Context, config: Config): void {
 
   // Agent-flow ledger — bind the `mstar/agent-flow` logger sink (record
   // failures and the settle-pairing trace log through it) and register the
-  // `tools/post-execute` settle listener (plan `20260811-panel-f4-timeliness`
-  // Task 1 — the seam IS emitted by the real registry, verified; foreground
-  // dispatch calls settle here, background subagents settle via the
-  // `ctx.jobs.onJobDone` pairing wired below). The dispatch side records
+  // `tools/post-execute` settle listener . The dispatch side records
   // unconditionally via `DshHostAdapter.dispatchGate` (+ the callId pairing).
   setAgentFlowLogger((level, message) => {
     const logger = ctx.logger(AGENT_FLOW_LOGGER)
@@ -405,23 +401,21 @@ export function apply(ctx: Context, config: Config): void {
     else if (level === 'error') logger.error(message)
     else logger.info(message)
   })
-  // Role-persona logger sink (plan `20260831-dsh-alpha2-optional-fallbacks`
-  // Task 3 — the native persona channel logs through the same module-sink
-  // pattern as the agent-flow ledger).
+  // Role-persona logger sink.
   setRolePersonaLogger((level, message) => {
     const logger = ctx.logger(ROLE_PERSONA_LOGGER)
     if (level === 'debug') logger.debug(message)
     else logger.warn(message)
   })
-  // Persona-defaults mirror root (plan `20260815-dsh-fallbacks-personas`
-  // Task 3): the packaged `harness-agents/` mirror (synced from the repo
+  // Persona-defaults mirror root (
+  // the packaged `harness-agents/` mirror (synced from the repo
   // root by `bundle-assets`; gitignored) — bound at apply so the channel's
   // zero-config default lookup is package-relative (dist-depth) regardless
   // of launch cwd; absent when `bundle-assets` has not run (config-only
   // lookups).
   setRolePersonaAgentsDir(packagedAgentsDir())
-  // Harness-rules system-prompt injection (plan `20260816-dsh-nb1-systemprompt`
-  // Task 2): the global-layer `mstar:harness-rules` pointer section + the
+  // Harness-rules system-prompt injection (plan  
+  // the global-layer `mstar:harness-rules` pointer section + the
   // `mstar:engine-status` runtime-context summary (visible to the root
   // session AND dispatched children; child persona delivery rides the
   // native subagent persona channel — mstar owns no child-scoped section).
@@ -435,8 +429,7 @@ export function apply(ctx: Context, config: Config): void {
     else logger.warn(message)
   })
   registerHarnessPrompt(ctx, { resolver })
-  // Adoption advisory (plan `20260815-dsh-fallbacks-personas` Task 4 +
-  // `20260816-dsh-b4-seeds` Task 3) — the warn-only deployment-taxonomy
+  // Adoption advisory  — the warn-only deployment-taxonomy
   // pass: when fallbacks is mounted, ONE pass per apply reports the adoption
   // state (seeded / persona-overridden / missing + revert affordance via the
   // effective readback; the structural roles.list read on the loader-
@@ -457,9 +450,9 @@ export function apply(ctx: Context, config: Config): void {
   // The latch is RE-ARMED when the `llm-fallbacks` service disappears (the
   // seeds inject child below returns a teardown resetting it): after an HMR
   // fiber swap the fresh seed registry needs a new decision-point pass to
-  // re-converge (plan QC fix wave W-1).
+    // re-converge.
   let advisoryPassed = false
-  // In-flight guard (plan QC fix wave S-reentry): the service-present pass
+  // In-flight guard : the service-present pass
   // is async, so a burst of decision points inside its settle window must
   // not re-enter the pass (each re-entry would duplicate every warn).
   let advisoryPassInFlight = false
@@ -484,7 +477,7 @@ export function apply(ctx: Context, config: Config): void {
   }
   runAdvisoryPass()
 
-  // Mstar role seeds (plan `20260816-dsh-b4-seeds` Task 2): zero-config
+  // Mstar role seeds : zero-config
   // declaration of the 13 `mode: subagent` roles into the fallbacks seed
   // registry. The seed registry is an upstream per-apply in-memory state
   // (the `FallbacksSeedManager` is constructed inside the fallbacks
@@ -513,11 +506,10 @@ export function apply(ctx: Context, config: Config): void {
     }).catch((error) => {
       // Non-Error rejections (string/plain object — plausible from a
       // settings seam) must not log `undefined`; align with the upstream
-      // preset child's `error?.message ?? String(error)` (plan QC fix wave
-      // S-log; `instanceof` is the type-safe TS equivalent of that shape).
+      // preset child's `error?.message ?? String(error)`.
       ctx.logger(SEEDS_LOGGER).error(`mstar seeds declaration failed (contained — fallbacks taxonomy unchanged): ${error instanceof Error ? error.message : String(error)}`)
     })
-    // HMR/fiber-swap re-arm (plan QC fix wave W-1 + PR #97 finding 1): when
+    // HMR/fiber-swap re-arm : when
     // the fallbacks service disappears, reset the advisory one-shot latch so
     // the NEXT decision point re-converges the seeds state. The seed registry
     // is per-apply in-memory state and a fiber swap drops it; without the
@@ -532,8 +524,7 @@ export function apply(ctx: Context, config: Config): void {
   })
   registerSettleListener(ctx, config, pairing)
 
-  // Workflow-ledger session-event consumer (plan `20260815-dsh-workflow-ledger`
-  // Task 3 — the W-B2 producer half): a cold scan over `ctx.sessions.list()`
+  // Workflow-ledger session-event consumer : a cold scan over `ctx.sessions.list()`
   // at apply (durable `tool-workflow/*` rows already in each session's events
   // snapshot — constructor-seeded events never hit the firehose) plus a live
   // `session/event` firehose listener, both appending through
@@ -542,11 +533,11 @@ export function apply(ctx: Context, config: Config): void {
   // an absent service degrades to one debug log with the consumer disabled.
   // Observe-only: a failing ledger write never crashes or alters a workflow
   // The consumer also carries the P-c answer observation (plan
-  // `20260815-dsh-workflow-gate` Task 4 fold-in — the Task-2 Important
+  //   Task 4 fold-in — the Task-2 Important
   // handoff): a recorded run-start means the approval waterfall allowed the
   // call, so the run's name is cached `allow` in the adapter's apply-scoped
   // `workflowAskCache` — a later same-name call under `ask` reuses the
-  // decision without re-asking. W-1 (qc2 fix-wave): the observation
+  // decision without re-asking. The observation
   // promotes ONLY names the policy marked asked this apply (`markAsked` on
   // every ask verdict) — a run observed without a prior ask (P-b advisory
   // under ask mode, warn/off runs) never pre-authorizes the name. Bounded +
@@ -558,7 +549,7 @@ export function apply(ctx: Context, config: Config): void {
   })
   registerWorkflowLedger(ctx, resolver, adapter.workflowAskCache)
 
-  // Goal bridge (plan `20260816-dsh-nb2-goal-bridge` Task 2): one-way mirror
+  // Goal bridge : one-way mirror
   // of the active iteration objective into the dsh goal service with a
   // finite `maxGoalRounds` cap (autonomous Phase 2 bounded) — the module
   // sink is bound to the dsh logger (agent-flow ledger precedent) and the
@@ -573,7 +564,7 @@ export function apply(ctx: Context, config: Config): void {
   })
   registerGoalBridge(ctx, resolver, config)
 
-  // PlanMode bridge (plan `20260816-dsh-nb2-goal-bridge` Task 4b — N-B3):
+  // PlanMode bridge :
   // the Prepare-phase flag flip — a one-way mirror of the harness Prepare
   // state (active steering compass + ≥1 plan row `Todo` in status.json)
   // into the host plan-mode session state (`ctx.get('planMode')` structural
@@ -613,7 +604,7 @@ export function apply(ctx: Context, config: Config): void {
     // `JobDoneListener = (snapshot, owner) => void | PromiseLike<void>`.
     const jobs = (jobsCtx as unknown as { jobs: { onJobDone(listener: (snapshot: TaskDoneSnapshot, _owner: unknown) => void): unknown } }).jobs
     try {
-      // Registration contained (qc2 F-004 fix-wave) for symmetry with the
+      // Registration contained  for symmetry with the
       // rest of the seam wiring: the listener body itself is already
       // try/catch-contained (`recordTaskSettle`), but a THROWING registration
       // would surface as an unhandled child-fiber error at an arbitrary later
@@ -631,8 +622,7 @@ export function apply(ctx: Context, config: Config): void {
   })
 
   // Catalog-invalidation hook: the real harnessDir → cache-key reverse-map
-  // closure is created + bound alongside the catalog cache below (Task 2 —
-  // see the catalog section comment).
+  // closure is created + bound alongside the catalog cache below (see the catalog section comment).
 
   // Bundled mstar commands — the omp/opencode slash-command parity surface
   // (iteration-start / iteration-drive / iteration-loop / codebase-audit),
@@ -710,8 +700,7 @@ export function apply(ctx: Context, config: Config): void {
   // regardless of order" holds only once the listener is reached.
   ctx.on('tools/pre-execute', (exec, next) => preExecuteListener(ctx, resolver, config, adapter, exec, next), { prepend: true })
 
-  // Native-first role-persona channel (plan
-  // `20260831-dsh-alpha2-optional-fallbacks` Task 3): an `internal/get`
+  // Native-first role-persona channel: an `internal/get`
   // waterfall listener wraps `ctx.subagents` reads so a role-matched start
   // — one-shot `start` AND the opt-in continuable `startContinuable` —
   // merges the persona into the request's NATIVE `persona` slot
@@ -724,9 +713,7 @@ export function apply(ctx: Context, config: Config): void {
   // fallbacks-independent and capability-gated — see `role-persona.ts`.
   registerRolePersonaChannel(ctx, config)
 
-  // Adoption-advisory decision point — `subagent/start` emit (plan
-  // `20260814-dsh-fallbacks-integration` Task 2, listener narrowed by Task 3
-  // to the advisory only): the loader has settled by the first dispatch, so
+  // Adoption-advisory decision point — `subagent/start` emit (listener narrowed to the advisory only): the loader has settled by the first dispatch, so
   // an advisory skipped at apply (fallbacks row mounted after dsh) runs its
   // ONE pass here instead — never more than once per apply. The payload is
   // not consumed (persona delivery no longer rides this seam).
@@ -762,8 +749,7 @@ export function apply(ctx: Context, config: Config): void {
   if (explicitKey !== undefined) {
     catalogCache.set(explicitKey, { sources: buildCatalogSources(ctx, bootHarnessDir), builtAt: Date.now() })
   }
-  // Catalog-invalidation hook (plan `20260811-panel-f4-timeliness` Task 2 —
-  // decision D3): the apply-scoped `harnessDir → cache key` reverse map +
+  // Catalog-invalidation hook : the apply-scoped `harnessDir → cache key` reverse map +
   // invalidation closure, created HERE with the same lifetime as the cache
   // above (an HMR fiber restart recreates both — module-level state would
   // survive and point at a destroyed cache). The explicit-config key is

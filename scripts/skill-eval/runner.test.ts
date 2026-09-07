@@ -1,15 +1,15 @@
 /**
- * scripts/skill-eval/runner.test.ts — plan 20260907-skill-eval-baseline.
+ * scripts/skill-eval/runner.test.ts — runner contract.
  *
- * Task 1 scope: `prepare` behavior of scripts/skill-eval/manifest.ts.
+ * scope: `prepare` behavior of scripts/skill-eval/manifest.ts.
  * Run the prepare suite with:
- *   bun test scripts/skill-eval/runner.test.ts --test-name-pattern prepare
+ * bun test scripts/skill-eval/runner.test.ts --test-name-pattern prepare
  *
- * Task 2 scope (same file): runner argv builders/guards, the synthetic-event
+ * scope (same file): runner argv builders/guards, the synthetic-event
  * parser, the resumable scheduler (rerun idempotence, interrupted-run resume,
  * denominator retention), grading honesty (unverified stays unverified) and
  * the report stage. The full suite runs with:
- *   bun test scripts/skill-eval/runner.test.ts
+ * bun test scripts/skill-eval/runner.test.ts
  *
  * All prepare tests use in-memory IO + in-memory source trees, so the tested
  * prepare path performs zero subprocesses (a spy on the single exec seam
@@ -136,8 +136,8 @@ function memoryIo(symlinks: Record<string, string> = {}): {
       cur = parent;
     }
   };
-  // A symlink cannot exist without its parent chain: register the ancestors
-  // so containment checks see the same preconditions a real filesystem has.
+ // A symlink cannot exist without its parent chain: register the ancestors
+ // so containment checks see the same preconditions a real filesystem has.
   for (const source of Object.keys(symlinks)) ensureAncestors(resolve(source, ".."));
   const io: Io = {
     readText: (p) => {
@@ -268,7 +268,7 @@ describe("prepare — frozen baseline manifest (Task 1)", () => {
     }
     const manifest = readManifestFile(mem);
     expect(manifest.cases.length).toBe(30);
-    // Every case fixture materialized under <out>/fixtures/<caseId>/...
+ // Every case fixture materialized under <out>/fixtures/<caseId>/...
     for (const c of manifest.cases) {
       for (const f of c.fixture.files) {
         expect(mem.files.has(resolve(OUT_DIR, "fixtures", c.id, f.path))).toBe(true);
@@ -302,11 +302,11 @@ describe("prepare — frozen baseline manifest (Task 1)", () => {
   test("prepare versions heldout hashes before tuning: heldoutDigest reacts only to heldout changes", async () => {
     const spy = makeSubprocessSpy();
 
-    // Baseline run.
+ // Baseline run.
     const base = await prepareManifest(prepareArgs(setupMemory(), spy));
     expect(base.exit).toBe(0);
 
-    // Mutate a dev case prompt: dev integrityHash changes, heldoutDigest must not.
+ // Mutate a dev case prompt: dev integrityHash changes, heldoutDigest must not.
     const devMutated = setupMemory();
     devMutated.files.set(
       resolve("/cfg/cases.json"),
@@ -319,7 +319,7 @@ describe("prepare — frozen baseline manifest (Task 1)", () => {
     expect(devRun.manifest!.heldoutDigest).toBe(base.manifest!.heldoutDigest);
     expect(devRun.manifest!.cases[0].integrityHash).not.toBe(base.manifest!.cases[0].integrityHash);
 
-    // Mutate a heldout case prompt: heldoutDigest must change.
+ // Mutate a heldout case prompt: heldoutDigest must change.
     const heldoutMutated = setupMemory();
     heldoutMutated.files.set(
       resolve("/cfg/cases.json"),
@@ -343,7 +343,7 @@ describe("prepare — frozen baseline manifest (Task 1)", () => {
     expect(result.manifest!.observedModel).toBeNull();
     expect(result.manifest!.observedModelReason).toBe(testConfig.observedModelReason);
 
-    // A user-authorized model passes through without requiring a reason.
+ // A user-authorized model passes through without requiring a reason.
     const withModel = setupMemory();
     withModel.files.set(
       resolve("/cfg/config.json"),
@@ -430,20 +430,20 @@ describe("prepare — frozen baseline manifest (Task 1)", () => {
   test("prepare rejects unsafe real checkout targets with exit 2 before any write", async () => {
     const spy = makeSubprocessSpy();
 
-    // Outside the disposable fixture root entirely.
+ // Outside the disposable fixture root entirely.
     const outside = setupMemory();
     const r1 = await prepareManifest(prepareArgs(outside, spy, { outDir: `${REPO_ROOT}/src/main-checkout-run` }));
     expect(r1.exit).toBe(2);
     expect(r1.errors.join("\n")).toContain("unsafe output target");
     expect(outside.writes.length).toBe(0);
 
-    // The fixture root itself is not a valid run dir.
+ // The fixture root itself is not a valid run dir.
     const rootItself = setupMemory();
     const r2 = await prepareManifest(prepareArgs(rootItself, spy, { outDir: FIXTURE_ROOT }));
     expect(r2.exit).toBe(2);
     expect(rootItself.writes.length).toBe(0);
 
-    // Symlinked run dir escaping the fixture root.
+ // Symlinked run dir escaping the fixture root.
     const escaped = memoryIo({ [`${FIXTURE_ROOT}/escape-link`]: `${REPO_ROOT}/src` });
     escaped.files.set(resolve("/cfg/config.json"), JSON.stringify(testConfig));
     escaped.files.set(resolve("/cfg/cases.json"), CASES_TEXT);
@@ -521,8 +521,8 @@ describe("source tree reader (git argv parsing)", () => {
 
     expect(calls.length).toBe(3);
     expect(calls.every((c) => c.file === "git")).toBe(true);
-    // C-W3: the freeze closure covers the complete reachable skill/reference
-    // closure — the skills/ tree plus the AGENTS.md and commands/ surfaces.
+ // C-W3: the freeze closure covers the complete reachable skill/reference
+ // closure — the skills/ tree plus the AGENTS.md and commands/ surfaces.
     expect(calls[0].args).toEqual([
       "-C",
       REPO_ROOT,
@@ -542,7 +542,7 @@ describe("source tree reader (git argv parsing)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 2 helpers: in-memory RunnerIo + SYNTHETIC spawn adapter
+// helpers: in-memory RunnerIo + SYNTHETIC spawn adapter
 // ---------------------------------------------------------------------------
 
 const RUN_MANIFEST_PATH = resolve(OUT_DIR, "manifest.json");
@@ -740,7 +740,7 @@ function writeState(io: RunnerIo, state: SchedulerState): void {
 }
 
 // ---------------------------------------------------------------------------
-// Task 2: argv builders and resume guards (synthetic)
+// argv builders and resume guards (synthetic)
 // ---------------------------------------------------------------------------
 
 describe("Task 2: argv builders and guards (synthetic)", () => {
@@ -808,7 +808,7 @@ describe("Task 2: argv builders and guards (synthetic)", () => {
     );
     expect(recordedTurn1Identity(io, argvFile)).toEqual({ cwd: "/fx/ws", sandbox: "workspace-write" });
 
-    // Evidence-integrity rejection: unreadable argv evidence cannot resume.
+ // Evidence-integrity rejection: unreadable argv evidence cannot resume.
     expect(() => recordedTurn1Identity(io, resolve(OUT_DIR, "missing-argv.json"))).toThrow(ResumeRejectionError);
     io.writeText(argvFile, `${JSON.stringify({ runId: "x", cwd: "/fx/ws" })}\n`);
     expect(() => recordedTurn1Identity(io, argvFile)).toThrow(ResumeRejectionError);
@@ -816,7 +816,7 @@ describe("Task 2: argv builders and guards (synthetic)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 2: event adapter (synthetic events)
+// event adapter (synthetic events)
 // ---------------------------------------------------------------------------
 
 describe("Task 2: event adapter (synthetic events)", () => {
@@ -874,8 +874,8 @@ describe("Task 2: event adapter (synthetic events)", () => {
     expect(other.authFailure).toBeNull();
   });
 
-  test("auth classification uses word boundaries (QC wave 1 S-B)", () => {
-    // Substring hits like "14013"/"4033" must not classify as auth failures.
+  test("auth classification uses word boundaries ", () => {
+ // Substring hits like "14013"/"4033" must not classify as auth failures.
     const digits = scanEventStream(`${JSON.stringify({ type: "error", message: "request 14013 failed after 4033 retries" })}\n`);
     expect(digits.authFailure).toBeNull();
     const realCodes = scanEventStream(`${JSON.stringify({ type: "error", message: "HTTP 401 Unauthorized" })}\n`);
@@ -884,43 +884,43 @@ describe("Task 2: event adapter (synthetic events)", () => {
     expect(quota.authFailure?.detail).toContain("quota");
   });
 
-  test("tool_read search matches only read-shaped typed command fields (QC wave 1 / C-W1)", () => {
-    // Real round-1 smoke schema: command_execution with a STRING command argv.
+  test("tool_read search matches only read-shaped typed command fields", () => {
+ // Real round-1 smoke schema: command_execution with a STRING command argv.
     const realRead = `${JSON.stringify({
       type: "item.completed",
       id: "item_2",
       item: { id: "item_2", type: "command_execution", command: `/bin/zsh -lc "sed -n '1,240p' skills/demo/SKILL.md"`, aggregated_output: "..." },
     })}\n`;
-    // False-pass surfaces that must NOT satisfy a tool_read_contains:
-    // (a) an agent message claiming the read;
+ // False-pass surfaces that must NOT satisfy a tool_read_contains:
+ // (a) an agent message claiming the read;
     const claim = `${JSON.stringify({ type: "item.completed", id: "m1", item: { id: "m1", type: "agent_message", text: "I read skills/demo/SKILL.md (trust me)" } })}\n`;
-    // (b) a non-read record whose SERIALIZED JSON merely mentions the needle
-    //     (round-1 evidence: a `find` output listing the filename);
+ // (b) a non-read record whose SERIALIZED JSON merely mentions the needle
+ // (round-1 evidence: a `find` output listing the filename);
     const outputMention = `${JSON.stringify({
       type: "item.completed",
       id: "item_3",
       item: { id: "item_3", type: "command_execution", command: "find . -maxdepth 2 -type f -print", aggregated_output: "./AGENTS.md\n./skills/demo/SKILL.md" },
     })}\n`;
-    // (c) an error/status record naming the file.
+ // (c) an error/status record naming the file.
     const errorMention = `${JSON.stringify({ type: "item.completed", id: "item_0", item: { id: "item_0", type: "error", message: "skills/demo/SKILL.md exceeds the context budget" } })}\n`;
 
     const records = parseEventLines(claim + outputMention + errorMention + realRead);
     const hit = findToolReadRecord(records, "skills/demo/SKILL.md", 1);
     expect(hit).toEqual({ turn: 1, line: 4, eventId: "item_2" });
 
-    // Array-shaped commands (synthetic adapter) are joined before matching.
+ // Array-shaped commands (synthetic adapter) are joined before matching.
     const arrayCommand = parseEventLines(
       `${JSON.stringify({ type: "item.completed", id: "item_9", item: { id: "item_9", type: "command_execution", command: ["cat", "skills/demo/SKILL.md"] } })}\n`,
     );
     expect(findToolReadRecord(arrayCommand, "skills/demo/SKILL.md", 1)).toEqual({ turn: 1, line: 1, eventId: "item_9" });
 
-    // No read-shaped record -> no hit.
+ // No read-shaped record -> no hit.
     expect(findToolReadRecord(parseEventLines(claim + errorMention), "skills/demo/SKILL.md", 1)).toBeNull();
   });
 });
 
 // ---------------------------------------------------------------------------
-// Task 2: deterministic interleaved scheduling
+// deterministic interleaved scheduling
 // ---------------------------------------------------------------------------
 
 describe("Task 2: scheduleOrder (deterministic interleaving)", () => {
@@ -948,7 +948,7 @@ describe("Task 2: scheduleOrder (deterministic interleaving)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 2: runner validation (no spawns on invalid requests)
+// runner validation (no spawns on invalid requests)
 // ---------------------------------------------------------------------------
 
 describe("Task 2: run request validation (zero spawns)", () => {
@@ -967,7 +967,7 @@ describe("Task 2: run request validation (zero spawns)", () => {
     expect(tooManyRepeats.exit).toBe(2);
     expect(tooManyRepeats.errors.join(" ")).toContain("sampling lock");
 
-    // Tampered frozen manifest: mutate a config-relevant field -> configHash breaks.
+ // Tampered frozen manifest: mutate a config-relevant field -> configHash breaks.
     const tampered = JSON.parse(JSON.stringify(manifest)) as EvalManifest;
     tampered.plan = "tampered-plan";
     io.writeText(RUN_MANIFEST_PATH, `${JSON.stringify(tampered, null, 2)}\n`);
@@ -978,11 +978,11 @@ describe("Task 2: run request validation (zero spawns)", () => {
     expect(tamperSpawn.requests).toHaveLength(0);
   });
 
-  test("run and report refuse a manifest outside the disposable root (QC wave 1 C-W2, zero writes/spawns)", async () => {
+  test("run and report refuse a manifest outside the disposable root", async () => {
     const { io, manifest } = await preparedRunDir();
 
-    // (a) A runnable manifest copied into a durable tree (the round-1 trap:
-    // eval/run/manifest.json) has no <repoRoot>/.tmp/skill-eval ancestor.
+ // (a) A runnable manifest copied into a durable tree (the round-1 trap:
+ // eval/run/manifest.json) has no <repoRoot>/.tmp/skill-eval ancestor.
     const durableCopy = resolve(REPO_ROOT, "eval-durable", "manifest.json");
     io.writeText(durableCopy, io.readText(RUN_MANIFEST_PATH));
     const outsideSpawn = syntheticSpawn(io, () => ({}));
@@ -1005,8 +1005,8 @@ describe("Task 2: run request validation (zero spawns)", () => {
     expect(io.exists(resolve(REPO_ROOT, "eval-durable", "report.json"))).toBe(false);
     expect(io.exists(resolve(REPO_ROOT, "eval-durable", "report.md"))).toBe(false);
 
-    // (b) Explicit repoRoot: a run dir outside THAT root's disposable root is
-    // rejected by the shape check before anything is read or written.
+ // (b) Explicit repoRoot: a run dir outside THAT root's disposable root is
+ // rejected by the shape check before anything is read or written.
     const elsewhere = resolve("/elsewhere", "run", "manifest.json");
     io.writeText(elsewhere, io.readText(RUN_MANIFEST_PATH));
     const shapeRun = await runManifest({
@@ -1024,7 +1024,7 @@ describe("Task 2: run request validation (zero spawns)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 2: runner end-to-end on the SYNTHETIC adapter (smoke selection)
+// runner end-to-end on the SYNTHETIC adapter (smoke selection)
 // ---------------------------------------------------------------------------
 
 describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () => {
@@ -1036,11 +1036,11 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     expect(result.exit).toBe(0);
     expect(result.summary.requestedUnits).toBe(3);
     expect(result.summary.grades.pass).toBe(3);
-    // 2 single-turn units x 1 spawn + 1 resumable unit x 2 turns = 4 spawns.
+ // 2 single-turn units x 1 spawn + 1 resumable unit x 2 turns = 4 spawns.
     expect(result.summary.spawnCount).toBe(4);
 
-    // Argv-array spawn, no shell: every request is a plain string argv with
-    // the manifest CLI and an explicit workspace cwd under the run dir.
+ // Argv-array spawn, no shell: every request is a plain string argv with
+ // the manifest CLI and an explicit workspace cwd under the run dir.
     for (const req of spawn.requests) {
       expect(req.argv.every((a) => typeof a === "string")).toBe(true);
       expect(req.argv[0]).toBe(manifest.cli.path);
@@ -1051,7 +1051,7 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
       expect(req.stdinFile.endsWith("prompt.txt")).toBe(true);
     }
 
-    // cwd is a verified copy of the prepared case fixture (frozen per-file hash).
+ // cwd is a verified copy of the prepared case fixture (frozen per-file hash).
     const roRequest = spawn.requests.find((r) => r.cwd.includes(`/${RO_CASE}/`))!;
     const roCase = manifest.cases.find((c) => c.id === RO_CASE)!;
     expect(io.exists(resolve(roRequest.cwd, "skills/demo/SKILL.md"))).toBe(true);
@@ -1059,7 +1059,7 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
       roCase.fixture.files.find((f) => f.path === "AGENTS.md")!.sha256,
     );
 
-    // Sandbox per case; ephemeral only on single-turn first turns.
+ // Sandbox per case; ephemeral only on single-turn first turns.
     const wwRequest = spawn.requests.find((r) => r.cwd.includes(`/${WW_CASE}/`))!;
     expect(wwRequest.argv[wwRequest.argv.indexOf("--sandbox") + 1]).toBe("workspace-write");
     expect(wwRequest.argv).toContain("--ephemeral");
@@ -1068,11 +1068,11 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     const pmFirst = spawn.requests.find((r) => r.cwd.includes(`/${PM_RESUME_CASE}/`) && !r.argv.includes("resume"))!;
     expect(pmFirst.argv).not.toContain("--ephemeral");
 
-    // stdin carries the exact case prompt (file-backed).
+ // stdin carries the exact case prompt (file-backed).
     const pmCase = manifest.cases.find((c) => c.id === PM_RESUME_CASE)!;
     expect(io.readText(pmFirst.stdinFile)).toBe(pmCase.prompt);
 
-    // Resume: exactly one resume spawn for pm-dev-4 with the captured thread id.
+ // Resume: exactly one resume spawn for pm-dev-4 with the captured thread id.
     const resumeRequests = spawn.requests.filter((r) => r.argv.includes("resume"));
     expect(resumeRequests).toHaveLength(1);
     expect(resumeRequests[0].cwd).toBe(pmFirst.cwd);
@@ -1081,14 +1081,14 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     expect(pmUnit.turns["2"].runId).toBe(`${PM_RESUME_CASE}/baseline/1/2`);
     expect(pmUnit.grading?.assertions.find((a) => a.kind === "thread_reused")?.grade).toBe("pass");
 
-    // Evidence files preserved per run (events raw, stderr, final, metrics, argv).
+ // Evidence files preserved per run (events raw, stderr, final, metrics, argv).
     const turn1 = pmUnit.turns["1"];
     expect(io.readText(turn1.artifacts.events)).toBe(basePassScript(manifest, PM_RESUME_CASE).events);
     expect(io.exists(turn1.artifacts.stderr)).toBe(true);
     expect(io.exists(turn1.artifacts.final)).toBe(true);
     expect(JSON.parse(io.readText(turn1.artifacts.argv)).argv).toEqual(turn1.argv);
 
-    // Usage honesty: observed per-event usage preserved; aggregates stay null, basis unknown.
+ // Usage honesty: observed per-event usage preserved; aggregates stay null, basis unknown.
     expect(turn1.metrics.usageEvents).toHaveLength(1);
     expect(turn1.metrics.usage.inputTokens).toBeNull();
     expect(turn1.metrics.usage.outputTokens).toBeNull();
@@ -1112,7 +1112,7 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     const metrics = result.state.units[`${RO_CASE}/baseline/1`].turns["1"].metrics;
     expect(metrics.adapterWarnings.join(" ")).toContain("unknown event record");
     expect(metrics.adapterWarnings.join(" ")).toContain("malformed JSON at line 2");
-    // Raw bytes (including the malformed line) are preserved verbatim.
+ // Raw bytes (including the malformed line) are preserved verbatim.
     expect(io.readText(result.state.units[`${RO_CASE}/baseline/1`].turns["1"].artifacts.events)).toContain("not-json{{{");
   });
 
@@ -1283,8 +1283,8 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     const run1 = await runSmoke(io, manifest, death);
     expect(run1.exit).toBe(2);
 
-    // Simulate process death mid-turn-2: the unit goes back to pending with
-    // its completed, evidence-backed turn 1 intact (as persisted after turn 1).
+ // Simulate process death mid-turn-2: the unit goes back to pending with
+ // its completed, evidence-backed turn 1 intact (as persisted after turn 1).
     const state = readState(io);
     const unit = state.units[PM_UNIT_ID];
     expect(unit.turns["1"].status).toBe("completed");
@@ -1293,7 +1293,7 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     delete unit.turns["2"];
     writeState(io, state);
 
-    // Cross-arm tamper: point the unit's thread id at another arm's session.
+ // Cross-arm tamper: point the unit's thread id at another arm's session.
     const tampered = readState(io);
     tampered.units[PM_UNIT_ID].threadId = "thr-from-the-other-arm";
     writeState(io, tampered);
@@ -1301,7 +1301,7 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     const second = syntheticSpawn(io, passHandler(manifest));
     const run2 = await runSmoke(io, manifest, second);
     expect(run2.exit).toBe(2);
-    // Turn 1 evidence is reused (no re-run), and the resume never spawns.
+ // Turn 1 evidence is reused (no re-run), and the resume never spawns.
     expect(second.requests).toHaveLength(0);
     const resumed = readState(io).units[PM_UNIT_ID];
     expect(resumed.grade).toBe("infrastructure_error");
@@ -1337,7 +1337,7 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     expect(resumed.turns["2"].runId).toBe(`${PM_RESUME_CASE}/baseline/1/2`);
   });
 
-  test("hand-edited state cwd/sandbox cannot resume: guard checks turn-1 argv.json evidence (QC wave 1 C-W4)", async () => {
+  test("hand-edited state cwd/sandbox cannot resume: guard checks turn-1 argv.json evidence ", async () => {
     const { io, manifest } = await preparedRunDir();
     const death = syntheticSpawn(io, (req) => {
       if (req.argv.includes("resume")) throw new Error("simulated process death between turns");
@@ -1352,9 +1352,9 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     delete unit.turns["2"];
     writeState(io, state);
 
-    // Tamper the SCHEDULER STATE only: cwd and sandbox now claim a different
-    // workspace/sandbox. The preserved turn-1 argv.json still records the real
-    // --cd/--sandbox values, so the guard must reject the resume.
+ // Tamper the SCHEDULER STATE only: cwd and sandbox now claim a different
+ // workspace/sandbox. The preserved turn-1 argv.json still records the real
+ // --cd/--sandbox values, so the guard must reject the resume.
     const tampered = readState(io);
     tampered.units[PM_UNIT_ID].cwd = "/tampered/other-workspace";
     tampered.units[PM_UNIT_ID].sandbox = "workspace-write";
@@ -1369,14 +1369,14 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     expect(resumed.failureReason).toContain("turn-1 argv.json cwd");
   });
 
-  test("re-executed turns archive the aborted attempt's raw bytes (QC wave 1 S-E)", async () => {
+  test("re-executed turns archive the aborted attempt's raw bytes ", async () => {
     const { io, manifest } = await preparedRunDir();
     const first = syntheticSpawn(io, passHandler(manifest));
     const run1 = await runSmoke(io, manifest, first);
     expect(run1.exit).toBe(0);
 
-    // Plant diagnostics from an "aborted attempt" in the graded turn-1 dir,
-    // then reset the unit to pending so the runner re-executes turn 1.
+ // Plant diagnostics from an "aborted attempt" in the graded turn-1 dir,
+ // then reset the unit to pending so the runner re-executes turn 1.
     const roTurn1Dir = resolve(OUT_DIR, "runs", RO_CASE, "baseline", "r1", "turn1");
     io.writeText(resolve(roTurn1Dir, "STALE_ATTEMPT.txt"), "partial bytes from an aborted attempt\n");
     const state = readState(io);
@@ -1390,13 +1390,13 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
     const run2 = await runSmoke(io, manifest, second);
     expect(run2.exit).toBe(0);
 
-    // The stale bytes survive under aborted/<timestamp>-turn1/ ...
+ // The stale bytes survive under aborted/<timestamp>-turn1/ ...
     const abortedDir = resolve(OUT_DIR, "runs", RO_CASE, "baseline", "r1", "aborted");
     const abortedEntries = io.readDir(abortedDir).filter((name) => name.endsWith("-turn1"));
     expect(abortedEntries).toHaveLength(1);
     expect(io.readText(resolve(abortedDir, abortedEntries[0], "STALE_ATTEMPT.txt"))).toContain("aborted attempt");
 
-    // ... and the re-executed turn 1 starts from fresh evidence.
+ // ... and the re-executed turn 1 starts from fresh evidence.
     const resumed = readState(io).units[`${RO_CASE}/baseline/1`];
     expect(resumed.grade).toBe("pass");
     expect(io.exists(resolve(resumed.turns["1"].artifacts.events))).toBe(true);
@@ -1405,7 +1405,7 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
 });
 
 // ---------------------------------------------------------------------------
-// Task 2: default spawn — REAL child process (tagged non-synthetic)
+// default spawn — REAL child process (tagged non-synthetic)
 // ---------------------------------------------------------------------------
 
 describe("Task 2: defaultSpawnFn with a real child process (non-synthetic)", () => {
@@ -1460,7 +1460,7 @@ describe("Task 2: defaultSpawnFn with a real child process (non-synthetic)", () 
 });
 
 // ---------------------------------------------------------------------------
-// Task 2: report stage (synthetic state; never spawns)
+// report stage (synthetic state; never spawns)
 // ---------------------------------------------------------------------------
 
 describe("Task 2: report stage (synthetic state)", () => {
@@ -1541,11 +1541,11 @@ describe("Task 2: report stage (synthetic state)", () => {
     const run = await runSmoke(io, manifest, syntheticSpawn(io, passHandler(manifest)));
     expect(run.exit).toBe(0);
 
-    // Post-run manifest swap: manifest.json's bytes now describe a different
-    // manifest than the one the scheduler state was recorded against. The
-    // mutation (a dev-case integrityHash) stays outside configHash and
-    // heldoutDigest, so manifest-internal integrity still passes — only the
-    // state-to-manifest-bytes binding can refuse this relabeling.
+ // Post-run manifest swap: manifest.json's bytes now describe a different
+ // manifest than the one the scheduler state was recorded against. The
+ // mutation (a dev-case integrityHash) stays outside configHash and
+ // heldoutDigest, so manifest-internal integrity still passes — only the
+ // state-to-manifest-bytes binding can refuse this relabeling.
     const swapped = JSON.parse(io.readText(RUN_MANIFEST_PATH)) as EvalManifest;
     swapped.cases[0].integrityHash = "0".repeat(64);
     io.writeText(RUN_MANIFEST_PATH, `${JSON.stringify(swapped, null, 2)}\n`);
@@ -1553,7 +1553,7 @@ describe("Task 2: report stage (synthetic state)", () => {
     const report = buildReport({ manifestPath: RUN_MANIFEST_PATH, io });
     expect(report.exit).toBe(2);
     expect(report.errors.join(" ")).toContain("different manifest");
-    // Refusal precedes any artifact write: no report lands in the run dir.
+ // Refusal precedes any artifact write: no report lands in the run dir.
     expect(io.exists(report.jsonPath)).toBe(false);
     expect(io.exists(report.mdPath)).toBe(false);
   });

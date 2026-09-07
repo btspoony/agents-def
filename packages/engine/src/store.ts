@@ -1,6 +1,6 @@
 /**
- * Engine artifact store — type-only persist port (HostAdapter pattern,
- * spec: iter-20260827-cli-artifact-store SP2). JSON coordination docs
+ * Engine artifact store — type-only persist port (HostAdapter pattern).
+ * JSON coordination docs
  * (status / snapshot / residuals / review) round-trip through an
  * `ArtifactStore`; the default `FsStore` keeps today's `.mstar/` paths
  * and atomic write semantics. No concrete non-FS adapter lives in this
@@ -17,8 +17,7 @@ import {
   resolveWorkflowDir,
 } from "./path.js";
 
-/** JSON coordination-doc kinds the store persists (spec SP2). */
-export type ArtifactKind = "status" | "snapshot" | "residuals" | "review" | "json";
+/** JSON coordination-doc kinds the store persists */export type ArtifactKind = "status" | "snapshot" | "residuals" | "review" | "json";
 
 /** Stable key inside the kind. Workflow id, project id, or review id;
  * `kind: "status"` always uses key `"root"`. */
@@ -30,7 +29,7 @@ export type ArtifactRef = {
 /** A store document: the ref plus the payload and an optional schema id. */
 export type ArtifactDoc<T = unknown> = ArtifactRef & {
   payload: T;
-  /** Optional content-type / schema id (e.g. mstar.review/v1). */
+ /** Optional content-type / schema id (e.g. mstar.review/v1). */
   schema?: string;
 };
 
@@ -45,8 +44,8 @@ export interface ArtifactStore {
   get<T = unknown>(ref: ArtifactRef): Promise<T | undefined>;
   delete?(ref: ArtifactRef): Promise<void>;
   /** Enumerate refs of `kind`, sorted by key ascending (spec D4). Uniform
-   * rule: report what exists — missing backing dir/file → `[]`; every
-   * listed key round-trips through `get`. `json` is not enumerable. */
+ * rule: report what exists — missing backing dir/file → `[]`; every
+ * listed key round-trips through `get`. `json` is not enumerable. */
   list?(kind: ArtifactKind): Promise<ArtifactRef[]>;
 }
 
@@ -55,14 +54,13 @@ export interface ArtifactStore {
  * evaluated after the key passes `assertSafePathComponent`. */
 const PLAN_SHAPED_KEY_RE = /^[0-9]{8}-[a-z0-9-]+$/;
 
-/** Map an artifact ref to its file path under `harnessRoot` (spec SP2
- * FsStore path table — the single kind→path mapping, shared with SP3;
- * SP3 never re-implements or extends it). Exported (qc1 S-002) so SP3
- * imports the contract instead of re-deriving it textually. */
+/** Map an artifact ref to its file path under `harnessRoot` (the store contract — the single kind→path
+ * mapping). Exported so host adapters import the contract instead of
+ * re-deriving it textually. */
 export function resolveArtifactPath(harnessRoot: string, ref: ArtifactRef): string {
   const { kind, key } = ref;
   if (kind === "json") {
-    // Escape hatch: caller-supplied absolute path. Not a user-facing AC.
+ // Escape hatch: caller-supplied absolute path. Not a user-facing AC.
     if (!isAbsolute(key)) {
       throw new Error(`ArtifactStore json key must be an absolute path \u2014 got ${JSON.stringify(key)}`);
     }
@@ -84,10 +82,10 @@ export function resolveArtifactPath(harnessRoot: string, ref: ArtifactRef): stri
   if (kind === "residuals") {
     return join(resolveProjectDir(harnessRoot, { harnessDir: harnessRoot }), key, "residuals.json");
   }
-  // kind === "review" — product-locked table (shared with SP3): plan-shaped
-  // key → {HARNESS_DIR}/sdd/<key>/review/report.json; other keys →
-  // {HARNESS_DIR}/sdd/_reviews/<key>.json. Never a key-less
-  // {SDD_DIR}/review/report.json (that would clobber every review).
+ // kind === "review" — product-locked table: plan-shaped
+ // key → {HARNESS_DIR}/sdd/<key>/review/report.json; other keys →
+ // {HARNESS_DIR}/sdd/_reviews/<key>.json. Never a key-less
+ // {SDD_DIR}/review/report.json (that would clobber every review).
   if (PLAN_SHAPED_KEY_RE.test(key)) {
     return join(harnessRoot, "sdd", key, "review", "report.json");
   }
@@ -127,8 +125,8 @@ function readDirEntries(dir: string): Dirent[] {
 
 /** Resolve the get-path for `key` through the single path table, or
  * `undefined` when the name is outside the safe path-component charset.
- * Enumeration probes every discovered name through this guard (qc1-S /
- * qc3-S): a stray unsafe name is skipped — never thrown, never advertised —
+ * Enumeration probes every discovered name through this guard: a stray unsafe
+ * name is skipped — never thrown, never advertised —
  * so every listed key round-trips through `get`. */
 function tryResolveGetPath(root: string, kind: ArtifactKind, key: string): string | undefined {
   try {
@@ -145,7 +143,7 @@ function tryResolveGetPath(root: string, kind: ArtifactKind, key: string): strin
  * malformed JSON → throw with the path in the message. The returned store
  * also exposes its resolved `root` so the routed writers can fail loud
  * when a caller's explicit target path diverges from the store-resolved
- * path (qc3 F-201); `root` is not part of the `ArtifactStore` contract.
+ * path ; `root` is not part of the `ArtifactStore` contract.
  * `list` enumerates per the D4 table: report what exists — missing
  * backing dir/file → `[]`, `json` throws, keys sorted ascending. */
 export function createFsStore(harnessRoot: string): ArtifactStore & { root: string } {
@@ -153,11 +151,11 @@ export function createFsStore(harnessRoot: string): ArtifactStore & { root: stri
   return {
     root,
     async put(doc: ArtifactDoc): Promise<void> {
-      // D3 schema fail-loud: FsStore writes only `doc.payload`, so it
-      // cannot persist the envelope schema id honestly — refuse instead of
-      // silently dropping it. `doc.schema` ≠ `payload.schema`: a review
-      // envelope's inner "schema" is payload data and stays unaffected.
-      // Canonical message (single home: spec store-contract-completion D3).
+ // D3 schema fail-loud: FsStore writes only `doc.payload`, so it
+ // cannot persist the envelope schema id honestly — refuse instead of
+ // silently dropping it. `doc.schema` ≠ `payload.schema`: a review
+ // envelope's inner "schema" is payload data and stays unaffected.
+ // Canonical message (single home: spec store-contract-completion D3).
       if (doc.schema !== undefined) {
         throw new Error(
           "FsStore does not persist schema ids \u2014 omit --schema or inject a store module that persists it",
@@ -175,45 +173,45 @@ export function createFsStore(harnessRoot: string): ArtifactStore & { root: stri
       if (existsSync(filePath)) unlinkSync(filePath);
     },
     async list(kind: ArtifactKind): Promise<ArtifactRef[]> {
-      // json keys are caller-supplied absolute paths — nothing to
-      // enumerate (canonical message, single home: spec D4).
+ // json keys are caller-supplied absolute paths — nothing to
+ // enumerate (canonical message, single home: spec D4).
       if (kind === "json") {
         throw new Error("ArtifactStore json keys are absolute paths and cannot be listed");
       }
       const keys: string[] = [];
       if (kind === "status") {
-        // Exists-conditional (architect-amended D4): [root] iff the file
-        // exists — never a key whose get would miss.
+ // Exists-conditional (architect-amended D4): [root] iff the file
+ // exists — never a key whose get would miss.
         if (existsSync(resolveArtifactPath(root, { kind, key: "root" }))) keys.push("root");
       } else if (kind === "snapshot" || kind === "residuals") {
-        // Same root resolution as the path table (.mstarc overrides apply).
+ // Same root resolution as the path table (.mstarc overrides apply).
         const baseDir =
           kind === "snapshot"
             ? resolveWorkflowDir(root, { harnessDir: root })
             : resolveProjectDir(root, { harnessDir: root });
         for (const name of listDirNames(baseDir)) {
-          // Round-trip guard through the single path table: list the dir
-          // only when its exact get-path (<dir>/<name>/<file>) exists.
+ // Round-trip guard through the single path table: list the dir
+ // only when its exact get-path (<dir>/<name>/<file>) exists.
           const getPath = tryResolveGetPath(root, kind, name);
           if (getPath !== undefined && existsSync(getPath)) keys.push(name);
         }
       } else {
-        // kind === "review" — union enumeration (D4), single detector
-        // (PLAN_SHAPED_KEY_RE), same sdd root as the path table.
+ // kind === "review" — union enumeration (D4), single detector
+ // (PLAN_SHAPED_KEY_RE), same sdd root as the path table.
         const sddDir = join(root, "sdd");
-        // (a) flat keys from _reviews/<key>.json. Plan-shaped names are
-        // excluded: get routes such a key to <key>/review/report.json, so
-        // listing the _reviews file would advertise an unreachable key.
+ // (a) flat keys from _reviews/<key>.json. Plan-shaped names are
+ // excluded: get routes such a key to <key>/review/report.json, so
+ // listing the _reviews file would advertise an unreachable key.
         for (const key of listJsonKeys(join(sddDir, "_reviews"))) {
           if (!PLAN_SHAPED_KEY_RE.test(key) && tryResolveGetPath(root, kind, key) !== undefined) {
             keys.push(key);
           }
         }
-        // (b) plan-shaped dirs carrying <dir>/review/report.json.
+ // (b) plan-shaped dirs carrying <dir>/review/report.json.
         for (const name of listDirNames(sddDir)) {
           if (PLAN_SHAPED_KEY_RE.test(name)) {
-            // PLAN_SHAPED_KEY_RE is a subset of the safe charset, so this
-            // probe never throws — same uniform guard as the other arms.
+ // PLAN_SHAPED_KEY_RE is a subset of the safe charset, so this
+ // probe never throws — same uniform guard as the other arms.
             const getPath = tryResolveGetPath(root, kind, name);
             if (getPath !== undefined && existsSync(getPath)) keys.push(name);
           }
@@ -248,7 +246,7 @@ export function getArtifactStore(): ArtifactStore {
 }
 
 /**
- * Fail-loud path-agreement guard for the routed writers (qc3 F-201): when
+ * Fail-loud path-agreement guard for the routed writers : when
  * `store` is an FsStore, resolve the path the store would compute for
  * `ref` and require it to equal `expectedPath` (the caller's explicit
  * target). A divergence means the caller's path lives outside the active
@@ -275,7 +273,7 @@ export function assertFsStorePath(store: ArtifactStore, ref: ArtifactRef, expect
 const URI_SCHEME_RE = /^[A-Za-z][A-Za-z0-9+.-]*:/;
 
 /** Structural check: the loaded value must implement `put` + `get` as
- * functions (spec SP2 § Injection 3 / Architecture decision 6). */
+ * functions (the store contract). */
 function isArtifactStore(value: unknown): value is ArtifactStore {
   return (
     typeof value === "object" &&
@@ -285,8 +283,7 @@ function isArtifactStore(value: unknown): value is ArtifactStore {
   );
 }
 
-/** Load a store module from a filesystem path (spec SP2 § Injection 2–3,
- * SP2-AC6 / SP2-AC7). Resolves against cwd; rejects empty values and any
+/** Load a store module from a filesystem path (the store module-loading trust boundary). Resolves against cwd; rejects empty values and any
  * URI scheme before `import()`; throws when the file is missing. Accepts a
  * `createArtifactStore` named export, a default-exported factory, or a
  * default-exported object; the result is structurally verified (`put` +
@@ -309,8 +306,8 @@ export async function loadStoreModule(modulePath: string): Promise<ArtifactStore
   if (!existsSync(resolved)) {
     throw new Error(`loadStoreModule: module file not found \u2014 ${JSON.stringify(resolved)}`);
   }
-  // The module path is runtime-selected (CLI --store / MSTAR_STORE_MODULE),
-  // so a static import cannot name it; dynamic import() is the loader.
+ // The module path is runtime-selected (CLI --store / MSTAR_STORE_MODULE),
+ // so a static import cannot name it; dynamic import() is the loader.
   const mod = (await import(resolved)) as Record<string, unknown>;
   const candidate = mod.createArtifactStore ?? mod.default ?? mod;
   const store = typeof candidate === "function" ? await (candidate as () => unknown)() : candidate;

@@ -1,7 +1,7 @@
 /**
  * Agent-flow ledger — the server-side record of ACTUAL subagent dispatch and
  * settle events — real completion, exact pairing (plan
- * `20260810-agent-flow-catalog-graph`, spec §2.1 定稿). The context catalog's
+ *  , spec §2.1 定稿). The context catalog's
  * `state.agentFlow` evidence reads this ledger, so the panel can render what
  * actually happened (vs the client-side expected role flow).
  *
@@ -12,7 +12,7 @@
  * denies (verdict derivation below). The shape guard (spec §2.1.1) now lives
  * at the shared core itself, so non-Assignment text stays silent on BOTH
  * surfaces (the listener's own guard plus the core's guard for the exec-less
- * host-hook path) — no phantom records. Known tradeoff (qc1 F-005, accepted):
+ * host-hook path) — no phantom records. Known accepted tradeoff:
  * the SAME logical dispatch that crosses BOTH surfaces (a host that calls
  * `beforeDispatch` and then runs the identical text through an in-loop
  * `subagent` tool call) records TWO dispatch events — the surfaces are
@@ -27,7 +27,7 @@
  * terminal snapshot dir (compass v3.0.0 § Catalog selection rule: the
  * writer appends only to an active lifecycle; no active entry → the record
  * is skipped with a one-time warn, never a silent root v1 write). One event
- * one line. WRITER SERIALIZATION (qc3 W-1 fix-wave): the append + the
+ * one line. WRITER SERIALIZATION : the append + the
  * size-gated truncating read-modify-write form ONE critical section behind
  * a per-workflow inter-process lock — an atomic `mkdir` lockdir inside the
  * workflow dir (`<workflowDir>/.ledger-write.lockdir`, the SAME lockdir
@@ -47,13 +47,13 @@
  * the truncating overwrite is an ATOMIC temp-file + `renameSync` replace
  * (narrows the read-modify-write window to the single append step).
  * `readAgentFlow` returns the latest-first view (default limit 50) with a
- * role × outcome summary. Semantics (fix-wave qc1 F-001): a MISSING ledger
+ * role × outcome summary. Semantics: a MISSING ledger
  * file → empty view `{ events: [], summary: [] }` (recording hasn't started
  * — the panel shows the "no actual dispatches yet" empty state, per the plan
  * promise); only an UNREADABLE file → null (evidence-missing degrade).
  * Malformed lines are skipped, never fatal.
  *
- * Settle (plan `20260811-panel-f4-timeliness` Task 1 — real completion
+ * Settle (real completion
  * signals, paired to the dispatch record): `tools/post-execute` IS part of
  * the verified dsh-tools registry surface (`runPostExecute` dispatches the
  * waterfall for every tool call — verified against the upstream source and
@@ -65,8 +65,8 @@
  *   `['subagent', 'subagent_fork']` — the shared `DEFAULT_DISPATCH_TOOLS`
  *   from `dispatch.ts`), looks up the exec's
  *   agent-namespaced call key (`${sessionId}\u0000${callId}` — a raw `callId`
- *   alone is not globally unique across sessions in one process, qc1 F-101
- *   fix-wave) in the apply-scoped pairing store, and branches on the
+ *   alone is not globally unique across sessions in one process,
+ *   in the apply-scoped pairing store, and branches on the
  *   verified result shapes: `{ kind: 'background', taskId }` (valid taskId)
  *   → stores `taskId → dispatchRef` (the settle arrives later via
  *   `onJobDone`); `{ kind: 'background' }` without a valid taskId → nothing
@@ -74,7 +74,7 @@
  *   signal this round → no settle (documented limit); any other successful
  *   value (foreground `{ kind: 'foreground', … }` included) → immediate
  *   settle with the paired identity. A failed result (`isError` or an
- *   `error` payload — fabrication guard, qc2 F-001 / qc3 F-003a fix-wave)
+ *   `error` payload — fabrication guard)
  *   settles `error`.
  * - `recordTaskSettle` (wired through `ctx.inject(['jobs'])` in the entry)
  *   maps a terminal snapshot (`completed → ok / killed → denied / failed →
@@ -83,8 +83,7 @@
  * Both pairing maps hold only IN-FLIGHT calls: the `dispatchByCallId` entry
  * is deleted once the post-execute branch resolves the call (each callId
  * pairs exactly once), and `recordTaskSettle` deletes the consumed
- * `dispatchByTaskId` entry (qc1 F-102 / qc2 F-002 / qc3 F-002 fix-wave).
- * Pairing is apply-scoped (D1): the in-memory maps live in the entry's
+ * `dispatchByTaskId` entry. * Pairing is apply-scoped (D1): the in-memory maps live in the entry's
  * `apply`, so an HMR restart resets them — a post-execute/task-done outside
  * the window stays unpaired and records NOTHING (honest degrade, never
  * fabricated settlement). Non-dispatch tool calls and unpaired payloads
@@ -103,13 +102,13 @@ import type { AgentFlowEventView, AgentFlowSummaryRow, AgentFlowView } from '../
 import { asRecord } from './_shared.ts'
 import type { Config } from './_shared.ts'
 import { isNaValue, planIdOf, sessionIdOf, DEFAULT_DISPATCH_TOOLS } from './dispatch.ts'
-// The SHARED ACTIVE-SET resolver (plan `20260819-workflow-dsh-viz` Task 1):
+// The SHARED ACTIVE-SET resolver:
 // the agent-flow WRITER targets the ACTIVE workflow dir only — the
 // terminal-mtime fallback (`resolveReadWorkflow`) is catalog-read-only and
 // MUST NOT enter the writer's module graph (compass v3.0.0 § Catalog
 // selection rule — write path = active `workflows[]` only).
 import { resolveActiveWorkflow } from './workflow-selection.ts'
-// The SHARED ASCII-control-char strip (qc2 W-2 fix-wave): the ralph
+// The SHARED ASCII-control-char strip : the ralph
 // `objective` — model-controlled display text, like the workflow name —
 // is routed through the same normalization at the verdict-row WRITE
 // boundary (parity with the W-B2 name/label/phase discipline), so a
@@ -124,7 +123,7 @@ export const AGENT_FLOW_MAX_EVENTS = 500
 /** Default read limit (the catalog passes 50 per spec §2.2). */
 export const AGENT_FLOW_DEFAULT_LIMIT = 50
 /**
- * The append size gate (qc2 F-1 / qc3 F-001/003 — fix-wave): the truncation
+ * The append size gate: the truncation
  * read-modify-write runs only when the file exceeds ~500 lines' typical
  * size (conservative ≈ 500 × 128 B average line); smaller files stay
  * append-only. The bound is therefore approximate ("~500 events") — a file
@@ -134,7 +133,7 @@ export const AGENT_FLOW_DEFAULT_LIMIT = 50
  */
 export const AGENT_FLOW_SIZE_GATE_BYTES = 64 * 1024
 /**
- * The READ-path byte gate (plan `20260820-dsh-ledger-tail-read`): ledgers at
+ * The READ-path byte gate : ledgers at
  * or below this size take the existing full-read path verbatim; larger files
  * are read as a bounded latest-first TAIL so the catalog pays O(window) at
  * the byte layer instead of parsing every historical line. Private by design
@@ -145,7 +144,7 @@ export const AGENT_FLOW_SIZE_GATE_BYTES = 64 * 1024
  */
 const AGENT_FLOW_TAIL_READ_THRESHOLD_BYTES = 64 * 1024
 /**
- * WORKFLOW field length caps (qc2 W-3 fix-wave) — ONE constant family at
+ * WORKFLOW field length caps  — ONE constant family at
  * the ledger boundary, enforced on BOTH the consumer (workflow-ledger
  * `rowOf`) and the read narrow (`eventFromUnknown`): a hostile or
  * model-controlled multi-MB string must never defeat the
@@ -171,8 +170,7 @@ export const WORKFLOW_LEDGER_MAX_SEQ = 2 ** 31
  * through unchanged; longer values are truncated to `cap − marker` chars
  * plus the {@link WORKFLOW_LEDGER_TRUNCATION_MARKER} suffix (the marker
  * guarantees the truncation is visible in the panel — never a silent cut).
- * CODE-POINT gated AND sliced (plan QC fix wave — qc2 S-5; PR #97 finding
- * 2): `String.prototype.slice` operates on UTF-16 code units and can split
+ * CODE-POINT gated AND sliced : `String.prototype.slice` operates on UTF-16 code units and can split
  * a surrogate pair at the cap boundary (a lone surrogate renders as U+FFFD
  * in the log line), and a UTF-16 `.length` gate would false-positive
  * truncate astral-dense values (≤ cap code points but > cap UTF-16 units)
@@ -196,21 +194,19 @@ export const AGENT_FLOW_LOGGER = 'mstar/agent-flow'
  * waterfall. VERIFIED to be dispatched by the real registry for every tool
  * call (`runPostExecute` → `postExecute`, upstream source; pinned by the
  * real-call probe in `tests/agent-flow.spec.ts`), so settles are no longer
- * host-emission-dependent (plan `20260811-panel-f4-timeliness` Task 1 — the
+ * host-emission-dependent (the
  * old "not part of the verified surface" assumption is obsolete).
  */
 export const SETTLE_SEAM = 'tools/post-execute'
 /**
- * The once-per-apply settle-pairing trace (plan `20260811-panel-f4-timeliness`
- * Task 1). Historical name `SETTLE_SEAM_UNAVAILABLE_NOTE` (qc1 F-105 / qc2
- * N-002 fix-wave): the old name claimed the seam was UNAVAILABLE, which the
+ * The once-per-apply settle-pairing trace . Historical name `SETTLE_SEAM_UNAVAILABLE_NOTE`: the old name claimed the seam was UNAVAILABLE, which the
  * message itself refutes — the seam IS a verified part of the registry
  * surface, so the constant was renamed to the accurate `PAIRING` name. The
  * message states the VERIFIED pairing facts: the seam is emitted by the
  * registry; foreground dispatch calls settle via it, background subagents
  * settle via `ctx.jobs.onJobDone` pairing; only unpaired payloads stay
  * dispatch-only (never fabricated settlement). Logged ONCE per logger binding
- * (≈ once per apply — the same module-level flag, qc1 F-006) when the pairing
+ * (≈ once per apply — the same module-level flag) when the pairing
  * listener is registered.
  */
 export const SETTLE_SEAM_PAIRING_NOTE =
@@ -223,8 +219,7 @@ export type SettleOutcome = 'ok' | 'error' | 'denied'
 /** Workflow run terminal reason (`tool-workflow` vocabulary — `workflow/src/types.ts:63`). */
 export type WorkflowStopReason = 'completed' | 'cancelled' | 'error'
 /**
- * Workflow/ralph gate verdict vocabulary (plan `20260815-dsh-workflow-gate`
- * Task 4): the RESOLVED outcomes reuse the dispatch verdict vocabulary
+ * Workflow/ralph gate verdict vocabulary : the RESOLVED outcomes reuse the dispatch verdict vocabulary
  * (`ok`/`advisory`/`denied` — the plan interface "the workflow verdict
  * vocabulary"); `ask` is the PENDING-decision member — the first-seen ask
  * itself is a gated call, so its row carries `ask` until the approval
@@ -233,16 +228,16 @@ export type WorkflowStopReason = 'completed' | 'cancelled' | 'error'
 export type WorkflowVerdict = DispatchVerdict | 'ask'
 /**
  * The workflow/ralph gate mode (Config `workflowGate` — plan
- * `20260815-dsh-workflow-gate` Task 1), recorded on every verdict row.
+ * verdict rows), recorded on every verdict row.
  * `off` rows never exist: the gate short-circuits `off` BEFORE the policy,
  * so no verdict is produced.
  */
 export type WorkflowGateMode = 'off' | 'warn' | 'ask' | 'hard'
 
 /**
- * One v1 workflow ledger event (plan `20260815-dsh-workflow-ledger` Task 2 —
+ * One v1 workflow ledger event (the JSONL row —
  * the W-B2 schema). Produced from the durable `tool-workflow/*` session events
- * by the Task 3 consumer (`run-start` → `workflow-run`, `agent-start` →
+ * by the session-event consumer (`run-start` → `workflow-run`, `agent-start` →
  * `workflow-agent`, `run-end` → `workflow-run-end`; the upstream `agent-end`
  * member outcome has no ledger kind). Optional fields (`agent` / `phase`) are
  * OMITTED from the serialized line when absent (lossless-JSON discipline).
@@ -285,8 +280,8 @@ export type AgentFlowWorkflowEvent =
     }
 
 /**
- * One v1 ledger event (spec §2.1.3 + plan `20260815-dsh-workflow-ledger`
- * Task 2 — the JSONL line). Optional fields are OMITTED from the serialized
+ * One v1 ledger event (spec §2.1.3 +
+ * the JSONL line). Optional fields are OMITTED from the serialized
  * line when absent (Session.append's lossless JSON discipline starts at the
  * record boundary). The three `workflow-*` kinds are the W-B2 addition —
  * see {@link AgentFlowWorkflowEvent}.
@@ -320,8 +315,7 @@ export type AgentFlowEvent =
       outcome: SettleOutcome
       durationMs?: number
       /**
-       * The PAIRED dispatch's identity (plan `20260811-panel-f4-timeliness`
-       * Task 1) — same field names + semantics as the dispatch event:
+       * The PAIRED dispatch's identity (plan  same field names + semantics as the dispatch event:
        * `role` is the Assignment `Execute as` ('' when missing), `planId` /
        * `taskId` the plan + `Task N` tags. Written for every paired settle;
        * ABSENT on unpaired (legacy) settles — the client pairs on identity
@@ -380,7 +374,7 @@ export interface AgentFlowDispatchRef {
 }
 
 /**
- * The apply-scoped pairing store (plan `20260811-panel-f4-timeliness` Task 1,
+ * The apply-scoped pairing store (
  * decision D1 — created in the entry `apply`, same lifetime as the catalog
  * cache; an HMR restart resets it, and completions outside the window stay
  * unpaired → no settle, the documented honest degrade). Maps are keyed by
@@ -392,7 +386,7 @@ export interface AgentFlowPairing {
   /**
    * The agent-namespaced call key → the dispatch it recorded (populated by
    * `recordDispatch` when an exec is present). Key = `${sessionId}\u0000${callId}`
-   * (qc1 F-101 fix-wave): a raw `ToolExecution.callId` is NOT globally unique
+   * : a raw `ToolExecution.callId` is NOT globally unique
    * in one process — dsh runs many sessions concurrently and upstream mints
    * per-message ids (`call-${index}`), so the dispatching session id must
    * namespace the key or session B's same-id call could overwrite session A's
@@ -409,7 +403,7 @@ type AgentFlowLogSink = (level: 'info' | 'warn' | 'error', message: string) => v
 let logSink: AgentFlowLogSink | undefined
 /**
  * Whether the settle-unavailable trace has been logged for the CURRENT sink
- * binding (qc1 F-006: the ~300-char note is emitted at most once per apply,
+ * binding (the ~300-char note is emitted at most once per apply,
  * not on every registration).
  */
 let settleNoteLogged = false
@@ -420,11 +414,10 @@ let settleNoteLogged = false
  */
 let noActiveWarned = false
 /**
- * Module-scoped catalog-invalidation hook (plan `20260811-panel-f4-timeliness`
- * Task 1 — the `invalidateCatalog` 挂钩 that Task 2 consumes): called with
+ * Module-scoped catalog-invalidation hook : called with
  * the affected `{HARNESS_DIR}` after every SUCCESSFUL ledger record
  * (`recordDispatch` / `recordSettle`). The entry binds the real invalidation
- * closure at apply (Task 2 shipped the apply-scoped harnessDir → cache-key
+ * closure at apply (the apply-scoped harnessDir → cache-key
  * reverse-map closure in `index.ts` — see `createCatalogInvalidation`);
  * unbound → no-op. Never throws into the record path.
  */
@@ -433,8 +426,8 @@ let invalidator: AgentFlowInvalidator | undefined
 
 /**
  * Bind the module's catalog-invalidation hook (plan
- * `20260811-panel-f4-timeliness` Task 1 — same pattern as
- * {@link setAgentFlowLogger}; the entry binds at apply; Task 2 shipped the
+ * the settle-pairing upgrade — same pattern as
+ * {@link setAgentFlowLogger}; the entry binds at apply; the apply-scoped
  * real binding — the apply-scoped harnessDir → cache-key reverse-map
  * closure in `index.ts`).
  * @param invalidate - the hook (`undefined` clears the binding).
@@ -478,10 +471,10 @@ function errorMessage(error: unknown): string {
  * (spec §2.1.1 — `taskIdOf`). The engine `assignmentHeaderRegion` boundary is
  * reused: only text AFTER the header region is scanned, so a `## Task N`
  * example quoted in the header never resolves a task id. Only a LEVEL-2
- * heading (`^## Task N`) matches (qc2 F-8: an example or sub-heading at
+ * heading (`^## Task N`) matches (an example or sub-heading at
  * another depth before the real task must not resolve — lower false-hit
  * surface); normalized to `T<n>` (matches the panel render `planId#taskId`,
- * e.g. `20260810-x#T2`).
+ * e.g.  #T2`).
  * @param prompt - the full Assignment text.
  */
 export function taskIdOf(prompt: string): string | undefined {
@@ -512,7 +505,7 @@ function callIdOf(exec: unknown): string | undefined {
 }
 
 /**
- * The AGENT-NAMESPACED pairing key of one exec (qc1 F-101 fix-wave):
+ * The AGENT-NAMESPACED pairing key of one exec :
  * `${sessionIdOf(exec) ?? ''}\u0000${callId}`. A raw `callId` alone is NOT
  * globally unique in one process — dsh runs many sessions concurrently and
  * upstream mints per-message ids (`call-${index}`; model-supplied
@@ -540,7 +533,7 @@ function callPairingKey(exec: unknown): string | undefined {
  * `workflows[]` MEMBERSHIP — non-terminal lifecycles (`running` AND
  * `paused`; terminal lifecycles are removed at terminal) — so a paused
  * lifecycle stays a valid append target (explicit decision, plan
- * `20260819-workflow-dsh-viz` Task 2).
+ * the workflow viz plan).
  *
  * No active entry → `null`: the record is SKIPPED with a one-time warn
  * (per sink binding) — never a silent write into the root v1 file, never a
@@ -567,7 +560,7 @@ export function resolveAgentFlowWriteDir(harnessDir: string): string | null {
 }
 
 /**
- * Lock-directory name for the per-workflow write lock (qc3 W-1 fix-wave):
+ * Lock-directory name for the per-workflow write lock :
  * guards the ledger append + size-gated truncating read-modify-write AND
  * the workflow-ledger cursor sidecar read-modify-write against concurrent
  * dsh processes sharing one active lifecycle (compass ruling 3). The
@@ -592,8 +585,7 @@ function sleepSync(ms: number): void {
 }
 
 /**
- * Run `fn` under the per-workflow inter-process write lock (qc3 W-1
- * fix-wave): atomic `mkdir` on `<workflowDir>/.ledger-write.lockdir/`
+ * Run `fn` under the per-workflow inter-process write lock: atomic `mkdir` on `<workflowDir>/.ledger-write.lockdir/`
  * acquires (success acquires; existing dir → another writer holds the
  * lock); while another writer holds it, wait up to
  * {@link WORKFLOW_LOCKER_TIMEOUT_MS} and then THROW (Blocked — the
@@ -688,7 +680,7 @@ export function withWorkflowDirLock<T>(
 
 /**
  * Append one event to `<workflowDir>/agent-flow.jsonl` and keep the file
- * bounded (spec §2.1.3 — fix-wave qc2 F-1 / qc3 F-001/003). Common path is
+ * bounded (spec §2.1.3). Common path is
  * append-ONLY: after the single `appendFileSync` (a near-atomic O_APPEND
  * write), the file is `stat`-gated — below `AGENT_FLOW_SIZE_GATE_BYTES`
  * (≈500 lines' typical size) the file is NOT re-read (no read-modify-write
@@ -697,7 +689,7 @@ export function withWorkflowDirLock<T>(
  * truncating overwrite is an ATOMIC temp-file + `renameSync` replace (write
  * `agent-flow.jsonl.tmp` → rename), so concurrent readers never observe a
  * torn file. The WHOLE append + stat + truncate sequence runs inside the
- * per-workflow inter-process lock (`withWorkflowDirLock`, qc3 W-1 fix-wave):
+ * per-workflow inter-process lock (`withWorkflowDirLock`):
  * two processes sharing one active lifecycle serialize here — a concurrent
  * truncating read-modify-write can no longer drop the other writer's just-
  * appended lines. May throw (fs / lock timeout) — callers contain.
@@ -729,17 +721,16 @@ function appendEvent(workflowDir: string, event: AgentFlowEvent): void {
  * identity derivation (role / planId / taskId / taskCategory) reuse the gate's
  * own parsers — one grammar.
  *
- * Pairing (plan `20260811-panel-f4-timeliness` Task 1): when the input
+ * Pairing: when the input
  * carries an `exec` AND the apply-scoped `pairing` store, the successful
  * record registers the agent-namespaced key `${sessionId}\u0000${callId}` →
  * dispatchRef (the full dispatch identity), so a later
  * `tools/post-execute` for the same call can settle with the SAME identity
- * (qc1 F-101 fix-wave: the session id namespaces the key — a raw callId is
+ * (the session id namespaces the key — a raw callId is
  * not globally unique across sessions in one process). The pairing registers
  * only after the ledger append SUCCEEDED — a failed record never pairs to a
  * phantom dispatch. An exec-less record (host-hook path) has no callId → no
- * pairing. The pairing sub-path has its OWN catch scope (qc1 F-106 / qc2
- * N-001 / qc3 F-006 fix-wave): a `Map.set` throw must not log "record
+ * pairing. The pairing sub-path has its OWN catch scope: a `Map.set` throw must not log "record
  * failed" after the dispatch was already appended.
  * @param input - harness dir + exec (agent id) + Assignment text + the gate's
  * violations + the hard-enforcement resolution + the apply-scoped pairing
@@ -788,10 +779,10 @@ export function recordDispatch(input: {
     // Registered whenever the call id is present (the dispatchRef may carry no
     // agent for agent-less calls — the settle then records what it knows and
     // the client pairing honestly stays unpaired without an agent). Keyed by
-    // the agent-namespaced call key (qc1 F-101 fix-wave). The dispatchRef
+    // the agent-namespaced call key . The dispatchRef
     // carries the WORKFLOW DIR the event landed in, so the later settle
     // appends to the SAME file even if the active set changed in between
-    // (settle pairing reads/writes the same ledger — plan Task 2).
+    // (settle pairing reads/writes the same ledger).
     try {
       if (input.pairing !== undefined && input.exec !== undefined) {
         const key = callPairingKey(input.exec)
@@ -807,7 +798,7 @@ export function recordDispatch(input: {
         }
       }
     } catch (error) {
-      // Own catch scope (qc1 F-106 / qc2 N-001 / qc3 F-006 fix-wave): a
+      // Own catch scope : a
       // pairing-registration throw must not claim the DISPATCH record failed
       // — the event was already appended successfully above.
       log('error', `pairing registration failed (contained — the dispatch record succeeded): ${errorMessage(error)}`)
@@ -868,9 +859,9 @@ export function recordSettle(input: {
 }
 
 /**
- * Record one workflow ledger event (plan `20260815-dsh-workflow-ledger` Task 2
+ * Record one workflow ledger event (the JSONL schema below
  * — the W-B2 schema). Fully try/catch-contained — NEVER throws into the
- * session-event consumer (Task 3 wires it); a failing record logs only
+ * session-event consumer wires it); a failing record logs only
  * (`mstar/agent-flow`), so a ledger write never crashes or alters a workflow
  * run (Global Constraint: observe-only events are never refusal channels).
  * The event is serialized lossless — optional fields (`agent` / `phase`) are
@@ -890,7 +881,7 @@ export function recordSettle(input: {
  * @returns `true` when the row was appended (the caller may durably advance
  *   its watermark); `false` on a contained append failure OR when no active
  *   lifecycle resolves — the caller must leave the cursor behind so the row
- *   is re-attempted at the next scan (qc3 R-401: advance-then-record made a
+ *   is re-attempted at the next scan (advance-then-record made a
  *   failed append permanent loss).
  */
 export function recordWorkflowEvent(input: {
@@ -916,7 +907,7 @@ export function recordWorkflowEvent(input: {
 
 /**
  * Input for {@link recordWorkflowVerdict} — one gated workflow/ralph call's
- * decision identity (plan `20260815-dsh-workflow-gate` Task 4: verdict +
+ * decision identity (verdict +
  * metaName/objective + mode).
  */
 export interface WorkflowVerdictInput {
@@ -939,9 +930,7 @@ export interface WorkflowVerdictInput {
 }
 
 /**
- * Record one workflow/ralph gate verdict row (plan `20260815-dsh-workflow-gate`
- * Task 4 — "one ledger row per gated workflow/ralph call" via the ledger
- * plan's record path, the `workflow-verdict` kind). Fully
+ * Record one workflow/ralph gate verdict row . Fully
  * try/catch-contained — NEVER throws into the gate (`gateWorkflow` calls
  * this on EVERY policy decision); a failing record logs only
  * (`mstar/agent-flow`), so a ledger write never crashes or alters a
@@ -950,7 +939,7 @@ export interface WorkflowVerdictInput {
  * display identity fields (`workflow` / `objective`) are capped at the
  * ledger boundary (same discipline as the W-B2 name cap) and the ralph
  * `objective` is routed through the SHARED `normalizeWorkflowName` strip at
- * this write boundary (qc2 W-2 — control-char discipline parity with the
+ * this write boundary (— control-char discipline parity with the
  * name/label/phase fields; the gate already normalizes `workflow`). The
  * JSONL line is line-safe either way (`JSON.stringify` escapes), but the
  * panel view passes the objective through raw — a hostile objective
@@ -1036,7 +1025,7 @@ function eventFromUnknown(value: unknown): AgentFlowEvent | undefined {
       ...(agent !== undefined ? { agent } : {}),
       outcome,
       ...(typeof rec.durationMs === 'number' && Number.isFinite(rec.durationMs) ? { durationMs: rec.durationMs } : {}),
-      // Paired-dispatch identity (plan `20260811-panel-f4-timeliness` Task 1):
+      // Paired-dispatch identity:
       // `role` presence marks a PAIRED settle (kept even when '' — an
       // empty-role identity is still an identity); planId/taskId omit when empty.
       ...(typeof rec.role === 'string' ? { role: rec.role } : {}),
@@ -1045,7 +1034,7 @@ function eventFromUnknown(value: unknown): AgentFlowEvent | undefined {
     }
   }
   if (kind === 'workflow-verdict') {
-    // Gate verdict rows (plan `20260815-dsh-workflow-gate` Task 4): the
+    // Gate verdict rows: the
     // tool / mode / verdict are vocabulary-validated; the per-tool identity
     // (`workflow` for workflow calls, `objective` for ralph) must be a
     // non-empty string (the producer's invariant — the gate records a row
@@ -1081,19 +1070,19 @@ function eventFromUnknown(value: unknown): AgentFlowEvent | undefined {
       ...(typeof rec.code === 'string' && rec.code !== '' ? { code: rec.code } : {}),
     }
   }
-  // Workflow kinds (plan `20260815-dsh-workflow-ledger` Task 2). `runId` is
+  // Workflow kinds. `runId` is
   // REQUIRED non-empty on all three (upstream stringId — `tool-workflow`'s
   // invariant contract); `agent` (workflow-run only) and `phase`
   // (workflow-agent only) omit when absent — lossless at the read boundary
   // too. Positional invariants (post-end updates, duplicate member seq) are
   // the CONSUMER's job — the ledger persists what it sees.
   //
-  // Length caps (qc2 W-3 fix-wave): id-sized fields (`runId`, `childId`)
+  // Length caps : id-sized fields (`runId`, `childId`)
   // SKIP the row when oversized (never truncated into collisions); display
   // fields (`name`, `label`, `phase`) are capped deterministically — a
   // multi-MB line written by an older producer must not defeat the
   // line-count truncation or reach the panel unbounded. Member `seq` must
-  // be an integer in [1, 2^31) (qc2 W-2 — upstream `memberSeq` positive
+  // be an integer in [1, 2^31) (— upstream `memberSeq` positive
   // safe integer; fractional values corrupt consumer cursor math).
   if (typeof rec.runId !== 'string' || rec.runId === '' || rec.runId.length > WORKFLOW_LEDGER_MAX_ID_LENGTH) return undefined
   if (kind === 'workflow-run') {
@@ -1234,8 +1223,7 @@ function eventView(event: AgentFlowEvent): AgentFlowEventView {
 function summaryOf(events: readonly AgentFlowEvent[]): AgentFlowSummaryRow[] {
   const counts = new Map<string, number>()
   for (const event of events) {
-    // Workflow kinds (plan `20260815-dsh-workflow-ledger` Task 4 + plan
-    // `20260815-dsh-workflow-gate` Task 4) count as a DISTINCT bucket — a
+    // Workflow kinds count as a DISTINCT bucket — a
     // dedicated `workflow` pseudo-role, never folded into the
     // dispatch-role counts (replaces the Task-2 stopgap role=''
     // kind-bucket). The outcome is the STABLE kind name for run / member /
@@ -1269,7 +1257,7 @@ function summaryOf(events: readonly AgentFlowEvent[]): AgentFlowSummaryRow[] {
 
 /**
  * Acquire the ledger's decoded content for the parse funnel (plan
- * `20260820-dsh-ledger-tail-read`): files at or below
+ *  ): files at or below
  * `AGENT_FLOW_TAIL_READ_THRESHOLD_BYTES` take the existing full read
  * verbatim; LARGER files are read as a bounded latest-first TAIL — seek
  * from EOF, align the window start to a line boundary, and double the
@@ -1327,8 +1315,8 @@ function ledgerContent(file: string, n: number): string {
 }
 
 /**
- * Read the agent-flow ledger as the catalog view (spec §2.1.3 — fix-wave
- * qc1 F-001 / qc2 F-6): the latest events first (bounded by `limit`) plus
+ * Read the agent-flow ledger as the catalog view (spec §2.1.3): the latest
+ * events first (bounded by `limit`) plus
  * the role × outcome summary over the SAME window (so `by role` counts sum
  * to the event count). A MISSING ledger file returns the EMPTY view
  * `{ events: [], summary: [] }` — recording hasn't started (it begins at
@@ -1342,7 +1330,7 @@ function ledgerContent(file: string, n: number): string {
  * (the catalog passes `join(harnessDir, selection.dir)`; the writer appends
  * there via `resolveAgentFlowWriteDir`).
  *
- * Large-file reads (plan `20260820-dsh-ledger-tail-read`): ledgers above
+ * Large-file reads : ledgers above
  * `AGENT_FLOW_TAIL_READ_THRESHOLD_BYTES` are read as a bounded latest-first
  * tail — seek from EOF, aligned to a line boundary, doubling backward until
  * the window holds `limit` complete lines — so the catalog pays O(window) at
@@ -1359,7 +1347,7 @@ export function readAgentFlow(workflowDir: string, limit?: number): AgentFlowVie
     // Missing ledger = no records yet — the empty view, never a degrade.
     return { events: [], summary: [] }
   }
-  // Explicit limit semantics (qc2 F-6): undefined → default; otherwise a
+  // Explicit limit semantics : undefined → default; otherwise a
   // non-negative floor — `0` → the empty window. Computed BEFORE the read so
   // the tail path knows how many complete lines the window must hold.
   const n = limit === undefined ? AGENT_FLOW_DEFAULT_LIMIT : Math.max(0, Math.floor(limit))
@@ -1391,7 +1379,7 @@ export function readAgentFlow(workflowDir: string, limit?: number): AgentFlowVie
 
 /**
  * Record a settle carrying a PAIRED dispatch's identity (plan
- * `20260811-panel-f4-timeliness` Task 1): the harness dir + agent + identity
+ * the settle-pairing upgrade): the harness dir + agent + identity
  * come from the dispatchRef (the apply-scoped pairing store) — never probed
  * from a payload. `role` is always written (the dispatchRef always carries
  * it, possibly ''); planId/taskId omit when absent — the same field
@@ -1414,30 +1402,29 @@ function recordSettleWithRef(ref: AgentFlowDispatchRef, outcome: SettleOutcome, 
 }
 
 /**
- * The `tools/post-execute` settle pairing (plan `20260811-panel-f4-timeliness`
- * Task 1 — replaces the old defensive payload probing): the VERIFIED
+ * The `tools/post-execute` settle pairing : the VERIFIED
  * dsh-tools registry dispatches this seam for every tool call
  * (`runPostExecute` → `postExecute`, upstream source), so the listener only
  * decides whether a completion signal exists for the PAIRED dispatch:
  *
  * - non-dispatch tool (`exec.name` ∉ Config `dispatchTools`) → nothing;
  * - dispatch tool whose agent-namespaced call key
- *   (`${sessionId}\u0000${callId}`, qc1 F-101 fix-wave) is not in the pairing
+ *   (the exact call identity) is not in the pairing
  *   store (HMR reset, host-hook dispatch, non-gate path) → nothing (warned
  *   once per registration — honest degrade, never fabricated settlement);
  * - `result.isError === true` OR an `error` payload present → settle `error`
- *   immediately (fabrication guard, qc2 F-001 / qc3 F-003a — the dispatch
+ *   immediately (fabrication guard — the dispatch
  *   call failed; a result carrying `error` without `isError` never settles ok);
  * - successful `result.value` shape `{ kind: 'background', taskId }` with a
  *   valid taskId → store `taskId → dispatchRef` (the real settle arrives via
  *   `ctx.jobs.onJobDone`); `{ kind: 'background' }` WITHOUT a valid taskId
- *   → nothing mappable (no settle, qc3 F-003b);
+ *   → nothing mappable (no settle);
  * - `{ kind: 'continuable', subagentId }` → no terminal signal this round →
  *   no settle (documented limit — the child owns its turns);
  * - any other successful value (foreground `{ kind: 'foreground', … }`
  *   included) → settle `ok` (the call completed synchronously).
  * The consumed `dispatchByCallId` entry is DELETED after the branch resolves
- * the call (map pruning, qc1 F-102 / qc2 F-002 / qc3 F-002 — each callId
+ * the call (map pruning — each callId
  * pairs exactly once; the map holds only in-flight calls).
  *
  * The waterfall MUST be delegated via `next()` on every path — returning
@@ -1462,7 +1449,7 @@ export function registerSettleListener(ctx: Context, config: Config, pairing: Ag
       if (typeof name !== 'string' || !dispatchTools.includes(name)) {
         // Non-dispatch tool call → no record (the waterfall still delegates below).
       } else {
-        // Agent-namespaced call key (qc1 F-101 fix-wave): a raw callId is not
+        // Agent-namespaced call key : a raw callId is not
         // globally unique across sessions in one process — the session id in
         // the key keeps this settle from pairing into ANOTHER session's
         // dispatchRef. Same derivation as `recordDispatch` registration.
@@ -1478,7 +1465,7 @@ export function registerSettleListener(ctx: Context, config: Config, pairing: Ag
         } else {
           const resultRec = asRecord(result)
           if (resultRec !== undefined) {
-            // Fabrication guard (qc2 F-001 / qc3 F-003a fix-wave): a failed
+            // Fabrication guard : a failed
             // result detected by EITHER the canonical `isError` flag OR an
             // `error` payload settles `error` — a result carrying `error`
             // without `isError: true` must NEVER settle a fabricated `ok`.
@@ -1492,8 +1479,8 @@ export function registerSettleListener(ctx: Context, config: Config, pairing: Ag
                   // Background job started — the settle arrives via onJobDone.
                   pairing.dispatchByTaskId.set(value.taskId, dispatchRef)
                 }
-                // Background WITHOUT a valid taskId → nothing mappable (qc3
-                // F-003b fix-wave) — never a fabricated ok settle.
+                // Background WITHOUT a valid taskId → nothing mappable
+                // background result) — never a fabricated ok settle.
               } else if (value !== undefined && value.kind === 'continuable') {
                 // Continuable child — no terminal signal this round → honest no-settle.
               } else {
@@ -1505,7 +1492,7 @@ export function registerSettleListener(ctx: Context, config: Config, pairing: Ag
           // resultRec === undefined → no result payload at all — nothing mappable.
         }
         // The call is CONSUMED — each callId pairs exactly once (map pruning,
-        // qc1 F-102 / qc2 F-002 / qc3 F-002 fix-wave): the dispatchByCallId
+        // map pruning): the dispatchByCallId
         // entry is deleted after the post-execute branch resolves the call, so
         // the map holds only in-flight calls (a no-op when the key was never
         // registered or already consumed).
@@ -1522,7 +1509,7 @@ export function registerSettleListener(ctx: Context, config: Config, pairing: Ag
   }
   ctx.on(SETTLE_SEAM as never, listener as never)
   // The pairing trace is emitted at most ONCE per logger binding (≈ once per
-  // apply — qc1 F-006): repeated registrations (tests, HMR) must not re-spam.
+  // apply): repeated registrations (tests, HMR) must not re-spam.
   if (!settleNoteLogged) {
     settleNoteLogged = true
     log('info', SETTLE_SEAM_PAIRING_NOTE)
@@ -1531,7 +1518,7 @@ export function registerSettleListener(ctx: Context, config: Config, pairing: Ag
 
 /**
  * The structural read of the dsh-jobs terminal snapshot the pairing consumes
- * (plan `20260811-panel-f4-timeliness` Task 1). The `ctx.jobs.onJobDone`
+ * (the settle-pairing upgrade). The `ctx.jobs.onJobDone`
  * contract was verified against the upstream `@deepseek-ai/dsh-jobs`
  * `types.ts`: `JobDoneListener = (snapshot, owner) => …`, terminal
  * `snapshot.status` ∈ `completed | killed | failed`, `startedAt`/`finishedAt`
@@ -1552,14 +1539,14 @@ export interface TaskDoneSnapshot {
 
 /**
  * Record the settle for one background-task terminal (plan
- * `20260811-panel-f4-timeliness` Task 1 — the `ctx.jobs.onJobDone` path):
+ * the `ctx.jobs.onJobDone` path):
  * the snapshot's task id must hit the pairing store's `dispatchByTaskId`
  * (populated by the post-execute background branch) — a miss records NOTHING
  * (honest degrade, never fabricated). Outcome mapping: `completed → ok` /
  * `killed → denied` / `failed → error`; `durationMs = finishedAt − startedAt`
  * when both are present. After a SUCCESSFUL settle the consumed
- * `dispatchByTaskId` entry is deleted (map pruning, qc1 F-102 / qc2 F-002 /
- * qc3 F-002 — the map holds only in-flight tasks; a contract-violating
+ * `dispatchByTaskId` entry is deleted (map pruning — the map holds only
+ * in-flight tasks; a contract-violating
  * non-terminal snapshot records nothing and KEEPS the entry so a later real
  * terminal can still settle). Fully contained — never throws into the task
  * registry's listener notification.
@@ -1582,8 +1569,7 @@ export function recordTaskSettle(snapshot: TaskDoneSnapshot, pairing: AgentFlowP
       ? snapshot.finishedAt - snapshot.startedAt
       : undefined
     recordSettleWithRef(dispatchRef, outcome, durationMs)
-    // Consumed — the map holds only in-flight tasks (qc1 F-102 / qc2 F-002 /
-    // qc3 F-002 fix-wave).
+    // Consumed — the map holds only in-flight tasks.
     pairing.dispatchByTaskId.delete(snapshot.id)
   } catch (error) {
     log('error', `settle record failed (contained): ${errorMessage(error)}`)

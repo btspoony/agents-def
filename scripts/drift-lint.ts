@@ -5,46 +5,45 @@
  * declared CLI bin name, and engine spec-citation comments must resolve to
  * real skill files.
  *
- * Guards added by plan 20260816-mechanical-verification (Task 3):
- *   1. docs audit enum — `/codebase-audit` category tokens in docs/cli.md
- *      (the `<category>` keyword-table row) and README.md / README_CN.md
- *      (the category-focus list) must be real AUDIT_CATEGORIES members;
- *      docs/cli.md must enumerate the full nine (fabrications like `deps`
- *      and omissions like a missing `bug` / `direction` both fail).
- *   2. README bilingual pairing — README.md and README_CN.md must change
- *      together over the committed range merge-base(origin/main, HEAD)..HEAD
- *      (AGENTS.md bilingual rule); skipped silently when git has no range
- *      (local non-commit runs), but a missing range under GITHUB_ACTIONS
- *      fails loudly — the drift-lint CI job checks out with fetch-depth: 0
- *      so origin/main exists and PR runs are the enforcement surface.
- *   3. skills corpus — no ephemeral citations anywhere in the skills/
- *      markdown tree (engine findEphemeralCitations over the full corpus),
- *      turning the manual corpus smoke into a permanent CI guard.
- *   4. roles/load-order corpus (plan 20260816-audit-003-roles-validate-cli
- *      Task 2): every `skills/mstar-*` SKILL.md must declare
- *      `mstar-harness-core` in a Load Order / First action section (engine
- *      `lintLoadOrder`) and the mstar-roles mapping / parameter tables
- *      must resolve against the on-disk `references/<role>.md` layout
- *      (engine `validateRoleMapping` on `skills/mstar-roles`).
- *   5. skills corpus — five-question runtime smoke (plan
- *      20260816-audit-001-five-question-lint Task 2, audit finding 5;
- *      classifier wiring per plan 20260907-skill-lint-parity Task 2):
- *      every shipped `skills/mstar-*` SKILL.md selected as `runtime` by the
- *      shared Engine classifier (`classifySkillLint`; the
- *      `mstar-harness-core` hub and the standard-bearing
- *      `mstar-skill-authoring` are not runtime corpus) must pass engine
- *      `lintFiveQuestion` in its classified runtime mode, so the corpus
- *      cannot drift out of five-question alignment without failing CI.
- *      Guard numbers are per-plan locked, not positional.
- *   6. skills corpus — Engine-check callout dedup (plan
- *      20260822-skill-pointer-hygiene Task 2): the same normalized
- *      `**Engine check (when available):**` callout body must not appear
- *      in more than one file (bilingual variant `或 import` → `or import`
- *      counts as identical), so a re-vendored canonical callout fails CI
- *      before it drifts.
+ * Guards added by the mechanical-verification pass:
+ * 1. docs audit enum — `/codebase-audit` category tokens in docs/cli.md
+ * (the `<category>` keyword-table row) and README.md / README_CN.md
+ * (the category-focus list) must be real AUDIT_CATEGORIES members;
+ * docs/cli.md must enumerate the full nine (fabrications like `deps`
+ * and omissions like a missing `bug` / `direction` both fail).
+ * 2. README bilingual pairing — README.md and README_CN.md must change
+ * together over the committed range merge-base(origin/main, HEAD)..HEAD
+ * (AGENTS.md bilingual rule); skipped silently when git has no range
+ * (local non-commit runs), but a missing range under GITHUB_ACTIONS
+ * fails loudly — the drift-lint CI job checks out with fetch-depth: 0
+ * so origin/main exists and PR runs are the enforcement surface.
+ * 3. skills corpus — no ephemeral citations anywhere in the skills/
+ * markdown tree (engine findEphemeralCitations over the full corpus),
+ * turning the manual corpus smoke into a permanent CI guard.
+ * 4. roles/load-order corpus ( * every `skills/mstar-*` SKILL.md must declare
+ * `mstar-harness-core` in a Load Order / First action section (engine
+ * `lintLoadOrder`) and the mstar-roles mapping / parameter tables
+ * must resolve against the on-disk `references/<role>.md` layout
+ * (engine `validateRoleMapping` on `skills/mstar-roles`).
+ * 5. skills corpus — five-question runtime smoke (plan
+ * 20260816-audit-001-five-question-lint Task 2, audit finding 5;
+ * classifier wiring per the shared lint-classifier):
+ * every shipped `skills/mstar-*` SKILL.md selected as `runtime` by the
+ * shared Engine classifier (`classifySkillLint`; the
+ * `mstar-harness-core` hub and the standard-bearing
+ * `mstar-skill-authoring` are not runtime corpus) must pass engine
+ * `lintFiveQuestion` in its classified runtime mode, so the corpus
+ * cannot drift out of five-question alignment without failing CI.
+ * Guard numbers are per-plan locked, not positional.
+ * 6. skills corpus — Engine-check callout dedup (plan
+ * 20260822-skill-pointer-hygiene Task 2): the same normalized
+ * `**Engine check (when available):**` callout body must not appear
+ * in more than one file (bilingual variant `或 import` → `or import`
+ * counts as identical), so a re-vendored canonical callout fails CI
+ * before it drifts.
  *
  * The forward callout citation check (this plan, 20260817-cli-bin-alias
- * Task 2) also validates the **binary prefix** of every backticked CLI
+ * also validates the **binary prefix** of every backticked CLI
  * citation in Engine-check callouts against the declared `bin` names read
  * from packages/cli/package.json — the manifest is SSOT, never a hardcoded
  * list — closing the blind spot where prose could cite a nonexistent
@@ -106,7 +105,7 @@ function exists(rel: string): boolean {
 }
 
 /* ------------------------------------------------------------------ */
-/* Guard 2 helpers: README bilingual pairing (AGENTS.md)               */
+/* Guard 2 helpers: README bilingual pairing (AGENTS.md) */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -216,13 +215,13 @@ export type BilingualGuardResult =
 /**
  * Guard 2 decision given the git range result and CI context:
  * - `changedFiles === null` — git could not resolve the range (no repo /
- *   no origin/main). Locally this is a legitimate non-commit run and skips
- *   silently; under GITHUB_ACTIONS it is a wiring failure (the drift-lint
- *   job must checkout with fetch-depth: 0 so origin/main exists) and fails
- *   loudly instead of silently skipping.
+ * no origin/main). Locally this is a legitimate non-commit run and skips
+ * silently; under GITHUB_ACTIONS it is a wiring failure (the drift-lint
+ * job must checkout with fetch-depth: 0 so origin/main exists) and fails
+ * loudly instead of silently skipping.
  * - `changedFiles === []` — range resolved but empty (direct-to-main push
- *   where origin/main == HEAD). Uncovered by design; PR runs are the
- *   enforcement surface, so this skips in CI too.
+ * where origin/main == HEAD). Uncovered by design; PR runs are the
+ * enforcement surface, so this skips in CI too.
  * - non-empty — run the pairing check.
  * Exported as a test seam; `opts.ci` defaults to the GITHUB_ACTIONS env var
  * (the main block passes nothing, tests inject the env explicitly).
@@ -276,18 +275,18 @@ export function citesKnowledgeConventions(text: string, index: number): boolean 
 }
 
 /* ------------------------------------------------------------------ */
-/* Guard 4 helpers: roles/load-order corpus (plan audit-003 Task 2)    */
+/* Guard 4 helpers: roles/load-order corpus (plan audit-003 Task 2) */
 /* ------------------------------------------------------------------ */
 
 /** Guard 4 result: mstar-* skill texts linted for their load-order
  * declarations plus the role-mapping verdict over `rolesDir`, with one
  * failure row per violation. */
 export type RolesCorpusResult = {
-  /** `skills/mstar-*` SKILL.md texts fed to lintLoadOrder (mstar-harness-core is exempt inside the engine) */
+ /** `skills/mstar-*` SKILL.md texts fed to lintLoadOrder (mstar-harness-core is exempt inside the engine) */
   skillsChecked: number;
-  /** violations reported by lintLoadOrder on the collected skill texts */
+ /** violations reported by lintLoadOrder on the collected skill texts */
   loadOrderViolations: number;
-  /** violations reported by validateRoleMapping on `rolesDir` */
+ /** violations reported by validateRoleMapping on `rolesDir` */
   mappingViolations: number;
   failures: string[];
 };
@@ -351,7 +350,7 @@ export function readRolesCorpus(
 }
 
 /* ------------------------------------------------------------------ */
-/* Guard 5 helpers: five-question runtime corpus smoke                 */
+/* Guard 5 helpers: five-question runtime corpus smoke */
 /* ------------------------------------------------------------------ */
 
 /** Guard 5 result: runtime skills checked (classifier-selected runtime
@@ -374,8 +373,8 @@ export function checkFiveQuestionCorpus(files: Array<{ rel: string; text: string
     const m = rel.match(/^skills\/(mstar-[\w-]+)\/SKILL\.md$/);
     if (!m) continue;
     const profile = classifySkillLint(m[1]);
-    // Runtime-corpus scope only: mode null = core exemption; authoring = the
-    // standard's own suite. (`mode !== "runtime"` covers both by policy.)
+ // Runtime-corpus scope only: mode null = core exemption; authoring = the
+ // standard's own suite. (`mode !== "runtime"` covers both by policy.)
     if (profile.mode !== "runtime") continue;
     checked++;
     const result = lintFiveQuestion(stripFrontmatter(text), profile.mode);
@@ -387,7 +386,7 @@ export function checkFiveQuestionCorpus(files: Array<{ rel: string; text: string
 }
 
 /* ------------------------------------------------------------------ */
-/* Guard 1 forward helpers: Engine-check callouts (bin-prefix guard)   */
+/* Guard 1 forward helpers: Engine-check callouts (bin-prefix guard) */
 /* ------------------------------------------------------------------ */
 
 export type EngineCalloutResult = {
@@ -423,15 +422,15 @@ export function buildCliCommandInventory(cliSrc: string): {
   const cliCommands = new Set<string>();
   const varPaths = new Map<string, string>();
   const failures: string[] = [];
-  // One pass keeps document order: `.command` advances the current chain
-  // path (`const X = program.command("p")` or `X.command("sub")`), a
-  // receiver-less `.command`/`.argument` hangs off that chain, and `.action`
-  // closes it (a fresh statement re-resolves parents from varPaths).
+ // One pass keeps document order: `.command` advances the current chain
+ // path (`const X = program.command("p")` or `X.command("sub")`), a
+ // receiver-less `.command`/`.argument` hangs off that chain, and `.action`
+ // closes it (a fresh statement re-resolves parents from varPaths).
   const chainRe =
     /(?:const\s+(\w+)\s*=\s*program\s*|(\w+)\s*)?\.(?:command\(\s*"([a-z-]+)"\s*\)|argument\(\s*"([^"]+)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\)|action\(\s*(?:async\s*)?)/g;
-  // Enumerated argument descriptions: an all-lowercase `a-z-`-token list.
+ // Enumerated argument descriptions: an all-lowercase `a-z-`-token list.
   const enumRe = /^[a-z-]+(?:\s*\|\s*[a-z-]+)+$/;
-  // Current chain: the command path a receiver-less call hangs off.
+ // Current chain: the command path a receiver-less call hangs off.
   let chainVar: string | null = null;
   let chainPath: string | null = null;
   let m: RegExpExecArray | null;
@@ -492,7 +491,7 @@ export function buildCliCommandInventory(cliSrc: string): {
         cliCommands.add(`${parent} ${token}`);
       }
     } else {
-      // `.action(...)` — the command chain ends here.
+ // `.action(...)` — the command chain ends here.
       chainVar = null;
       chainPath = null;
     }
@@ -558,7 +557,7 @@ export function checkEngineCallouts(
   for (const { rel, text } of files) {
     const lines = text.split(/\r?\n/);
 
-    // Blockquote runs: consecutive lines starting with `>`.
+ // Blockquote runs: consecutive lines starting with `>`.
     const runs: Array<{ start: number; end: number; text: string }> = [];
     let runStart = -1;
     for (let i = 0; i <= lines.length; i++) {
@@ -574,11 +573,11 @@ export function checkEngineCallouts(
       if (!run.text.includes("**Engine check (when available):**")) continue;
       calloutsChecked++;
 
-      // Backticked CLI citations — anchored to the opening backtick so the
-      // prefix capture is exact (prose word pairs are never counted as
-      // citations). `<bin> <cmd>` with at most a two-word command path,
-      // preserving the pre-existing match surface (`mstar audit scaffold
-      // <file>` → prefix `mstar`, path `audit scaffold`).
+ // Backticked CLI citations — anchored to the opening backtick so the
+ // prefix capture is exact (prose word pairs are never counted as
+ // citations). `<bin> <cmd>` with at most a two-word command path,
+ // preserving the pre-existing match surface (`mstar audit scaffold
+ // <file>` → prefix `mstar`, path `audit scaffold`).
       for (const cm of run.text.matchAll(/`([a-z][a-z0-9-]*)\s+([a-z-]+(?:\s+[a-z-]+)?)/g)) {
         const bin = cm[1];
         const cmd = cm[2];
@@ -598,8 +597,8 @@ export function checkEngineCallouts(
 
       for (const im of run.text.matchAll(/import\s*\{([^}]*)\}\s*from\s*"@mstar-harness\/engine"/g)) {
         for (const raw of im[1].split(",")) {
-          // Strip TS import modifiers so `import { type Foo }` / `import {
-          // Foo as Bar }` resolve to the exported name `Foo`.
+ // Strip TS import modifiers so `import { type Foo }` / `import {
+ // Foo as Bar }` resolve to the exported name `Foo`.
           const name = raw.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0].trim();
           if (name && !opts.engineExports.has(name)) {
             failures.push(`${rel}:${run.start + 1} callout imports unknown engine export "${name}"`);
@@ -613,8 +612,7 @@ export function checkEngineCallouts(
 }
 
 /**
- * Guard 6 — Engine-check callout dedup (plan 20260822-skill-pointer-hygiene
- * Task 2): each contract's `**Engine check (when available):**` callout must
+ * Guard 6 — Engine-check callout dedup ( * each contract's `**Engine check (when available):**` callout must
  * live in exactly one skill file. A normalized body appearing in >1 file is
  * a violation (one failure row naming every site) — the drift this guard
  * exists to catch is a copy of a canonical callout landing at a second site
@@ -645,8 +643,8 @@ export function checkCalloutDuplication(
   for (const { rel, text } of files) {
     const lines = text.split(/\r?\n/);
 
-    // Blockquote runs: consecutive lines starting with `>` (same run
-    // splitter as checkEngineCallouts).
+ // Blockquote runs: consecutive lines starting with `>` (same run
+ // splitter as checkEngineCallouts).
     let runStart = -1;
     for (let i = 0; i <= lines.length; i++) {
       const isQuote = i < lines.length && lines[i].trimStart().startsWith(">");
@@ -673,9 +671,9 @@ export function checkCalloutDuplication(
 }
 
 if (import.meta.main) {
-  /* ------------------------------------------------------------------ */
-  /* Engine export inventory (packages/engine/src/index.ts)               */
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
+ /* Engine export inventory (packages/engine/src/index.ts) */
+ /* ------------------------------------------------------------------ */
 
   const engineIndex = readFileSync(join(root, "packages/engine/src/index.ts"), "utf8");
   const engineExports = buildEngineExportNames(engineIndex);
@@ -684,25 +682,25 @@ if (import.meta.main) {
     process.exit(1);
   }
 
-  /* ------------------------------------------------------------------ */
-  /* CLI command inventory (packages/cli/src/index.ts `.command(...)`)    */
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
+ /* CLI command inventory (packages/cli/src/index.ts `.command(...)`) */
+ /* ------------------------------------------------------------------ */
 
   const cliSrc = readFileSync(join(root, "packages/cli/src/index.ts"), "utf8");
   const { cliCommands, failures: cliInventoryFailures } = buildCliCommandInventory(cliSrc);
   for (const row of cliInventoryFailures) fail(row);
 
-  /* ------------------------------------------------------------------ */
-  /* Forward: skill callouts → engine exports + CLI commands + bins      */
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
+ /* Forward: skill callouts → engine exports + CLI commands + bins */
+ /* ------------------------------------------------------------------ */
 
   const skillFiles = collectFiles("skills", ".md");
 
-  // Declared CLI bin names — the manifest is SSOT, never a hardcoded list.
-  // A missing / corrupt / bin-less manifest is a loud failure row; with no
-  // declared bins the prefix check would flood every citation, so the
-  // callout scan is skipped (guard-or-clear-error) — the separate
-  // import-statement loop below still runs for engine exports.
+ // Declared CLI bin names — the manifest is SSOT, never a hardcoded list.
+ // A missing / corrupt / bin-less manifest is a loud failure row; with no
+ // declared bins the prefix check would flood every citation, so the
+ // callout scan is skipped (guard-or-clear-error) — the separate
+ // import-statement loop below still runs for engine exports.
   const { binNames, failures: manifestFailures } = readDeclaredBins(
     join(root, "packages/cli/package.json"),
   );
@@ -719,16 +717,16 @@ if (import.meta.main) {
   cliCitationsChecked += forward.cliCitationsChecked;
   for (const row of forward.failures) fail(row);
 
-  // Guard 6: Engine-check callout dedup — the same normalized callout body
-  // must not appear in more than one file (canonical copy + pointers; a
-  // re-vendored copy with a divergent tail drifts bilingual and fails).
+ // Guard 6: Engine-check callout dedup — the same normalized callout body
+ // must not appear in more than one file (canonical copy + pointers; a
+ // re-vendored copy with a divergent tail drifts bilingual and fails).
   for (const row of checkCalloutDuplication(
     skillFiles.map((file) => ({ rel: relative(root, file), text: readFileSync(file, "utf8") })),
   ).failures) {
     fail(row);
   }
 
-  // Import statements anywhere in a skill file must reference real exports.
+ // Import statements anywhere in a skill file must reference real exports.
   for (const file of skillFiles) {
     const rel = relative(root, file);
     const text = readFileSync(file, "utf8");
@@ -742,16 +740,16 @@ if (import.meta.main) {
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Reverse: engine module spec citations → skill files                  */
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
+ /* Reverse: engine module spec citations → skill files */
+ /* ------------------------------------------------------------------ */
 
   /**
-   * Non-skill spec sources the engine legitimately cites: generated artifact
-   * types (`main.md`, `task-N-report.md`, …), root convention docs
-   * (`STRATEGY.md`, `README.md`, …) and review-bundle files (`qcN.md`). These
-   * are not skill files — existence is not expected under skills/.
-   */
+ * Non-skill spec sources the engine legitimately cites: generated artifact
+ * types (`main.md`, `task-N-report.md`, …), root convention docs
+ * (`STRATEGY.md`, `README.md`, …) and review-bundle files (`qcN.md`). These
+ * are not skill files — existence is not expected under skills/.
+ */
   const ARTIFACT_SPEC_SOURCES = new Set([
     "main.md",
     "task-N-report.md",
@@ -779,7 +777,7 @@ if (import.meta.main) {
     const rel = relative(root, file);
     const lines = readFileSync(file, "utf8").split(/\r?\n/);
 
-    // Header block: contiguous comment lines at the top of the file.
+ // Header block: contiguous comment lines at the top of the file.
     const header: string[] = [];
     for (const line of lines) {
       const t = line.trim();
@@ -798,31 +796,31 @@ if (import.meta.main) {
     const headerText = header.join("\n");
     if (!/Spec|spec/.test(headerText)) continue;
 
-    // Explicit skill paths: skills/<skill>/SKILL.md
+ // Explicit skill paths: skills/<skill>/SKILL.md
     for (const sm of headerText.matchAll(/skills\/(mstar-[\w-]+)\/SKILL\.md/g)) {
       const p = `skills/${sm[1]}/SKILL.md`;
       if (!exists(p)) fail(`${rel}: spec citation "${p}" does not exist`);
     }
-    // "<skill> SKILL.md" / "<skill> SKILL" token forms
+ // "<skill> SKILL.md" / "<skill> SKILL" token forms
     for (const sm of headerText.matchAll(/`?(mstar-[\w-]+)`?\s+SKILL(?:\.md)?/g)) {
       const p = `skills/${sm[1]}/SKILL.md`;
       if (!exists(p)) fail(`${rel}: spec citation "${p}" does not exist`);
     }
-    // "<skill>/references/<file>" and "<skill> `references/<file>`" forms
+ // "<skill>/references/<file>" and "<skill> `references/<file>`" forms
     for (const sm of headerText.matchAll(/`?(mstar-[\w-]+)`?\s*(?:\/|\s+)`?references\/([\w.-]+)/g)) {
       const p = `skills/${sm[1]}/references/${sm[2]}`;
       if (!exists(p)) fail(`${rel}: spec citation "${p}" does not exist`);
     }
-    // Bare "references/<file>" citations (no skill token): must exist under
-    // some skill.
+ // Bare "references/<file>" citations (no skill token): must exist under
+ // some skill.
     for (const rm of headerText.matchAll(/references\/([\w.-]+)/g)) {
       const candidates = [...allSkillFiles].filter((f) => f.endsWith(`/references/${rm[1]}`));
       if (candidates.length === 0) {
         fail(`${rel}: spec citation "references/${rm[1]}" does not exist under any skill`);
       }
     }
-    // Bare "<file>.md"/"<file>.yaml" next to a spec marker ("spec:" / "§"):
-    // must resolve under skills/, or be a known artifact-type spec source.
+ // Bare "<file>.md"/"<file>.yaml" next to a spec marker ("spec:" / "§"):
+ // must resolve under skills/, or be a known artifact-type spec source.
     for (const bm of headerText.matchAll(/(?<![-\w])([a-zA-Z0-9][\w-]*\.(?:md|yaml))/g)) {
       const name = bm[1];
       if (name === "SKILL.md") continue;
@@ -835,23 +833,23 @@ if (import.meta.main) {
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Guard 1: `/codebase-audit` docs tokens ↔ engine AUDIT_CATEGORIES     */
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
+ /* Guard 1: `/codebase-audit` docs tokens ↔ engine AUDIT_CATEGORIES */
+ /* ------------------------------------------------------------------ */
 
   /**
-   * Category tokens in docs must be real `AUDIT_CATEGORIES` members, and
-   * docs/cli.md must enumerate the full set:
-   * - docs/cli.md: the `<category>` keyword-table row (set equality — a
-   *   fabricated token like `deps` fails, and so does an omission such as
-   *   a missing `bug` / `direction`).
-   * - README.md / README_CN.md: the category-focus list in the audit usage
-   *   line ("category focus (…)" / "按类别聚焦（…）") — membership only,
-   *   the list is illustrative (`…`).
-   * Only lowercase-kebab tokens are scanned (`^[a-z][a-z-]*$`); the
-   * placeholder `<category>` cell and the plan-field reference `Category`
-   * are not category codes.
-   */
+ * Category tokens in docs must be real `AUDIT_CATEGORIES` members, and
+ * docs/cli.md must enumerate the full set:
+ * - docs/cli.md: the `<category>` keyword-table row (set equality — a
+ * fabricated token like `deps` fails, and so does an omission such as
+ * a missing `bug` / `direction`).
+ * - README.md / README_CN.md: the category-focus list in the audit usage
+ * line ("category focus (…)" / "按类别聚焦（…）") — membership only,
+ * the list is illustrative (`…`).
+ * Only lowercase-kebab tokens are scanned (`^[a-z][a-z-]*$`); the
+ * placeholder `<category>` cell and the plan-field reference `Category`
+ * are not category codes.
+ */
   const auditCategories = new Set<string>(AUDIT_CATEGORIES);
   let categoryTokensChecked = 0;
 
@@ -893,17 +891,17 @@ if (import.meta.main) {
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Guard 2: README.md / README_CN.md bilingual pairing (AGENTS.md)      */
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
+ /* Guard 2: README.md / README_CN.md bilingual pairing (AGENTS.md) */
+ /* ------------------------------------------------------------------ */
 
   const outcome = evaluateBilingualGuard(changedFilesSinceMergeBase());
   let bilingualStatus = "skipped (no git range)";
   if (outcome.status === "checked") {
     bilingualStatus = "checked";
     for (const line of outcome.failures) fail(line);
-    // Content parity (S-f): the pairing check is presence-only; when both
-    // READMEs changed, their change-set sizes must mirror each other.
+ // Content parity (S-f): the pairing check is presence-only; when both
+ // READMEs changed, their change-set sizes must mirror each other.
     const changeStats = changedFileStatsSinceMergeBase();
     if (changeStats) {
       for (const line of checkBilingualContentParity(changeStats)) fail(line);
@@ -915,9 +913,9 @@ if (import.meta.main) {
     bilingualStatus = `skipped (${outcome.reason})`;
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Guard 3: skills corpus — ephemeral citations (engine lint)          */
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
+ /* Guard 3: skills corpus — ephemeral citations (engine lint) */
+ /* ------------------------------------------------------------------ */
 
   let ephemeralFilesScanned = 0;
   let ephemeralCitationsFound = 0;
@@ -932,28 +930,28 @@ if (import.meta.main) {
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /* Guard 4: skills corpus — roles / load-order (engine lint)           */
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
+ /* Guard 4: skills corpus — roles / load-order (engine lint) */
+ /* ------------------------------------------------------------------ */
 
   const { entries: rolesEntries, readFailures: rolesReadFailures } = readRolesCorpus(skillFiles, root);
   for (const row of rolesReadFailures) fail(row);
   const roles = checkRolesCorpus(rolesEntries, join(root, "skills", "mstar-roles"));
   for (const row of roles.failures) fail(row);
 
-  /* ------------------------------------------------------------------ */
-  /* Guard 5: skills corpus — five-question runtime smoke                */
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
+ /* Guard 5: skills corpus — five-question runtime smoke */
+ /* ------------------------------------------------------------------ */
 
   const fiveQuestion = checkFiveQuestionCorpus(
     skillFiles.map((file) => ({ rel: relative(root, file), text: readFileSync(file, "utf8") })),
   );
   for (const row of fiveQuestion.failures) fail(row);
 
-  /* ------------------------------------------------------------------ */
+ /* ------------------------------------------------------------------ */
 
-  // Guard 4 footer fragment: report each check's own verdict + count so a
-  // load-order-only failure is never misstated as a combined/OK status.
+ // Guard 4 footer fragment: report each check's own verdict + count so a
+ // load-order-only failure is never misstated as a combined/OK status.
   const rolesSummary = `${roles.skillsChecked} mstar-* skills load-order lint ${
     roles.loadOrderViolations === 0
       ? "OK"

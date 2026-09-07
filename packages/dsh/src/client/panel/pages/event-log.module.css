@@ -1,16 +1,16 @@
 /**
- * EventLogPage styles (spec panel-tabs §5/§6.2, plan 20260811-panel-event-log
- * Task 2): the NON-canvas log page — two partition frames (Agent 流转事件 /
+ * EventLogPage styles (spec panel-tabs §5/§6.2
+ * the NON-canvas log page — two partition frames (Agent 流转事件 /
  * 违规记录), per-row expandable native `<details>` rows (role/stage/task/ts/
  * status chip/agent/settled/duration + the unexpected badge), the expanded
  * detail body (label/value field rows — a missing field renders muted「—」),
  * and muted empty notes. The row layout + status colors MIGRATED from the
  * REMOVED AgentEventDock (spec §5 — 无双份日志: the dock file and its
  * zones.module.css styles are deleted with this plan; the events partition
- * title uses the `event-log.section.events` locale key (qc1 F-003 — the
+ * title uses the `event-log.section.events` locale key (the
  * event-log namespace stays symmetric with `event-log.section.violations`).
  *
- * Layout (plan 20260811-panel-f3-agent-general Task 2 — user feedback「左右排
+ * Layout (user feedback「左右排
  * 两列 + 锁定一个高内部滚动」): the page frame is a locked-height TWO-COLUMN
  * grid (Agent 流转事件 | 违规记录 side by side) and NO LONGER scrolls as a
  * whole (`overflow: hidden`) — each partition pins its title and owns an
@@ -28,7 +28,7 @@
  * reduced-motion block.
  */
 
-/* --- page frame: locked-height two-column body (plan F3 Task 2 — the page
+/* --- page frame: locked-height two-column body (the page
  * never scrolls as a whole; each partition scrolls internally) --- */
 
 .eventLogPage {
@@ -44,7 +44,7 @@
 
 /* --- partition frame (same token treatment as the zone frames, spec §7) ---
  * min-height: 0 lets the grid item shrink inside the locked row so the row
- * list below can own the internal scroll (plan F3 Task 2). */
+ * list below can own the internal scroll. */
 
 .section {
   display: flex;
@@ -77,7 +77,7 @@
 }
 
 /* --- log rows ---
- * The row list owns the partition's internal scroll (plan F3 Task 2): the
+ * The row list owns the partition's internal scroll: the
  * section is a locked-height flex column, so the pinned title never scrolls
  * away — only the rows do. */
 
@@ -293,11 +293,11 @@
   color: var(--dsw-alias-label-caption);
 }
 
-/* --- narrow fallback (plan F3 Task 2): below 1200px the two partitions
+/* --- narrow fallback : below 1200px the two partitions
  * stack as two locked 50/50 rows — both stay visible at any window height,
  * each scrolling internally (same shape as the panel's own sidebar stack at
  * 860px, `panel.module.css`). Breakpoint rationale — MAIN-REGION width
- * arithmetic (this plan's decision, plan 20260811-panel-f3-agent-general):
+ * arithmetic (this plan's decision):
  * the events page columns live in the main region, which already loses 300px
  * to the resident sidebar above the panel's 860px breakpoint — below 1200px
  * the main area is too narrow for two legible log columns (≈420px each at
@@ -305,7 +305,7 @@
  * The stacked-rows fallback shape is a decision OF THIS PLAN (two locked
  * 50/50 rows), not a reuse of a precedent: the canvas-zones dual-panel
  * side-by-side layout that once motivated a similar 1200px breakpoint was
- * removed by the tabs-shell refactor, so it no longer exists in the
+ * removed by the tabs rework, so it no longer exists in the
  * codebase (archival). --- */
 
 @media (max-width: 1200px) {

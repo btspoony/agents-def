@@ -42,7 +42,7 @@
   min-height: 0;
   width: 100%;
   padding: 0;                                     /* padding pushed into the areas */
-  /* Full-tab height (plan 20260813-panel-quick-fixes T4): the panel opts into
+  /* Full-tab height : the panel opts into
    * the host composer overlay (PanelView `data-conversation-composer-overlay`),
    * which floats the composer over the panel bottom. Reserve clearance so the
    * fixed freshness footer (main) + meta dock (sidebar) stay visible above it.
@@ -54,8 +54,7 @@
 }
 
 /* No harness → no graph region (spec §2.5): single-column root; the main
- * centers the inactive-state card (plan 20260812-panel-f5-agent-layout T3 —
- * replaces the left-aligned hint). */
+ * centers the inactive-state card */
 .root[data-mstar-panel='no-harness'] {
   grid-template-columns: 1fr;
   grid-template-areas: 'main';
@@ -119,7 +118,7 @@
      cap applies to the ROW main axis only (flex-basis would otherwise set
      a 260px HEIGHT in the column stack) — reset to content height. The cap
      is scoped to `@media (min-width: 861px)` below, so nothing competes
-     with this reset at ≤860px (plan QC W-001/F-001 cascade fix). */
+     with this reset at ≤860px */
   .iterationHeadSplit {
     flex-direction: column;
   }
@@ -193,9 +192,9 @@
 
 /* Content region: the per-tab page mount (`data-mstar-graph`, spec §6.1).
  * The tasks tab's IterationTaskPage fills it and keeps its own scroll body
- * (`data-mstar-tasks-scroll`, Task 2); the events tab's EventLogPage locks
+ * (`data-mstar-tasks-scroll`); the events tab's EventLogPage locks
  * its height and its two partitions scroll internally (plan
- * 20260811-panel-f3-agent-general Task 2 — no whole-page scroll) —
+ *  Task 2 — no whole-page scroll) —
  * content itself never scrolls (v3 invariant preserved). */
 .content {
   flex: 1;
@@ -205,8 +204,8 @@
   overflow: hidden;
 }
 
-/* --- IterationTaskPage (spec panel-tabs §3, plan 20260811-panel-tabs-shell
- * Task 2): Content Head (collapsible iteration summary + horizontal steps) +
+/* --- IterationTaskPage (spec panel-tabs §3
+ * Content Head (collapsible iteration summary + horizontal steps) +
  * full-width kanban. The page fills the content region as a flex column; the
  * head is flex:none (stays fixed) and the tasks area is the page's
  * INDEPENDENT scroll body — the kanban spreads full-width and is never
@@ -326,19 +325,18 @@
   border-top: 1px solid var(--dsw-alias-border-l1);
 }
 
-/* LEFT-RIGHT split (spec panel-f4 §2.3 R8, plan f4.3 Task 2): branches
+/* LEFT-RIGHT split (spec panel-f4 §2.3 R8): branches
  * (small half, DOM-first) LEFT + steps (large half) RIGHT — a plain flex
  * row; the DOM already puts branches before steps. Narrow widths stack
  * vertically (the same 860px breakpoint as the root grid, below).
- * Width cap (plan 20260812-panel-f5-iteration-zone-fix Task 2): in the ROW
+ * Width cap : in the ROW
  * layout the branch panel is width-constrained (flex-basis 260px, capped
  * 280px — it never stretches with the container; the branch values stay
  * compact) and the steps row absorbs ALL remaining width (flex 1 1 0).
  * The cap is scoped to `@media (min-width: 861px)` so the ≤860px column
  * stack never sees flex-basis 260px / max-width 280px — the narrow reset
  * above is the ONLY branch rule at ≤860px, with no cascade competition
- * (plan QC W-001/F-001: an earlier source order let the later
- * same-specificity base rule win). */
+ */
 .iterationHeadSplit {
   display: flex;
   align-items: stretch;
@@ -349,18 +347,18 @@
 @media (min-width: 861px) {
   /* Row-mode width cap — scoped to ≥861px (see the split comment above). */
   .iterationHeadSplit > .iterationBranches {
-    flex: 0 1 260px;   /* width-capped (plan f5 T2) — branch info never stretches */
+    flex: 0 1 260px;   /* width-capped — branch info never stretches */
     max-width: 280px;
     min-width: 0;
   }
 }
 
 .iterationHeadSplit > .iterationStepsRow {
-  flex: 1 1 0;   /* absorbs the remaining width (plan f5 T2) — keeps its own horizontal scroll */
+  flex: 1 1 0;   /* absorbs the remaining width — keeps its own horizontal scroll */
   min-width: 0;
 }
 
-/* Steps, HORIZONTAL (spec §3 + plan 20260811-panel-f2-quickfix Item 1 — user
+/* Steps, HORIZONTAL (spec §3 — user
  * F2 feedback): 5 EQUAL full-width unit blocks (flex `1 1 0` — the row
  * spreads evenly with no compression), item content centered (badge/phase/
  * chip vertically + horizontally), a consistent --mstar-space-* gap; the
@@ -443,8 +441,8 @@
   color: var(--dsw-alias-label-caption);
 }
 
-/* Done step (plan 20260812-panel-f5-iteration-zone-fix Task 2): a step
- * BEFORE the current one — the projection derives it explicitly (Task 1
+/* Done step : a step
+ * BEFORE the current one — the projection derives it explicitly (the
  * state machine), the render layer only styles it (honest — no UI
  * guesswork). A quiet "passed/visited" treatment: the badge keeps its
  * pure number (plan Item 1) with a success border + tint, the chip text
@@ -466,7 +464,7 @@
   color: var(--dsw-alias-state-success-primary);
 }
 
-/* Verdict seat row (spec panel-f4 §2.3 R9, plan f4.3 Task 2): EVERY step
+/* Verdict seat row (spec panel-f4 §2.3 R9): EVERY step
  * reserves a fixed-height seat below the chip — the conditional PASS/FAIL
  * badge fills the seat on the current step only. Every step item now has the
  * same children (badge/phase/chip/seat), so the centered content groups align
@@ -762,7 +760,7 @@
   overflow-wrap: anywhere;
 }
 
-/* Selection seat (qc1 S-1 fix-wave): the selected workflow lifecycle —
+/* Selection seat : the selected workflow lifecycle —
    active id (+ multi-active warning) / terminal history view / selection
    error code + reason. Additive to the state section; never a crash. */
 .selection {

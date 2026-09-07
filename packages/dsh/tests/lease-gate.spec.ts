@@ -1,6 +1,6 @@
 /**
  * Task 5 — lease gate: `verifyPlanExecutionLease` on dispatch (plan
- * 20260808-dsh-package-core).
+ * ).
  *
  * Extends the Task 4 dispatch gate: when the Assignment declares
  * `Execution mode: sdd` (engine `executionModeToN` semantics — sdd maps to
@@ -37,7 +37,7 @@ afterEach(async () => {
 
 /* ---------------------------------- fixtures ---------------------------------- */
 
-const PLAN_ID = '20260808-dsh-package-core'
+const PLAN_ID = '00000808-dsh-package-core'
 const WORKTREE = '/srv/worktrees/mstar-dsh-package'
 const BRANCH = 'feature/dsh-package-core'
 const HOLDER = 'omp-session-lease-holder'
@@ -454,7 +454,7 @@ describe('dispatch gate — lease hostile inputs', () => {
 
 /* ---------------------------------- Task 4 carry-over ---------------------------------- */
 
-describe('dispatch gate — Assignment header-region scoping (qc1 F-001)', () => {
+describe('dispatch gate — Assignment header-region scoping ', () => {
   /** Valid SDD header, then a `# Target` body quoting DIFFERENT field values. */
   const BODY_QUOTED_FIELDS = `## Assignment
 

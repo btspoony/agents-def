@@ -8,7 +8,7 @@
  * `references/sticky-implementer-session.md`. The three engine functions
  * (`sddWorkspace`, `taskBrief`, `reviewPackage`) are the operative
  * implementation; byte parity with the former bash scripts was proven in
- * slice 2 (roadmap §8.2 / plan 20260808-slice2-sdd-iteration) before the
+ * slice 2 (roadmap §8.2) before the
  * scripts were removed in slice 5.
  *
  * Harness-root override: `MSTAR_HARNESS_DIR` env / `opts.harnessDir` (plan
@@ -16,7 +16,7 @@
  * (`.mstar`/`.agents`) and picks the wrong root in repos with another root;
  * the engine honors the explicit override in addition to CONTROL_ROOT.
  *
- * SDD execution context (spec A3, plan 20260907-sdd-execution-paths):
+ * SDD execution context (spec A3):
  * `SddExecutionContext` / `resolveSddExecutionContext` / `checkSddAction`
  * resolve the control harness root / feature worktree cwd / artifact
  * destinations and gate actions at supported seams (source cwd, artifact
@@ -67,18 +67,18 @@ export class SddScriptError extends Error {
  * usage plus the harness-root override (plan finding 2026-08-08).
  */
 export type SddWorkspaceOptions = {
-  /** Control worktree repo root — CLI 2nd arg / `MSTAR_CONTROL_ROOT`. */
+ /** Control worktree repo root — CLI 2nd arg / `MSTAR_CONTROL_ROOT`. */
   controlRoot?: string;
-  /** Explicit harness root — `MSTAR_HARNESS_DIR` / `--harness-dir`. */
+ /** Explicit harness root — `MSTAR_HARNESS_DIR` / `--harness-dir`. */
   harnessDir?: string;
-  /** Working directory for git probes; default `process.cwd()`. */
+ /** Working directory for git probes; default `process.cwd()`. */
   cwd?: string;
 };
 
 /**
  * Options for `taskBrief` (mirrors `$SDD_DIR` for the default out path).
  *
- * Bound mode (spec A3, plan 20260907-sdd-execution-paths Task 2): passing
+ * Bound mode (spec A3): passing
  * `context` makes the destination an artifact gate check (before any
  * mkdir/write), defaults the destination to `{context.sddDir}/task-N-brief.md`
  * and returns/emits an absolute path. Without `context` the legacy helper
@@ -87,9 +87,9 @@ export type SddWorkspaceOptions = {
  */
 export type TaskBriefOptions = {
   sddDir?: string;
-  /** Resolved SDD execution context — binds the artifact write (A3). */
+ /** Resolved SDD execution context — binds the artifact write (A3). */
   context?: SddExecutionContext;
-  /** Observed invocation cwd for the artifact gate; default `process.cwd()`. */
+ /** Observed invocation cwd for the artifact gate; default `process.cwd()`. */
   cwd?: string;
 };
 
@@ -104,9 +104,9 @@ export type TaskBriefOptions = {
  */
 export type ReviewPackageOptions = {
   sddDir?: string;
-  /** Git probe cwd; bound mode defaults to `context.featureCwd`. */
+ /** Git probe cwd; bound mode defaults to `context.featureCwd`. */
   cwd?: string;
-  /** Resolved SDD execution context — binds the artifact write (A3). */
+ /** Resolved SDD execution context — binds the artifact write (A3). */
   context?: SddExecutionContext;
 };
 
@@ -127,7 +127,7 @@ function isFile(file: string): boolean {
 }
 
 /**
- * Git capture ceiling for `gitOut` / `reviewPackage` (qc3 W-2): Node's
+ * Git capture ceiling for `gitOut` / `reviewPackage` : Node's
  * default 1 MiB `maxBuffer` ENOBUFS'd on large review ranges. 64 MiB keeps
  * realistic iteration-close ranges working while bounding memory; captures
  * beyond that fail as SddScriptError via the CLI.
@@ -205,7 +205,7 @@ function isLinkedWorktree(root: string): boolean {
   if (gitDirRaw === null || commonRaw === null) return false;
   const gitDir = isAbsolute(gitDirRaw) ? gitDirRaw : join(root, gitDirRaw);
   const common = isAbsolute(commonRaw) ? commonRaw : join(root, commonRaw);
-  // Path contains /worktrees/ → definitely linked (original case glob).
+ // Path contains /worktrees/ → definitely linked (original case glob).
   if (gitDir.includes("/.git/worktrees/") || gitDir.includes("/worktrees/")) return true;
   try {
     const gdParent = realpathSync(dirname(gitDir));
@@ -221,13 +221,13 @@ function isLinkedWorktree(root: string): boolean {
  * the absolute path). Resolution order:
  *
  * 1. fail-closed FIRST: a linked worktree without a control root never
- *    resolves or creates any SDD tree under the feature checkout (refuses a
- *    second SDD tree; no override or probe may bypass this guard);
+ * resolves or creates any SDD tree under the feature checkout (refuses a
+ * second SDD tree; no override or probe may bypass this guard);
  * 2. explicit harness-root override (`opts.harnessDir` / `MSTAR_HARNESS_DIR`)
- *    — plan finding 2026-08-08: covers repos the status.json probe misses;
- *    resolved relative to the established root;
+ * — plan finding 2026-08-08: covers repos the status.json probe misses;
+ * resolved relative to the established root;
  * 3. `.mstarc` `[config] harness_dir` at `root` (repo-declared root;
- *    resolved against the config file's directory);
+ * resolved against the config file's directory);
  * 4. `status.json` probe at root (`.mstar` → `.agents`);
  * 5. fallback: existing `.mstar`/`.agents` dir, else `.mstar`.
  *
@@ -258,19 +258,19 @@ export function sddWorkspace(planId: string, opts: SddWorkspaceOptions = {}): st
     root = realpathSync(topLevel ?? cwd);
   }
 
-  // Fail-closed FIRST (mstar-branch-worktree «Harness path SSOT under
-  // default gitignore»): a linked worktree without CONTROL_ROOT must never
-  // resolve or create any SDD tree under the feature checkout — the harness
-  // override and the status probe both run only after this guard passes.
-  //
-  // INTENTIONAL DIVERGENCE from the original script (qc2 F-004, pinned by
-  // the test "stray status.json in a linked worktree"): a status.json-first
-  // probe would resolve a linked feature checkout with a stray
-  // `.mstar/status.json` and create the second SDD tree under the feature
-  // checkout — exactly the hazard this guard exists to refuse. The engine
-  // refuses regardless of the probe result.
+ // Fail-closed FIRST (mstar-branch-worktree «Harness path SSOT under
+ // default gitignore»): a linked worktree without CONTROL_ROOT must never
+ // resolve or create any SDD tree under the feature checkout — the harness
+ // override and the status probe both run only after this guard passes.
+ //
+ // INTENTIONAL DIVERGENCE from the original script (pinned by
+ // the test "stray status.json in a linked worktree"): a status.json-first
+ // probe would resolve a linked feature checkout with a stray
+ // `.mstar/status.json` and create the second SDD tree under the feature
+ // checkout — exactly the hazard this guard exists to refuse. The engine
+ // refuses regardless of the probe result.
   if (!controlRoot && isLinkedWorktree(root)) {
-    // Fail-closed message (exit 1).
+ // Fail-closed message (exit 1).
     throw new SddScriptError(
       `mstar sdd workspace: linked worktree at ${root} has no {HARNESS_DIR}/status.json (default gitignore).\n` +
         `  Refusing to create a second SDD tree under the feature checkout.\n` +
@@ -285,8 +285,8 @@ export function sddWorkspace(planId: string, opts: SddWorkspaceOptions = {}): st
   if (harnessOverride) {
     harnessDir = resolve(root, harnessOverride);
   } else {
-    // `.mstarc` [config] harness_dir — repo-declared harness root (root is
-    // the workspace boundary; a config above it never applies).
+ // `.mstarc` [config] harness_dir — repo-declared harness root (root is
+ // the workspace boundary; a config above it never applies).
     const rc = findMstarc(root, root);
     const rcHarnessDir = rc !== null ? parseMstarc(readFileSync(rc, "utf8")).harnessDir : undefined;
     if (rcHarnessDir) {
@@ -308,7 +308,7 @@ export function sddWorkspace(planId: string, opts: SddWorkspaceOptions = {}): st
   const sddDir = resolveSddDir(harnessDir, planId);
   mkdirSync(sddDir, { recursive: true });
   writeFileSync(join(sddDir, ".gitignore"), "*\n");
-  // Ends with `cd "$dir" && pwd` semantics — physical path, symlinks resolved.
+ // Ends with `cd "$dir" && pwd` semantics — physical path, symlinks resolved.
   return realpathSync(sddDir);
 }
 
@@ -336,10 +336,10 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
   const bound = opts.context;
   const observedCwd = opts.cwd ?? process.cwd();
   if (bound) {
-    // Bound input binding: the plan file read must BE the context's plan
-    // file (canonical comparison — equivalent paths via symlinked ancestors
-    // pass). A foreign plan's content must never land in this plan's SDD
-    // dir, so the mismatch is refused before any read or write.
+ // Bound input binding: the plan file read must BE the context's plan
+ // file (canonical comparison — equivalent paths via symlinked ancestors
+ // pass). A foreign plan's content must never land in this plan's SDD
+ // dir, so the mismatch is refused before any read or write.
     const inputPlan = canonicalizeNearestExisting(resolve(observedCwd, planFile));
     if (inputPlan !== canonicalizeNearestExisting(bound.planFile)) {
       throwGateFail([
@@ -362,7 +362,7 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
   let out: string;
   let mkdirAfterGate: string | null = null;
   if (outFile) {
-    // Bound mode emits absolute paths; unbound keeps the legacy literal path.
+ // Bound mode emits absolute paths; unbound keeps the legacy literal path.
     out = bound ? resolve(observedCwd, outFile) : outFile;
   } else if (bound) {
     out = join(bound.sddDir, `task-${taskN}-brief.md`);
@@ -379,14 +379,14 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
     out = join(sddDir, `task-${taskN}-brief.md`);
   }
   if (bound) {
-    // Gate BEFORE mkdir/write — a refused destination creates nothing.
+ // Gate BEFORE mkdir/write — a refused destination creates nothing.
     const gate = checkSddAction(bound, { kind: "artifact", cwd: observedCwd, target: out });
     if (!gate.ok) throwGateFail(gate.violations);
     if (mkdirAfterGate !== null) mkdirSync(mkdirAfterGate, { recursive: true });
   }
 
-  // awk records: every newline-terminated line plus a final unterminated
-  // line; each printed record is emitted with a trailing newline.
+ // awk records: every newline-terminated line plus a final unterminated
+ // line; each printed record is emitted with a trailing newline.
   const records = content.endsWith("\n") ? content.split("\n").slice(0, -1) : content.split("\n");
   const headingRe = /^#+[ \t]+Task[ \t]+[0-9]+/;
   const targetRe = new RegExp(`^#+[ \t]+Task[ \t]+${taskN}([^0-9]|$)`);
@@ -404,8 +404,8 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
   if (printed.length === 0) {
     throw new SddScriptError(`task ${taskN} not found in ${planFile} (no heading matching Task ${taskN})`, 3);
   }
-  // Bound mode emits absolute paths (A3: handoff producers carry absolute
-  // destinations); unbound keeps the legacy literal return.
+ // Bound mode emits absolute paths (A3: handoff producers carry absolute
+ // destinations); unbound keeps the legacy literal return.
   return bound ? resolve(observedCwd, out) : out;
 }
 
@@ -445,7 +445,7 @@ export function reviewPackage(base: string, head: string, outFile?: string, opts
   let out: string;
   let mkdirAfterGate: string | null = null;
   if (outFile) {
-    // Bound mode emits absolute paths; unbound keeps the legacy literal path.
+ // Bound mode emits absolute paths; unbound keeps the legacy literal path.
     out = bound ? resolve(observedCwd, outFile) : outFile;
   } else if (bound) {
     const shortBase = gitOut(cwd, ["rev-parse", "--short", base]) ?? base;
@@ -463,7 +463,7 @@ export function reviewPackage(base: string, head: string, outFile?: string, opts
     out = join(sddDir, `review-${shortBase}..${shortHead}.diff`);
   }
   if (bound) {
-    // Gate BEFORE mkdir/write — a refused destination creates nothing.
+ // Gate BEFORE mkdir/write — a refused destination creates nothing.
     const gate = checkSddAction(bound, { kind: "artifact", cwd: observedCwd, target: out });
     if (!gate.ok) throwGateFail(gate.violations);
     if (mkdirAfterGate !== null) mkdirSync(mkdirAfterGate, { recursive: true });
@@ -471,7 +471,7 @@ export function reviewPackage(base: string, head: string, outFile?: string, opts
 
   const run = (args: string[]): Buffer =>
     execFileSync("git", args, { cwd, maxBuffer: GIT_CAPTURE_MAX_BYTES });
-  // `{ echo …; git …; } > file` layout, byte-for-byte.
+ // `{ echo …; git …; } > file` layout, byte-for-byte.
   const parts: Buffer[] = [
     Buffer.from(`# Review package: ${base}..${head}\n\n## Commits\n`),
     run(["log", "--oneline", `${base}..${head}`]),
@@ -481,7 +481,7 @@ export function reviewPackage(base: string, head: string, outFile?: string, opts
     run(["diff", "-U10", `${base}..${head}`]),
   ];
   writeFileSync(out, Buffer.concat(parts));
-  // Bound mode emits absolute paths (A3); unbound keeps the legacy return.
+ // Bound mode emits absolute paths (A3); unbound keeps the legacy return.
   return bound ? resolve(observedCwd, out) : out;
 }
 
@@ -500,8 +500,8 @@ export function assertBaseSha(ref: string, opts: { cwd?: string } = {}): void {
     );
   }
   try {
-    // `^{commit}` forces an object-store lookup: bare `rev-parse --verify`
-    // accepts any well-formed 40-hex string without checking existence.
+ // `^{commit}` forces an object-store lookup: bare `rev-parse --verify`
+ // accepts any well-formed 40-hex string without checking existence.
     execFileSync("git", ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`], {
       cwd: opts.cwd,
       stdio: ["ignore", "pipe", "pipe"],
@@ -552,7 +552,7 @@ export type ImplementerSessionLedger = {
   execute_as: string;
   session_mode: "sticky" | "fresh";
   host: string;
-  /** Agent id from the first Task return — required for resume. */
+ /** Agent id from the first Task return — required for resume. */
   host_agent_id?: string;
   working_branch: string;
   started_task: number;
@@ -563,9 +563,9 @@ export type ImplementerSessionLedger = {
 /** Input to `implementerSessionStickyRules`. */
 export type StickyRulesInput = {
   session: ImplementerSessionLedger;
-  /** Task about to be dispatched. */
+ /** Task about to be dispatched. */
   nextTask: number;
-  /** Tasks covered by this dispatch (micro-batch); default 1. */
+ /** Tasks covered by this dispatch (micro-batch); default 1. */
   microBatchTasks?: number;
 };
 
@@ -625,26 +625,26 @@ export function implementerSessionStickyRules(input: StickyRulesInput): StickyRu
  */
 export type SddExecutionContext = {
   planId: string;
-  /** Control harness dir (`<control-worktree>/{HARNESS_DIR}`), absolute. */
+ /** Control harness dir (`<control-worktree>/{HARNESS_DIR}`), absolute. */
   controlHarnessRoot: string;
-  /** Feature worktree — the required cwd for product/source edits, absolute. */
+ /** Feature worktree — the required cwd for product/source edits, absolute. */
   featureCwd: string;
-  /** Assignment Working branch checked out at `featureCwd`. */
+ /** Assignment Working branch checked out at `featureCwd`. */
   workingBranch: string;
-  /** Control plan file (`{PLAN_DIR}/<plan-id>.md`), absolute. */
+ /** Control plan file (`{PLAN_DIR}/<plan-id>.md`), absolute. */
   planFile: string;
-  /** Control `{SDD_DIR}` = `{HARNESS_DIR}/sdd/<plan-id>/`, absolute. */
+ /** Control `{SDD_DIR}` = `{HARNESS_DIR}/sdd/<plan-id>/`, absolute. */
   sddDir: string;
 };
 
 /** One action seam to gate with `checkSddAction` (spec A3). */
 export type SddAction = {
   /**
-   * Observed invocation cwd — the real cwd at the seam, never an Assignment
-   * echo. Relative `target` values resolve from this cwd.
-   */
+ * Observed invocation cwd — the real cwd at the seam, never an Assignment
+ * echo. Relative `target` values resolve from this cwd.
+ */
   cwd: string;
-  /** Path the action would touch; optional for source/launch, required for artifact. */
+ /** Path the action would touch; optional for source/launch, required for artifact. */
   target?: string;
   kind: SddActionKind;
 };
@@ -732,17 +732,17 @@ function readActiveWorkflowIds(controlHarnessRoot: string): Set<string> | null {
  * workflow register:
  *
  * - a snapshot whose workflow id is registered active in
- *   `status.json` `workflows[]` wins over retained terminal snapshots —
- *   filesystem scan order never lets a completed lifecycle shadow a live
- *   one;
+ * `status.json` `workflows[]` wins over retained terminal snapshots —
+ * filesystem scan order never lets a completed lifecycle shadow a live
+ * one;
  * - the plan appearing in MORE THAN ONE registered active workflow is
- *   ambiguous — returned as `kind: "ambiguous"` so the caller fails closed
- *   instead of silently picking one;
+ * ambiguous — returned as `kind: "ambiguous"` so the caller fails closed
+ * instead of silently picking one;
  * - a match ONLY in snapshots that are not registered active (retained
- *   terminal lifecycles) is `kind: "none"` — a terminal snapshot must never
- *   satisfy lease enforcement;
+ * terminal lifecycles) is `kind: "none"` — a terminal snapshot must never
+ * satisfy lease enforcement;
  * - without a v2 register the legacy behavior is unchanged: the first
- *   snapshot mentioning the plan wins.
+ * snapshot mentioning the plan wins.
  *
  * Unreadable/malformed snapshots are skipped (consistent with
  * `hasWorkflowSnapshot`): an unreadable snapshot cannot establish an active
@@ -802,39 +802,39 @@ function findWorkflowPlanRow(controlHarnessRoot: string, planId: string): Workfl
  *
  * Validation (reusing the existing machinery — never duplicated here):
  * - shape: all paths absolute, `planId` a single safe path component
- *   (`assertSafePathComponent`);
+ * (`assertSafePathComponent`);
  * - `controlHarnessRoot` exists (declared root is authoritative — never
- *   re-inferred from the feature cwd);
+ * re-inferred from the feature cwd);
  * - `planFile` identity (basename stem = `planId`) + placement via
- *   `assertPlanWritingPath` (inside `{PLAN_DIR}` of the control harness,
- *   symlink escape checked against the canonical path);
+ * `assertPlanWritingPath` (inside `{PLAN_DIR}` of the control harness,
+ * symlink escape checked against the canonical path);
  * - `sddDir` canonicalizes (nearest existing ancestor on BOTH sides) to the
- *   same path as `resolveSddDir(controlHarnessRoot, planId)` — the path
- *   SSOT composition, `.mstarc` overrides included; equivalent string forms
- *   of one physical destination are valid. Composition equality on the
- *   canonical pair subsumes the escape case — a declared sddDir cannot
- *   equal the canonical composition and escape at the same time — so
- *   divergence is classified at one decision point: divergence because the
- *   declared path physically canonicalizes OUTSIDE the control harness
- *   (symlinked sdd segment routing out) is environmental →
- *   `sdd.context.sdd-dir-escape` gate fail (exit 1); any other divergence
- *   (wrong declaration) is usage (exit 2). A context matching a
- *   `.mstarc`-declared sdd base is honored wherever the repo's own path
- *   SSOT composes it — the engine never second-guesses a composition it
- *   would itself produce (`resolveSddDir` is authoritative);
+ * same path as `resolveSddDir(controlHarnessRoot, planId)` — the path
+ * SSOT composition, `.mstarc` overrides included; equivalent string forms
+ * of one physical destination are valid. Composition equality on the
+ * canonical pair subsumes the escape case — a declared sddDir cannot
+ * equal the canonical composition and escape at the same time — so
+ * divergence is classified at one decision point: divergence because the
+ * declared path physically canonicalizes OUTSIDE the control harness
+ * (symlinked sdd segment routing out) is environmental →
+ * `sdd.context.sdd-dir-escape` gate fail (exit 1); any other divergence
+ * (wrong declaration) is usage (exit 2). A context matching a
+ * `.mstarc`-declared sdd base is honored wherever the repo's own path
+ * SSOT composes it — the engine never second-guesses a composition it
+ * would itself produce (`resolveSddDir` is authoritative);
  * - `featureCwd` exists and never nests with the control checkout
- *   (`featureCwd` inside the control checkout, or the control harness
- *   inside the feature checkout, are both refused — L1 hard rules);
+ * (`featureCwd` inside the control checkout, or the control harness
+ * inside the feature checkout, are both refused — L1 hard rules);
  * - branch/lease: when the control harness's workflow snapshots supply a
- *   plan row from a REGISTERED ACTIVE workflow (v2 root `status.json`
- *   `workflows[]`; a retained terminal snapshot never satisfies lease
- *   enforcement, and a plan claimed by multiple active workflows fails
- *   closed), its lease is verified (`verifyPlanExecutionLease`) and the
- *   L1 checklist runs (`l1PreDispatchCheck` with the control checkout);
- *   the context must then match the verified lease exactly. Without an
- *   active lease (no row, or a non-InProgress row without lease), the
- *   standalone branch policy applies (`assertBranchAlignment`) — an
- *   InProgress row without lease is the orphan refusal.
+ * plan row from a REGISTERED ACTIVE workflow (v2 root `status.json`
+ * `workflows[]`; a retained terminal snapshot never satisfies lease
+ * enforcement, and a plan claimed by multiple active workflows fails
+ * closed), its lease is verified (`verifyPlanExecutionLease`) and the
+ * L1 checklist runs (`l1PreDispatchCheck` with the control checkout);
+ * the context must then match the verified lease exactly. Without an
+ * active lease (no row, or a non-InProgress row without lease), the
+ * standalone branch policy applies (`assertBranchAlignment`) — an
+ * InProgress row without lease is the orphan refusal.
  *
  * Throws `SddScriptError` — exit 2 when the declared context itself is
  * malformed (non-absolute path, identity/composition mismatch, missing plan
@@ -887,10 +887,10 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
   if (!isFile(input.planFile)) {
     throwUsage(`no such plan file: ${input.planFile}`);
   }
-  // Declared paths on both sides — the gate's own canonical step still
-  // catches a symlink escape (canonical file vs canonical {PLAN_DIR});
-  // mixing declared with realpath'd here would false-fail on symlinked
-  // tmp roots (macOS /var → /private/var).
+ // Declared paths on both sides — the gate's own canonical step still
+ // catches a symlink escape (canonical file vs canonical {PLAN_DIR});
+ // mixing declared with realpath'd here would false-fail on symlinked
+ // tmp roots (macOS /var → /private/var).
   const planGate = assertPlanWritingPath(input.planFile, input.controlHarnessRoot);
   if (!planGate.ok) {
     if (planGate.code === "plan-path.symlink-escape") {
@@ -899,18 +899,18 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
     throwUsage(`SddExecutionContext.planFile rejected: ${planGate.code}: ${planGate.message}`);
   }
 
-  // sddDir identity vs the path-SSOT composition, classified at one
-  // decision point over the CANONICAL pair: both sides are canonicalized
-  // through their nearest existing ancestor, so equivalent destinations
-  // with different string forms (a `.mstarc` sdd base reached through a
-  // symlink, realpath divergence) compare equal and stay valid. On
-  // divergence: a declared path that physically canonicalizes OUTSIDE the
-  // control harness (symlinked sdd segment routing out) is environmental →
-  // `sdd.context.sdd-dir-escape` gate fail (exit 1); any other divergence
-  // (wrong declaration) is usage (exit 2). A context matching a
-  // `.mstarc`-declared sdd base is honored wherever the repo's own path
-  // SSOT composes it — the engine never second-guesses a composition it
-  // would itself produce (`resolveSddDir` is authoritative).
+ // sddDir identity vs the path-SSOT composition, classified at one
+ // decision point over the CANONICAL pair: both sides are canonicalized
+ // through their nearest existing ancestor, so equivalent destinations
+ // with different string forms (a `.mstarc` sdd base reached through a
+ // symlink, realpath divergence) compare equal and stay valid. On
+ // divergence: a declared path that physically canonicalizes OUTSIDE the
+ // control harness (symlinked sdd segment routing out) is environmental →
+ // `sdd.context.sdd-dir-escape` gate fail (exit 1); any other divergence
+ // (wrong declaration) is usage (exit 2). A context matching a
+ // `.mstarc`-declared sdd base is honored wherever the repo's own path
+ // SSOT composes it — the engine never second-guesses a composition it
+ // would itself produce (`resolveSddDir` is authoritative).
   const composedSddDir = resolveSddDir(canonicalControlHarnessRoot, planId);
   const canonicalComposedSddDir = canonicalizeNearestExisting(composedSddDir);
   const canonicalSddDir = canonicalizeNearestExisting(input.sddDir);
@@ -941,7 +941,7 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
     ]);
   }
 
-  // L1 hard rules — the feature cwd and the control checkout must not nest.
+ // L1 hard rules — the feature cwd and the control checkout must not nest.
   const controlCheckout = dirname(canonicalControlHarnessRoot);
   if (isInside(canonicalFeatureCwd, controlCheckout)) {
     throwGateFail([
@@ -963,17 +963,17 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
     ]);
   }
 
-  // (The sddDir escape classification ran with the composition check above;
-  // from here `canonicalSddDir === canonicalComposedSddDir` — the canonical
-  // form of the composition produced from the canonical control harness
-  // root, so no separate escape check.)
+ // (The sddDir escape classification ran with the composition check above;
+ // from here `canonicalSddDir === canonicalComposedSddDir` — the canonical
+ // form of the composition produced from the canonical control harness
+ // root, so no separate escape check.)
 
-  // Branch/lease policy: verified lease when an active workflow supplies one,
-  // standalone branch alignment otherwise (spec A3 — no new global lease mandate).
+ // Branch/lease policy: verified lease when an active workflow supplies one,
+ // standalone branch alignment otherwise (spec A3 — no new global lease mandate).
   const match = findWorkflowPlanRow(canonicalControlHarnessRoot, planId);
   if (match.kind === "ambiguous") {
-    // Fail-closed: more than one registered active workflow claims this plan
-    // — the governing lease is undecidable, never a silent standalone fallback.
+ // Fail-closed: more than one registered active workflow claims this plan
+ // — the governing lease is undecidable, never a silent standalone fallback.
     throwGateFail([
       contextViolation(
         "high",
@@ -1014,12 +1014,12 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
       ]);
     }
   } else if (row !== null && row.status === "InProgress") {
-    // InProgress without a lease is the orphan refusal (status-and-residuals
-    // § Orphan recovery) — fail with the reused violation, never invent a lease.
+ // InProgress without a lease is the orphan refusal (status-and-residuals
+ // § Orphan recovery) — fail with the reused violation, never invent a lease.
     throwGateFail(verifyPlanExecutionLease(row, planId).violations);
   } else {
-    // Standalone (no active workflow row, or a non-InProgress row without a
-    // lease): existing branch policy only — no lease mandate.
+ // Standalone (no active workflow row, or a non-InProgress row without a
+ // lease): existing branch policy only — no lease mandate.
     const branchGate = assertBranchAlignment(canonicalFeatureCwd, workingBranch);
     if (!branchGate.ok) throwGateFail(branchGate.violations);
   }
@@ -1039,21 +1039,21 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
  * a refused action performs no write and the check itself never writes.
  *
  * - `kind: "source"` — the observed `cwd` must sit inside the feature
- *   worktree (nested directories allowed); a relative `target` resolves from
- *   that actual cwd. Targets outside the feature — traversal, absolute
- *   elsewhere, wrong-cwd, or symlink escape — are refused before mutation.
+ * worktree (nested directories allowed); a relative `target` resolves from
+ * that actual cwd. Targets outside the feature — traversal, absolute
+ * elsewhere, wrong-cwd, or symlink escape — are refused before mutation.
  * - `kind: "artifact"` — the `target` must stay inside the plan's control
- *   `sddDir` or equal the declared `planFile`; legitimate control artifact
- *   edits are allowed while arbitrary control source edits are not. A
- *   nonexistent leaf canonicalizes through its nearest existing ancestor
- *   (`canonicalizeNearestExisting`); symlink escapes are refused.
+ * `sddDir` or equal the declared `planFile`; legitimate control artifact
+ * edits are allowed while arbitrary control source edits are not. A
+ * nonexistent leaf canonicalizes through its nearest existing ancestor
+ * (`canonicalizeNearestExisting`); symlink escapes are refused.
  * - `kind: "launch"` — verifies the resolved launch destination
- *   `featureCwd` (exists + on `workingBranch` via the reused
- *   `assertBranchAlignment`); the parent's own cwd is not gated, because a
- *   launch may legitimately run from control/main — its purpose is to bind
- *   the child's starting cwd to the feature worktree. An optional `target`
- *   is checked as a source target relative to `featureCwd` (where the child
- *   will start).
+ * `featureCwd` (exists + on `workingBranch` via the reused
+ * `assertBranchAlignment`); the parent's own cwd is not gated, because a
+ * launch may legitimately run from control/main — its purpose is to bind
+ * the child's starting cwd to the feature worktree. An optional `target`
+ * is checked as a source target relative to `featureCwd` (where the child
+ * will start).
  *
  * Violations minted here carry the `sdd.context.*` prefix; violations from
  * the reused branch/lease helpers keep their own codes (`worktree.*`,
@@ -1090,13 +1090,13 @@ export function checkSddAction(context: SddExecutionContext, action: SddAction):
   const cwdResolved = resolve(action.cwd);
 
   /**
-   * Physical containment decision: canonicalize the target through its
-   * nearest existing ancestor (resolving symlinked ancestors and macOS
-   * `/var` → `/private/var`) and compare against the canonical base. When
-   * it escapes, the declared-prefix test (same string universe) picks the
-   * diagnostic: a declared-inside path routed elsewhere is a symlink
-   * escape, anything else is simply outside.
-   */
+ * Physical containment decision: canonicalize the target through its
+ * nearest existing ancestor (resolving symlinked ancestors and macOS
+ * `/var` → `/private/var`) and compare against the canonical base. When
+ * it escapes, the declared-prefix test (same string universe) picks the
+ * diagnostic: a declared-inside path routed elsewhere is a symlink
+ * escape, anything else is simply outside.
+ */
   const checkTarget = (baseDir: string, target: string, kind: "source" | "launch"): void => {
     if (featureReal === null) return; // reported by the kind-specific cwd/launch checks
     const targetAbs = resolve(baseDir, target);
@@ -1137,14 +1137,14 @@ export function checkSddAction(context: SddExecutionContext, action: SddAction):
       add("sdd.context.target-missing", "artifact checks require the destination target");
       return { ok: false, violations };
     }
-    // Physical containment against the plan's control artifacts: the target
-    // (canonicalized through its nearest existing ancestor) must stay inside
-    // the plan's sddDir or equal the declared planFile — legitimate control
-    // artifact edits are allowed while arbitrary control source edits are not.
+ // Physical containment against the plan's control artifacts: the target
+ // (canonicalized through its nearest existing ancestor) must stay inside
+ // the plan's sddDir or equal the declared planFile — legitimate control
+ // artifact edits are allowed while arbitrary control source edits are not.
     const targetAbs = resolve(cwdResolved, action.target);
     const canonical = canonicalizeNearestExisting(targetAbs);
     if (!isInside(canonical, canonicalSddDir) && canonical !== canonicalPlanFile) {
-      // Same-universe declared-prefix test picks the diagnostic code only.
+ // Same-universe declared-prefix test picks the diagnostic code only.
       const rawSddDir = resolve(context.sddDir);
       const declaredPrefix =
         targetAbs === rawSddDir ||
@@ -1165,19 +1165,19 @@ export function checkSddAction(context: SddExecutionContext, action: SddAction):
       }
     }
   } else {
-    // launch: verify the resolved launch destination, not the parent's cwd.
+ // launch: verify the resolved launch destination, not the parent's cwd.
     if (featureReal === null) {
       add(
         "sdd.context.launch-cwd-missing",
         `feature worktree "${context.featureCwd}" does not exist or is not a directory — cannot bind the child's starting cwd`,
       );
     } else {
-      // Reused branch semantics (worktree.branch-* codes) — not duplicated.
+ // Reused branch semantics (worktree.branch-* codes) — not duplicated.
       violations.push(...assertBranchAlignment(featureReal, context.workingBranch).violations);
     }
     if (action.target !== undefined && action.target.trim() !== "" && featureReal !== null) {
-      // The child starts in featureCwd: check the target the way the child
-      // would resolve it (relative values from featureCwd).
+ // The child starts in featureCwd: check the target the way the child
+ // would resolve it (relative values from featureCwd).
       checkTarget(featureReal, action.target, "launch");
     }
   }
@@ -1195,7 +1195,7 @@ function signalExitNumber(signal: string): number {
 }
 
 /**
- * Bound argv launcher (spec A3, plan 20260907-sdd-execution-paths Task 2):
+ * Bound argv launcher (spec A3):
  * resolve + gate the context, then spawn a DIRECT executable argv — never
  * a shell (no command-string interpolation; the argv array reaches the
  * child literally, spaces/`$()`/backticks unchanged) — with
@@ -1208,7 +1208,7 @@ function signalExitNumber(signal: string): number {
  * Exit contract (Task 2 CLI mapping):
  * - empty/invalid argv → `SddScriptError` exit 2 (usage);
  * - context/gate failure → `SddScriptError` exit 1 (usage-class declaration
- *   errors from resolution keep their own exit 2);
+ * errors from resolution keep their own exit 2);
  * - spawn-not-found (ENOENT) → resolves 127;
  * - numeric child exit → resolved unchanged (exit 7 returns 7);
  * - child killed by signal n → resolves 128+n (SIGTERM → 143, SIGINT → 130).
@@ -1241,7 +1241,7 @@ export async function runInSddContext(context: SddExecutionContext, argv: readon
         stdio: "inherit",
       });
     } catch (err) {
-      // Synchronous spawn failure (rare); ENOENT keeps the 127 contract.
+ // Synchronous spawn failure (rare); ENOENT keeps the 127 contract.
       if ((err as NodeJS.ErrnoException).code === "ENOENT") {
         settle(127);
         return;
@@ -1252,7 +1252,7 @@ export async function runInSddContext(context: SddExecutionContext, argv: readon
     let done = false;
     let spawnError: NodeJS.ErrnoException | null = null;
     const forward = (signal: NodeJS.Signals): void => {
-      // Never signal a child that already settled.
+ // Never signal a child that already settled.
       if (!done && child.exitCode === null && child.signalCode === null) child.kill(signal);
     };
     const cleanup = (): void => {
@@ -1264,8 +1264,8 @@ export async function runInSddContext(context: SddExecutionContext, argv: readon
     child.on("error", (err: NodeJS.ErrnoException) => {
       spawnError = err;
       if (err.code !== "ENOENT" && !done) {
-        // Non-ENOENT errors have no conventional exit code — reject ('close'
-        // is not guaranteed for every error class; settle here once).
+ // Non-ENOENT errors have no conventional exit code — reject ('close'
+ // is not guaranteed for every error class; settle here once).
         done = true;
         cleanup();
         reject(err);

@@ -26,13 +26,13 @@ import { STATUS_FILE, asRecord } from './_shared.ts'
 export type ActiveWorkflowSelection = WorkflowSelectionView
 
 /**
- * Cache-entry cap for the terminal-status cache (qc3 S-2 fix-wave) — a
+ * Cache-entry cap for the terminal-status cache  — a
  * long-lived process across many workflow ids never grows it unbounded.
  */
 const TERMINAL_STATUS_CACHE_MAX = 64
 
 /**
- * Module-level terminal-status cache (qc3 S-2 fix-wave — the mtime-first
+ * Module-level terminal-status cache (the mtime-first
  * fast path): snapshot path → `{ mtimeMs, terminal }` — the parsed
  * terminal-status verdict for that file's mtime. The terminal fallback
  * re-walks every workflow dir per catalog refresh; when a snapshot's mtime
@@ -44,13 +44,12 @@ const TERMINAL_STATUS_CACHE_MAX = 64
  * rewrite would be served stale until the file is touched — the
  * documented mtime-first tradeoff the finding asks for; terminal
  * snapshots are written once via temp-file + rename (mtime always
- * changes). Deleted snapshots are EVICTED (plan 20260822-gate-fixes
- * Task 3 / f12): a dead key must not hold the cap.
+ * changes). Deleted snapshots are EVICTED : a dead key must not hold the cap.
  */
 const terminalStatusCache = new Map<string, { mtimeMs: number; terminal: boolean }>()
 
 /**
- * Test-only observability hook (plan 20260822-gate-fixes Task 3 / f12):
+ * Test-only observability hook :
  * whether a snapshot path is still cached. Production code never calls
  * this — the eviction contract (delete → key gone) is asserted by the
  * workflow-selection spec.
@@ -60,7 +59,7 @@ export function _terminalStatusCacheHas(snapshotPath: string): boolean {
 }
 
 /**
- * One snapshot's terminal-status verdict, mtime-first (qc3 S-2 fix-wave):
+ * One snapshot's terminal-status verdict, mtime-first :
  * stat the file, reuse the cached verdict when the mtime is unchanged,
  * else parse `status` and cache the verdict for the new mtime. Unreadable
  * snapshots → `undefined` (skipped — advisory, same as the caller's old
@@ -107,8 +106,8 @@ function terminalStatusOf(snapshotPath: string): { terminal: boolean; mtimeMs: n
  * entry → a clear error, never a terminal snapshot and never the root v1
  * file.
  *
- * Active-set definition (explicit decision, plan `20260819-workflow-dsh-viz`
- * Task 2): membership in `workflows[]` — the engine lifecycle enum's
+ * Active-set definition (explicit decision,
+ * membership in `workflows[]` — the engine lifecycle enum's
  * non-terminal states are `running` AND `paused` (terminal lifecycles are
  * removed from the list at terminal). A PAUSED lifecycle therefore stays in
  * the active set and the agent-flow writer / ledger append to its workflow
@@ -218,7 +217,7 @@ export function resolveReadWorkflow(harnessDir: string): WorkflowSelectionView {
       terminalStatusCache.delete(snapshotPath)
       continue
     }
-    // mtime-first fast path (qc3 S-2 fix-wave): stat + cache-hit reuse the
+    // mtime-first fast path : stat + cache-hit reuse the
     // terminal verdict without parsing the snapshot JSON (the steady state
     // for terminal snapshots — the per-TTL reparse was pure waste).
     const verdict = terminalStatusOf(snapshotPath)

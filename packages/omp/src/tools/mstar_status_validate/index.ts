@@ -7,7 +7,7 @@
  *
  * Defaults to `{harness}/status.json` resolved from the session cwd
  * (`resolveHarnessDir(pi.cwd)`); pass `path` to target another file.
- * Classification follows the Gate 1 layout rules (fix-wave W-C, parity
+ * Classification follows the Gate 1 layout rules (parity
  * with `harnessDocKindOfTarget` in ../hooks/pre/mstar-gates.ts and
  * packages/opencode/src/mstar.ts): a document is only validated when its
  * harness-relative location is canonical — `status.json` at the harness
@@ -19,8 +19,7 @@
  * The snapshot/register validators are P1-only engine exports absent from
  * the published floor `^2.0.2` — they come from a DYNAMIC engine import so
  * a stale engine yields an explicit upgrade error instead of a
- * module-link failure that silently drops the tool (qc3 F-001 /
- * fix-wave W-B). No local rule logic — the engine is the single validator;
+ * module-link failure that silently drops the tool. No local rule logic — the engine is the single validator;
  * this module only locates the file and formats output.
  */
 import { statSync } from "node:fs";
@@ -65,8 +64,7 @@ function hasEntry(dir: string, name: string): boolean {
 /**
  * True when `dir` carries the v2 coordination-document markers that make
  * it a harness root: a `status.json` root file plus BOTH layout dirs.
- * Default-layout fast path: the `workflows/` + `projects/` names (fix-wave
- * W-REV-1). Phase-5 F1: with the lazily-loaded engine dir resolvers, a
+ * Default-layout fast path: the `workflows/` + `projects/` names). With the lazily-loaded engine dir resolvers, with the lazily-loaded engine dir resolvers, a
  * `.mstarc` custom `workflow_dir` / `project_dir` layout is recognized via
  * the resolved absolute dirs (stale engine -> resolvers null -> default
  * names only). Never throws — a missing/unreadable path is not a marker.
@@ -87,8 +85,7 @@ function hasHarnessRootMarkers(dir: string): boolean {
 }
 
 /**
- * Resolve the harness root containing `startDir` by marker probe (fix-wave
- * W-REV-1): the nearest ancestor holding the v2 coordination-document
+ * Resolve the harness root containing `startDir` by marker probe (): the nearest ancestor holding the v2 coordination-document
  * markers — a `status.json` root file plus the layout directories — IS the
  * harness root. Unlike `resolveHarnessDir`'s rung-3 `plans/` probe, this
  * never mistakes the NESTED `{HARNESS_DIR}/plans` subdir of the default
@@ -110,7 +107,7 @@ function resolveHarnessRootOf(target: string): string | null {
 
 /**
  * Classify `targetPath` as a canonical `{HARNESS_DIR}` coordination
- * document (Gate 1 layout parity, fix-wave W-C / W-REV-1, Phase-5 F1):
+ * document (Gate 1 layout parity, W-C / W-REV-1, Phase-5 F1):
  * basename is `status.json` at the harness root, `snapshot.json` under
  * `{WORKFLOW_DIR}/<id>/`, or `residuals.json` under `{PROJECT_DIR}/<id>/`
  * (harness-relative, one path component each), AND the harness root
@@ -157,9 +154,9 @@ function harnessDocKindOfTarget(targetPath: string): { harnessDir: string; kind:
   if (harnessDir === null) return null;
   const classified = classify(harnessDir);
   if (classified !== null) return classified;
-  // W-REV-3: probe root hit but rel non-canonical — pathological double
-  // harness (a nested sparse harness below a full-marker ancestor). Rebuild
-  // rel against the declared-root resolution before giving up.
+ // W-REV-3: probe root hit but rel non-canonical — pathological double
+ // harness (a nested sparse harness below a full-marker ancestor). Rebuild
+ // rel against the declared-root resolution before giving up.
   if (probeRoot === null) return null;
   const fallbackDir = resolveHarnessDir(dirname(resolved));
   if (fallbackDir === null || fallbackDir === probeRoot) return null;
@@ -167,14 +164,14 @@ function harnessDocKindOfTarget(targetPath: string): { harnessDir: string; kind:
 }
 
 /** Dynamic engine import guard for the P1-only snapshot/register validators
- * (qc3 F-001 / fix-wave W-B): missing → explicit upgrade error. */
+ * : missing → explicit upgrade error. */
 async function loadNewValidators(): Promise<
   | { ok: true; validateWorkflowSnapshot: (doc: unknown) => { ok: boolean; violations: ValidationResult[] }; validateProjectRegister: (doc: unknown) => { ok: boolean; violations: ValidationResult[] } }
   | { ok: false; error: AgentToolResult }
 > {
-  // Dynamic import (fix-wave W-B): static named imports of these exports
-  // would fail at module link on published engines (^2.0.2 floor) and
-  // silently drop the tool from /extensions.
+ // Dynamic import : static named imports of these exports
+ // would fail at module link on published engines (^2.0.2 floor) and
+ // silently drop the tool from /extensions.
   const engine = await import("@mstar-harness/engine");
   if (typeof engine.validateWorkflowSnapshot !== "function" || typeof engine.validateProjectRegister !== "function") {
     return {
@@ -238,8 +235,8 @@ export default function mstarStatusValidate(pi: CustomToolAPI): CustomTool {
         let kind: DocKind;
         if (params?.path) {
           statusPath = resolve(pi.cwd, params.path);
-          // Phase-5 F1: ensure the custom-layout dir resolvers are loaded
-          // before classifying (stale engine -> null -> default names).
+ // Phase-5 F1: ensure the custom-layout dir resolvers are loaded
+ // before classifying (stale engine -> null -> default names).
           classifyDirResolvers = await dirResolversLoader.load();
           const target = harnessDocKindOfTarget(statusPath);
           if (target === null) {
@@ -278,8 +275,8 @@ export default function mstarStatusValidate(pi: CustomToolAPI): CustomTool {
           gate =
             kind === "snapshot" ? validators.validateWorkflowSnapshot(doc) : validators.validateProjectRegister(doc);
         }
-        // Row/workflow counts only when the gate passed: the validators
-        // already proved the file parses, so the re-read cannot throw.
+ // Row/workflow counts only when the gate passed: the validators
+ // already proved the file parses, so the re-read cannot throw.
         let planCount: number | null = null;
         let workflowCount: number | null = null;
         let entryCount: number | null = null;

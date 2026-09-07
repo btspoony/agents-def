@@ -45,7 +45,7 @@
         { "id": "a5", "kind": "diff_paths_within", "value": [], "note": "refusal turn writes nothing" }
       ],
       "provenance": {
-        "seed": "plan 20260907-iteration-progressive-disclosure Task 2 adversarial set S1 (parallel start review chain) + routing-evals.json#execute-gate-missing-tasks@v27 (direct-main clause retained)",
+        "seed": "adversarial set S1 (parallel start review chain) + routing-evals.json#execute-gate-missing-tasks@v27 (direct-main clause retained)",
         "coverage": ["unauthorized-request", "first-turn", "preset-standard", "engine-advisory"]
       }
     },
@@ -145,7 +145,7 @@
         { "id": "a3", "kind": "diff_paths_within", "value": [], "note": "paused run starts no Phase 2 execution" }
       ],
       "provenance": {
-        "seed": "plan 20260907-iteration-progressive-disclosure Task 2 adversarial set S5 (overridden pause) + routing-evals.json#iteration-start-pause-stops-at-phase1@v27",
+        "seed": "adversarial set S5 (overridden pause) + routing-evals.json#iteration-start-pause-stops-at-phase1@v27",
         "coverage": ["false-pass-trap", "first-turn", "preset-standard", "engine-advisory"]
       }
     },

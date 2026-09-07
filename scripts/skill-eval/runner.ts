@@ -1,5 +1,5 @@
 /**
- * scripts/skill-eval/runner.ts — Task 2 of plan 20260907-skill-eval-baseline
+ * scripts/skill-eval/runner.ts — subprocess execution
  * (Spec A1 run stage).
  *
  * Executes a prepared, frozen manifest selection through argv-array
@@ -9,28 +9,28 @@
  *
  * Contracts implemented here (Spec A1):
  * - The child cwd is explicitly a per-unit copy of the prepared case fixture;
- *   the prompt goes to the child over a file-backed stdin and stdout/stderr
- *   are file streams (events.jsonl / stderr.txt raw bytes preserved).
+ * the prompt goes to the child over a file-backed stdin and stdout/stderr
+ * are file streams (events.jsonl / stderr.txt raw bytes preserved).
  * - Thread IDs are captured from thread.started events only; resume uses the
- *   exact captured ID with the same case/variant/workspace/sandbox and
- *   rejects cross-arm or ephemeral resume. Resume identity is checked
- *   state-vs-evidence: thread id from a fresh re-scan of preserved turn-1
- *   events, cwd/sandbox from preserved turn-1 argv.json (C-W4).
+ * exact captured ID with the same case/variant/workspace/sandbox and
+ * rejects cross-arm or ephemeral resume. Resume identity is checked
+ * state-vs-evidence: thread id from a fresh re-scan of preserved turn-1
+ * events, cwd/sandbox from preserved turn-1 argv.json (C-W4).
  * - Timed-out children are terminated (SIGTERM, then SIGKILL after a grace
- *   period; direct child only — see README known limits); stderr, exit code
- *   and signal are preserved either way. Re-executed turns archive the
- *   previous attempt's raw bytes under aborted/ instead of deleting them.
+ * period; direct child only — see README known limits); stderr, exit code
+ * and signal are preserved either way. Re-executed turns archive the
+ * previous attempt's raw bytes under aborted/ instead of deleting them.
  * - The event adapter tolerates unknown records and malformed JSON lines
- *   (raw bytes are always retained in events.jsonl) and never invents usage:
- *   missing counters stay null with an explicit reason, and the per-turn vs
- *   cumulative basis stays "unknown" until a real smoke verifies attribution.
+ * (raw bytes are always retained in events.jsonl) and never invents usage:
+ * missing counters stay null with an explicit reason, and the per-turn vs
+ * cumulative basis stays "unknown" until a real smoke verifies attribution.
  * - Grades are pass | fail | unverified | infrastructure_error; assertions
- *   without adjudicable evidence are unverified — never silent passes.
+ * without adjudicable evidence are unverified — never silent passes.
  * - Infrastructure failures and unverified evidence keep their place in the
- *   attempted denominator and dominate the exit code (2), ahead of assertion
- *   failures (1); only all-verified passes exit 0. Nothing here marks the
- *   overall plan Done: unit tests on synthetic adapters prove scheduler and
- *   parser correctness only (AC4 honesty separation).
+ * attempted denominator and dominate the exit code (2), ahead of assertion
+ * failures (1); only all-verified passes exit 0. Nothing here marks the
+ * overall plan Done: unit tests on synthetic adapters prove scheduler and
+ * parser correctness only (AC4 honesty separation).
  *
  * All model-facing behavior flows through the injected `SpawnFn` seam; the
  * bundled unit tests run entirely on synthetic adapters (tagged "synthetic").
@@ -148,11 +148,11 @@ export interface SpawnRequest {
   file: string;
   argv: readonly string[];
   cwd: string;
-  /** File whose bytes become the child's stdin (the case prompt). */
+ /** File whose bytes become the child's stdin (the case prompt). */
   stdinFile: string;
-  /** events.jsonl — raw child stdout bytes are appended here. */
+ /** events.jsonl — raw child stdout bytes are appended here. */
   stdoutFile: string;
-  /** stderr.txt — raw child stderr bytes are appended here. */
+ /** stderr.txt — raw child stderr bytes are appended here. */
   stderrFile: string;
   timeoutMs: number;
 }
@@ -177,7 +177,7 @@ export const defaultSpawnFn: SpawnFn = (request) =>
     const stdinFd = openSync(request.stdinFile, "r");
     const stdoutFd = openSync(request.stdoutFile, "a");
     const stderrFd = openSync(request.stderrFile, "a");
-    // Argv array + shell:false — nothing is routed through a shell.
+ // Argv array + shell:false — nothing is routed through a shell.
     const child = spawn(request.file, [...request.argv], {
       cwd: request.cwd,
       stdio: [stdinFd, stdoutFd, stderrFd],
@@ -256,7 +256,7 @@ export function buildFirstTurnArgv(opts: {
   ];
   if (!opts.resumable) argv.push("--ephemeral");
   argv.push("-");
-  // --ephemeral is legal here exactly when the case is single-turn.
+ // --ephemeral is legal here exactly when the case is single-turn.
   rejectForbiddenFlags(argv, "first-turn argv", { allowEphemeral: !opts.resumable });
   return argv;
 }
@@ -297,25 +297,25 @@ export function buildResumeArgv(opts: {
 export interface ResumeGuardInput {
   unitId: string;
   /**
-   * Thread id from INDEPENDENT evidence: the fresh re-scan of the preserved
-   * turn-1 events (not the scheduler state). C-W4 (QC wave 1).
-   */
+ * Thread id from INDEPENDENT evidence: the fresh re-scan of the preserved
+ * turn-1 events (not the scheduler state)..
+ */
   recordedThreadId: string | null;
-  /** True when the first turn ran with --ephemeral (single-turn case). */
+ /** True when the first turn ran with --ephemeral (single-turn case). */
   turn1Ephemeral: boolean;
-  /** Planned resume identity from the scheduler request for this unit. */
+ /** Planned resume identity from the scheduler request for this unit. */
   planned: { unitId: string; threadId: string; cwd: string; sandbox: string };
   /**
-   * Recorded identity from preserved turn-1 `argv.json` (`--cd` / `--sandbox`
-   * values) — never echoed back from the same state object the planned values
-   * come from, so the cross-arm comparisons can actually fail (C-W4).
-   */
+ * Recorded identity from preserved turn-1 `argv.json` (`--cd` / `--sandbox`
+ * values) — never echoed back from the same state object the planned values
+ * come from, so the cross-arm comparisons can actually fail (C-W4).
+ */
   recordedCwd: string | null;
   recordedSandbox: string | null;
 }
 
 /**
- * Typed evidence-integrity rejection (QC wave 1 S-C): thrown by the resume
+ * Typed evidence-integrity rejection : thrown by the resume
  * guard for cross-arm/ephemeral/tampered resume. Callers classify on this
  * type — never on error-message text, which refactors cannot silently break.
  */
@@ -474,7 +474,7 @@ export function scanEventRecords(records: ParsedEventRecord[]): EventStreamScan 
         }
         scan.usageEvents.push({ line: record.line, eventId: eventIdOf(json), usage: numeric });
       }
-      // turn.completed without a usage object => absent usage; nothing recorded.
+ // turn.completed without a usage object => absent usage; nothing recorded.
       continue;
     }
     if (FAILURE_EVENT_RE.test(type)) {
@@ -579,13 +579,13 @@ export interface TurnMetrics {
   spawnError: string | null;
   threadId: string | null;
   usageEvents: UsageObservation[];
-  /** Aggregate counters stay null unless the usage basis is verified. */
+ /** Aggregate counters stay null unless the usage basis is verified. */
   usage: { inputTokens: number | null; outputTokens: number | null; totalTokens: number | null; reason: string | null };
   usageBasis: UsageBasis;
   readEvidence: ReadEvidence;
-  /** Loaded-bytes accounting: labelled bytes, null with reason until verifiable. */
+ /** Loaded-bytes accounting: labelled bytes, null with reason until verifiable. */
   bytesLoaded: { bytes: number | null; unit: "bytes"; reason: string | null };
-  /** Cost only with observed usage AND a recorded price source; otherwise null. */
+ /** Cost only with observed usage AND a recorded price source; otherwise null. */
   costUsd: { amount: number | null; reason: string };
   adapterWarnings: string[];
 }
@@ -677,7 +677,7 @@ export interface UnitRecord {
   resumable: boolean;
   turn1Ephemeral: boolean;
   threadId: string | null;
-  /** null = pending (unit started but not graded — safe to resume). */
+ /** null = pending (unit started but not graded — safe to resume). */
   grade: UnitGrade | null;
   failureReason: string | null;
   turns: Record<string, TurnRecord>;
@@ -695,7 +695,7 @@ export interface SchedulerState {
 }
 
 function persistState(io: RunnerIo, statePath: string, state: SchedulerState): void {
-  // Write temp + rename so a crash mid-write cannot corrupt resumable state.
+ // Write temp + rename so a crash mid-write cannot corrupt resumable state.
   const tmp = `${statePath}.tmp`;
   io.writeText(tmp, `${JSON.stringify(state, null, 2)}\n`);
   io.rename(tmp, statePath);
@@ -1029,11 +1029,11 @@ export interface RunArgs {
   variants: readonly string[];
   repeats: number;
   /**
-   * Repository root for the disposable-root write containment check. Defaults
-   * to the root derived from the manifest path (the `<repoRoot>/.tmp/skill-eval`
-   * ancestor); a manifest outside any disposable root is rejected before any
-   * write or spawn (QC wave 1 C-W2).
-   */
+ * Repository root for the disposable-root write containment check. Defaults
+ * to the root derived from the manifest path (the `<repoRoot>/.tmp/skill-eval`
+ * ancestor); a manifest outside any disposable root is rejected before any
+ * write or spawn .
+ */
   repoRoot?: string;
   io?: RunnerIo;
   spawnFn?: SpawnFn;
@@ -1104,7 +1104,7 @@ export function manifestIntegrityErrors(manifest: EvalManifest): string[] {
   return errors;
 }
 
-/** Single selection SSOT for run AND report (QC wave 1 S-D): smoke = the
+/** Single selection SSOT for run AND report : smoke = the
  * smoke-marked dev cases; any other split = the cases stored with that split. */
 export function selectCases(manifest: EvalManifest, split: RunSplit): PreparedManifestCase[] {
   if (split === "smoke") return manifest.cases.filter((c) => c.provenance?.smoke === true);
@@ -1121,7 +1121,7 @@ function turnRunId(unitId: string, turn: number): string {
 }
 
 /**
- * C-W4 (QC wave 1): recorded first-turn cwd/sandbox, read from the preserved
+ * C-W4: recorded first-turn cwd/sandbox, read from the preserved
  * turn-1 `argv.json` (`--cd` / `--sandbox` values actually passed to the
  * child) — an evidence source independent of the scheduler state, so the
  * resume guard's cross-arm comparisons can fail. A missing/unreadable
@@ -1160,12 +1160,12 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
   const statePath = join(runDir, "scheduler", "state.json");
   const errors: string[] = [];
 
-  // -- Phase 0: disposable-root write containment (QC wave 1 C-W2) ---------
-  // The run stage materializes scheduler/, runs/ and workspaces/ beneath the
-  // manifest's parent dir; like prepare, it refuses (exit 2, zero writes,
-  // zero spawns) unless that dir is strictly inside <repoRoot>/.tmp/skill-eval/
-  // with no symlink escape. A runnable manifest copied into a durable tree
-  // can no longer pull run artifacts out of the disposable root.
+ // -- Phase 0: disposable-root write containment  ---------
+ // The run stage materializes scheduler/, runs/ and workspaces/ beneath the
+ // manifest's parent dir; like prepare, it refuses (exit 2, zero writes,
+ // zero spawns) unless that dir is strictly inside <repoRoot>/.tmp/skill-eval/
+ // with no symlink escape. A runnable manifest copied into a durable tree
+ // can no longer pull run artifacts out of the disposable root.
   const containmentRepoRoot = args.repoRoot ?? deriveDisposableRepoRoot(manifestPath);
   const containment =
     containmentRepoRoot === null
@@ -1193,7 +1193,7 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
     };
   }
 
-  // -- Phase A: validate frozen manifest + request (no spawns) -------------
+ // -- Phase A: validate frozen manifest + request (no spawns) -------------
   let manifest: EvalManifest;
   try {
     manifest = JSON.parse(io.readText(manifestPath)) as EvalManifest;
@@ -1252,7 +1252,7 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
 
   const manifestHash = sha256Hex(io.readText(manifestPath));
 
-  // -- Phase B: load/validate resumable scheduler state --------------------
+ // -- Phase B: load/validate resumable scheduler state --------------------
   let state: SchedulerState = {
     schemaVersion: RUNNER_SCHEMA_VERSION,
     manifestPath,
@@ -1306,10 +1306,10 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
   ): Promise<{ record: TurnRecord; scan: EventStreamScan }> => {
     const runId = turnRunId(unit.unitId, turn);
     const turnDir = join(runDir, "runs", unit.caseId, unit.variant, `r${unit.repeat}`, `turn${turn}`);
-    // Re-executed turns never append onto stale evidence bytes: the previous
-    // attempt's dir (e.g. an interrupted attempt whose partial bytes were
-    // never recorded in state) is MOVED to aborted/ instead of deleted, so
-    // raw diagnostics survive while the turn dir starts fresh (QC wave 1 S-E).
+ // Re-executed turns never append onto stale evidence bytes: the previous
+ // attempt's dir (e.g. an interrupted attempt whose partial bytes were
+ // never recorded in state) is MOVED to aborted/ instead of deleted, so
+ // raw diagnostics survive while the turn dir starts fresh .
     if (io.exists(turnDir)) {
       const abortedDir = join(runDir, "runs", unit.caseId, unit.variant, `r${unit.repeat}`, "aborted");
       io.ensureDir(abortedDir);
@@ -1380,7 +1380,7 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
     });
   };
 
-  // -- Phase C: execute units (idempotent, resumable) -----------------------
+ // -- Phase C: execute units (idempotent, resumable) -----------------------
   for (const scheduled of order) {
     const unitId = unitIdOf(scheduled.caseId, scheduled.variant, scheduled.repeat);
     const existing = state.units[unitId];
@@ -1397,8 +1397,8 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
     let unit: UnitRecord;
     let reuseTurn1 = false;
     if (existing) {
-      // Pending unit from an interrupted invocation: reuse its completed,
-      // evidence-backed turn 1 (never re-derive the thread id), redo the rest.
+ // Pending unit from an interrupted invocation: reuse its completed,
+ // evidence-backed turn 1 (never re-derive the thread id), redo the rest.
       unit = existing;
       const turn1 = unit.turns["1"];
       reuseTurn1 =
@@ -1428,13 +1428,13 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
       state.units[unitId] = unit;
     }
     summary.executedUnits += 1;
-    // Evidence-integrity rejections (cross-arm/ephemeral/tampered resume) are
-    // runner-level infrastructure errors, not model outcomes.
+ // Evidence-integrity rejections (cross-arm/ephemeral/tampered resume) are
+ // runner-level infrastructure errors, not model outcomes.
     let resumeRejection = false;
 
     try {
       if (!reuseTurn1) {
-        // Fresh fixture workspace: per-unit copy with frozen-hash verification.
+ // Fresh fixture workspace: per-unit copy with frozen-hash verification.
         io.removeDeep(workspace);
         io.ensureDir(workspace);
         copyPreparedFixture(io, runDir, caseRec, workspace);
@@ -1458,8 +1458,8 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
         unit.threadId = scan.threadId;
         persistState(io, statePath, state);
       } else {
-        // Reuse verified turn-1 evidence: the workspace stays exactly as the
-        // interrupted first turn left it (resume continuity).
+ // Reuse verified turn-1 evidence: the workspace stays exactly as the
+ // interrupted first turn left it (resume continuity).
         unit.failureReason = null;
       }
 
@@ -1468,11 +1468,11 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
           const reason = "resume requires a captured thread id; the first turn recorded none (thread_reused stays unverified)";
           unit.failureReason = unit.failureReason ? `${unit.failureReason}; ${reason}` : reason;
         } else {
-          // Resume identity is checked state-vs-evidence (QC wave 1 C-W4):
-          // the thread id comes from a fresh re-scan of the preserved turn-1
-          // events; cwd/sandbox come from the preserved turn-1 argv.json
-          // (--cd/--sandbox). A hand-edited state.json can no longer resume
-          // unchallenged. Never infer a latest session.
+ // Resume identity is checked state-vs-evidence :
+ // the thread id comes from a fresh re-scan of the preserved turn-1
+ // events; cwd/sandbox come from the preserved turn-1 argv.json
+ // (--cd/--sandbox). A hand-edited state.json can no longer resume
+ // unchallenged. Never infer a latest session.
           const turn1 = unit.turns["1"];
           if (!turn1 || turn1.status !== "completed") {
             unit.failureReason = "resume rejected: no completed, evidence-backed first turn for this run ID";
@@ -1507,7 +1507,7 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
         }
       }
 
-      // Fixture diff + hash evidence (Spec A1 preserved-files list).
+ // Fixture diff + hash evidence (Spec A1 preserved-files list).
       const before: Record<string, string> = {};
       for (const f of caseRec.fixture.files) before[f.path] = f.sha256;
       const diff = diffWorkspace(io, unit.cwd, before);
@@ -1528,15 +1528,15 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
       }
       persistState(io, statePath, state);
     } catch (error) {
-      // Runner-level exception for this unit: terminal infrastructure error
-      // with the reason preserved (never a silent retry, never a fake pass).
+ // Runner-level exception for this unit: terminal infrastructure error
+ // with the reason preserved (never a silent retry, never a fake pass).
       unit.grade = "infrastructure_error";
       unit.failureReason = `runner exception: ${(error as Error).stack ?? String(error)}`;
       persistState(io, statePath, state);
     }
   }
 
-  // -- Phase D: aggregate over the requested selection ---------------------
+ // -- Phase D: aggregate over the requested selection ---------------------
   for (const scheduled of order) {
     const unit = state.units[unitIdOf(scheduled.caseId, scheduled.variant, scheduled.repeat)];
     const grade: UnitGrade | "pending" = unit?.grade ?? "pending";

@@ -1,7 +1,6 @@
 /**
  * Warn-only adoption advisory for the OPTIONAL `dsh-llm-fallbacks` plugin
- * (plan `20260815-dsh-fallbacks-personas` Task 4 + `20260816-dsh-b4-seeds`
- * Task 3): when the capability is mounted, ONE advisory pass per apply
+ * (plan   Task 4 +  when the capability is mounted, ONE advisory pass per apply
  * reports the deployment's fallbacks taxonomy state (bounded: ≤1 warn per
  * category, logger `mstar/fallbacks-advisory`):
  *
@@ -69,7 +68,7 @@ export function setAdvisoryLogger(sink: AdvisoryLogSink): AdvisoryLogSink {
 /**
  * Warn id-list cap: an id-list warn line lists at most this many ids before
  * the `… and K more` suffix — a huge registry (thousands of rows) must not
- * produce a multi-KB log line (plan QC fix wave S-cap). Exported for the
+ * produce a multi-KB log line (cap). Exported for the
  * suite's cap assertions; module surface only — the entry's frozen 47-name
  * export surface deliberately does not re-export it.
  */
@@ -186,7 +185,7 @@ async function runSeedsAdvisory(
 
 /** Loader-fallback path (no service): the structural roles.list read, unchanged. */
 function runStructuralAdvisory(config: Record<string, unknown>, agentsDir: string | undefined): boolean {
-  // The mstar role-id set is mirror-derived (Task 3 surface), never
+  // The mstar role-id set is mirror-derived, never
   // hardcoded: no mirror → no taxonomy reference → one debug.
   if (agentsDir === undefined) {
     log('debug', 'harness-agents mirror absent — fallbacks adoption taxonomy check skipped (config-only advisory)')

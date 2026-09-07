@@ -1,6 +1,5 @@
 /**
- * TaskBoard (plan 20260810-panel-canvas-zones Task 4, spec panel-zones §3;
- * plan 20260813-panel-quick-fixes Task 1) — the tasks-zone kanban: the 5
+ * TaskBoard  — the tasks-zone kanban: the 5
  * PLAN_STATE_IDS columns (Todo / InProgress / InReview / Done /
  * blocked-unknown, in the projection's constant order), each with a localized
  * state-name header + count badge, plan cards (mono ellipsized id + status
@@ -129,7 +128,7 @@ export function TaskBoard({ view, t }: TaskBoardProps) {
                       <span className={css.planCardStatus} data-status={plan.status}>{plan.status}</span>
                     </li>
                   ))}
-                  {/* Overflow toggle (Task 1): the clickable 「更多」/「收起」 —
+                  {/* Overflow toggle : the clickable 「更多」/「收起」 —
                       only for a capped column (expanded or not). */}
                   {overflow > 0 && (
                     <li className={css.kanbanMore}>

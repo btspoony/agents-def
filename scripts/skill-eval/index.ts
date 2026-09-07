@@ -1,11 +1,11 @@
 /**
  * scripts/skill-eval/index.ts — canonical CLI dispatcher for the skill-eval
- * baseline harness (plan 20260907-skill-eval-baseline, Spec A1).
+ * baseline harness.
  *
- *   bun scripts/skill-eval/index.ts prepare --config <absolute-config.json> --out <absolute-run-dir>
- *   bun scripts/skill-eval/index.ts run    --manifest <absolute-manifest.json> --split smoke|dev|heldout \
- *                                          --variants baseline[,candidate[,minimal]] --repeats 1|3
- *   bun scripts/skill-eval/index.ts report --manifest <absolute-manifest.json>
+ * bun scripts/skill-eval/index.ts prepare --config <absolute-config.json> --out <absolute-run-dir>
+ * bun scripts/skill-eval/index.ts run --manifest <absolute-manifest.json> --split smoke|dev|heldout \
+ * --variants baseline[,candidate[,minimal]] --repeats 1|3
+ * bun scripts/skill-eval/index.ts report --manifest <absolute-manifest.json>
  *
  * `prepare` performs zero model calls and delegates to the Task 1 manifest
  * exports unchanged. `run` executes the frozen manifest through argv-array

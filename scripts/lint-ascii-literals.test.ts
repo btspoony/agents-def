@@ -1,6 +1,6 @@
 /**
  * scripts/lint-ascii-literals.ts — src ASCII lint guard semantics (QC fix
- * wave 3: qc1 F-001 + qc2 W-1/S-2 + qc3 F-1). Pins:
+ * wave 3: regression pins. Pins:
  * - findings() reports each code non-ASCII char as file:line:col + U+XXXX;
  * - comment-only non-ASCII yields no findings (comments are stripped);
  * - scanDirs() recursively walks `.ts` files and aggregates findings;

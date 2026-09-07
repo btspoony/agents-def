@@ -1,6 +1,6 @@
 /**
  * Task 3 — `subagent_fork` gate coverage + settle pairing (plan
- * `20260814-dsh-fallbacks-integration`; roadmap §9 W-B1).
+ * ; roadmap §9 W-B1).
  *
  * The fork tool is the subagent delegation tool's fork sibling: fork
  * dispatches carry the SAME Assignment-shaped `{ description, prompt }` args
@@ -60,8 +60,8 @@ const VALID_FORK = `## Assignment
 **Execute as**: fullstack-dev
 **Delegation**: forbidden
 **Task category**: logic
-**Working branch**: feature/20260814-dsh-fallbacks-integration
-**Plan Path**: /proj/plans/20260814-fork-gate.md
+**Working branch**: feature/00000814-dsh-fallbacks-integration
+**Plan Path**: /proj/plans/00000814-fork-gate.md
 
 ## Task 3
 
@@ -128,7 +128,7 @@ function flowOf(app: BootResult): AgentFlowView {
  * Create a temp harness dir seeded with a minimal v2 tree (root status.json
  * + one active workflow `wf-1` + its snapshot) — the v3 write-path
  * precondition: the agent-flow writer / ledger append only to an ACTIVE
- * workflow (plan `20260819-workflow-dsh-viz` Task 2).
+ * workflow .
  */
 async function tempHarness(prefix: string): Promise<{ root: string; harnessDir: string; workflowDir: string }> {
   const root = await mkdtemp(join(tmpdir(), prefix))
@@ -198,7 +198,7 @@ describe('fork gate — subagent_fork under Enforcement: hard', () => {
     expect(view.events[0]).toMatchObject({
       kind: 'dispatch',
       role: 'fullstack-dev',
-      planId: '20260814-fork-gate',
+      planId: '00000814-fork-gate',
       taskId: 'T3',
       taskCategory: 'logic',
       verdict: 'ok',
@@ -271,7 +271,7 @@ describe('fork settle — ledger records fork dispatch + settle (dispatchTools-d
       outcome: 'ok',
       agent: 'fork-session',
       role: 'fullstack-dev',
-      planId: '20260814-fork-gate',
+      planId: '00000814-fork-gate',
       taskId: 'T3',
       durationMs: 1_500,
     })

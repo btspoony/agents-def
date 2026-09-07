@@ -1,5 +1,5 @@
 /**
- * Plan `20260815-dsh-workflow-gate` — the workflow/ralph gate branch.
+ * Plan  — the workflow/ralph gate branch.
  *
  * Task 1 — config surface + args-shape branch skeleton: the `workflowGate`
  * mode short-circuit (`off` → pass-through, no verdict row), the
@@ -398,7 +398,7 @@ describe('workflow gate — hard mode (P-a allowlist)', () => {
     expect(decision.kind).toBe('deny')
   })
 
-  it('(g) allowlist entry containing a control char matches the normalized gate identity (qc1-S2)', async () => {
+  it('(g) allowlist entry containing a control char matches the normalized gate identity', async () => {
     const app = booted = await bootApp({ workflowGate: 'hard', workflowNames: ['deploy-x\u0000'] })
     const advisories = captureAdvisories(app.ctx)
 

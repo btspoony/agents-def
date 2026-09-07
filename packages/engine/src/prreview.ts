@@ -4,20 +4,20 @@
  *
  * Spec source (embedded as constants — no runtime skill-file reads):
  * - mstar-audit/references/pr-review.md § Merge class: the three merge
- *   classes and their verdict effects.
+ * classes and their verdict effects.
  * - mstar-audit/references/pr-review.md § Verdict synthesis: the verdict is
- *   derived from the tally, not chosen; exactly one of ship it / needs fixes
- *   / blocked.
+ * derived from the tally, not chosen; exactly one of ship it / needs fixes
+ * / blocked.
  * - mstar-audit/references/pr-review.md § Tally and derived score: tally
- *   counts, leftover unmet-AC increments, verdict precedence, the locked
- *   score formula (`max(0, 100 - 40*must_fix - 15*should_fix - 3*nit -
- *   10*unverified)`, integer, floor 0) and the override invariant (score
- *   never overrides verdict).
+ * counts, leftover unmet-AC increments, verdict precedence, the locked
+ * score formula (`max(0, 100 - 40*must_fix - 15*should_fix - 3*nit -
+ * 10*unverified)`, integer, floor 0) and the override invariant (score
+ * never overrides verdict).
  * - mstar-audit/references/pr-review.md § Display contract: the two-line
- *   chat header, verbatim.
+ * chat header, verbatim.
  * - mstar-audit/references/pr-review.md § Section emoji map: 🔴 must-fix ·
- *   🟠 should-fix · 🔵 nit · ❓ unverified (escaped as \u{...} per
- *   lint:ascii-literals — bun misdecodes raw UTF-8 in the CLI bundle).
+ * 🟠 should-fix · 🔵 nit · ❓ unverified (escaped as \u{...} per
+ * lint:ascii-literals — bun misdecodes raw UTF-8 in the CLI bundle).
  */
 import { readdirSync, type Dirent } from "node:fs";
 import { isAbsolute, join } from "node:path";
@@ -52,21 +52,21 @@ export const REVIEW_EMOJI: Record<MergeClass | "unverified", string> = {
  * finding.
  */
 export type PrTallyInput = {
-  /** Post-vet accepted findings only. */
+ /** Post-vet accepted findings only. */
   findings: readonly { mergeClass: MergeClass }[];
-  /** Count of residual `- unverified:` items; 0 default. */
+ /** Count of residual `- unverified:` items; 0 default. */
   unverifiedCount?: number;
-  /** Leftover unmet ACs (not met, not cut). */
+ /** Leftover unmet ACs (not met, not cut). */
   unmetAc?: readonly { unsafeToShip: boolean }[];
 };
 
 /** Result of {@link computePrTally}. */
 export type PrTallyResult = {
   verdict: PrVerdict;
-  /** `max(0, 100 - 40*mustFix - 15*shouldFix - 3*nit - 10*unverified)`, integer, floor 0. */
+ /** `max(0, 100 - 40*mustFix - 15*shouldFix - 3*nit - 10*unverified)`, integer, floor 0. */
   scorePct: number;
   tally: { mustFix: number; shouldFix: number; nit: number; unverified: number };
-  /** Two-line chat display header, verbatim per pr-review.md § Display contract. */
+ /** Two-line chat display header, verbatim per pr-review.md § Display contract. */
   chatHeader: string;
 };
 
@@ -82,10 +82,10 @@ export type PrTallyResult = {
  * never overrides the verdict (override invariant).
  */
 export function computePrTally(input: PrTallyInput): PrTallyResult {
-  // Engine boundary guard (plan-QC F-005): a negative unverified count lets
-  // score_pct exceed 100 (100 - 10 * (-1)), a fractional one breaks integer
-  // score arithmetic. Host-hook callers get a TypeError instead of an
-  // out-of-range score; the formula below stays verbatim (SSOT immutable).
+ // Engine boundary guard : a negative unverified count lets
+ // score_pct exceed 100 (100 - 10 * (-1)), a fractional one breaks integer
+ // score arithmetic. Host-hook callers get a TypeError instead of an
+ // out-of-range score; the formula below stays verbatim (SSOT immutable).
   if (
     input.unverifiedCount !== undefined &&
     (!Number.isInteger(input.unverifiedCount) || input.unverifiedCount < 0)
@@ -102,7 +102,7 @@ export function computePrTally(input: PrTallyInput): PrTallyResult {
     else if (finding.mergeClass === "should-fix") shouldFix += 1;
     else nit += 1;
   }
-  // Leftover unmet ACs — tally increment, not a fourth class (§ Linked-issue hygiene):
+ // Leftover unmet ACs — tally increment, not a fourth class (§ Linked-issue hygiene):
   for (const ac of input.unmetAc ?? []) {
     if (ac.unsafeToShip) mustFix += 1;
     else shouldFix += 1;
@@ -119,10 +119,10 @@ export function computePrTally(input: PrTallyInput): PrTallyResult {
 }
 
 // ---------------------------------------------------------------------------
-// validateMstarReviewV1 — mstar.review/v1 envelope (SP3 review-json-kind)
+// validateMstarReviewV1 — mstar.review/v1 envelope 
 // ---------------------------------------------------------------------------
 
-/** The one schema id the envelope validator accepts (SP3 § Schema). */
+/** The one schema id the envelope validator accepts (the review envelope schema). */
 const REVIEW_SCHEMA_ID = "mstar.review/v1";
 
 /** Inspector M1 verdict tokens (mstar-inspector v0.4) — rejected with an
@@ -138,8 +138,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * One accepted PR-review finding in the `mstar.review/v1` envelope (SP3 §
- * Schema). `mergeClass` is harness vocab (MERGE_CLASSES); `title`/`body`
+ * One accepted PR-review finding in the `mstar.review/v1` envelope (the review envelope schema). `mergeClass` is harness vocab (MERGE_CLASSES); `title`/`body`
  * are non-empty strings; the rest are optional.
  */
 export type MstarReviewFinding = {
@@ -154,7 +153,7 @@ export type MstarReviewFinding = {
 };
 
 /**
- * The `mstar.review/v1` envelope (SP3 § Schema) — a parseable review
+ * The `mstar.review/v1` envelope (the review envelope schema) — a parseable review
  * document with harness vocab, sibling to the Markdown pr-review report.
  * `verdict` is PR_VERDICTS; `tally` (when present) must be a full
  * `PrTallyResult` (shape-checked) whose `verdict` must equal the top-level
@@ -233,7 +232,7 @@ function checkProvidedTallyShape(tally: Record<string, unknown>, violations: Val
 }
 
 /**
- * Validate a `mstar.review/v1` envelope (SP3 § Schema). Fail-loud sibling
+ * Validate a `mstar.review/v1` envelope (the review envelope schema). Fail-loud sibling
  * of {@link validatePrReviewReport} (the Markdown report validator) —
  * shares PR_VERDICTS / MERGE_CLASSES only, never reuses the Markdown
  * parser. Inspector M1 vocab (`comment|request_changes|approve`,
@@ -348,9 +347,9 @@ export function validateMstarReviewV1(doc: unknown): GateResult {
     if (!isPlainObject(doc.tally)) {
       violations.push(violation("high", "review.invalid-tally", "tally must be a PrTallyResult object"));
     } else {
-      // Shape gate (Greptile P1): a provided tally must match the
-      // PrTallyResult computePrTally produces — hand-authored envelopes
-      // must not persist a doctored/malformed tally.
+ // Shape gate (Greptile P1): a provided tally must match the
+ // PrTallyResult computePrTally produces — hand-authored envelopes
+ // must not persist a doctored/malformed tally.
       checkProvidedTallyShape(doc.tally, violations);
       if (doc.tally.verdict !== doc.verdict) {
         violations.push(violation(
@@ -385,12 +384,12 @@ export function validateMstarReviewV1(doc: unknown): GateResult {
 }
 
 // ---------------------------------------------------------------------------
-// synthesizeReview — SP3 review-json-kind § synthesizeReview
+// synthesizeReview § synthesizeReview
 // ---------------------------------------------------------------------------
 
 /**
  * Deterministic short Markdown summary for {@link synthesizeReview} when the
- * caller omits `summary_md` (SP3 § synthesizeReview — template locked in the
+ * caller omits `summary_md` (template locked in the
  * engine test; no LLM). Tally line mirrors the chat display contract; each
  * finding contributes one `- <mergeClass>: <title>` bullet.
  */
@@ -411,7 +410,7 @@ function defaultReviewSummary(tally: PrTallyResult, findings: MstarReviewV1["fin
 
 /**
  * Fold already-vetted findings into a complete `mstar.review/v1` envelope
- * (SP3 § synthesizeReview). Pure and synchronous — verdict/tally come ONLY
+ * . Pure and synchronous — verdict/tally come ONLY
  * from {@link computePrTally}; no I/O, no GitHub, no store, no seat
  * dispatch. `findings` pass through untouched; `target` is carried when
  * provided. When `summary_md` is omitted, {@link defaultReviewSummary}
@@ -448,11 +447,11 @@ export function synthesizeReview(input: {
  *
  * - `pr` — reviewed PR number `n`.
  * - `branch` — bare branch, `slug` is the pre-slugged `<branch-slug>`
- *   (caller slugs; the resolver only guards path safety).
+ * (caller slugs; the resolver only guards path safety).
  * - `diff` — arbitrary changeset. When `headSha` is a non-empty string its
- *   short form (first 7 hex chars) lands in the filename; when absent or an
- *   empty string the bare `-diff` stem is used — a missing SHA is **never
- *   fabricated** (pr-review.md § Local report archive, Filename bullet).
+ * short form (first 7 hex chars) lands in the filename; when absent or an
+ * empty string the bare `-diff` stem is used — a missing SHA is **never
+ * fabricated** (pr-review.md § Local report archive, Filename bullet).
  */
 export type PrReportTarget =
   | { kind: "pr"; n: number }
@@ -491,7 +490,7 @@ function reportBaseStem(date: string, target: PrReportTarget): string {
     case "branch":
       return `${date}-${requireSafeComponent(target.slug, "target.slug (branch-slug)")}`;
     case "diff":
-      // Absent OR empty headSha => bare `-diff` stem; never fabricate a SHA.
+ // Absent OR empty headSha => bare `-diff` stem; never fabricate a SHA.
       if (!target.headSha) return `${date}-diff`;
       return `${date}-diff-${requireSafeComponent(target.headSha, "target.headSha").slice(0, SHORT_SHA_WIDTH)}`;
   }
@@ -503,16 +502,16 @@ function reportBaseStem(date: string, target: PrReportTarget): string {
  * never writes and never overwrites):
  *
  * - `<YYYY-MM-DD>-pr<N>.md` for PR targets; bare branch →
- *   `<YYYY-MM-DD>-<branch-slug>.md`; diff with head SHA →
- *   `<YYYY-MM-DD>-diff-<short-head-sha>.md`; diff without →
- *   `<YYYY-MM-DD>-diff.md` (never fabricate a SHA).
+ * `<YYYY-MM-DD>-<branch-slug>.md`; diff with head SHA →
+ * `<YYYY-MM-DD>-diff-<short-head-sha>.md`; diff without →
+ * `<YYYY-MM-DD>-diff.md` (never fabricate a SHA).
  * - `stage: 1 | 2` requires `slug` (the seat Assignment's `<domain>-<seat>`
- *   slug) and produces the Stage 1/2 evidence-file stem
- *   `<stem>-stage<1|2>-<slug>.md`.
+ * slug) and produces the Stage 1/2 evidence-file stem
+ * `<stem>-stage<1|2>-<slug>.md`.
  * - Same day, same target (same final stem): scans ALL existing files in
- *   `reportsDir` with that stem and appends `-r2`, `-r3`, ... on collision —
- *   a prior report is never overwritten. Report files and evidence files
- *   escalate independently (different stems).
+ * `reportsDir` with that stem and appends `-r2`, `-r3`, ... on collision —
+ * a prior report is never overwritten. Report files and evidence files
+ * escalate independently (different stems).
  * - `date` defaults to the local calendar date and must be `YYYY-MM-DD`.
  */
 export function prReviewReportPath(opts: {
@@ -550,9 +549,9 @@ export function prReviewReportPath(opts: {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") dirents = [];
     else throw error;
   }
-  // Any matching name is occupied — not just regular files (plan-QC F-002):
-  // a same-stem directory or symlink would let `join(reportsDir, name)`
-  // collide or follow a symlink out of reportsDir on the caller's write.
+ // Any matching name is occupied — not just regular files :
+ // a same-stem directory or symlink would let `join(reportsDir, name)`
+ // collide or follow a symlink out of reportsDir on the caller's write.
   let maxRevision = 0;
   for (const dirent of dirents) {
     const match = sameStem.exec(dirent.name);
@@ -669,22 +668,22 @@ function parseCommentsState(raw: string | undefined): PrCommentsState | null {
  *
  * - `type: pr-review` required.
  * - `verdict` exactly one of the three verdict tokens (§ Verdict synthesis)
- *   and CONSISTENT with the tally (any must_fix -> blocked; else any
- *   should_fix -> needs fixes; else ship it).
+ * and CONSISTENT with the tally (any must_fix -> blocked; else any
+ * should_fix -> needs fixes; else ship it).
  * - `score_pct` integer 0-100 and equal to the locked-formula recompute
- *   from the document's own tally via {@link computePrTally}
- *   (mismatch = hand-arithmetic drift — the exact defect class this gate
- *   exists to catch).
+ * from the document's own tally via {@link computePrTally}
+ * (mismatch = hand-arithmetic drift — the exact defect class this gate
+ * exists to catch).
  * - `tally` flow map with the four classes.
  * - `comments` tri-state: `posted` (alias `yes`) | `n/a-no-pr` | `failed`.
- *   The states are distinct: a FAILED POST IS `FAILED`, never
- *   `n/a-no-pr`; `review_url` must pair accordingly (`http(s)://` for
- *   posted, `n/a` for n/a-no-pr, a `failed: <gh error summary>` for failed).
+ * The states are distinct: a FAILED POST IS `FAILED`, never
+ * `n/a-no-pr`; `review_url` must pair accordingly (`http(s)://` for
+ * posted, `n/a` for n/a-no-pr, a `failed: <gh error summary>` for failed).
  * - `generated_at` must be `YYYY-MM-DD` (DATE_RE).
  * - `tier` optional: `quick | default | deep`; absent is valid (legacy
- *   reports without tier still pass — SP-A amendment).
+ * reports without tier still pass — SP-A amendment).
  * - `elapsed` optional: non-negative integer minutes; absent is valid
- *   (legacy reports without elapsed still pass).
+ * (legacy reports without elapsed still pass).
  */
 export function validatePrReviewReport(text: string): GateResult {
   const violations: ValidationResult[] = [];
@@ -763,8 +762,8 @@ export function validatePrReviewReport(text: string): GateResult {
     violations.push(violation("medium", "prreview.report.invalid-tier", `tier "${doc.tier}" is not one of ${JSON.stringify(PR_TIERS)}`, "use quick | default | deep, or omit the key"));
   }
 
-  // Optional `elapsed` (measured review wall-clock, integer minutes >= 0):
-  // absent is valid - legacy reports without elapsed still pass.
+ // Optional `elapsed` (measured review wall-clock, integer minutes >= 0):
+ // absent is valid - legacy reports without elapsed still pass.
   if (doc.elapsed !== undefined && !/^\d+$/.test(doc.elapsed.trim())) {
     violations.push(violation("medium", "prreview.report.invalid-elapsed", "elapsed must be a non-negative integer (minutes)", "use non-negative integer minutes (e.g. elapsed: 12), or omit the key"));
   }
@@ -836,7 +835,7 @@ export type ReviewInlineComment = {
 export type ReviewPostPlan = {
   ownerRepo: string;
   pr: number;
-  /** PR head SHA — the Reviews API `commit_id`. */
+ /** PR head SHA — the Reviews API `commit_id`. */
   commitId: string;
   event: "COMMENT";
   body: string;
@@ -888,22 +887,22 @@ function requireInlineComment(comment: ReviewInlineComment, index: number): Revi
  * 422 fallback stay with the CLI, which owns the network):
  *
  * - Resolves the target from `gh pr view --json url,headRefOid` output:
- *   parse `owner/repo` from `url` ONLY — the BASE repo that owns the PR
- *   number. `headRepository` (fork head-repo data) is IGNORED: fork PRs
- *   are legal, and a fork's owner/name must never leak into the API path.
- *   It is never used as a fallback either.
+ * parse `owner/repo` from `url` ONLY — the BASE repo that owns the PR
+ * number. `headRepository` (fork head-repo data) is IGNORED: fork PRs
+ * are legal, and a fork's owner/name must never leak into the API path.
+ * It is never used as a fallback either.
  * - Missing/invalid `headRefOid` throws — there is no commit_id without
- *   it.
+ * it.
  * - `event` is always the literal `"COMMENT"`; no other value exists in
- *   this contract.
+ * this contract.
  * - Inline comments validated per-entry (path / positive line / RIGHT).
  */
 export function planReviewPost(
   prView: { url?: string; headRepository?: unknown; headRefOid?: string },
   payload: { body: string; comments?: readonly ReviewInlineComment[] },
 ): ReviewPostPlan {
-  // Fork-PR safe: `headRepository` may be present (fork data) — simply
-  // ignored; only `url` and `headRefOid` are load-bearing here.
+ // Fork-PR safe: `headRepository` may be present (fork data) — simply
+ // ignored; only `url` and `headRefOid` are load-bearing here.
   if (typeof prView.url !== "string" || prView.url === "") {
     throwPlanError("prView.url", "missing or empty - cannot resolve the base owner/repo");
   }
@@ -972,13 +971,13 @@ const CHANGESET_MODE_RULES: Record<ReviewChangesetMode, { hasRefs: boolean }> = 
  * (pr-review.md § Worktree isolation Pre-flight bullet, all modes):
  *
  * - Named refs must resolve in modes that HAVE refs (pr / branch / commit);
- *   establish them with explicit refspecs first.
+ * establish them with explicit refspecs first.
  * - The changeset must be NON-empty in ALL modes — an empty changeset
- *   reports "no changes to review" and stops before any lens fan-out.
+ * reports "no changes to review" and stops before any lens fan-out.
  * - For working-tree input, untracked-only changes ARE a non-empty
- *   changeset: the caller folds `git ls-files --others
- *   --exclude-standard` output into `changesetEmpty: false` when anything
- *   is listed.
+ * changeset: the caller folds `git ls-files --others
+ * --exclude-standard` output into `changesetEmpty: false` when anything
+ * is listed.
  */
 export function preflightChangeset(mode: ReviewChangesetMode, probe: { refsResolve: boolean; changesetEmpty: boolean }): GateResult {
   const violations: ValidationResult[] = [];
@@ -1017,15 +1016,15 @@ const FILE_WATCH_TOTAL_LINES = 1000;
 /** Sizing result: band + derived seat plan and advisories. */
 export type PrReviewSizing = {
   band: PrSizeBand;
-  /** True for too-large (>~1000) — advise a split, never auto-blocked. */
+ /** True for too-large (>~1000) — advise a split, never auto-blocked. */
   adviseSplit: boolean;
   /** Stage 1 collect seats (§ Scale-driven fan-out table). Kept-wave
-   * qualifier: these seats apply only when the deep collect wave is KEPT —
-   * by default (pinned diff pack present) the fold dispatches none
-   * (pr-review.md § Review pipeline fold default). */
+ * qualifier: these seats apply only when the deep collect wave is KEPT —
+ * by default (pinned diff pack present) the fold dispatches none
+ * (pr-review.md § Review pipeline fold default). */
   collectSeats: 2 | 3;
   /** File-size watch fired → advise extract/decompose ("decompose, then
-   * add"). Independent of the diff size. */
+ * add"). Independent of the diff size. */
   fileDecomposeAdvice: boolean;
 };
 
@@ -1034,13 +1033,13 @@ export type PrReviewSizing = {
  * (pr-review.md § Sizing & change shape + § Scale-driven fan-out):
  *
  * - ≤~300 reviewable/acceptable → band `small`; >~300 → `large`;
- *   >~1000 → `too-large` + split advice (a should-fix finding with split
- *   advice or a verdict note — never auto-`blocked`).
+ * >~1000 → `too-large` + split advice (a should-fix finding with split
+ * advice or a verdict note — never auto-`blocked`).
  * - Stage 1 collect seats: small → 2 (code + security); large/too-large →
- *   3 by domain.
+ * 3 by domain.
  * - `largestTouchedFileTotal` drives `fileDecomposeAdvice` INDEPENDENTLY
- *   of the diff size — a small diff materially growing a file past ~1000
- *   total lines gets "decompose, then add".
+ * of the diff size — a small diff materially growing a file past ~1000
+ * total lines gets "decompose, then add".
  */
 export function prReviewSizing(input: { changedLines: number; largestTouchedFileTotal?: number }): PrReviewSizing {
   if (!Number.isInteger(input.changedLines) || input.changedLines < 0) {
@@ -1081,23 +1080,23 @@ export function prReviewSizing(input: { changedLines: number; largestTouchedFile
 export type PrReviewTier = "quick" | "default" | "deep";
 
 /**
- * Per-tier time budget for the `amazing-pr-review` pipeline (SP1 tier
+ * Per-tier time budget for the `amazing-pr-review` pipeline (tier
  * time-budget). Prose SSOT: pr-review.md § Review depth — its Budget column
  * carries the wall-clock minutes; the per-seat caps below are the engine
  * contract, rendered into seat prompts, never duplicated as numbers in prose.
  *
  * - `wallClockMinutes`: prompt-discipline target for the whole review,
- *   measured worktree-setup → local report saved by the main agent.
- *   Overruns are declared in the report `- notes:` — budgets are never a
- *   host-level hard kill.
+ * measured worktree-setup → local report saved by the main agent.
+ * Overruns are declared in the report `- notes:` — budgets are never a
+ * host-level hard kill.
  * - `maxSeats`: review seats only — Stage 2 domain seats + the independent
- *   cross-domain security seat; NOT Stage 1 collect seats (collect fan-out
- *   stays governed by pr-review.md § Scale-driven fan-out).
+ * cross-domain security seat; NOT Stage 1 collect seats (collect fan-out
+ * stays governed by pr-review.md § Scale-driven fan-out).
  * - `perSeatFindingsCap` / `evidenceTokensCap` / `fileOpenCap`: per-seat
- *   expansion stops (findings / evidence payload tokens / file opens; the
- *   pinned diff snapshot read does not count). Baseline assumption: 100
- *   tok/s output — wall-clock is dominated by reads/tool latency, which
- *   `fileOpenCap` bounds.
+ * expansion stops (findings / evidence payload tokens / file opens; the
+ * pinned diff snapshot read does not count). Baseline assumption: 100
+ * tok/s output — wall-clock is dominated by reads/tool latency, which
+ * `fileOpenCap` bounds.
  *
  * No new sizing bands: the table references tiers only (pr-review.md
  * § Sizing & change shape stays the only sizing SSOT). */
@@ -1137,18 +1136,18 @@ export type PrReviewSeatPromptOptions = {
   securitySeat?: boolean;
   tier?: PrReviewTier;
   /** Absolute path to the pinned diff snapshot written by `worktree-setup`
-   * (review artifact beside the sidecar). Non-empty → the prompt gains a
-   * read-first ingredient line pointing at it. */
+ * (review artifact beside the sidecar). Non-empty → the prompt gains a
+ * read-first ingredient line pointing at it. */
   diffFile?: string;
   /** Stage-2 only (`true` + `stage: 1` throws): the collect wave was folded
-   * onto this domain seat — the deep-tier fold default (pinned diff pack
-   * present; SSOT pr-review.md § Review pipeline; prose "collection folded
-   * in = seat reuse" = § Review depth default-tier row). Kept-wave
-   * exceptions dispatch collect seats instead. Requires a non-empty
-   * `diffFile`, and the independent cross-domain security seat is never
-   * folded — either contradiction throws. The prompt gains one bullet after
-   * the `## Budget` block telling the seat to do its own collection, staying
-   * within the budget block. Omitted/`false` → no line. */
+ * onto this domain seat — the deep-tier fold default (pinned diff pack
+ * present; SSOT pr-review.md § Review pipeline; prose "collection folded
+ * in = seat reuse" = § Review depth default-tier row). Kept-wave
+ * exceptions dispatch collect seats instead. Requires a non-empty
+ * `diffFile`, and the independent cross-domain security seat is never
+ * folded — either contradiction throws. The prompt gains one bullet after
+ * the `## Budget` block telling the seat to do its own collection, staying
+ * within the budget block. Omitted/`false` → no line. */
   collectFolded?: boolean;
 };
 
@@ -1159,50 +1158,50 @@ export type PrReviewSeatPromptOptions = {
  * Ingredients:
  *
  * - Absolute path to `references/pr-review.md` under `skillRoot` + the
- *   sections to read; absolute review `worktreePath`.
- * - Per-seat budget block (`## Budget`, SP1 tier time-budget): findings /
- *   evidence-token / file-open caps interpolated from `PR_REVIEW_TIER_BUDGETS`
- *   — expansion stops for the seat, never a host-level hard stop.
+ * sections to read; absolute review `worktreePath`.
+ * - Per-seat budget block (`## Budget`, tier time budget): findings /
+ * evidence-token / file-open caps interpolated from `PR_REVIEW_TIER_BUDGETS`
+ * — expansion stops for the seat, never a host-level hard stop.
  * - `collectFolded: true` (stage 2 only; stage 1, a missing `diffFile`, or
- *   the security seat throws): one bullet after the `## Budget` block — the
- *   collect wave folded onto this seat, so it collects itself (pinned diff
- *   snapshot/pack first, then in-domain changed files) within the budget
- *   block.
+ * the security seat throws): one bullet after the `## Budget` block — the
+ * collect wave folded onto this seat, so it collects itself (pinned diff
+ * snapshot/pack first, then in-domain changed files) within the budget
+ * block.
  * - Recon facts + decided tradeoffs.
  * - Hard Rules 4/5 VERBATIM.
  * - Payload-return contract (write-blocked-safe; main agent writes files).
  * - No-verdict / never-post clauses.
  * - Slug mandate `<domain>-<seat>`.
  * - Stage 2 adds finding-format.md (+ security-review.md for security
- *   seats) and the Merge-class instruction.
+ * seats) and the Merge-class instruction.
  * - Tier cuts (SP-A amendment): quick drops the cross-domain /
- *   independent-security block, the collect-wave wording AND shrinks the
- *   lens/prompt-ingredient set; default drops the same blocks (SSOT
- *   pr-review.md § Review depth, default-tier row: "collection folded in =
- *   seat reuse" — no separate Stage-1 wave, so collect-wave wording is
- *   deep-only); deep keeps everything.
- *   Tier omitted → `default` (pr-review.md § Review depth: the no-flag
- *   landing tier).
+ * independent-security block, the collect-wave wording AND shrinks the
+ * lens/prompt-ingredient set; default drops the same blocks (SSOT
+ * pr-review.md § Review depth, default-tier row: "collection folded in =
+ * seat reuse" — no separate Stage-1 wave, so collect-wave wording is
+ * deep-only); deep keeps everything.
+ * Tier omitted → `default` (pr-review.md § Review depth: the no-flag
+ * landing tier).
  */
 export function prReviewSeatPrompt(opts: PrReviewSeatPromptOptions): string {
   if (opts.stage !== 1 && opts.stage !== 2) {
     throw new TypeError(`prReviewSeatPrompt: stage must be 1 or 2 - got ${JSON.stringify(String(opts.stage))}`);
   }
   if (opts.collectFolded === true && opts.stage !== 2) {
-    // A Stage 1 collect seat IS the collect wave - folding it onto itself is
-    // a contradiction, so fail loud instead of rendering a nonsense line.
+ // A Stage 1 collect seat IS the collect wave - folding it onto itself is
+ // a contradiction, so fail loud instead of rendering a nonsense line.
     throw new TypeError("prReviewSeatPrompt: collectFolded requires stage 2 - a Stage 1 seat with a folded collect wave is a contradiction");
   }
   if (opts.collectFolded === true && !opts.diffFile) {
-    // The fold bullet tells the seat to start from the pinned diff
-    // snapshot/pack; without a pack that instruction is self-contradictory -
-    // fail loud (mirrors the stage-1 contradiction guard above).
+ // The fold bullet tells the seat to start from the pinned diff
+ // snapshot/pack; without a pack that instruction is self-contradictory -
+ // fail loud (mirrors the stage-1 contradiction guard above).
     throw new TypeError("prReviewSeatPrompt: collectFolded requires a pinned diff snapshot (diffFile) - folding without a pack contradicts the fold line");
   }
   if (opts.collectFolded === true && opts.securitySeat === true) {
-    // The independent cross-domain security seat survives every fold (prose
-    // SSOT pr-review.md § Review pipeline) - refuse the impossible combo
-    // like the guards above.
+ // The independent cross-domain security seat survives every fold (prose
+ // SSOT pr-review.md § Review pipeline) - refuse the impossible combo
+ // like the guards above.
     throw new TypeError("prReviewSeatPrompt: the independent cross-domain security seat is never folded - collectFolded applies to domain seats only");
   }
   const domain = opts.domain.trim();
@@ -1231,7 +1230,7 @@ export function prReviewSeatPrompt(opts: PrReviewSeatPromptOptions): string {
   lines.push(`- Domain: **${domain}**. Conclude ONLY on your own domain.`);
   const tier = opts.tier ?? "default";
   if (tier === "deep") {
-    // Cross-domain / independent-security-seat block — deep only (SP-A):
+ // Cross-domain / independent-security-seat block — deep only (SP-A):
     lines.push(
       "- A large PR (>~300 changed lines, or spanning multiple change surfaces/domains) or a security-sensitive surface (auth, LLM, supply chain, data \u2014 `references/security-review.md` extended surfaces) adds an **independent cross-domain security seat**.",
     );
@@ -1268,18 +1267,18 @@ export function prReviewSeatPrompt(opts: PrReviewSeatPromptOptions): string {
   lines.push("## Budget");
   lines.push("");
   if (opts.stage === 2) {
-    // Findings cap is a Stage-2-only concept: Stage-1 collect seats' output
-    // contract is "NO findings table" - the cap line would contradict it.
-    // Evidence-token / file-open caps and the stop clause still bind there.
+ // Findings cap is a Stage-2-only concept: Stage-1 collect seats' output
+ // contract is "NO findings table" - the cap line would contradict it.
+ // Evidence-token / file-open caps and the stop clause still bind there.
     lines.push(`- At most ${budget.perSeatFindingsCap} findings.`);
   }
   lines.push(`- Evidence payload \u2248 ${budget.evidenceTokensCap} tokens.`);
   lines.push(`- Open at most ${budget.fileOpenCap} files (the pinned diff snapshot read does not count).`);
   lines.push("- Caps are expansion stops for this seat \u2014 when a cap is reached, stop expanding and return what you have; declare truncated coverage in the payload tail.");
   if (opts.collectFolded === true) {
-    // Stage-2 fold (SP2 context-pack): the collect wave folded onto this
-    // domain seat - say so, anchored to the budget block above. Reachable
-    // only with stage 2 (stage 1 + collectFolded throws at the top).
+ // Stage-2 fold (context-pack): the collect wave folded onto this
+ // domain seat - say so, anchored to the budget block above. Reachable
+ // only with stage 2 (stage 1 + collectFolded throws at the top).
     lines.push(
       "- Collect wave folded \u2014 you do your own collection: start from the pinned diff snapshot/pack, then open changed files in your domain directly (stay within the budget block); record `file:line` observations as you go.",
     );
@@ -1302,9 +1301,9 @@ export function prReviewSeatPrompt(opts: PrReviewSeatPromptOptions): string {
   lines.push("## Output contract (payload return)");
   lines.push("");
   if (tier === "quick") {
-    // quick shrinks the lens set: one seat, one pass — the in-domain
-    // security lens runs IN SEAT (security-review.md §2/§3 discipline);
-    // no separate lens stage / independent security seat exists.
+ // quick shrinks the lens set: one seat, one pass — the in-domain
+ // security lens runs IN SEAT (security-review.md §2/§3 discipline);
+ // no separate lens stage / independent security seat exists.
     lines.push("- Security lens: run IN SEAT \u2014 where a surface is sensitive, read `references/security-review.md` \u00a72/\u00a73 discipline yourself; NO independent security seat is fanned out.");
   }
   if (opts.stage === 1) {
@@ -1380,18 +1379,18 @@ function findingViolation(severity: Severity, code: string, message: string, fix
  * PR-only Merge class contract (pr-review.md § Merge class):
  *
  * - Every finding opens with `### [CATEGORY-NN] Title`; CATEGORY ∈
- *   `AUDIT_CATEGORIES` (case-insensitive read, canonical uppercase forms
- *   per category codes), NN numeric.
+ * `AUDIT_CATEGORIES` (case-insensitive read, canonical uppercase forms
+ * per category codes), NN numeric.
  * - Required fields: Evidence / Impact / Effort / Risk / Confidence —
- *   Effort / Risk / Confidence each validated as their LEADING token
- *   (Effort via `AUDIT_EFFORTS`, Risk via `AUDIT_RISKS`, Confidence via
- *   HIGH | MED | LOW with `MEDIUM` tolerated as the MED alias); free-text
- *   gloss after a separator is allowed and ignored.
+ * Effort / Risk / Confidence each validated as their LEADING token
+ * (Effort via `AUDIT_EFFORTS`, Risk via `AUDIT_RISKS`, Confidence via
+ * HIGH | MED | LOW with `MEDIUM` tolerated as the MED alias); free-text
+ * gloss after a separator is allowed and ignored.
  * - Each Evidence citation matches `path:line` (`\S+:\d+` — the path may
- *   but need not carry an extension).
+ * but need not carry an extension).
  * - `prVariant` (default false): every finding additionally carries
- *   **Merge class** ∈ {must-fix, should-fix, nit} placed IMMEDIATELY after
- *   Confidence.
+ * **Merge class** ∈ {must-fix, should-fix, nit} placed IMMEDIATELY after
+ * Confidence.
  */
 export function validateFindingDoc(text: string, opts: ValidateFindingDocOptions = {}): GateResult {
   const violations: ValidationResult[] = [];
@@ -1420,8 +1419,8 @@ export function validateFindingDoc(text: string, opts: ValidateFindingDocOptions
     const categoryToken = headingMatch[1];
     const label = `[${categoryToken}-${headingMatch[2]}]`;
     const where = `finding ${label} (line ${headingEntry.index + 1})`;
-    // Case-insensitive read: the Status-block word form (bug, security, ...)
-    // or the finding-format Code form (BUG, SEC, ...).
+ // Case-insensitive read: the Status-block word form (bug, security, ...)
+ // or the finding-format Code form (BUG, SEC, ...).
     const mappedCategory = (AUDIT_CATEGORIES as readonly string[]).includes(categoryToken.toLowerCase())
       ? categoryToken.toLowerCase()
       : FINDING_CATEGORY_BY_CODE[categoryToken.toUpperCase()];
@@ -1450,7 +1449,7 @@ export function validateFindingDoc(text: string, opts: ValidateFindingDocOptions
     }
     const evidence = fieldLines.get("Evidence");
     if (evidence !== undefined) {
-      // Citations: backticked `path:line` tokens separated by ";" / ",".
+ // Citations: backticked `path:line` tokens separated by ";" / ",".
       const cites = [...evidence.value.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
       if (cites.length === 0 && evidence.value.trim() !== "") {
         violations.push(findingViolation(
@@ -1492,8 +1491,8 @@ export function validateFindingDoc(text: string, opts: ValidateFindingDocOptions
     const confidenceField = fieldLines.get("Confidence");
     let confidenceOk = confidenceField !== undefined;
     if (confidenceField !== undefined) {
-      // Leading token only — free-text gloss after a separator is fine
-      // (finding-format.md: `HIGH (read the code, certain) / ...`).
+ // Leading token only — free-text gloss after a separator is fine
+ // (finding-format.md: `HIGH (read the code, certain) / ...`).
       const confidenceToken = (CONFIDENCE_ENUM_RE.exec(confidenceField.value)?.[1] ?? "").toUpperCase();
       const normalized = confidenceToken === "MEDIUM" ? "MED" : confidenceToken;
       if (!(AUDIT_CONFIDENCES as readonly string[]).includes(normalized)) {
@@ -1567,17 +1566,17 @@ export type ResolvePrReviewTierInput = {
  * (SP-A amendment; first hit wins):
  *
  * 1. Explicit keyword → that tier (user intent beats heuristics; a lone
- *    `default` returns `default` BEFORE the band/sensitive heuristics).
- *    Any two DISTINCT keywords (quick / default / deep) → hard-stop
- *    conflict error — never silently take a priority. (Empty/omitted =
- *    no flag.)
+ * `default` returns `default` BEFORE the band/sensitive heuristics).
+ * Any two DISTINCT keywords (quick / default / deep) → hard-stop
+ * conflict error — never silently take a priority. (Empty/omitted =
+ * no flag.)
  * 2. Too large (>~1000 / band too-large) → advise split; review anyway →
- *    deep.
+ * deep.
  * 3. Sensitive surface (auth / LLM / supply chain / data) → deep at any
- *    size.
+ * size.
  * 4. Large (>~300 / band large) → deep.
  * 5. Small: tiny-mechanical shape (docs-only / rename / formatting / pure
- *    deletion) → quick; anything else (real code change) → default.
+ * deletion) → quick; anything else (real code change) → default.
  */
 export function resolvePrReviewTier(input: ResolvePrReviewTierInput): PrReviewTier {
   const keywords = [...new Set(input.keywords ?? [])];
@@ -1586,12 +1585,12 @@ export function resolvePrReviewTier(input: ResolvePrReviewTierInput): PrReviewTi
       `resolvePrReviewTier: conflicting tier keywords ${keywords.join(" + ")} - at most one tier keyword may be given; report the conflict and ask the user to pick one`,
     );
   }
-  // step 1: explicit keyword wins (user intent beats heuristics)
+ // step 1: explicit keyword wins (user intent beats heuristics)
   if (keywords.length === 1) return keywords[0];
   if (input.band === "too-large") return "deep"; // step 2: too large → review anyway → deep
   if (input.sensitiveSurface === true) return "deep"; // step 3: sensitive never thinned
   if (input.band === "large") return "deep"; // step 4: large → deep
-  // step 5: small band
+ // step 5: small band
   if (input.tinyMechanical === true) return "quick";
   return "default";
 }

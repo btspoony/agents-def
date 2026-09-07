@@ -9,18 +9,16 @@
  * Two strictly separated inputs (spec §3):
  * - schema constants (`./schema.ts`) — the 5 iteration steps (PHASE_IDS), the
  *   5 kanban buckets (PLAN_STATE_IDS — Blocked/unknown merged into
- *   `blocked-unknown`, plan 20260813-panel-quick-fixes Task 1) and the
+ *   `blocked-unknown`) and the
  *   expected role pipeline (EXPECTED_ROLE_FLOW), all client-side design
  *   knowledge;
  * - catalog evidence — `iteration.gate.transition` lights the current step
- *   (steps before it become `done` — plan 20260812-panel-f5-iteration-zone-fix
- *   Task 1, its forward target becomes `next`), `gate.ok/violations` become
+ *   (steps before it become `done`, its forward target becomes `next`), `gate.ok/violations` become
  *   the PASS/FAIL verdict + count, and `state.plans[].status` rows fall into
  *   the exact-match kanban buckets. `iteration.compassStatus` (the steering
  *   compass frontmatter `status`, `'active' | 'locked'` — spec panel-f4 §2.3
  *   R9 / §5 D5) re-derives the current step during Phase 1: `'active'` WITH a
- *   `phase-2-execute` transition (compass and gate mutually consistent — QC
- *   wave F-001) → Step 1 (iteration-start) is current with verdict 'unknown'
+ *   `phase-2-execute` transition (compass and gate mutually consistent) → Step 1 (iteration-start) is current with verdict 'unknown'
  *   (Phase 1 has no gate evaluation → no PASS/FAIL badge) + next Step 2;
  *   `'active'` with a transition past Phase 2 (an inconsistent harness
  *   state), `'locked'`, or missing → the transition-driven logic below
@@ -40,26 +38,21 @@
  *   / truncated`, `agents` (entities + actual/supervise edges + executing/
  *   pending counts — spec §4).
  *
- * Agent-entity semantics (plan 20260811-panel-f3-agent-general — the
- * per-role aggregation refactor): entities aggregate by ROLE, not by session
+ * Agent-entity semantics (the per-role aggregation): entities aggregate by ROLE, not by session
  * — a KNOWN_AGENTS roster role keys its own card (same role across sessions
  * folds into one card ×N), and EVERY non-roster dispatch (`scout`,
  * unregistered roles, anonymous `role === ''`) folds into the single
  * `general` bucket entity (key `'general'`, role shown `'general'`). The
  * legacy `unexpected` zone is GONE — stage-null non-on-demand entities now
- * project `zone: 'general'`. Placement (plan 20260812-panel-f5-agent-layout
- * Task 1, user 2026-08-12): the projection only declares the zone — the
+ * project `zone: 'general'`. Placement: the projection only declares the zone — the
  * RENDER places `zone: 'general'` entities in an unknown sub-partition at
- * the bottom of the LAST column (plan 20260812-panel-f5-design-system Task
- * 5, user 2026-08-12 feedback #3 — the standalone rightmost unknown column
+ * the bottom of the LAST column (the standalone rightmost unknown column
  * is superseded: 4 columns total). The SDD loop back-edge (sdd-implement →
- * general) stays REMOVED from the projection (plan 20260811-panel-f4-agent-view
- * Task 1); the F5 supervise line is a SEPARATE sub-bucket edge
+ * general) stays REMOVED from the projection; the supervise line is a SEPARATE sub-bucket edge
  * (`kind: 'supervise'`, see `superviseEdges`). The event-log `unexpected`
  * badge is a SEPARATE, unchanged semantic (`expected` ⟺ role ∈
  * EXPECTED_ROLE_FLOW union). The `sdd-implement` column is further split
- * into implementor / reviewer SUB-BUCKETS (plan 20260812-panel-f5-agent-layout
- * Task 1): every entity carries a projected `bucket` field ('implementor' /
+ * into implementor / reviewer SUB-BUCKETS: every entity carries a projected `bucket` field ('implementor' /
  * 'reviewer' / null via SDD_BUCKET_ROLES — a layout dimension ORTHOGONAL to
  * expectedness: on-demand roles keep their `unexpected` badge inside the
  * implementor bucket).
@@ -74,12 +67,11 @@
  * missing/unreadable → agents roster + `degraded` (full KNOWN_AGENTS idle
  * cards, no executing/pending claims); 0 events → `empty` (idle roster +
  * pending skeleton). `state.project` missing/malformed → the additive
- * project rollup zone (compass AC-4) degrades to empty aggregates — the
+ * project rollup zone degrades to empty aggregates — the
  * four existing ZoneView shapes are unaffected. `iteration.compassStatus`
  * missing, non-union (old catalog rows / fixtures — the field is OPTIONAL,
  * spec D5), or `'active'`
- * with a transition past Phase 2 (an inconsistent harness state — QC wave
- * F-001) degrades to the existing transition-driven current-step logic
+ * with a transition past Phase 2 (an inconsistent harness state) degrades to the existing transition-driven current-step logic
  * (Step 2→4) — backward compatible, `active` semantics unchanged.
  */
 
@@ -108,8 +100,8 @@ export type FlowEventStatus = 'dispatched' | 'advisory' | 'denied' | 'ok' | 'err
 
 /**
  * One projected agent-flow event (spec agent-flow-catalog-graph §2.4 —
- * unchanged by the zone refactor; plan `20260815-dsh-workflow-ledger` Task 4
- * adds the workflow kinds + the unknown-kind degradation path). Every field
+ * unchanged by the zone refactor; the workflow-ledger source adds the
+ * workflow kinds + the unknown-kind degradation path). Every field
  * degrades individually via `guards.ts` — a missing/illegal value becomes
  * `null`/''/`0`/a base status, never a throw and never a guessed value.
  * Dispatch/settle rows keep their gate semantics; the three WORKFLOW kinds
@@ -137,7 +129,7 @@ export interface FlowEventView {
   stage: { phase: PhaseId; stage: string } | null
   /** dispatch: has an EXACT-identity-paired settle (exact pairing; an unpaired settle stays unpaired — honest); settle: always false. */
   settled: boolean
-  /** Settle rows only (plan `20260811-panel-f4-timeliness` Task 1): the settle carries the PAIRED dispatch's identity (exact pairing). */
+  /** Settle rows only: the settle carries the PAIRED dispatch's identity (exact pairing). */
   paired?: boolean
   durationMs: number | null
   /** Workflow run identity (workflow-* + unknown rows, when carried; absent otherwise). */
@@ -161,10 +153,9 @@ export interface FlowEventView {
 /* ---------------------------------- iteration zone (spec §3) ---------------------------------- */
 
 /**
- * One iteration step (spec §3 + plan 20260812-panel-f5-iteration-zone-fix
- * Task 1): the PHASE_IDS skeleton with current/next/done/idle lit by
+ * One iteration step (spec §3): the PHASE_IDS skeleton with current/next/done/idle lit by
  * `gate.transition` evidence — the CURRENT step, its forward target (`next`)
- * and every step BEFORE it (`done` — completed: the Task 1 fix, a finished
+ * and every step BEFORE it (`done` — completed: a finished
  * Step 1 must not read as idle「待命」 while Step 2 is current). The `step`
  * number is 1-based (1..5). `verdict` is carried by the CURRENT step only.
  */
@@ -182,7 +173,7 @@ export interface IterationStepView {
 /* ---------------------------------- tasks zone (spec §3) ---------------------------------- */
 
 /**
- * One kanban column (spec §3 + plan 20260813-panel-quick-fixes Task 1): the
+ * One kanban column (spec §3): the
  * PLAN_STATE_IDS skeleton with plan rows bucketed by status — `Blocked` and
  * any non-matching status (the former `unknown` catch-all) both fold into the
  * single `blocked-unknown` column. `count` is the FULL column count; `plans`
@@ -225,7 +216,7 @@ export interface AgentZoneStage {
 }
 
 /**
- * One agent entity card (spec §4 + §6.2 + plan 20260811-panel-f3-agent-general):
+ * One agent entity card (spec §4 + §6.2):
  * either a ROLE aggregated across its dispatch rows (count + latest ts;
  * identity fields reflect the LATEST dispatch — the same dispatch that
  * decides the status; `agent` / `task` are record fields, never the title)
@@ -238,7 +229,7 @@ export interface AgentEntityView {
   /**
    * THE ROLE id for lit cards (KNOWN_AGENTS membership — `general` for every
    * non-roster dispatch); the KNOWN_AGENTS role id for idle cards. INVARIANT
-   * (spec §6.2, F-001): keys are UNIQUE across the whole `entities` array —
+   * (spec §6.2): keys are UNIQUE across the whole `entities` array —
    * an evidence-derived `general` key suppresses the idle general twin in
    * `idleEntities`, so the React `key` / `layoutAgents` `cards.set` never see
    * duplicates.
@@ -263,22 +254,20 @@ export interface AgentEntityView {
   ts: number
   /** Latest dispatch's stage via `roleStageIndex` (first constant-order match); null → off-pipeline role; KNOWN_AGENTS stage for idle cards. */
   stage: { phase: PhaseId; stage: string } | null
-  /** Column zone (plan 20260811-panel-f3-agent-general — projection-owned,
+  /** Column zone (projection-owned,
    * the render NEVER heuristically guesses): 'flow' (stage columns), 'on-demand'
    * (ops-engineer / prompt-engineer — implementor-sub-bucket dispatches with
-   * an on-demand badge; the standalone on-demand column is REMOVED, plan
-   * 20260812-panel-f5-agent-layout Task 2) or 'general' (the general bucket —
-   * the rightmost UNKNOWN column, Task 2). Derived from the role for lit
-   * cards, from the KnownAgent `zone` for idle cards. */
+   * an on-demand badge; the standalone on-demand column is REMOVED) or
+   * 'general' (the general bucket — the rightmost unknown column). Derived
+   * from the role for lit cards, from the KnownAgent `zone` for idle cards. */
   zone: AgentZone
-  /** SDD sub-bucket (plan 20260812-panel-f5-agent-layout Task 1 —
-   * projection-derived, the render ONLY consumes it): role ∈
+  /** SDD sub-bucket (projection-derived, the render ONLY consumes it): role ∈
    * SDD_BUCKET_ROLES.implementor → 'implementor' (incl. on-demand roles),
    * role ∈ SDD_BUCKET_ROLES.reviewer → 'reviewer' (code-reviewer); every
    * other role (qc/qa/review-edit-chain/general) → null. Same rule for idle
    * cards (KNOWN_AGENTS id → SDD_BUCKET_ROLES lookup). */
   bucket: AgentBucket | null
-  /** Transparency tier (plan 20260812-panel-f5-design-system Task 4 — the
+  /** Transparency tier (the
    * TIME dimension, design doc §3): the iteration's current phase vs the
    * entity's pipeline-stage phase — 'current' (chrome full-strength), 'next'
    * (mid transparency), 'off' (low transparency — passed phases, on-demand /
@@ -289,14 +278,14 @@ export interface AgentEntityView {
   emphasis: AgentEmphasis
 }
 
-/** The SDD sub-bucket a role belongs to within the `sdd-implement` column
- * (plan 20260812-panel-f5-agent-layout Task 1): 'implementor' | 'reviewer';
+/** The SDD sub-bucket a role belongs to within the `sdd-implement` column:
+ * 'implementor' | 'reviewer';
  * roles in neither bucket project `null`. The bucket is a LAYOUT dimension,
  * ORTHOGONAL to expectedness (SDD_BUCKET_ROLES vs EXPECTED_ROLE_FLOW — an
  * on-demand role in the implementor bucket stays OUTSIDE the expected union). */
 export type AgentBucket = 'implementor' | 'reviewer'
 
-/** Transparency tier (plan 20260812-panel-f5-design-system Task 4 — design
+/** Transparency tier (design
  * doc §3.1): the TIME dimension of an entity — the iteration's current phase
  * vs the entity's pipeline-stage phase. 'current' → chrome full-strength,
  * 'next' → mid transparency (expected but not yet), 'off' → low transparency
@@ -305,10 +294,9 @@ export type AgentBucket = 'implementor' | 'reviewer'
 export type AgentEmphasis = 'current' | 'next' | 'off' | null
 
 /**
- * Emphasis derivation (plan 20260812-panel-f5-design-system Task 4 — design
- * doc §3.3, the FINALIZED rule: Task 3 gate D4–D7 confirmed the tiers
- * 1/0.75/0.45, phase granularity, on-demand → 'off' and Phase 3–5 → all
- * 'off'). Reuses ONLY projected fields (`iteration.currentStep` +
+ * Emphasis derivation (design
+ * doc §3.3, the finalized rule: tiers 1/0.75/0.45, phase granularity,
+ * on-demand → 'off' and Phase 3–5 → all 'off'). Reuses ONLY projected fields (`iteration.currentStep` +
  * `entity.stage`) — zero new catalog reads:
  *
  *   currentStep === null                      → null   (no iteration: no override)
@@ -338,8 +326,7 @@ function emphasisOf(
 }
 
 /**
- * Entity status (spec §4, hardcoded priority; plan
- * 20260813-panel-quick-fixes Task 2): `denied` comes from the LATEST dispatch's
+ * Entity status (spec §4, hardcoded priority): `denied` comes from the LATEST dispatch's
  * verdict (the only terminal verdict — settle-independent); `error`/`settled`
  * come from the settle paired with that dispatch; `running` = no paired settle
  * yet (exact identity pairing — an unpaired settle stays unpaired, honest);
@@ -358,24 +345,23 @@ export type AgentEntityStatus =
   | 'advisory'
   | 'idle'
 
-/** Edge kinds (spec §4 + plan 20260812-panel-f5-design-system Task 5 — the
- * 2026-08-12 finalized line semantics, design doc §2.2): handoff / sub-bucket
+/** Edge kinds (spec §4 — the finalized line semantics, design doc §2.2): handoff / sub-bucket
  * supervision arrows. `expected` (stage skeleton) and `next` (running
  * animation) are REMOVED — the column order implies the flow, the running
- * card glow/status point carries the position (user feedback #1/#5). */
+ * card glow/status point carries the position. */
 export type AgentEdgeKind = 'actual' | 'supervise'
 
 /**
- * One agents-zone arrow (spec §4 + plan 20260812-panel-f5-agent-layout Task
- * 1 + plan 20260812-panel-f5-design-system Task 5):
+ * One agents-zone arrow (spec §4):
  * - `actual`: same-plan handoff between ts-adjacent dispatch ENTITY keys
- *   (source/target = entity key — role-based since plan
- *   20260811-panel-f3-agent-general). Task 5 filters general-bucket endpoints
+ *   (source/target = entity key — role-based). The line set filters
+ *   general-bucket endpoints
  *   (a general handoff is noise, not a meaningful transfer) and keeps at most
  *   ONE edge per entity-key pair (the latest direction) — design doc §2.2;
  * - `supervise`: ONE static sub-bucket line inside the `sdd-implement`
- *   column — implementor ↔ reviewer mutual supervision (mstar-sdd contract;
- *   the render draws it as a bidirectional double arrow, Task 2).
+ *   column — implementor ↔ reviewer mutual supervision (the mstar-sdd
+ *   mutual-supervision contract; the render draws it as a bidirectional
+ *   double arrow).
  *   source/target embed the column id as an anchor prefix:
  *   `<stage-id>:implementor` / `<stage-id>:reviewer`. NOT per-entity pairs —
  *   drawing per-role pairs would fabricate concrete supervision relations
@@ -389,10 +375,10 @@ export interface AgentEdge {
   /** actual: entity key; supervise: `<stage-id>:implementor|reviewer`. */
   source: string
   target: string
-  /** Unused by the Task 5 line set (the removed `next` arrow carried the
+  /** Unused by the line edge set (the removed `next` arrow carried the
    * running entity key); kept for shape stability — always null. */
   entityKey: string | null
-  /** Supervise edges only (plan 20260812-panel-f5-agent-layout Task 1):
+  /** Supervise edges only:
    * evidence-driven lighting — true when any dispatch row's role belongs to
    * an SDD sub-bucket (implementor ∪ reviewer), false otherwise (dim).
    * Absent (undefined) for actual. */
@@ -400,7 +386,7 @@ export interface AgentEdge {
 }
 
 /**
- * The canvas degradation-note classification (spec §8, F-002): the projection
+ * The canvas degradation-note classification (spec §8): the projection
  * decides the note from the RAW ledger (never a UI-side heuristic on the
  * entity list): `empty` = 0 events; `settle-only` = events present but NO
  * dispatch row (all settle / garbage rows — genuinely no dispatch evidence);
@@ -427,7 +413,7 @@ export interface AgentZoneView {
   degraded: boolean
   /** `state.agentFlow` present but 0 events (recording started at plan merge). */
   empty: boolean
-  /** The projected canvas note (spec §8, F-002 — see `AgentZoneNote`). */
+  /** The projected canvas note (spec §8 — see `AgentZoneNote`). */
   note: AgentZoneNote
   /** Evidence-derived dispatch entities ∪ idle KNOWN_AGENTS cards — the full roster is NEVER hidden (spec §6.2). */
   entities: readonly AgentEntityView[]
@@ -438,9 +424,8 @@ export interface AgentZoneView {
   /** Sum of expected roles of stages with no dispatch evidence — the summary "M 待执行". */
   pending: number
   /** The FIRST `state.plans[]` row with status 'InProgress' (catalog order);
-   * null when no plan is in progress (plan 20260812-panel-f5-design-system
-   * Task 8 — the Phase 2 group's current-plan annotation, user 2026-08-12
-   * feedback #2). Total function: state/plans missing or no InProgress row →
+   * null when no plan is in progress (the current-plan group annotation).
+   * Total function: state/plans missing or no InProgress row →
    * null (never fabricated). */
   activePlanId: string | null
   /** How many `state.plans[]` rows are InProgress (the render shows
@@ -449,12 +434,11 @@ export interface AgentZoneView {
   activePlanCount: number
 }
 
-/* ---------------------------------- project rollup zone (compass AC-4) ---------------------------------- */
+/* ---------------------------------- project rollup zone ---------------------------------- */
 
 /**
- * The additive project rollup zone (plan `20260819-workflow-dsh-viz`
- * Task 3 — compass v3.0.0 AC-4: "Additive project rollup (roadmap +
- * residuals) renders without changing the four existing ZoneView shapes"):
+ * The additive project rollup zone: additive project rollup (roadmap +
+ * residuals) renders without changing the four existing ZoneView shapes —
  * roadmap milestones + open-residual severity counts from the project layer
  * (`state.project` — produced by the catalog from `projects/<id>/roadmap.md`
  * frontmatter `milestones[]` + `projects/<id>/residuals.json` registers).
@@ -495,7 +479,7 @@ export interface ZoneView {
     truncated: boolean
   }
   agents: AgentZoneView
-  /** The additive project rollup zone (compass AC-4 — roadmap milestones +
+  /** The additive project rollup zone (roadmap milestones +
    * open residual severity counts from `state.project`; additive, the four
    * existing ZoneView shapes stay byte-compatible). */
   project: ProjectRollupZoneView
@@ -541,7 +525,7 @@ function planRow(raw: unknown): PlanRow {
   }
 }
 
-/** The kanban bucket of a plan status (plan 20260813-panel-quick-fixes Task 1):
+/** The kanban bucket of a plan status:
  * the 4 exact-match states map to their own column; `Blocked` and every other
  * (unknown/catch-all) status fold into the single `blocked-unknown` column. */
 function planBucket(status: string): PlanStateId {
@@ -612,7 +596,7 @@ export function projectGraph(source: MstarEngineStatusSource | null): ZoneView {
       if (row.compassStatus === 'active' && transition === 'phase-2-execute') {
         // Phase 1 in flight (steering compass `status: active`, not yet
         // locked — spec panel-f4 §2.3 R9 + §5 D5) AND the gate still agrees
-        // (transition `phase-2-execute` — QC wave F-001: the override fires
+        // (transition `phase-2-execute` — the override fires
         // only while compass and gate are mutually consistent; compass
         // `active` with a transition past Phase 2, e.g. `phase-3-close` in an
         // inconsistent harness state, falls through to the transition-driven
@@ -625,13 +609,12 @@ export function projectGraph(source: MstarEngineStatusSource | null): ZoneView {
         // (iteration-start → autonomous-execute). `active` stays true — the
         // transition already resolved (engine `evaluatePhaseGate` emits
         // phase-2-execute + ok:true during Phase 1); only the CURRENT STEP is
-        // re-derived here. No `done` step on this branch (plan
-        // 20260812-panel-f5-iteration-zone-fix Task 1): Step 1 is current and
+        // re-derived here. No `done` step on this branch: Step 1 is current and
         // nothing precedes it (index 0 → no completed steps).
         currentStep = 1
         const current = steps[0]!
         current.state = 'current'
-        // QC wave F-002 (qc3): the Phase-1 verdict is EXPLICIT — not the
+        // The Phase-1 verdict is EXPLICIT — not the
         // idleStep default — so a future change to that default can never
         // silently give Phase 1 a PASS/FAIL badge.
         current.verdict = 'unknown'
@@ -645,8 +628,7 @@ export function projectGraph(source: MstarEngineStatusSource | null): ZoneView {
         currentStep = index + 1 // 1-based
         const current = steps[index]!
         current.state = 'current'
-        // Completed steps (plan 20260812-panel-f5-iteration-zone-fix Task 1 —
-        // the user bug: a finished Step 1 must not read as idle「待命」 while
+        // Completed steps (a finished Step 1 must not read as idle「待命」 while
         // Step 2 is current): every step BEFORE the current one projects
         // `done` (steps 0..index-1; index 0 → no done, e.g. an iteration at
         // the first lit phase). current/next logic above stays unchanged.
@@ -678,7 +660,7 @@ export function projectGraph(source: MstarEngineStatusSource | null): ZoneView {
   degraded.iteration = !active
 
   // --- tasks zone: 5-column skeleton (Blocked + unknown merged into
-  // `blocked-unknown`, plan 20260813-panel-quick-fixes Task 1) ---
+  // `blocked-unknown`) ---
   const columns: KanbanColumnView[] = PLAN_STATE_IDS.map((id) => ({ id, plans: [], count: 0, capped: null }))
   const doneRows: PlanRow[] = []
   let total = 0
@@ -724,7 +706,7 @@ export function projectGraph(source: MstarEngineStatusSource | null): ZoneView {
 
   // --- agents zone + flow events (spec §3/§4) ---
   // `currentStep` (already computed above, spec §3) drives the entity
-  // transparency tiers (plan 20260812-panel-f5-design-system Task 4 — design
+  // transparency tiers (design
   // doc §3.3: null → no override, every entity `emphasis: null`).
   const agents = projectAgents(source, currentStep)
   const flow = projectFlowEvents(source)
@@ -751,7 +733,7 @@ export function projectGraph(source: MstarEngineStatusSource | null): ZoneView {
   }
 }
 
-/* ------------------------------ project rollup projection (compass AC-4) ------------------------------ */
+/* ------------------------------ project rollup projection ------------------------------ */
 
 /**
  * The additive project rollup projection: `state.project` → guarded
@@ -777,7 +759,7 @@ function projectRollup(source: MstarEngineStatusSource | null): ProjectRollupZon
 /* ---------------------------------- agents zone projection (spec §4) ---------------------------------- */
 
 /**
- * The SDD sub-bucket of a role (plan 20260812-panel-f5-agent-layout Task 1):
+ * The SDD sub-bucket of a role:
  * role ∈ SDD_BUCKET_ROLES.implementor → 'implementor' (incl. the on-demand
  * ops-engineer / prompt-engineer — bucket membership is a LAYOUT dimension,
  * orthogonal to expectedness), role ∈ SDD_BUCKET_ROLES.reviewer →
@@ -800,10 +782,10 @@ function sddImplementColumnId(stages: readonly AgentZoneStage[]): string | null 
 }
 
 /**
- * The sub-bucket supervision edge (plan 20260812-panel-f5-agent-layout Task
- * 1): ONE static design-knowledge line between the `sdd-implement` column's
+ * The sub-bucket supervision edge: ONE static design-knowledge line between
+ * the `sdd-implement` column's
  * implementor and reviewer sub-buckets (the mstar-sdd mutual-supervision
- * contract — the render draws it as a bidirectional double arrow, Task 2).
+ * contract — the render draws it as a bidirectional double arrow).
  * NOT per-entity pairs: drawing implementor→reviewer per role pair would
  * fabricate concrete supervision relations where no evidence exists (the
  * evidence-level handoffs are already covered by `actualEdges`). STATIC
@@ -839,10 +821,10 @@ interface EntityAccum {
   count: number
   ts: number
   stage: { phase: PhaseId; stage: string } | null
-  /** Column zone (plan 20260811-panel-f3-agent-general): 'flow' when staged;
+  /** Column zone: 'flow' when staged;
    * KNOWN_AGENTS `zone` for off-pipeline roster roles; 'general' otherwise. */
   zone: AgentZone
-  /** SDD sub-bucket (plan 20260812-panel-f5-agent-layout Task 1): derived
+  /** SDD sub-bucket: derived
    * from the entity role via `bucketOf` — see AgentEntityView.bucket. */
   bucket: AgentBucket | null
   /** Index of the latest dispatch in the classified entries array (pair lookup). */
@@ -852,8 +834,7 @@ interface EntityAccum {
 }
 
 /**
- * The entity key of a dispatch row (plan 20260811-panel-f3-agent-general —
- * per-role aggregation): a KNOWN_AGENTS roster role keys its OWN card
+ * The entity key of a dispatch row (per-role aggregation): a KNOWN_AGENTS roster role keys its OWN card
  * (in-union → key = role); EVERY non-roster dispatch — the former
  * `generalPurpose` SDD reviewer, `scout`, unregistered roles and anonymous
  * `role === ''` — folds into the single `general` bucket entity. Total
@@ -864,7 +845,7 @@ function entityKeyOf(role: string): string {
   return GENERAL_BUCKET
 }
 
-/** The zone helper shared by lit + idle cards (plan 20260811-panel-f3-agent-general):
+/** The zone helper shared by lit + idle cards:
  * a staged role is 'flow'; an off-pipeline role takes its KNOWN_AGENTS `zone`
  * (on-demand / general), defaulting to 'general'. Never a render-side heuristic. */
 function roleZone(role: string, stage: { phase: PhaseId; stage: string } | null): AgentZone {
@@ -874,8 +855,7 @@ function roleZone(role: string, stage: { phase: PhaseId; stage: string } | null)
 }
 
 /**
- * Entity status (spec §4 hardcoded priority; plan
- * 20260813-panel-quick-fixes Task 2): `denied` is the ONLY terminal verdict —
+ * Entity status (spec §4 hardcoded priority): `denied` is the ONLY terminal verdict —
  * a denied dispatch stays denied, settle-independent. `advisory` is NO LONGER
  * terminal (a soft-enforcement dispatch is a "放行" pass-through, not a final
  * state — it must not mask a real completion): the settle paired with that
@@ -892,8 +872,7 @@ function entityStatus(acc: EntityAccum, pairStatus: ReadonlyMap<number, FlowEven
 }
 
 /**
- * Aggregate dispatch rows into entity cards (spec §4 + plan
- * 20260811-panel-f3-agent-general): key = the ROLE classification
+ * Aggregate dispatch rows into entity cards (spec §4): key = the ROLE classification
  * (`entityKeyOf` — a KNOWN_AGENTS role id, or `'general'` for every
  * non-roster / anonymous dispatch); the same key aggregates across sessions
  * (count + latest ts, identity fields from the latest dispatch — `agent` /
@@ -967,16 +946,15 @@ function aggregateEntities(
 }
 
 /**
- * Same-plan handoff arrows (spec §4 + plan 20260812-panel-f5-design-system
- * Task 5 — design doc §2.2): within each planId, the ts-ascending adjacent
- * dispatch ENTITY pairs — keys are ROLE-based since plan
- * 20260811-panel-f3-agent-general (`entityKeyOf`, the same classification the
+ * Same-plan handoff arrows (spec §4 — design doc §2.2): within each planId, the ts-ascending adjacent
+ * dispatch ENTITY pairs — keys are ROLE-based
+ * (`entityKeyOf`, the same classification the
  * entity cards use, so a handoff always connects two real cards; anonymous
  * rows fold into the `general` key). Plan-less dispatches cannot form a pair
  * → excluded; a self-pair (the same entity twice in a row) is skipped — a
  * card never hands off to itself.
  *
- * Task 5 简洁化 (user 2026-08-12 feedback #5, design doc §2.2): general-bucket
+ * 简洁化 (design doc §2.2): general-bucket
  * endpoints are FILTERED (a handoff into/out of the anonymous catch-all is
  * noise, not a meaningful transfer — the general card is a sink, not a flow
  * participant), and each unordered entity-key PAIR emits AT MOST ONE edge —
@@ -1019,7 +997,7 @@ function actualEdges(entries: readonly { view: FlowEventView }[]): AgentEdge[] {
  * NEVER hidden, degraded/empty branches included. `idle` cards carry no
  * fabricated claims: agent null, count 0, ts 0, task null, status `idle`.
  *
- * Key-uniqueness guard (F-001 — qc1/qc2 Warning): `evidencedRoles` suppresses
+ * Key-uniqueness guard: `evidencedRoles` suppresses
  * the idle card of a role WITH dispatch evidence, but a NON-roster dispatch
  * (e.g. `scout` — no KNOWN_AGENTS entry for it) produces a lit card keyed
  * `general` WITHOUT the `general` role being literally evidenced.
@@ -1035,7 +1013,7 @@ function idleEntities(
   const out: AgentEntityView[] = []
   for (const known of KNOWN_AGENTS) {
     if (evidencedRoles.has(known.id)) continue
-    if (litKeys.has(known.id)) continue // F-001: the lit card occupies this roster slot
+    if (litKeys.has(known.id)) continue // the lit card occupies this roster slot
     const stage = known.stage ?? null
     out.push({
       key: known.id,
@@ -1056,7 +1034,7 @@ function idleEntities(
   return out
 }
 
-/** Idle-card zone (plan 20260811-panel-f3-agent-general): the KnownAgent's
+/** Idle-card zone: the KnownAgent's
  * explicit off-pipeline zone (on-demand / general) — staged roster members
  * are 'flow'. */
 function idleZone(known: KnownAgent): AgentZone {
@@ -1065,7 +1043,7 @@ function idleZone(known: KnownAgent): AgentZone {
 }
 
 /**
- * The「当前迭代」iteration-id set (plan 20260813-panel-quick-fixes Task 2 — the
+ * The「当前迭代」iteration-id set (the
  * Clarify filter口径). Only `projectAgents` consumes it; `projectFlowEvents`
  * is unfiltered. Total function — never throws, an empty set is legal.
  *
@@ -1088,7 +1066,7 @@ function currentIterationIds(iterationId: string | null, plans: readonly PlanRow
 }
 
 /**
- * The「当前迭代」keep predicate (plan 20260813-panel-quick-fixes Task 2): a
+ * The「当前迭代」keep predicate: a
  * dispatch row is filtered OUT only when it is PROVABLY cross-iteration — its
  * plan is KNOWN (present in `state.plans`), carries a NON-EMPTY `iterationRefs`,
  * and NONE of those refs are in the current-iteration id set. Everything else
@@ -1112,8 +1090,7 @@ function isCurrentIterationDispatch(
  * `projectAgents(source, currentStep): AgentZoneView` — the agents zone (spec
  * §4 + §6.2). `currentStep` is the ITERATION's current step (1-based into
  * PHASE_IDS, null when inactive — already computed by `projectGraph`, spec
- * §3): it drives each entity's `emphasis` tier (plan
- * 20260812-panel-f5-design-system Task 4 — design doc §3.3; `null` → every
+ * §3): it drives each entity's `emphasis` tier (design doc §3.3; `null` → every
  * entity `emphasis: null`, no override).
  * Total function: NEVER throws and NEVER fabricates values:
  *
@@ -1126,12 +1103,11 @@ function isCurrentIterationDispatch(
  * - otherwise: entities aggregated from dispatch rows (with `idle: false`),
  *   statuses via the shared pairing walk, the un-evidenced KNOWN_AGENTS
  *   members appended as idle cards, actual/supervise edges (design doc §2.2 —
- *   the `expected` skeleton and `next` animation edges are REMOVED by plan
- *   20260812-panel-f5-design-system Task 5), and the
+ *   the `expected` skeleton and `next` animation edges are REMOVED), and the
  *   executing (running entities — idle never counts) / pending
  *   (un-evidenced stage roles) counts.
  *
- * Entity-key invariant (F-001 — qc1/qc2 Warning): the concatenated key space
+ * Entity-key invariant: the concatenated key space
  * (evidence keys ∪ idle role ids) is UNIQUE by construction — `idleEntities`
  * suppresses a known role's idle card when its id already exists as an
  * evidence-derived entity key (a NON-roster dispatch produces a lit `general`
@@ -1139,13 +1115,12 @@ function isCurrentIterationDispatch(
  * suppressed via `litKeys`), so the render layer's `key`/`cards.set` never
  * collide.
  *
- * Canvas note (F-002 — qc1 Warning): `note` classifies the readable ledger in
+ * Canvas note: `note` classifies the readable ledger in
  * the projection ('empty' / 'settle-only' / null — see `AgentZoneNote`); the
  * UI consumes it directly and never infers settle-only from the entity list
  * (garbage rows would fake it).
  *
- * Phase-2 plan note (plan 20260812-panel-f5-design-system Task 8 — user
- * 2026-08-12 feedback #2): `activePlanId` / `activePlanCount` ride the
+ * Current-plan note: `activePlanId` / `activePlanCount` ride the
  * `state.plans[]` InProgress rows (catalog order) — the Phase 2 group label
  * annotates the current plan; degraded/empty branches include the note too
  * (it is a state.plans annotation, independent of the ledger evidence).
@@ -1165,8 +1140,7 @@ export function projectAgents(source: MstarEngineStatusSource | null, currentSte
     ? null
     : rawAgentFlow.events
 
-  // The Phase-2 current-plan annotation (plan 20260812-panel-f5-design-system
-  // Task 8 — design doc §1.2, user 2026-08-12 feedback #2): the
+  // The current-plan annotation (design doc §1.2): the
   // `state.plans[]` rows with status 'InProgress' (catalog order).
   // `activePlanId` = the FIRST one; `activePlanCount` = all of them (the
   // render shows `+N more` when several plans run in parallel — honest,
@@ -1199,13 +1173,13 @@ export function projectAgents(source: MstarEngineStatusSource | null, currentSte
 
   const entries = classifyFlowRows(rawEvents)
   const empty = rawEvents.length === 0
-  // F-002: the canvas note is a PROJECTION decision on the raw ledger (the UI
+  // The canvas note is a PROJECTION decision on the raw ledger (the UI
   // never infers ledger semantics from the entity list): 0 events → 'empty';
   // events but NO dispatch row (all settle / garbage) → 'settle-only';
   // any dispatch row (anonymous included — it IS dispatch evidence) → null.
   const note: AgentZoneNote = empty ? 'empty' : entries.some((e) => e.view.kind === 'dispatch') ? null : 'settle-only'
 
-  // The「当前迭代」filter (plan 20260813-panel-quick-fixes Task 2): entities
+  // The「当前迭代」filter: entities
   // and actual edges derive ONLY from the current iteration's dispatch rows.
   // Settle rows are always kept (they carry the pairing identity); a dispatch
   // row survives unless it is PROVABLY cross-iteration (see
@@ -1227,8 +1201,8 @@ export function projectAgents(source: MstarEngineStatusSource | null, currentSte
 
   // Evidence (spec §4): a stage is evidenced when any dispatch row's role maps
   // to it (roles are unique across stages, so this equals literal role
-  // membership). Counted from the FILTERED dispatch rows (plan
-  // 20260813-panel-quick-fixes Task 2 — a cross-iteration dispatch lights no
+  // membership). Counted from the FILTERED dispatch rows
+  // (a cross-iteration dispatch lights no
   // stage) — a session re-dispatched under several roles lights EACH role's
   // stage (per-role aggregation). The same set drives the per-stage `evidenced`
   // flag (the render's pending-placeholder decision) and the `pending` count —
@@ -1246,8 +1220,7 @@ export function projectAgents(source: MstarEngineStatusSource | null, currentSte
   }
   for (const s of stages) s.evidenced = evidenced.has(s.id)
 
-  // Shared settle→dispatch pairing (one walk, spec §4 + plan
-  // `20260811-panel-f4-timeliness` Task 1): the settle status per paired
+  // Shared settle→dispatch pairing (one walk, spec §4): the settle status per paired
   // dispatch index; entity status looks up its latest dispatch's pair. The
   // pairing key is the EXACT identity (agent, role, planId, taskId) a paired
   // settle carries — `view.status` already carries settleStatus(outcome) for
@@ -1265,15 +1238,15 @@ export function projectAgents(source: MstarEngineStatusSource | null, currentSte
   )
 
   const lit = aggregateEntities(filtered, pairStatus, currentStep)
-  // F-001: the evidence-derived key set drives the idle-twin suppression —
+  // The evidence-derived key set drives the idle-twin suppression —
   // a lit `general` key (from any non-roster dispatch) never coexists with the
   // idle roster `general` card.
   const litKeys = new Set(lit.map((e) => e.key))
   const entities = [...lit, ...idleEntities(evidencedRoles, litKeys, currentStep)]
-  // Task 5 line set (design doc §2.2): actual (filtered handoffs) + supervise
+  // Line edge set (design doc §2.2): actual (filtered handoffs) + supervise
   // (static design knowledge). `expected` skeleton / `next` animation edges
-  // are REMOVED — 简洁化 (user 2026-08-12 feedback #1/#5). The actual edges
-  // derive from the FILTERED rows (plan 20260813-panel-quick-fixes Task 2);
+  // are REMOVED — 简洁化. The actual edges
+  // derive from the FILTERED rows;
   // the supervise line stays UNCHANGED (raw rows — its evidence-driven lighting
   // is sub-bucket presence, independent of the iteration filter).
   const edges = [
@@ -1327,14 +1300,13 @@ function settleStatus(outcome: unknown): FlowEventStatus {
 }
 
 /**
- * One guarded ledger row (spec §2.4 + plan `20260815-dsh-workflow-ledger`
- * Task 4): every field degrades individually via `guards.ts` (missing →
+ * One guarded ledger row (spec §2.4): every field degrades individually via `guards.ts` (missing →
  * `null`/''/`0`, never a fabricated value). Dispatch/settle rows keep their
  * gate semantics; the three WORKFLOW kinds project with their run identity
  * (no verdict/outcome → status `unknown`); any UNKNOWN kind string renders
  * as a GENERIC row — never dropped (a future ledger kind stays visible),
  * never guessed. Only a row WITHOUT a kind string is unclassifiable → `null`
- * (skipped — belt-and-suspenders: the T1 ledger reader already normalizes
+ * (skipped — belt-and-suspenders: the ledger reader already normalizes
  * kind).
  * @param raw - one `agentFlow.events` row.
  * @param index - position in the projected window (stable id component).
@@ -1379,8 +1351,7 @@ function flowEventOf(
       ts,
       kind,
       // A PAIRED settle carries the dispatch identity — the role/stage/
-      // expected seats map from it (the paired identity is exact, plan
-      // `20260811-panel-f4-timeliness` Task 1; an unpaired settle has role ''
+      // expected seats map from it (the paired identity is exact; an unpaired settle has role ''
       // → no stage, never expected — the honest degradation).
       role,
       planId: str(row?.planId),
@@ -1391,8 +1362,7 @@ function flowEventOf(
       expected: matched !== undefined,
       stage: matched ?? null,
       settled: false,
-      // Paired-identity presence (settle rows only — the exact-pairing marker,
-      // plan `20260811-panel-f4-timeliness` Task 1).
+      // Paired-identity presence (settle rows only — the exact-pairing marker).
       ...(row?.paired === true ? { paired: true } : {}),
       durationMs: count(row?.durationMs),
     }
@@ -1432,8 +1402,7 @@ function flowEventOf(
   }
 }
 
-/** One row of the pairing walk — the identity a PAIRED settle carries (plan
- * `20260811-panel-f4-timeliness` Task 1, spec R1: exact identity pairing,
+/** One row of the pairing walk — the identity a PAIRED settle carries (spec R1: exact identity pairing,
  * never owner+time guessing). The kind is the FULL projected kind union:
  * workflow/unknown rows are walk no-ops (they carry no paired marker) —
  * widened so the classify output feeds the walk unchanged. */
@@ -1461,11 +1430,10 @@ function pairingKeyOf(row: PairingRow): string {
  * Input rows are in FILE order (the catalog is latest-first, so the pairing
  * walks reversed) keeping the most recent same-identity dispatch; each
  * PAIRED settle (`paired === true`) pairs with it. Pairing key = the EXACT
- * `(agent, role, planId, taskId)` identity (plan
- * `20260811-panel-f4-timeliness` Task 1 — upgraded from the old
- * most-recent-same-AGENT guess: under QC tri N=3 concurrent dispatches from
- * one session all three settles used to land on the latest dispatch; the
- * identity key lets each settle land on ITS dispatch). A settle WITHOUT
+ * `(agent, role, planId, taskId)` identity — an upgrade from the old
+ * most-recent-same-AGENT guess: with N concurrent dispatches from one
+ * session, every settle used to land on the latest dispatch; the identity
+ * key lets each settle land on ITS dispatch. A settle WITHOUT
  * identity (legacy rows / unpaired) stays independent — NO fallback guessing
  * (honest, spec R1); a settle with no prior same-identity dispatch (agent
  * null, truncated window, missed record) stays independent too. Output:
@@ -1498,8 +1466,7 @@ export function pairSettleIndexes(rows: readonly PairingRow[]): ReadonlySet<numb
 }
 
 /**
- * Classify the windowed ledger rows into guarded event entries (spec §2.4 +
- * plan `20260815-dsh-workflow-ledger` Task 4): rows WITHOUT a kind are
+ * Classify the windowed ledger rows into guarded event entries (spec §2.4): rows WITHOUT a kind are
  * skipped — never guessed; dispatch/settle/workflow/unknown kind STRINGS all
  * classify and degrade per field via `flowEventOf` (unknown kinds → generic
  * rows). Latest-first order is preserved (the pairing walk and the entity
@@ -1544,8 +1511,8 @@ function classifyFlowRows(rawEvents: readonly unknown[]): { view: FlowEventView 
  * NEVER throws, NEVER fabricates values.
  *
  * - events: the actual events, latest first, ≤50 — dispatch, settle, the
- *   three workflow kinds (run identity: name / member count / stopReason,
- *   plan `20260815-dsh-workflow-ledger` Task 4) and ANY unknown kind string
+ *   three workflow kinds (run identity: name / member count / stopReason)
+ *   and ANY unknown kind string
  *   as a generic row (degradation — never dropped, never guessed);
  * - unexpected: DISPATCH events whose role is not in the expected role union
  *   (e.g. `general` / `explore` / `scout`). Settle rows are completion
@@ -1576,7 +1543,7 @@ export function projectFlowEvents(
   const entries = classifyFlowRows(rawEvents)
   // settled markers via the shared pairing walk (spec §4 — one implementation
   // behind the events projection and the entity status derivation; the
-  // identity-based key is plan `20260811-panel-f4-timeliness` Task 1).
+  // identity-based key).
   for (const i of pairSettleIndexes(entries.map((e) => ({
     kind: e.view.kind,
     agent: e.view.agent,

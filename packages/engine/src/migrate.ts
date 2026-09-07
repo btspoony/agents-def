@@ -7,78 +7,78 @@
  * Frozen semantics (architect, writing-specialist-corrected, observed live
  * tree 2026-08-19):
  * - **Grouping:** every plan row lifts into exactly one snapshot — the
- *   iteration whose `{ITERATION_DIR}` compass frontmatter registers its id
- *   (`iterations/<id>/delivery-compass.md` files only; the
- *   `delivery-compass.<role>.md` review-chain variants are NOT grouping
- *   sources). Row id is read from `id` OR the legacy `plan_id` key. A
- *   registered id with NO status row (compacted away — 23 observed at
- *   fixture freeze 2026-08-19; the canonical frozen count lives in
- *   `test/fixtures/migrate-real/status.json`) is recorded on the owning
- *   snapshot's `legacy_metadata.compact_missing[]` — never fabricated as a
- *   row.
- *   Unregistered rows become standalone plan-type snapshots.
+ * iteration whose `{ITERATION_DIR}` compass frontmatter registers its id
+ * (`iterations/<id>/delivery-compass.md` files only; the
+ * `delivery-compass.<role>.md` review-chain variants are NOT grouping
+ * sources). Row id is read from `id` OR the legacy `plan_id` key. A
+ * registered id with NO status row (compacted away — 23 observed at
+ * fixture freeze 2026-08-19; the canonical frozen count lives in
+ * `test/fixtures/migrate-real/status.json`) is recorded on the owning
+ * snapshot's `legacy_metadata.compact_missing[]` — never fabricated as a
+ * row.
+ * Unregistered rows become standalone plan-type snapshots.
  * - **Snapshot status mapping:** iteration snapshot status = compass
- *   frontmatter (`active|locked` -> `running`; `completed` -> `completed`);
- *   standalone rows `Done` -> `completed`, `InProgress|InReview` ->
- *   `running`, `Blocked` -> `paused`, `Todo` -> `paused` + not-started
- *   note; nothing maps to `failed|stopped` from v1 data (those states are
- *   born in the v3 runtime). Row-level plan statuses stay VERBATIM inside
- *   `plans[]`.
+ * frontmatter (`active|locked` -> `running`; `completed` -> `completed`);
+ * standalone rows `Done` -> `completed`, `InProgress|InReview` ->
+ * `running`, `Blocked` -> `paused`, `Todo` -> `paused` + not-started
+ * note; nothing maps to `failed|stopped` from v1 data (those states are
+ * born in the v3 runtime). Row-level plan statuses stay VERBATIM inside
+ * `plans[]`.
  * - **Field lift:** root `metadata` execution-policy keys
- *   (`plan_parallelism`/`worktree_mode`/`push_policy`) -> snapshot
- *   `execution_policy` (first-class); `iteration_base_branch`/
- *   `target_branch`/`spec_integration_branch` -> `branch`;
- *   `control_worktree_path` -> `control_worktree_path`;
- *   `integration_merge_lease` -> top-level `integration_merge_lease`; all of
- *   these land on the ACTIVE iteration snapshot (status `running`; v3.0.0
- *   today). `program_roadmap` seeds `projects/<id>/roadmap.md` (its
- *   `no_intermediate_releases` / `deferred_beyond` fields are preserved in
- *   the seed body — nothing dropped silently); `harness_root` is dropped as
- *   redundant with a `legacy_metadata` note;
- *   `metadata.updated_at` folds into the v2 root `updated_at`; ALL other/
- *   unknown root-metadata keys land in the active snapshot
- *   `legacy_metadata` — nothing dropped silently.
+ * (`plan_parallelism`/`worktree_mode`/`push_policy`) -> snapshot
+ * `execution_policy` (first-class); `iteration_base_branch`/
+ * `target_branch`/`spec_integration_branch` -> `branch`;
+ * `control_worktree_path` -> `control_worktree_path`;
+ * `integration_merge_lease` -> top-level `integration_merge_lease`; all of
+ * these land on the ACTIVE iteration snapshot (status `running`; v3.0.0
+ * today). `program_roadmap` seeds `projects/<id>/roadmap.md` (its
+ * `no_intermediate_releases` / `deferred_beyond` fields are preserved in
+ * the seed body — nothing dropped silently); `harness_root` is dropped as
+ * redundant with a `legacy_metadata` note;
+ * `metadata.updated_at` folds into the v2 root `updated_at`; ALL other/
+ * unknown root-metadata keys land in the active snapshot
+ * `legacy_metadata` — nothing dropped silently.
  * - **Residuals:** open `residual_findings` entries ->
- *   `projects/<id>/residuals.json` (entries keyed by plan id, each value an
- *   ARRAY — v1 `residual_findings[plan-id]` multi-finding semantics
- *   preserved verbatim; `source_plan`/`registered_at` provenance added per
- *   entry; `lifecycle_id` added when the plan groups into an iteration).
- *   No entry is ever collapsed or skipped (QC wave-1 W-E).
- *   `archived/residuals/*.json` are legacy history — NOT lifted.
+ * `projects/<id>/residuals.json` (entries keyed by plan id, each value an
+ * ARRAY — v1 `residual_findings[plan-id]` multi-finding semantics
+ * preserved verbatim; `source_plan`/`registered_at` provenance added per
+ * entry; `lifecycle_id` added when the plan groups into an iteration).
+ * No entry is ever collapsed or skipped.
+ * `archived/residuals/*.json` are legacy history — NOT lifted.
  * - **Notes:** per-plan `notes` ARRAYS -> `workflows/<id>/notes.jsonl`
- *   initial entries (one JSON line per note; string-typed `notes` stay on
- *   the row verbatim and are not lifted). Standalone Todo rows add a
- *   generated not-started note line. SSOT: the ledger is the runtime log;
- *   row `notes` is the legacy verbatim copy (see workflow.ts snapshot docs).
+ * initial entries (one JSON line per note; string-typed `notes` stay on
+ * the row verbatim and are not lifted). Standalone Todo rows add a
+ * generated not-started note line. SSOT: the ledger is the runtime log;
+ * row `notes` is the legacy verbatim copy (see workflow.ts snapshot docs).
  * - **Ordering & idempotence:** apply steps are additive-first (archive
- *   copy, workflow dirs, project register, roadmap); the root v2
- *   replacement (`version: 2`, `updated_at`, empty `workflows[]` until
- *   re-registered) is the LAST step — the commit point; before it a failed
- *   run leaves v1 intact (recoverable by re-run). Re-run on a v2 root
- *   (`version === 2`) -> no-op with message. `dryRun` plans carry the full
- *   step list (source -> destination) and apply zero writes.
+ * copy, workflow dirs, project register, roadmap); the root v2
+ * replacement (`version: 2`, `updated_at`, empty `workflows[]` until
+ * re-registered) is the LAST step — the commit point; before it a failed
+ * run leaves v1 intact (recoverable by re-run). Re-run on a v2 root
+ * (`version === 2`) -> no-op with message. `dryRun` plans carry the full
+ * step list (source -> destination) and apply zero writes.
  *
  * No fs writes happen outside the harness dir: every destination is
- * harness-relative — enforced at the planner boundary (QC wave-1 W-B):
+ * harness-relative — enforced at the planner boundary:
  * every lifecycle id that becomes a path segment (v1 row `id`/`plan_id`,
  * compass `iteration_id`, `opts.projectId`) must pass
  * `assertSafePathComponent` or the plan is refused BEFORE any step list is
- * produced. Duplicate v1 plan ids are likewise refused fail-loud (qc3
- * S-001) — every row must land in exactly one snapshot. All timestamps
+ * produced. Duplicate v1 plan ids are likewise refused fail-loud: every row must land
+ * in exactly one snapshot. All timestamps
  * derive from legacy data (deterministic, no clock reads).
  *
  * Phase-5 review fixes:
  * - F1 (custom layout): the planner resolves `{WORKFLOW_DIR}` /
- *   `{PROJECT_DIR}` from the harness root (`.mstarc` `workflow_dir` /
- *   `project_dir` win, defaults compose under the harness dir) and records
- *   them on the plan; `file` fields keep the canonical default-layout rel
- *   names, the executor writes through the resolved dirs — a custom layout
- *   migrates to the same location the v3 runtime reads.
+ * `{PROJECT_DIR}` from the harness root (`.mstarc` `workflow_dir` /
+ * `project_dir` win, defaults compose under the harness dir) and records
+ * them on the plan; `file` fields keep the canonical default-layout rel
+ * names, the executor writes through the resolved dirs — a custom layout
+ * migrates to the same location the v3 runtime reads.
  * - F2 (cross-class id collision): iteration snapshot ids, standalone plan
- *   ids and the project id must all be unique — an iteration id equal to a
- *   standalone plan id would plan the same `workflows/<id>/snapshot.json`
- *   twice (silent overwrite at apply); the plan is refused fail-loud with
- *   the conflict list.
+ * ids and the project id must all be unique — an iteration id equal to a
+ * standalone plan id would plan the same `workflows/<id>/snapshot.json`
+ * twice (silent overwrite at apply); the plan is refused fail-loud with
+ * the conflict list.
  */
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -123,30 +123,30 @@ export type MigrateSnapshot = {
   type: WorkflowLifecycleType;
   status: WorkflowLifecycleStatus;
   /**
-   * Canonical (default-layout) harness-relative snapshot path, e.g.
-   * `workflows/<id>/snapshot.json`. The actual write target derives from
-   * `MigratePlan.workflowDir` (Phase-5 F1 — a `.mstarc` custom
-   * `workflow_dir` is honored by the executor); this field keeps the
-   * default-layout rel name for display/provenance.
-   */
+ * Canonical (default-layout) harness-relative snapshot path, e.g.
+ * `workflows/<id>/snapshot.json`. The actual write target derives from
+ * `MigratePlan.workflowDir` (Phase-5 F1 — a `.mstarc` custom
+ * `workflow_dir` is honored by the executor); this field keeps the
+ * default-layout rel name for display/provenance.
+ */
   file: string;
-  /** Provenance label (compass file / status.json row). */
+ /** Provenance label (compass file / status.json row). */
   source: string;
   data: WorkflowSnapshot;
 };
 
 /** One planned notes ledger (`workflows/<id>/notes.jsonl`). */
 export type MigrateNotesFile = {
-  /** Canonical (default-layout) rel path; actual target = `plan.workflowDir` + the suffix. */
+ /** Canonical (default-layout) rel path; actual target = `plan.workflowDir` + the suffix. */
   file: string;
   source: string;
-  /** Serialized JSON lines (each ends with `\n` when joined). */
+ /** Serialized JSON lines (each ends with `\n` when joined). */
   lines: string[];
 };
 
 /** One planned project register document (`projects/<id>/residuals.json`). */
 export type MigrateRegister = {
-  /** Canonical (default-layout) rel path; actual target = `plan.projectDir` + the suffix. */
+ /** Canonical (default-layout) rel path; actual target = `plan.projectDir` + the suffix. */
   file: string;
   source: string;
   data: ProjectRegisterDoc;
@@ -154,7 +154,7 @@ export type MigrateRegister = {
 
 /** One planned roadmap seed (`projects/<id>/roadmap.md`). */
 export type MigrateRoadmap = {
-  /** Canonical (default-layout) rel path; actual target = `plan.projectDir` + the suffix. */
+ /** Canonical (default-layout) rel path; actual target = `plan.projectDir` + the suffix. */
   file: string;
   source: string;
   content: string;
@@ -166,37 +166,37 @@ export type MigrateRootV2 = {
   data: StatusV2Doc;
 };
 
-/** Planner options (plan Task 6 — `--dry-run` returns steps, zero writes). */
+/** Planner options ( — `--dry-run` returns steps, zero writes). */
 export type MigrateOptions = {
   dryRun?: boolean;
-  /** Project id for the register/roadmap home (default `_default`). */
+ /** Project id for the register/roadmap home (default `_default`). */
   projectId?: string;
 };
 
 /** Full migration plan: every write is described; the executor applies it. */
 export type MigratePlan = {
-  /** Resolved harness dir. */
+ /** Resolved harness dir. */
   root: string;
   /**
-   * Resolved `{WORKFLOW_DIR}` (Phase-5 F1): the `.mstarc` `[config]
-   * workflow_dir` declaration wins, else `{HARNESS_DIR}/workflows`. The
-   * snapshot/notes `file` fields below keep the canonical default-layout
-   * rel names for display/provenance; the executor derives the actual
-   * write targets from this dir so a custom layout lands where the v3
-   * runtime reads.
-   */
+ * Resolved `{WORKFLOW_DIR}` (Phase-5 F1): the `.mstarc` `[config]
+ * workflow_dir` declaration wins, else `{HARNESS_DIR}/workflows`. The
+ * snapshot/notes `file` fields below keep the canonical default-layout
+ * rel names for display/provenance; the executor derives the actual
+ * write targets from this dir so a custom layout lands where the v3
+ * runtime reads.
+ */
   workflowDir: string;
   /**
-   * Resolved `{PROJECT_DIR}` (Phase-5 F1): the `.mstarc` `[config]
-   * project_dir` declaration wins, else `{HARNESS_DIR}/projects`. Same
-   * canonical-`file`-vs-actual-target split as `workflowDir` for the
-   * register/roadmap writes.
-   */
+ * Resolved `{PROJECT_DIR}` (Phase-5 F1): the `.mstarc` `[config]
+ * project_dir` declaration wins, else `{HARNESS_DIR}/projects`. Same
+ * canonical-`file`-vs-actual-target split as `workflowDir` for the
+ * register/roadmap writes.
+ */
   projectDir: string;
   dryRun: boolean;
-  /** Root status.json already at `version: 2` -> nothing to plan/apply. */
+ /** Root status.json already at `version: 2` -> nothing to plan/apply. */
   alreadyMigrated: boolean;
-  /** Human message (no-op reason when `alreadyMigrated`). */
+ /** Human message (no-op reason when `alreadyMigrated`). */
   message: string;
   snapshots: MigrateSnapshot[];
   notesFiles: MigrateNotesFile[];
@@ -204,9 +204,9 @@ export type MigratePlan = {
   roadmap: MigrateRoadmap | null;
   rootV2: MigrateRootV2;
   archive: { file: string; source: string };
-  /** Informational notes surfaced in dry-run output (never silent drops). */
+ /** Informational notes surfaced in dry-run output (never silent drops). */
   migrationNotes: string[];
-  /** Ordered apply steps (additive-first; root v2 replacement last). */
+ /** Ordered apply steps (additive-first; root v2 replacement last). */
   steps: MigrateStep[];
 };
 
@@ -535,7 +535,7 @@ function buildRoadmap(programRoadmap: Record<string, unknown>, projectId: string
 
 /**
  * Build the project register from v1 `residual_findings` (open entries
- * only). QC wave-1 W-E: entries are keyed by plan id, each value an ARRAY
+ * only). Entries are keyed by plan id, each value an ARRAY
  * of ALL open residuals of that plan (v1 `residual_findings[plan-id]`
  * multi-finding semantics preserved verbatim — no collapse, no skip, no
  * `migration_notes`).
@@ -612,7 +612,7 @@ function collectNotesFiles(snapshots: MigrateSnapshot[]): MigrateNotesFile[] {
 }
 
 /**
- * Pure migration planner (plan Task 6): reads the v1 tree under `root` and
+ * Pure migration planner (): reads the v1 tree under `root` and
  * returns the full v2 migration plan — snapshots, notes ledgers, project
  * register, roadmap seeds, the archived v1 copy and the root v2
  * replacement — with an ordered step list (source -> destination). ZERO
@@ -624,14 +624,14 @@ function collectNotesFiles(snapshots: MigrateSnapshot[]): MigrateNotesFile[] {
  */
 export function migrateHarnessTree(root: string, opts: MigrateOptions = {}): MigratePlan {
   const harnessDir = resolve(root);
-  // Phase-5 F1: resolve the v3 layout dirs from the harness root once — a
-  // `.mstarc` `[config] workflow_dir` / `project_dir` declaration wins
-  // (relative values resolve against the config file's directory, absolute
-  // allowed; discovery never passes the harness dir's parent), otherwise
-  // the defaults compose under the harness dir. Every planned write target
-  // derives from these, so a custom layout migrates to the SAME location
-  // the v3 runtime readers/writers resolve (cli `resolveSnapshotPath`,
-  // hooks, tools).
+ // Phase-5 F1: resolve the v3 layout dirs from the harness root once — a
+ // `.mstarc` `[config] workflow_dir` / `project_dir` declaration wins
+ // (relative values resolve against the config file's directory, absolute
+ // allowed; discovery never passes the harness dir's parent), otherwise
+ // the defaults compose under the harness dir. Every planned write target
+ // derives from these, so a custom layout migrates to the SAME location
+ // the v3 runtime readers/writers resolve (cli `resolveSnapshotPath`,
+ // hooks, tools).
   const workflowDir = resolveWorkflowDir(harnessDir, { harnessDir });
   const projectDir = resolveProjectDir(harnessDir, { harnessDir });
   const projectId = opts.projectId ?? _DEFAULT_PROJECT;
@@ -668,11 +668,11 @@ export function migrateHarnessTree(root: string, opts: MigrateOptions = {}): Mig
 
   const rows = Array.isArray(legacy.plans) ? legacy.plans.filter(isPlainObject) : [];
   if (Array.isArray(legacy.plans)) {
-    // Fail-loud lift guards (QC wave-1 W-B / qc3 S-001): every row must
-    // land in exactly one snapshot — a row without id/plan_id is
-    // unliftable, an id that is not a single safe path component could
-    // traverse out of the harness dir (it becomes `workflows/<id>/…`),
-    // and duplicate ids would silently drop/overwrite a sibling row.
+ // Fail-loud lift guards: every row must
+ // land in exactly one snapshot — a row without id/plan_id is
+ // unliftable, an id that is not a single safe path component could
+ // traverse out of the harness dir (it becomes `workflows/<id>/…`),
+ // and duplicate ids would silently drop/overwrite a sibling row.
     const unLiftable: unknown[] = [];
     const idCounts = new Map<string, number>();
     for (const row of legacy.plans) {
@@ -703,34 +703,34 @@ export function migrateHarnessTree(root: string, opts: MigrateOptions = {}): Mig
 
   const migrationNotes: string[] = [];
   const compasses = scanCompasses(harnessDir);
-  // QC wave-1 W-B: compass iteration ids become `workflows/<id>/…` path
-  // segments (and `compass_ref` values) — refuse unsafe ids fail-loud.
+ // Compass iteration ids become `workflows/<id>/…` path
+ // segments (and `compass_ref` values) — refuse unsafe ids fail-loud.
   for (const compass of compasses) {
     assertSafePathComponent(compass.id, "iteration id");
   }
-  // QC wave-1 W-B: the project id becomes `projects/<id>/…` segments.
+ // The project id becomes `projects/<id>/…` segments.
   assertSafePathComponent(projectId, "projectId");
   const { byPlan, rowById } = groupRows(rows, compasses);
 
-  // 1. Iteration snapshots (every canonical compass; zero-plan compasses
-  //    still produce an empty terminal snapshot).
+ // 1. Iteration snapshots (every canonical compass; zero-plan compasses
+ // still produce an empty terminal snapshot).
   const snapshots: MigrateSnapshot[] = compasses.map((compass) => buildIterationSnapshot(compass, rowById, rootUpdatedAt));
 
-  // 2. Standalone snapshots for unregistered rows.
+ // 2. Standalone snapshots for unregistered rows.
   for (const row of rows) {
     const id = rowIdOf(row);
     if (id !== null && !byPlan.has(id)) snapshots.push(buildStandaloneSnapshot(row, rootUpdatedAt, migrationNotes));
   }
 
-  // 2b. Cross-class lifecycle-id uniqueness (Phase-5 F2, Greptile P1):
-  // plan rows are unique within plans[] (guard above) and compass ids are
-  // unique by directory, but an iteration id may still equal a STANDALONE
-  // plan id (a row registered in no compass) — both would plan the same
-  // `workflows/<id>/snapshot.json` and the apply loop would silently
-  // overwrite the earlier snapshot. The project id joins the same set
-  // (register/roadmap live under `projects/<projectId>/`; under a custom
-  // `.mstarc` layout the workflow and project dirs may even coincide).
-  // Refuse fail-loud with the conflict list — never a silent double-write.
+ // 2b. Cross-class lifecycle-id uniqueness (Phase-5 F2, Greptile P1):
+ // plan rows are unique within plans[] (guard above) and compass ids are
+ // unique by directory, but an iteration id may still equal a STANDALONE
+ // plan id (a row registered in no compass) — both would plan the same
+ // `workflows/<id>/snapshot.json` and the apply loop would silently
+ // overwrite the earlier snapshot. The project id joins the same set
+ // (register/roadmap live under `projects/<projectId>/`; under a custom
+ // `.mstarc` layout the workflow and project dirs may even coincide).
+ // Refuse fail-loud with the conflict list — never a silent double-write.
   const lifecycleSources = new Map<string, string[]>();
   for (const snapshot of snapshots) {
     const sources = lifecycleSources.get(snapshot.id) ?? [];
@@ -750,11 +750,11 @@ export function migrateHarnessTree(root: string, opts: MigrateOptions = {}): Mig
   }
   snapshots.sort((a, b) => compareIds(a.id, b.id));
 
-  // 3. Root-metadata lift -> the active iteration snapshot (v3.0.0 today).
-  // Lift-target rule (qc wave-1 S-g, documented): sorted-first by snapshot
-  // id — deterministic, but arbitrary when 2+ iterations run concurrently;
-  // revisit with a locked-compass preference when the multi-active case
-  // becomes real.
+ // 3. Root-metadata lift -> the active iteration snapshot (v3.0.0 today).
+ // Lift-target rule (documented): sorted-first by snapshot
+ // id — deterministic, but arbitrary when 2+ iterations run concurrently;
+ // revisit with a locked-compass preference when the multi-active case
+ // becomes real.
   const activeIterations = snapshots.filter((snapshot) => snapshot.status === "running" && snapshot.type === "iteration");
   if (activeIterations.length > 0) {
     applyRootMetadataLift(activeIterations[0]!, metadata, migrationNotes, activeIterations.length);
@@ -764,16 +764,16 @@ export function migrateHarnessTree(root: string, opts: MigrateOptions = {}): Mig
     );
   }
 
-  // 4. Notes ledgers (row notes arrays + not-started notes).
+ // 4. Notes ledgers (row notes arrays + not-started notes).
   const notesFiles = collectNotesFiles(snapshots);
 
-  // 5. Project register (open residual_findings only; all open entries per
-  // plan — v1 multi-finding semantics, no collapse).
+ // 5. Project register (open residual_findings only; all open entries per
+ // plan — v1 multi-finding semantics, no collapse).
   const residualFindings = isPlainObject(legacy.residual_findings) ? legacy.residual_findings : {};
   const register = buildRegister(residualFindings, byPlan, projectId, migratedAt);
 
-  // 6. Roadmap seeds (QC wave-1 S-d: the frontmatter title is sanitized —
-  //    line breaks would break the flat-subset YAML parse).
+ // 6. Roadmap seeds (the frontmatter title is sanitized —
+ // line breaks would break the flat-subset YAML parse).
   const programRoadmap = isPlainObject(metadata.program_roadmap) ? metadata.program_roadmap : null;
   let roadmap: MigrateRoadmap | null = null;
   if (programRoadmap) {
@@ -791,14 +791,14 @@ export function migrateHarnessTree(root: string, opts: MigrateOptions = {}): Mig
     };
   }
 
-  // 7. Root v2 replacement (commit point; workflows[] empty until re-registered).
+ // 7. Root v2 replacement (commit point; workflows[] empty until re-registered).
   const rootV2: MigrateRootV2 = {
     file: MIGRATE_STATUS_FILE,
     data: { version: 2, updated_at: migratedAt, workflows: [] },
   };
   const archive = { file: ARCHIVED_STATUS_V1_FILE, source: MIGRATE_STATUS_FILE };
 
-  // 8. Ordered step list (additive-first; root v2 replacement LAST).
+ // 8. Ordered step list (additive-first; root v2 replacement LAST).
   const steps: MigrateStep[] = [
     { kind: "archive-status-v1", source: archive.source, destination: archive.file },
     ...snapshots.map((snapshot) => ({
@@ -835,7 +835,7 @@ export function migrateHarnessTree(root: string, opts: MigrateOptions = {}): Mig
 }
 
 /**
- * Execute a migration plan (plan Task 6). Additive-first ordering: the v1
+ * Execute a migration plan (). Additive-first ordering: the v1
  * root is archived, workflow snapshots/notes, the project register and the
  * roadmap are written BEFORE the root v2 replacement — the LAST step, the
  * commit point. A failure before it leaves the v1 tree intact (re-run
@@ -843,7 +843,7 @@ export function migrateHarnessTree(root: string, opts: MigrateOptions = {}): Mig
  * `dryRun` plan, is a no-op. Every destination stays inside the harness
  * dir; every snapshot is validated fail-closed inside `writeWorkflowSnapshot`
  * — the writer is the authoritative validator, so the apply loop does not
- * pre-validate (qc wave-1 S-h: a gate here would run the same O(rows) pass
+ * pre-validate (a gate here would run the same O(rows) pass
  * twice per snapshot).
  */
 export async function applyMigratePlan(plan: MigratePlan): Promise<MigrateResult> {
@@ -856,12 +856,12 @@ export async function applyMigratePlan(plan: MigratePlan): Promise<MigrateResult
     return { applied: false, message: "no-op: status.json already at schema version 2 (migrated) \u2014 nothing to do" };
   }
 
-  // Phase-5 F1: actual write targets derive from the RESOLVED layout dirs
-  // recorded on the plan (`.mstarc` `workflow_dir` / `project_dir`, else
-  // defaults under the harness dir) — the canonical `file` fields stay the
-  // default-layout rel names (display/provenance), the resolved dirs are
-  // where a custom layout must land. `relative("workflows"|"projects", …)`
-  // strips the canonical prefix and re-joins under the resolved dir.
+ // Phase-5 F1: actual write targets derive from the RESOLVED layout dirs
+ // recorded on the plan (`.mstarc` `workflow_dir` / `project_dir`, else
+ // defaults under the harness dir) — the canonical `file` fields stay the
+ // default-layout rel names (display/provenance), the resolved dirs are
+ // where a custom layout must land. `relative("workflows"|"projects", …)`
+ // strips the canonical prefix and re-joins under the resolved dir.
   const harnessRoot = resolve(plan.root);
   const workflowRoot = resolve(plan.workflowDir);
   const projectRoot = resolve(plan.projectDir);
@@ -873,12 +873,12 @@ export async function applyMigratePlan(plan: MigratePlan): Promise<MigrateResult
   const workflowTargetOf = (canonicalFile: string): string => join(workflowRoot, relative("workflows", canonicalFile));
   const projectTargetOf = (canonicalFile: string): string => join(projectRoot, relative("projects", canonicalFile));
 
-  // QC wave-1 W-B (defense-in-depth at the write boundary, Phase-5 F1
-  // extended): the planner already refuses unsafe ids via
-  // assertSafePathComponent, but apply is a public API — re-enforce the
-  // module invariant ("no fs writes outside the harness dir or the
-  // resolved workflow/project dirs") on every planned destination so a
-  // hand-built plan can never escape `plan.root` via a relative path.
+ // Defense-in-depth at the write boundary (Phase-5 F1
+ // extended): the planner already refuses unsafe ids via
+ // assertSafePathComponent, but apply is a public API — re-enforce the
+ // module invariant ("no fs writes outside the harness dir or the
+ // resolved workflow/project dirs") on every planned destination so a
+ // hand-built plan can never escape `plan.root` via a relative path.
   const allDestinations = [
     plan.archive.file,
     ...plan.snapshots.map((snapshot) => snapshot.file),
@@ -896,21 +896,21 @@ export async function applyMigratePlan(plan: MigratePlan): Promise<MigrateResult
     }
   }
 
-  // 1. Archive the v1 root BEFORE anything else touches it (never deleted
-  //    without that copy).
+ // 1. Archive the v1 root BEFORE anything else touches it (never deleted
+ // without that copy).
   mkdirSync(join(plan.root, dirname(plan.archive.file)), { recursive: true });
   copyFileSync(statusPath, join(plan.root, plan.archive.file));
 
-  // 2. Workflow snapshots (additive). Validation happens inside
-  // writeWorkflowSnapshot — the writer fails closed before any write, so
-  // there is no apply-loop gate (qc wave-1 S-h: writer validation is
-  // authoritative; a pre-write gate here would run the same O(rows) pass
-  // twice per snapshot).
+ // 2. Workflow snapshots (additive). Validation happens inside
+ // writeWorkflowSnapshot — the writer fails closed before any write, so
+ // there is no apply-loop gate (writer validation is
+ // authoritative; a pre-write gate here would run the same O(rows) pass
+ // twice per snapshot).
   for (const snapshot of plan.snapshots) {
     await writeWorkflowSnapshot(snapshot.data, dirname(workflowTargetOf(snapshot.file)));
   }
 
-  // 3. Notes ledgers (additive).
+ // 3. Notes ledgers (additive).
   for (const notes of plan.notesFiles) {
     const filePath = workflowTargetOf(notes.file);
     mkdirSync(dirname(filePath), { recursive: true });
@@ -918,7 +918,7 @@ export async function applyMigratePlan(plan: MigratePlan): Promise<MigrateResult
     writeFileSync(filePath, content, "utf8");
   }
 
-  // 4. Project register (additive; validated before the write).
+ // 4. Project register (additive; validated before the write).
   if (plan.register !== null) {
     const gate = validateProjectRegister(plan.register.data);
     if (!gate.ok) {
@@ -926,11 +926,11 @@ export async function applyMigratePlan(plan: MigratePlan): Promise<MigrateResult
         `refusing to apply migration: invalid project register: ${gate.violations.map((v) => v.message).join("; ")}`,
       );
     }
-    // Zero entries -> no register file (audit-20260821-f3): the planner
-    // already returns `register: null` when there are no open residuals,
-    // but a hand-built plan may carry a gate-passing empty `{ entries: {} }`
-    // — writing an empty register would orphan an empty file. Validate
-    // FIRST so an invalid doc (e.g. missing `entries`) still throws.
+ // Zero entries -> no register file (audit-20260821-f3): the planner
+ // already returns `register: null` when there are no open residuals,
+ // but a hand-built plan may carry a gate-passing empty `{ entries: {} }`
+ // — writing an empty register would orphan an empty file. Validate
+ // FIRST so an invalid doc (e.g. missing `entries`) still throws.
     if (Object.keys(plan.register.data.entries ?? {}).length > 0) {
       const filePath = projectTargetOf(plan.register.file);
       mkdirSync(dirname(filePath), { recursive: true });
@@ -938,20 +938,20 @@ export async function applyMigratePlan(plan: MigratePlan): Promise<MigrateResult
     }
   }
 
-  // 5. Roadmap seeds (additive).
+ // 5. Roadmap seeds (additive).
   if (plan.roadmap !== null) {
     const filePath = projectTargetOf(plan.roadmap.file);
     mkdirSync(dirname(filePath), { recursive: true });
     writeFileSync(filePath, plan.roadmap.content, "utf8");
   }
 
-  // 6. Root v2 replacement — the COMMIT POINT (last step), serialized with
-  // the root writers (`registerWorkflow`/`unregisterWorkflow`) under the
-  // root-file `withStatusWriteLock` (qc wave-1 W-A: a bare writeJson here
-  // could clobber a concurrent register that landed after the pre-check
-  // below). The version re-check INSIDE the lock turns a stale plan (a
-  // concurrent migrate committed first) into a no-op instead of an
-  // overwrite of a root that may already hold registered workflows.
+ // 6. Root v2 replacement — the COMMIT POINT (last step), serialized with
+ // the root writers (`registerWorkflow`/`unregisterWorkflow`) under the
+ // root-file `withStatusWriteLock` (a bare writeJson here
+ // could clobber a concurrent register that landed after the pre-check
+ // below). The version re-check INSIDE the lock turns a stale plan (a
+ // concurrent migrate committed first) into a no-op instead of an
+ // overwrite of a root that may already hold registered workflows.
   const rootGate = validateStatusV2(plan.rootV2.data, { harnessDir: plan.root });
   if (!rootGate.ok) {
     throw new Error(`refusing to apply migration: invalid v2 root: ${rootGate.violations.map((v) => v.message).join("; ")}`);

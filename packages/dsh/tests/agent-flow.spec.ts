@@ -1,7 +1,7 @@
 /**
  * Task 1 — server-side dispatch ledger + catalog `state.agentFlow` evidence
- * (plan `20260810-agent-flow-catalog-graph`, spec §2.1 / §2.2) — extended by
- * plan `20260811-panel-f4-timeliness` Task 1: REAL settle pairing (real
+ * (spec §2.1 / §2.2) — extended by
+ *: REAL settle pairing (real
  * completion signals instead of host-emission best-effort).
  *
  * Coverage (AC-3 / AC-5 anchors + the T1 pairing chain):
@@ -15,7 +15,7 @@
  *   lands one event per Assignment-shaped dispatch (clean / advisory / hard
  *   deny), the host-hook path (`beforeDispatch`, exec-less) records too, and
  *   non-Assignment / non-subagent-tool / no-harness-dir calls stay silent;
- * - settle pairing (plan `20260811-panel-f4-timeliness` T1): the
+ * - settle pairing (plan  T1): the
  *   `tools/post-execute` listener — dispatch-tool matching, the VERIFIED
  *   three-shape branch (background → taskId store / continuable → honest
  *   no-settle / foreground+other → settle ok, isError → error), unpaired →
@@ -82,7 +82,7 @@ const VALID_PLANNED = `## Assignment
 **Delegation**: forbidden
 **Task category**: logic
 **Working branch**: feature/agent-flow
-**Plan Path**: /proj/plans/20260810-agent-flow.md
+**Plan Path**: /proj/plans/00000810-agent-flow.md
 
 ## Task 2
 
@@ -122,7 +122,7 @@ const dispatchLine = (overrides: Record<string, unknown> = {}): string => JSON.s
   kind: 'dispatch',
   agent: 'a1',
   role: 'fullstack-dev',
-  planId: '20260810-x',
+  planId: '00000810-x',
   taskId: 'T2',
   taskCategory: 'logic',
   verdict: 'ok',
@@ -143,7 +143,7 @@ const settleLine = (overrides: Record<string, unknown> = {}): string => JSON.str
 
 /**
  * A v1 dispatch line padded to ~2 KiB via an ignored display field — the
- * LARGE-ledger fixture line (plan `20260820-dsh-ledger-tail-read`): 200 of
+ * LARGE-ledger fixture line  200 of
  * these ≈ 400 KiB, deterministically above the 64 KiB read byte gate, and
  * each line is large enough that the FIRST 64 KiB tail window holds fewer
  * than `AGENT_FLOW_DEFAULT_LIMIT` complete lines — forcing the tail window
@@ -158,7 +158,7 @@ const paddedDispatchLine = (ts: number): string =>
     kind: 'dispatch',
     agent: 'a1',
     role: 'fullstack-dev',
-    planId: '20260810-x',
+    planId: '00000810-x',
     taskId: 'T2',
     taskCategory: 'logic',
     verdict: 'ok',
@@ -201,7 +201,7 @@ function flowOf(app: BootResult): AgentFlowView {
  * Create a temp harness dir seeded with a minimal v2 tree (root status.json
  * + one active workflow `wf-1` + its snapshot) — the v3 write-path
  * precondition: the agent-flow writer / ledger append only to an ACTIVE
- * workflow (plan `20260819-workflow-dsh-viz` Task 2).
+ * workflow .
  */
 async function tempHarness(prefix: string): Promise<{ root: string; harnessDir: string; workflowDir: string }> {
   const root = await mkdtemp(join(tmpdir(), prefix))
@@ -228,7 +228,7 @@ describe('agent-flow ledger — recordDispatch / readAgentFlow', () => {
         kind: 'dispatch',
         agent: 'sess-1',
         role: 'fullstack-dev',
-        planId: '20260810-agent-flow',
+        planId: '00000810-agent-flow',
         taskId: 'T2',
         taskCategory: 'logic',
         verdict: 'ok',
@@ -240,7 +240,7 @@ describe('agent-flow ledger — recordDispatch / readAgentFlow', () => {
       const parsed = JSON.parse(line) as Record<string, unknown>
       expect(parsed).toMatchObject({ v: 1, kind: 'dispatch', role: 'fullstack-dev', verdict: 'ok', hard: false })
       expect(Object.values(parsed).every((v) => v !== undefined)).toBe(true)
-      // Regression (qc2 F-7): the serialized line must NEVER carry prompt
+      // Regression : the serialized line must NEVER carry prompt
       // body text — the record persists only derived fields.
       expect(line).not.toContain('Implement the ledger')
       // The ROOT ledger is never written (the writer appends only to the
@@ -290,7 +290,7 @@ describe('agent-flow ledger — recordDispatch / readAgentFlow', () => {
     try {
       recordDispatch({ harnessDir, prompt: VALID_PLANNED, violations: [], hard: false })
       const view = readAgentFlow(workflowDir)
-      expect(view!.events[0]!.planId).toBe('20260810-agent-flow')
+      expect(view!.events[0]!.planId).toBe('00000810-agent-flow')
     } finally {
       await rm(root, { recursive: true, force: true })
     }
@@ -311,7 +311,7 @@ describe('agent-flow ledger — recordDispatch / readAgentFlow', () => {
     }
   })
 
-  it('readAgentFlow is latest-first and bounded by the limit (default 50); limit 0 → the empty window (qc2 F-6)', async () => {
+  it('readAgentFlow is latest-first and bounded by the limit (default 50); limit 0 → the empty window ', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-agentflow-limit-')
     try {
       for (let i = 0; i < 60; i += 1) {
@@ -350,7 +350,7 @@ describe('agent-flow ledger — recordDispatch / readAgentFlow', () => {
     }
   })
 
-  it('size gate (qc2 F-1 / qc3 F-001/003): a tiny-line ledger below the threshold keeps >500 lines (append-only fast path); the truncating read-modify-write still runs once the file crosses the gate', async () => {
+  it('size gate: a tiny-line ledger below the threshold keeps >500 lines (append-only fast path); the truncating read-modify-write still runs once the file crosses the gate', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-agentflow-sizegate-')
     try {
       const file = join(workflowDir, AGENT_FLOW_FILE)
@@ -376,7 +376,7 @@ describe('agent-flow ledger — recordDispatch / readAgentFlow', () => {
     }
   })
 
-  it('concurrent process appends serialize behind the per-workflow write lock — the truncating read-modify-write never drops the other process rows (qc3 W-1)', async () => {
+  it('concurrent process appends serialize behind the per-workflow write lock — the truncating read-modify-write never drops the other process rows ', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-agentflow-concurrent-')
     let script = ''
     try {
@@ -453,7 +453,7 @@ describe('agent-flow ledger — recordDispatch / readAgentFlow', () => {
     }
   })
 
-  it('missing file → EMPTY view (the panel empty state); ONLY an unreadable ledger → null (qc1 F-001 fix-wave)', async () => {
+  it('missing file → EMPTY view (the panel empty state); ONLY an unreadable ledger → null ', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-agentflow-missing-')
     try {
       // Missing ledger = recording hasn't started (it begins at plan merge) —
@@ -538,7 +538,7 @@ describe('agent-flow ledger — recordDispatch / readAgentFlow', () => {
   })
 
   it('a PAUSED lifecycle stays in the active set — the writer appends to its workflow dir (active = workflows[] membership, running|paused)', async () => {
-    // Explicit decision (plan `20260819-workflow-dsh-viz` Task 2): the
+    // Explicit decision: the
     // active set is defined by root `workflows[]` MEMBERSHIP — the engine
     // lifecycle enum's non-terminal states are `running` AND `paused`
     // (terminal lifecycles are removed at terminal). A paused lifecycle is
@@ -563,7 +563,7 @@ describe('agent-flow ledger — recordDispatch / readAgentFlow', () => {
   })
 })
 
-describe('agent-flow tail read — bounded latest-first window (plan `20260820-dsh-ledger-tail-read`)', () => {
+describe('agent-flow tail read — bounded latest-first window ', () => {
   it('P2-AC-1: a large padded ledger (200 × ~2 KiB lines) reads its latest 50 events latest-first via the bounded tail', async () => {
     const { root, workflowDir } = await tempHarness('dsh-agentflow-tail-large-')
     try {
@@ -646,7 +646,7 @@ describe('agent-flow tail read — bounded latest-first window (plan `20260820-d
   })
 })
 
-describe('truncateLedgerField — code-point-safe truncation (qc2 S-5)', () => {
+describe('truncateLedgerField — code-point-safe truncation ', () => {
   it('slices by CODE POINTS, never splitting a surrogate pair at the cap boundary', () => {
     // 510 ASCII + the 2-unit emoji + 2 more = 513 CODE POINTS (515 UTF-16
     // units) > 512, so the code-point gate trips. The cap boundary (511
@@ -701,7 +701,7 @@ describe('taskIdOf — body `Task N` best-effort extraction (level-2 headings on
     expect(taskIdOf(`## Assignment\n\n**Execute as**: fullstack-dev\n\nDo the thing.`)).toBeUndefined()
   })
 
-  it('a non-level-2 task heading in the body does NOT resolve (qc2 F-8: narrower false-hit surface)', () => {
+  it('a non-level-2 task heading in the body does NOT resolve (narrower false-hit surface)', () => {
     // Level-1, level-3+ headings (or an indented example) are not the
     // assignment's task heading — only `^## Task N` matches.
     expect(taskIdOf(`## Assignment\n\n**Execute as**: fullstack-dev\n\n### Task 7\n\nwork`)).toBeUndefined()
@@ -740,7 +740,7 @@ describe('agent-flow dispatch smoke — bootApp + tools/pre-execute', () => {
     expect(view.events[0]).toMatchObject({
       kind: 'dispatch',
       role: 'fullstack-dev',
-      planId: '20260810-agent-flow',
+      planId: '00000810-agent-flow',
       taskId: 'T2',
       taskCategory: 'logic',
       verdict: 'ok',
@@ -791,11 +791,11 @@ describe('agent-flow dispatch smoke — bootApp + tools/pre-execute', () => {
     )
 
     // No ledger file was ever created — the missing file now reads as the
-    // EMPTY view (qc1 F-001), still proving "nothing recorded".
+    // EMPTY view , still proving "nothing recorded".
     expect(readAgentFlow(join(app.harnessDir, 'workflows/wf-1'))).toEqual({ events: [], summary: [] })
   })
 
-  it('the host-hook path stays silent for non-Assignment text (qc2 F-2: shape guard at the shared core)', async () => {
+  it('the host-hook path stays silent for non-Assignment text (shape guard at the shared core)', async () => {
     const app = booted = await bootApp({ seedV2: true })
 
     const result = await app.ctx.dshHostAdapter.beforeDispatch(GARBAGE_PROMPT)
@@ -819,7 +819,7 @@ describe('agent-flow dispatch smoke — bootApp + tools/pre-execute', () => {
 
 /* ===========================================================================
  * 4. Settle pairing — post-execute three-shape branch + onJobDone terminal
- *    (plan `20260811-panel-f4-timeliness` Task 1) + verification-gate trace
+ *     + verification-gate trace
  * ========================================================================== */
 
 /** A fresh apply-scoped pairing store (empty maps). */
@@ -844,7 +844,7 @@ function pairedDispatch(harnessDir: string, pairing: AgentFlowPairing, callId: s
   recordDispatch({ harnessDir, exec: dispatchExec(callId, agent, prompt), prompt, violations: [], hard: false, pairing })
 }
 
-describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-timeliness T1)', () => {
+describe('agent-flow settle — real completion pairing ', () => {
   it('registration logs the pairing trace once (verification gate)', async () => {
     const { root, harnessDir } = await tempHarness('dsh-agentflow-settle-trace-')
     const ctx = new Context()
@@ -865,7 +865,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
     }
   })
 
-  it('recordDispatch with an exec registers the agent-namespaced call key → dispatchRef (qc1 F-101 fix-wave)', async () => {
+  it('recordDispatch with an exec registers the agent-namespaced call key → dispatchRef ', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-agentflow-pairing-register-')
     try {
       const pairing = pairingOf()
@@ -880,7 +880,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
         workflowDir,
         agent: 'sess-1',
         role: 'fullstack-dev',
-        planId: '20260810-agent-flow',
+        planId: '00000810-agent-flow',
         taskId: 'T2',
       })
       expect(pairing.dispatchByCallId.get('c-1')).toBeUndefined() // un-namespaced key never exists
@@ -914,7 +914,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
         outcome: 'ok',
         agent: 'sess-1',
         role: 'fullstack-dev',
-        planId: '20260810-agent-flow',
+        planId: '00000810-agent-flow',
         taskId: 'T2',
       })
       // The view carries the paired-identity presence marker.
@@ -922,7 +922,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
       // The serialized JSONL line carries the identity fields (no undefined keys).
       const line = readFileSync(join(workflowDir, AGENT_FLOW_FILE), 'utf8').trim().split('\n').at(-1)!
       const parsed = JSON.parse(line) as Record<string, unknown>
-      expect(parsed).toMatchObject({ kind: 'settle', outcome: 'ok', role: 'fullstack-dev', planId: '20260810-agent-flow', taskId: 'T2' })
+      expect(parsed).toMatchObject({ kind: 'settle', outcome: 'ok', role: 'fullstack-dev', planId: '00000810-agent-flow', taskId: 'T2' })
       expect(Object.values(parsed).every((v) => v !== undefined)).toBe(true)
       // A plain-string foreground value settles too (foreground/other success).
       pairing.dispatchByCallId.clear()
@@ -959,7 +959,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
     }
   })
 
-  it('two agents sharing the same callId never cross-pair — each settle lands on its own dispatch (qc1 F-101 fix-wave)', async () => {
+  it('two agents sharing the same callId never cross-pair — each settle lands on its own dispatch ', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-agentflow-pairing-namespace-')
     const ctx = new Context()
     const pairing = pairingOf()
@@ -976,7 +976,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
       emitUndeclared(ctx, SETTLE_SEAM, { callId: 'c-shared', name: 'subagent', agent: { id: 'sess-A' } }, { isError: false, value: { kind: 'foreground', runId: 'rA', output: [] } })
       let view = readAgentFlow(workflowDir)!
       expect(view.events.map((e) => e.kind)).toEqual(['settle', 'dispatch', 'dispatch'])
-      expect(view.events[0]).toMatchObject({ kind: 'settle', agent: 'sess-A', role: 'fullstack-dev', planId: '20260810-agent-flow', taskId: 'T2' })
+      expect(view.events[0]).toMatchObject({ kind: 'settle', agent: 'sess-A', role: 'fullstack-dev', planId: '00000810-agent-flow', taskId: 'T2' })
 
       // Session B's completion pairs to B's dispatch — the settle identities
       // never crossed (no mis-pair into the other session's dispatchRef).
@@ -1014,7 +1014,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
       // identity — wf-2 (the NEW active dir) holds NO rows.
       const wf1 = readAgentFlow(workflowDir)!
       expect(wf1.events.map((e) => e.kind)).toEqual(['settle', 'dispatch'])
-      expect(wf1.events[0]).toMatchObject({ kind: 'settle', outcome: 'ok', agent: 'sess-1', role: 'fullstack-dev', planId: '20260810-agent-flow', taskId: 'T2' })
+      expect(wf1.events[0]).toMatchObject({ kind: 'settle', outcome: 'ok', agent: 'sess-1', role: 'fullstack-dev', planId: '00000810-agent-flow', taskId: 'T2' })
       expect(readAgentFlow(join(harnessDir, 'workflows/wf-2'))!.events).toEqual([])
       // The call was consumed (map pruning).
       expect(pairing.dispatchByCallId.size).toBe(0)
@@ -1025,7 +1025,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
     }
   })
 
-  it('a result carrying `error` WITHOUT `isError: true` settles error — never a fabricated ok (qc2 F-001 / qc3 F-003a fix-wave)', async () => {
+  it('a result carrying `error` WITHOUT `isError: true` settles error — never a fabricated ok ', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-agentflow-settle-error-key-')
     const ctx = new Context()
     const pairing = pairingOf()
@@ -1050,7 +1050,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
     }
   })
 
-  it('a background result WITHOUT a valid taskId records nothing — never a fabricated ok (qc3 F-003b fix-wave)', async () => {
+  it('a background result WITHOUT a valid taskId records nothing — never a fabricated ok ', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-agentflow-settle-background-notask-')
     const ctx = new Context()
     const pairing = pairingOf()
@@ -1076,7 +1076,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
     }
   })
 
-  it('the dispatchByCallId entry is pruned once the post-execute branch resolves the call (qc1 F-102 / qc2 F-002 / qc3 F-002 fix-wave)', async () => {
+  it('the dispatchByCallId entry is pruned once the post-execute branch resolves the call ', async () => {
     const { root, harnessDir, workflowDir } = await tempHarness('dsh-agentflow-prune-callid-')
     const ctx = new Context()
     const pairing = pairingOf()
@@ -1116,7 +1116,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
       )
 
       // The pairing store now maps the registry task id → the dispatch.
-      expect(pairing.dispatchByTaskId.get('subagent-7')).toMatchObject({ role: 'fullstack-dev', planId: '20260810-agent-flow' })
+      expect(pairing.dispatchByTaskId.get('subagent-7')).toMatchObject({ role: 'fullstack-dev', planId: '00000810-agent-flow' })
       // No settle yet — the ledger stays dispatch-only (honest).
       let view = readAgentFlow(workflowDir)!
       expect(view.events.map((e) => e.kind)).toEqual(['dispatch'])
@@ -1130,12 +1130,12 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
         outcome: 'ok',
         agent: 'sess-1',
         role: 'fullstack-dev',
-        planId: '20260810-agent-flow',
+        planId: '00000810-agent-flow',
         taskId: 'T2',
         durationMs: 3_000,
       })
       // The consumed task entry is pruned — the map holds only in-flight tasks
-      // (qc1 F-102 / qc2 F-002 / qc3 F-002 fix-wave).
+      // The consumed task entry is pruned — the map holds only in-flight tasks.
       expect(pairing.dispatchByTaskId.size).toBe(0)
     } finally {
       setAgentFlowLogger(priorSink)
@@ -1206,7 +1206,7 @@ describe('agent-flow settle — real completion pairing (plan 20260811-panel-f4-
     }
   })
 
-  it('the pairing trace logs ONCE per logger binding, not per registration (qc1 F-006)', async () => {
+  it('the pairing trace logs ONCE per logger binding, not per registration ', async () => {
     const { root, harnessDir } = await tempHarness('dsh-agentflow-settle-once-')
     const ctx = new Context()
     const captured: string[] = []
@@ -1316,7 +1316,7 @@ describe('agent-flow — catalog-invalidation hook (Task 2 seam)', () => {
 })
 
 /* ===========================================================================
- * 4b. Upstream seam probes (plan `20260811-panel-f4-timeliness` T1 Step 1 —
+ * 4b. Upstream seam probes (plan  T1 Step 1 —
  *     prove the seams BEFORE writing the pairing): the REAL dsh-tools
  *     registry emits `tools/post-execute` for every tool call
  *     (`runPostExecute` pipeline), and `ctx.jobs.onJobDone` is registrable
@@ -1422,7 +1422,7 @@ describe('upstream seam probe — ctx.inject([\'jobs\']) onJobDone wiring (T1 St
       outcome: 'ok',
       agent: 'probe-agent',
       role: 'fullstack-dev',
-      planId: '20260810-agent-flow',
+      planId: '00000810-agent-flow',
       taskId: 'T2',
       durationMs: 1_500,
     })
@@ -1512,7 +1512,7 @@ describe('agent-flow catalog — state.agentFlow evidence + render', () => {
       kind: 'dispatch',
       agent: 'a1',
       role: 'fullstack-dev',
-      planId: '20260810-x',
+      planId: '00000810-x',
       taskId: 'T2',
       verdict: 'ok',
     })
@@ -1523,11 +1523,11 @@ describe('agent-flow catalog — state.agentFlow evidence + render', () => {
 
     // Compact model line (the event detail lives in the structured source only).
     const text = textOf(row)
-    expect(text).toContain('agent flow: 2 events; by role: fullstack-dev 1; latest: fullstack-dev→20260810-x#T2 ')
+    expect(text).toContain('agent flow: 2 events; by role: fullstack-dev 1; latest: fullstack-dev→00000810-x#T2 ')
     expect(text.split('\n').filter((l) => l.startsWith('agent flow:')).length).toBe(1)
   })
 
-  it('no ledger → state.agentFlow is the EMPTY view and NO agent-flow line (qc1 F-001 fix-wave: missing file reads as empty, not null)', async () => {
+  it('no ledger → state.agentFlow is the EMPTY view and NO agent-flow line (missing file reads as empty, not null)', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-agentflow-catalog-none-'))
     const harnessDir = await seedV2Tree(root)
     // state is gated on status.json — seed it so the state section exists
@@ -1542,7 +1542,7 @@ describe('agent-flow catalog — state.agentFlow evidence + render', () => {
     expect(textOf(row)).not.toContain('agent flow:')
   })
 
-  it('a full 50-event window renders the model-line window marker (qc3 F-004: "N events (latest 50)")', async () => {
+  it('a full 50-event window renders the model-line window marker ("N events (latest 50)")', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-agentflow-catalog-window-'))
     const harnessDir = await seedV2Tree(root)
     const lines: string[] = []

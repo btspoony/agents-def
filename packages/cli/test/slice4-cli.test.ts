@@ -733,7 +733,7 @@ describe("mstar audit secret-scan — tracked-file credential scan", () => {
         expect(JSON.parse(line).type).toBeDefined();
       }
       // Hard Rule 4 at the shipped boundary: the seeded raw values must be
-      // absent from BOTH output streams (qc1 W-006).
+      // absent from BOTH output streams.
       expect(result.stdout + result.stderr).not.toContain(awsKey);
       expect(result.stdout + result.stderr).not.toContain("SECRET=placeholder");
     });
@@ -771,7 +771,7 @@ describe("mstar audit secret-scan — tracked-file credential scan", () => {
     });
   });
 
-  test("nested path argument resolves tracked files under it (qc1 W-001)", () => {
+  test("nested path argument resolves tracked files under it", () => {
     withTempDir((dir) => {
       execFileSync("git", ["init", "-q"], { cwd: dir });
       // Leak lives in a NESTED package dir; scan target is that dir.
@@ -791,7 +791,7 @@ describe("mstar audit secret-scan — tracked-file credential scan", () => {
     });
   });
 
-  test("non-git directory → exit 2, not a clean exit 0 (qc1 W-002 / qc3 W-1)", () => {
+  test("non-git directory → exit 2, not a clean exit 0 ", () => {
     withTempDir((dir) => {
       writeFileSync(join(dir, "main.ts"), `const ok = 1;\n`);
       const result = runCli(["audit", "secret-scan", dir]);
@@ -800,7 +800,7 @@ describe("mstar audit secret-scan — tracked-file credential scan", () => {
     });
   });
 
-  test("unreadable tracked file forces non-zero even with no findings (qc1 W-002)", () => {
+  test("unreadable tracked file forces non-zero even with no findings", () => {
     withTempDir((dir) => {
       execFileSync("git", ["init", "-q"], { cwd: dir });
       const locked = join(dir, "locked.txt");
@@ -1790,7 +1790,6 @@ describe("mstar status findings-cleanup — project-register cleanup-mode gate (
 
 // ---------------------------------------------------------------------------
 // mstar status backlog-register / backlog-close — project-register backlog
-// (plan 20260826-backlog-register-cli Task 3; engine APIs from Task 1)
 // ---------------------------------------------------------------------------
 
 /** Local calendar date YYYY-MM-DD — same convention as the CLI's `registered_at` fill. */

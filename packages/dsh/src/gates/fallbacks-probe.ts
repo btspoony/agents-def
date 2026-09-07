@@ -1,6 +1,6 @@
 /**
  * Capability probes for the OPTIONAL `dsh-llm-fallbacks` plugin (plan
- * `20260814-dsh-fallbacks-integration` Task 1 — probe foundation).
+ *   Task 1 — probe foundation).
  *
  * The fallbacks plugin is an optional SEPARATE install (two-command
  * contract) and a dev-time-only dependency of this package: src carries
@@ -71,7 +71,7 @@ export function fallbacksService(ctx: Context): FallbacksServiceView | undefined
  * The fallbacks loader row when present and enabled (group rows skipped).
  * Unlike {@link fallbacksMounted}, NO live-fiber requirement: the entry is
  * declarative and `options.config` is set at entry creation, so the adoption
- * advisory (plan `20260815-dsh-fallbacks-personas` Task 4) can read the
+ * advisory  can read the
  * deployment's row config even during HMR/fiber-swap windows — the advisory
  * caller gates on `fallbacksMounted` first.
  */

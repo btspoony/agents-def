@@ -1,5 +1,5 @@
 /**
- * REAL-composition tier (plan Task 2, mirrors dsh-private packages/AGENTS.md):
+ * REAL-composition tier (, mirrors dsh-private packages/AGENTS.md):
  * boots the REAL-composition app by mounting the seam rows directly with
  * `ctx.plugin` in the dsh app's row order (harness.ts `bootApp`), applying
  * the plugin Config through the shipping schemastery validation — entry

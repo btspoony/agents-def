@@ -151,7 +151,7 @@ function hasExplicitModelFlags(options: InitOptions): boolean {
 
 /** Advanced override only \u2014 never calls `opencode models` (avoids silent hangs). */
 function resolveExplicitModelAssignments(options: InitOptions) {
-  // Trust caller-supplied ids; do not discover/validate against a live model list.
+ // Trust caller-supplied ids; do not discover/validate against a live model list.
   const allow = (label: string, values: string[] | undefined, max: number, required: boolean) => {
     if (!values?.length) {
       if (required) throw new Error(`${label} is required when any --*-model flag is set.`);
@@ -195,8 +195,8 @@ async function runInit(options: InitOptions) {
     return;
   }
 
-  // OpenCode (and any future config-mode targets): default = schema + plugin only.
-  // Skip interactive model picking and `opencode models` discovery (can hang with no output).
+ // OpenCode (and any future config-mode targets): default = schema + plugin only.
+ // Skip interactive model picking and `opencode models` discovery (can hang with no output).
   const useExplicitModels = hasExplicitModelFlags(options);
   const assignments = useExplicitModels ? resolveExplicitModelAssignments(options) : {};
 
@@ -244,8 +244,8 @@ function runDoctor(options: DoctorOptions) {
   const adapter = getAdapter(target);
   const scope = options.scope || "project";
   console.log(`Target: ${target}`);
-  // CLI-on-PATH note (SP1-AC6): informational for every target, never part
-  // of doctor errors and never affects the exit code.
+ // CLI-on-PATH note: informational for every target, never part
+ // of doctor errors and never affects the exit code.
   console.log(formatCliDoctorNote(defaultDetectVersion(), packageVersion));
 
   if (adapter.mode === "install") {
@@ -254,9 +254,9 @@ function runDoctor(options: DoctorOptions) {
       throw new Error(`Adapter ${target} does not implement install doctor flow.`);
     }
     console.log(`Install location: ${result.location}`);
-    // Capability word lines (install-mode doctor notes, e.g. dsh
-    // uninstalled/disabled/mounted) print on every run, healthy included \u2014
-    // a `mounted` state must not be implied only by exit code 0 (AC-2).
+ // Capability word lines (install-mode doctor notes, e.g. dsh
+ // uninstalled/disabled/mounted) print on every run, healthy included \u2014
+ // a `mounted` state must not be implied only by exit code 0 (AC-2).
     for (const note of result.notes ?? []) {
       console.log(`  - ${note}`);
     }
@@ -395,7 +395,7 @@ function gitWorkspaceRoot(startDir: string): string {
     }
     return path.resolve(boundary);
   } catch {
-    // not a git work tree (or git unavailable) \u2014 fall through to startDir
+ // not a git work tree (or git unavailable) \u2014 fall through to startDir
   }
   return startDir;
 }
@@ -407,17 +407,17 @@ function runScaffold(pathArg: string | undefined) {
   const created: string[] = [];
   const skipped: string[] = [];
 
-  // Canonical .gitignore snippet (plan-conventions § Git 跟踪策略): the
-  // snippet literals are `.mstar/**`-based, so the append only makes sense
-  // for the default `<workspaceRoot>/.mstar/` layout. Custom harness layouts
-  // (`.mstarc` harness_dir, legacy `.agents/`) manage their own ignore rules
-  // and are skipped with an explicit note. The comparison AND the fence target
-  // are anchored at the git top-level of `root` (falling back to `root` when
-  // not a git work tree): a repo-root `.mstarc` `harness_dir=.mstar` resolves
-  // the harness dir against the config file's location, so scaffolding a
-  // subdirectory path would otherwise compare `<repoRoot>/.mstar` against
-  // `<subdir>/.mstar` and skip the fence while process artifacts stay
-  // committable.
+ // Canonical .gitignore snippet (plan-conventions § Git 跟踪策略): the
+ // snippet literals are `.mstar/**`-based, so the append only makes sense
+ // for the default `<workspaceRoot>/.mstar/` layout. Custom harness layouts
+ // (`.mstarc` harness_dir, legacy `.agents/`) manage their own ignore rules
+ // and are skipped with an explicit note. The comparison AND the fence target
+ // are anchored at the git top-level of `root` (falling back to `root` when
+ // not a git work tree): a repo-root `.mstarc` `harness_dir=.mstar` resolves
+ // the harness dir against the config file's location, so scaffolding a
+ // subdirectory path would otherwise compare `<repoRoot>/.mstar` against
+ // `<subdir>/.mstar` and skip the fence while process artifacts stay
+ // committable.
   const workspaceRoot = gitWorkspaceRoot(root);
   const harnessKind = detectHarnessKind(harnessDir);
   if (harnessKind === "mstar" && path.resolve(harnessDir) === path.join(workspaceRoot, ".mstar")) {
@@ -437,46 +437,46 @@ function runScaffold(pathArg: string | undefined) {
       const currentLines = current.split(/\r?\n/);
       const firstNegation = currentLines.findIndex((line) => line.trim().startsWith("!.mstar/"));
       if (!lines.has(broadRule) && firstNegation !== -1) {
-        // gitignore = last matching pattern wins: appending `.mstar/**`
-        // after existing `!.mstar/…` re-includes would shadow them. Splice
-        // the canonical block start (comments + broad rule + missing
-        // re-includes) BEFORE the first negation so the re-includes stay
-        // effective. `.mstarc` is a plain ignore (no negations) \u2014 appended
-        // at the end when missing.
+ // gitignore = last matching pattern wins: appending `.mstar/**`
+ // after existing `!.mstar/…` re-includes would shadow them. Splice
+ // the canonical block start (comments + broad rule + missing
+ // re-includes) BEFORE the first negation so the re-includes stay
+ // effective. `.mstarc` is a plain ignore (no negations) \u2014 appended
+ // at the end when missing.
         const blockStart = [...missingComments, broadRule, ...missing.filter((entry) => entry.startsWith("!.mstar/"))];
         currentLines.splice(firstNegation, 0, ...blockStart);
         let next = currentLines.join("\n");
         if (missing.includes(".mstarc")) next = `${next}${next.endsWith("\n") ? "" : "\n"}.mstarc\n`;
         fs.writeFileSync(gitignorePath, next, "utf8");
       } else {
-        // Broad rule present (append missing entries after it) or no
-        // negations to shadow (append the whole block) \u2014 both safe.
+ // Broad rule present (append missing entries after it) or no
+ // negations to shadow (append the whole block) \u2014 both safe.
         const prefix = current && !current.endsWith("\n") ? "\n" : "";
         fs.appendFileSync(gitignorePath, `${prefix}${[...missingComments, ...missing].join("\n")}\n`, "utf8");
       }
       created.push(".gitignore (canonical harness snippet)");
     }
 
-    // Unconditional final normalization \u2014 gitignore is last-match-wins, so a
-    // misplaced `.mstar/**` (appearing after one or more canonical
-    // `!.mstar/…` re-includes, whether pre-existing or just appended) would
-    // shadow them. Dedupe is SEGMENTED: a duplicate `.mstar/**` is dropped
-    // only when no un-crossable line lies strictly between it and the
-    // previously retained broad rule \u2014 a custom `!.mstar/…` re-inclusion
-    // between two broad rules makes the trailing broad semantically
-    // load-bearing (last-match-wins re-ignores the custom path), so it is
-    // retained exactly where it is. The kept (earliest) broad rule is then
-    // relocated to sit immediately before the first canonical re-include \u2014
-    // but only when the move crosses no line whose semantics we do not own.
-    // The broad rule may cross blank/comment lines, other exact
-    // `.mstar/**` duplicates, the 5 canonical negations, and our own
-    // `.mstarc` entry; every other line (custom `!.mstar/…` negations,
-    // custom `.mstar/<path>` ignores, anything else) is un-crossable. A
-    // broad rule already before every canonical negation is correctly placed
-    // and never moves, regardless of surrounding custom lines. Infeasible →
-    // the file keeps its user-authored order (missing entries were already
-    // appended above). Every other line stays byte-for-byte. Runs after
-    // EVERY branch above.
+ // Unconditional final normalization \u2014 gitignore is last-match-wins, so a
+ // misplaced `.mstar/**` (appearing after one or more canonical
+ // `!.mstar/…` re-includes, whether pre-existing or just appended) would
+ // shadow them. Dedupe is SEGMENTED: a duplicate `.mstar/**` is dropped
+ // only when no un-crossable line lies strictly between it and the
+ // previously retained broad rule \u2014 a custom `!.mstar/…` re-inclusion
+ // between two broad rules makes the trailing broad semantically
+ // load-bearing (last-match-wins re-ignores the custom path), so it is
+ // retained exactly where it is. The kept (earliest) broad rule is then
+ // relocated to sit immediately before the first canonical re-include \u2014
+ // but only when the move crosses no line whose semantics we do not own.
+ // The broad rule may cross blank/comment lines, other exact
+ // `.mstar/**` duplicates, the 5 canonical negations, and our own
+ // `.mstarc` entry; every other line (custom `!.mstar/…` negations,
+ // custom `.mstar/<path>` ignores, anything else) is un-crossable. A
+ // broad rule already before every canonical negation is correctly placed
+ // and never moves, regardless of surrounding custom lines. Infeasible →
+ // the file keeps its user-authored order (missing entries were already
+ // appended above). Every other line stays byte-for-byte. Runs after
+ // EVERY branch above.
     const finalLines = fs.readFileSync(gitignorePath, "utf8").split(/\r?\n/);
     const broadIndexes = finalLines
       .map((line, index) => (line.trim() === ".mstar/**" ? index : -1))
@@ -487,14 +487,14 @@ function runScaffold(pathArg: string | undefined) {
     const firstCanonicalNegationIndex = canonicalNegationIndexes[0] ?? -1;
     let normalized = false;
     if (broadIndexes.length > 0) {
-      // Segmented dedupe: drop a duplicate `.mstar/**` only when NO
-      // un-crossable line lies strictly between it and the previously
-      // retained broad rule. A custom `!.mstar/…` re-inclusion (or any
-      // other un-owned line) between two broad rules makes the trailing
-      // broad semantically load-bearing \u2014 gitignore's last-match-wins
-      // re-ignores the custom path, and deleting the broad would flip
-      // that line's meaning. Retained secondary broads stay exactly
-      // where they are.
+ // Segmented dedupe: drop a duplicate `.mstar/**` only when NO
+ // un-crossable line lies strictly between it and the previously
+ // retained broad rule. A custom `!.mstar/…` re-inclusion (or any
+ // other un-owned line) between two broad rules makes the trailing
+ // broad semantically load-bearing \u2014 gitignore's last-match-wins
+ // re-ignores the custom path, and deleting the broad would flip
+ // that line's meaning. Retained secondary broads stay exactly
+ // where they are.
       let removed = 0;
       let lastRetainedBroadIndex = broadIndexes[0];
       for (let i = 1; i < broadIndexes.length; i++) {
@@ -519,17 +519,17 @@ function runScaffold(pathArg: string | undefined) {
         }
       }
       const keptIndex = finalLines.findIndex((line) => line.trim() === ".mstar/**");
-      // A broad rule already before every canonical negation is correctly
-      // placed \u2014 never move it, regardless of surrounding custom lines.
-      // Only a broad rule AFTER the first canonical negation is misplaced.
+ // A broad rule already before every canonical negation is correctly
+ // placed \u2014 never move it, regardless of surrounding custom lines.
+ // Only a broad rule AFTER the first canonical negation is misplaced.
       if (firstCanonicalNegationIndex !== -1 && keptIndex > firstCanonicalNegationIndex) {
-        // Feasibility: the move may only cross lines whose semantics we own
-        // \u2014 blank/comment lines, other exact `.mstar/**` duplicates, the 5
-        // canonical negations, and our own `.mstarc` entry. Any other line
-        // (custom `!.mstar/…` negation, custom `.mstar/<path>` ignore, or
-        // anything else) between the first canonical negation and the kept
-        // rule makes the relocation infeasible \u2014 the file keeps its
-        // user-authored order.
+ // Feasibility: the move may only cross lines whose semantics we own
+ // \u2014 blank/comment lines, other exact `.mstar/**` duplicates, the 5
+ // canonical negations, and our own `.mstarc` entry. Any other line
+ // (custom `!.mstar/…` negation, custom `.mstar/<path>` ignore, or
+ // anything else) between the first canonical negation and the kept
+ // rule makes the relocation infeasible \u2014 the file keeps its
+ // user-authored order.
         let feasible = true;
         for (let i = firstCanonicalNegationIndex; i < keptIndex; i++) {
           const line = finalLines[i].trim();
@@ -547,24 +547,24 @@ function runScaffold(pathArg: string | undefined) {
           normalized = true;
         }
       }
-      // Ownership invariant, final pass. Pipeline order matters for
-      // one-run convergence:
-      // 1. PARTITION \u2014 user-authored targeted `.mstar/…` rules always speak
-      //    LAST: relocate every targeted user rule (non-canonical
-      //    `!.mstar/…` re-inclusions and `.mstar/<path>` ignores \u2014 never
-      //    the bare broad rule, canonical negations, or our own
-      //    `.mstarc`) to after the fence, preserving their relative order.
-      //    Gitignore's last-match-wins then resolves every overlap in the
-      //    user's favor while our tracked results stay re-included.
-      // 2. DEDUPE \u2014 after the partition no un-owned line can sit between
-      //    two broad rules, so any extra `.mstar/**` is redundant: keep
-      //    the first only.
-      // 3. RELOCATE \u2014 a broad rule sitting after the first canonical
-      //    negation is moved before it when only owned lines lie in
-      //    between.
-      // 4. GUARANTEE \u2014 every canonical negation occurs at least once after
-      //    the last broad rule (append missing occurrences; duplicates are
-      //    harmless in gitignore).
+ // Ownership invariant, final pass. Pipeline order matters for
+ // one-run convergence:
+ // 1. PARTITION \u2014 user-authored targeted `.mstar/…` rules always speak
+ // LAST: relocate every targeted user rule (non-canonical
+ // `!.mstar/…` re-inclusions and `.mstar/<path>` ignores \u2014 never
+ // the bare broad rule, canonical negations, or our own
+ // `.mstarc`) to after the fence, preserving their relative order.
+ // Gitignore's last-match-wins then resolves every overlap in the
+ // user's favor while our tracked results stay re-included.
+ // 2. DEDUPE \u2014 after the partition no un-owned line can sit between
+ // two broad rules, so any extra `.mstar/**` is redundant: keep
+ // the first only.
+ // 3. RELOCATE \u2014 a broad rule sitting after the first canonical
+ // negation is moved before it when only owned lines lie in
+ // between.
+ // 4. GUARANTEE \u2014 every canonical negation occurs at least once after
+ // the last broad rule (append missing occurrences; duplicates are
+ // harmless in gitignore).
       const isTargetedUserMstarRule = (line: string): boolean => {
         const trimmed = line.trim();
         if (trimmed === "" || trimmed.startsWith("#")) return false;
@@ -575,19 +575,19 @@ function runScaffold(pathArg: string | undefined) {
       };
       const isOwnedLine = (line: string): boolean => !isTargetedUserMstarRule(line);
 
-      // 1. Partition targeted user rules to the tail (with synthesis).
+ // 1. Partition targeted user rules to the tail (with synthesis).
       const targetedRules = finalLines.filter((line) => isTargetedUserMstarRule(line));
       if (targetedRules.length > 0) {
         const owned = finalLines.filter(isOwnedLine);
         const hadTrailingNewline = owned[owned.length - 1] === "";
         const ownedBody = hadTrailingNewline ? owned.slice(0, -1) : owned;
-        // A contents-level negation like `!.mstar/custom/**` cannot take
-        // effect while its parent directory stays excluded by
-        // `.mstar/**` \u2014 git prunes excluded directories without descending
-        // (this is why the canonical fence pairs `!.mstar/knowledge/` with
-        // `!.mstar/knowledge/**`). Synthesize the missing
-        // ancestor-directory re-inclusions so the relocated user rule keeps
-        // working after the fence.
+ // A contents-level negation like `!.mstar/custom/**` cannot take
+ // effect while its parent directory stays excluded by
+ // `.mstar/**` \u2014 git prunes excluded directories without descending
+ // (this is why the canonical fence pairs `!.mstar/knowledge/` with
+ // `!.mstar/knowledge/**`). Synthesize the missing
+ // ancestor-directory re-inclusions so the relocated user rule keeps
+ // working after the fence.
         const tail: string[] = [];
         const ensuredDirs = new Set<string>();
         const broadPositionsPrePartition = finalLines
@@ -604,9 +604,9 @@ function runScaffold(pathArg: string | undefined) {
             for (const segment of segments) {
               prefix += "/" + segment;
               const dirNegation = "!" + prefix + "/";
-              // Idempotency: skip when the dir negation already exists
-              // after the last broad rule (synthesized by an earlier run)
-              // or is already queued in this pass.
+ // Idempotency: skip when the dir negation already exists
+ // after the last broad rule (synthesized by an earlier run)
+ // or is already queued in this pass.
               const alreadyQueued = ensuredDirs.has(dirNegation);
               const alreadyPresent =
                 !alreadyQueued &&
@@ -632,14 +632,14 @@ function runScaffold(pathArg: string | undefined) {
         }
       }
 
-      // Recompute broad positions after the partition.
+ // Recompute broad positions after the partition.
       const broadAfter = finalLines
         .map((line, index) => (line.trim() === ".mstar/**" ? index : -1))
         .filter((index) => index !== -1);
       if (broadAfter.length > 1) {
-        // 2. Dedupe: post-partition every line between two broad rules is
-        // owned, so extra broad rules are pure redundancy. Removing them
-        // can only make canonical re-inclusions effective.
+ // 2. Dedupe: post-partition every line between two broad rules is
+ // owned, so extra broad rules are pure redundancy. Removing them
+ // can only make canonical re-inclusions effective.
         const [first, ...duplicates] = broadAfter;
         let removed = 0;
         for (const duplicate of duplicates) {
@@ -649,7 +649,7 @@ function runScaffold(pathArg: string | undefined) {
         if (removed > 0) normalized = true;
       }
 
-      // Recompute once more; relocate a misplaced primary broad rule.
+ // Recompute once more; relocate a misplaced primary broad rule.
       const broadIndexesFinal = finalLines
         .map((line, index) => (line.trim() === ".mstar/**" ? index : -1))
         .filter((index) => index !== -1);
@@ -679,19 +679,19 @@ function runScaffold(pathArg: string | undefined) {
         }
       }
 
-      // 4. Guarantee: every canonical negation occurs at least once AFTER
-      // the last broad rule. A retained/misplaced broad sitting between
-      // canonical re-inclusions would otherwise shadow them under
-      // last-match-wins even though the fence was reported as installed.
+ // 4. Guarantee: every canonical negation occurs at least once AFTER
+ // the last broad rule. A retained/misplaced broad sitting between
+ // canonical re-inclusions would otherwise shadow them under
+ // last-match-wins even though the fence was reported as installed.
       const broadIndexesLast = finalLines
         .map((line, index) => (line.trim() === ".mstar/**" ? index : -1))
         .filter((index) => index !== -1);
       if (broadIndexesLast.length > 0) {
         const lastBroadIndex = broadIndexesLast[broadIndexesLast.length - 1];
-        // Insert missing negations BEFORE the partitioned user tail (the
-        // first targeted user rule, if any) \u2014 appending after it would put
-        // our negations past the user's rules, and the next run's partition
-        // would move the user rules again (flip-flop).
+ // Insert missing negations BEFORE the partitioned user tail (the
+ // first targeted user rule, if any) \u2014 appending after it would put
+ // our negations past the user's rules, and the next run's partition
+ // would move the user rules again (flip-flop).
         let insertIndex = finalLines.findIndex((line) => isTargetedUserMstarRule(line));
         if (insertIndex === -1) insertIndex = finalLines.length;
         for (const negation of Object.keys(CANONICAL_NEGATIONS)) {
@@ -705,8 +705,8 @@ function runScaffold(pathArg: string | undefined) {
           }
         }
       }
-      // Preserve a trailing newline whenever normalization changed the
-      // file (appends land after any newline the original file had).
+ // Preserve a trailing newline whenever normalization changed the
+ // file (appends land after any newline the original file had).
       if (normalized && finalLines[finalLines.length - 1] !== "") finalLines.push("");
     }
     if (normalized) {
@@ -719,7 +719,7 @@ function runScaffold(pathArg: string | undefined) {
     skipped.push(".gitignore (canonical harness snippet) \u2014 custom harness layout manages its own ignore rules");
   }
 
-  // Minimal {HARNESS_DIR}/AGENTS.md harness-layer rules (tracked result).
+ // Minimal {HARNESS_DIR}/AGENTS.md harness-layer rules (tracked result).
   const agentsPath = path.join(harnessDir, "AGENTS.md");
   const agentsLabel = `${path.basename(harnessDir)}/AGENTS.md`;
   if (!fs.existsSync(agentsPath)) {
@@ -729,8 +729,8 @@ function runScaffold(pathArg: string | undefined) {
     skipped.push(`${agentsLabel} (already present)`);
   }
 
-  // Headline is created-count-aware: "initialized" only when something was
-  // created; a no-op re-run on an already-initialized tree says "ensured".
+ // Headline is created-count-aware: "initialized" only when something was
+ // created; a no-op re-run on an already-initialized tree says "ensured".
   const headline =
     created.length > 0
       ? `scaffold: harness initialized at ${harnessDir}`
@@ -763,10 +763,10 @@ program
   .option("--qc-models <a,b,c>", "Optional: models for qc trio")
   .option("--other-models <a,b,c>", "Optional: models for remaining roles")
   .action(async (options: InitOptions & { fallbacks?: boolean; globalCli?: boolean }) => {
-    // commander's negation `--no-fallbacks` parses as `fallbacks: false`
-    // (default true); map to the canonical `noFallbacks` name at the boundary.
-    // `--no-global-cli` likewise parses as `globalCli: false` (default true);
-    // map to the canonical `noGlobalCli` name the same way.
+ // commander's negation `--no-fallbacks` parses as `fallbacks: false`
+ // (default true); map to the canonical `noFallbacks` name at the boundary.
+ // `--no-global-cli` likewise parses as `globalCli: false` (default true);
+ // map to the canonical `noGlobalCli` name the same way.
     await runInit({
       ...options,
       noFallbacks: options.fallbacks === false,
@@ -827,8 +827,8 @@ pathCommand
     const startDir = pathArg ? path.resolve(pathArg) : process.cwd();
     const harnessDir = resolveHarnessDir(startDir);
     if (!harnessDir) {
-      // plan-conventions § {HARNESS_DIR} 解析顺序: no .mstar/ → .agents/ →
-      // .plans/|plans/ anywhere up the tree \u2014 harness not enabled from here.
+ // plan-conventions § {HARNESS_DIR} 解析顺序: no .mstar/ → .agents/ →
+ // .plans/|plans/ anywhere up the tree \u2014 harness not enabled from here.
       const guidance =
         "no harness dir found \u2014 the bounded probe (.mstar/, .agents/, .plans/, plans/) walked up from " +
         `${startDir} only within the workspace root (git top-level of the start dir; non-git start probes only itself) \u2014 run \`mstar harness scaffold\` to bootstrap, or pass a start dir inside a harness-enabled project`;
@@ -841,8 +841,8 @@ pathCommand
       process.exitCode = 1;
       return;
     }
-    // Read-only resolution: never create {HARNESS_DIR}/specs/ as a side
-    // effect (engine resolveSpecsDir opts.create defaults to true).
+ // Read-only resolution: never create {HARNESS_DIR}/specs/ as a side
+ // effect (engine resolveSpecsDir opts.create defaults to true).
     const specsDir = resolveSpecsDir(harnessDir, { create: false });
     const workflowDir = resolveWorkflowDir(startDir);
     const projectDir = resolveProjectDir(startDir);
@@ -985,7 +985,7 @@ function collectEntries(value: string, previous: string[]): string[] {
  * Single-component project-id guard for the `--project` write commands
  * (backlog-register / backlog-close). The id is joined onto `{PROJECT_DIR}`
  * and both commands WRITE `residuals.json` + `.status-write.lockdir/` there \u2014
- * an absolute or `..`-containing id would escape the projects dir (qc2 F-003;
+ * an absolute or `..`-containing id would escape the projects dir ;
  * same class as the workflow-id guard in resolveSnapshotPath). Accept only one
  * safe path component: an alnum first char, then `[A-Za-z0-9._-]`. The built-in
  * `_default` project id (project-less flows) is a constant single-component
@@ -1030,9 +1030,9 @@ statusCommand
       }
       const projectId = sanitizeProjectId(options.project ?? _DEFAULT_PROJECT);
       const projectRoot = resolveProjectDir(process.cwd(), options.harness ? { harnessDir: options.harness } : {});
-      // Store-root pinning (plan Task 4 Part B): the engine writers put
-      // through getArtifactStore(), whose default root is the cwd-resolved
-      // harness \u2014 an explicit --harness must pin the store to that root.
+ // Store-root pinning ( Part B): the engine writers put
+ // through getArtifactStore(), whose default root is the cwd-resolved
+ // harness \u2014 an explicit --harness must pin the store to that root.
       if (options.harness) setArtifactStore(createFsStore(options.harness));
       const projectDir = path.join(projectRoot, projectId);
       const registeredAt = todayString();
@@ -1046,8 +1046,8 @@ statusCommand
         if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
           throw new Error(`--entry ${index + 1} must be a JSON object`);
         }
-        // Provenance is CLI-owned: source_plan = the used key (the engine sets
-        // the bumped key per B-9 ①), registered_at = today (plan Task 3 contract).
+ // Provenance is CLI-owned: source_plan = the used key (the engine sets
+ // the bumped key per B-9 ①), registered_at = today ( contract).
         return { ...(parsed as Record<string, unknown>), source_plan: options.key, registered_at: registeredAt };
       });
       const result = await appendProjectRegisterEntries({ projectDir, basePlanKey: options.key, entries });
@@ -1075,7 +1075,7 @@ statusCommand
     try {
       const projectId = sanitizeProjectId(options.project ?? _DEFAULT_PROJECT);
       const projectRoot = resolveProjectDir(process.cwd(), options.harness ? { harnessDir: options.harness } : {});
-      // Store-root pinning (plan Task 4 Part B): see backlog-register.
+ // Store-root pinning ( Part B): see backlog-register.
       if (options.harness) setArtifactStore(createFsStore(options.harness));
       const projectDir = path.join(projectRoot, projectId);
       await closeProjectRegisterEntry({
@@ -1168,7 +1168,7 @@ function readPersistPayload(options: { file?: string; stdin?: boolean }): string
 
 /** Run the kind's existing validator before put (structure-only: the store
  * may not be FS-backed, so no harness-dir snapshot-existence checks).
- * kind=review runs validateMstarReviewV1 (no opaque JSON once SP3 lands);
+ * kind=review runs validateMstarReviewV1 (structured review envelope, never opaque JSON);
  * json remains parse-only (arbitrary payloads). */
 function validatePersistPayload(kind: ArtifactKind, payload: unknown): void {
   let gate: GateResult;
@@ -1184,10 +1184,10 @@ function validatePersistPayload(kind: ArtifactKind, payload: unknown): void {
 
 persistCommand
   .argument("<kind>", "status | snapshot | residuals | review | json")
-  // Not a commander requiredOption: the `get` subcommand declares the same
-  // flag, and a parent requiredOption would be validated before subcommand
-  // dispatch — `persist get ... --key k` would fail the parent's check.
-  // Validated in-handler below (usage, exit 2).
+ // Not a commander requiredOption: the `get` subcommand declares the same
+ // flag, and a parent requiredOption would be validated before subcommand
+ // dispatch — `persist get ... --key k` would fail the parent's check.
+ // Validated in-handler below (usage, exit 2).
   .option("--key <key>", 'Stable key inside the kind (status: "root"; json: absolute file path)')
   .option("--file <path>", "Payload JSON file (default: read stdin)")
   .option("--stdin", "Read the payload JSON from stdin")
@@ -1229,12 +1229,12 @@ persistCommand
   .command("get")
   .description("Print the stored payload JSON for <kind>/<key>, or exit 1 when absent")
   .argument("<kind>", "status | snapshot | residuals | review | json")
-  // --key / --store are declared on the parent `persist` command only:
-  // commander parses a parent's options from the whole arg list, so a
-  // subcommand's same-named declaration would never see the value. The get
-  // action reads the values the parent parsed (probe-verified).
-  // --validate has no parent twin, so it is declared here and read from the
-  // action's own options.
+ // --key / --store are declared on the parent `persist` command only:
+ // commander parses a parent's options from the whole arg list, so a
+ // subcommand's same-named declaration would never see the value. The get
+ // action reads the values the parent parsed (probe-verified).
+ // --validate has no parent twin, so it is declared here and read from the
+ // action's own options.
   .option("--validate", "Run the kind's validator on the fetched payload (notes on stderr; invalid \u2192 exit 1)")
   .action(async (kind: string, options: { validate?: boolean }, command: Command) => {
     try {
@@ -1251,10 +1251,10 @@ persistCommand
         throw new Error(`persist get ${parsedKind}/${key}: no stored document`);
       }
       if (options.validate === true) {
-        // D1: reuse the put-gate validator (no second validator home). An
-        // invalid doc throws BEFORE stdout is written, so stdout stays
-        // payload-JSON-only and stderr carries the same violations list as
-        // put. json is parse-only — the helper returns without validating.
+ // D1: reuse the put-gate validator (no second validator home). An
+ // invalid doc throws BEFORE stdout is written, so stdout stays
+ // payload-JSON-only and stderr carries the same violations list as
+ // put. json is parse-only — the helper returns without validating.
         validatePersistPayload(parsedKind, payload);
         console.error(parsedKind === "json" ? "json: parse-only" : "validation: ok");
       }
@@ -1268,14 +1268,14 @@ persistCommand
   .command("list")
   .description("Print the stored keys for <kind>, one per line, ascending, no header (json is not listable)")
   .argument("<kind>", "status | snapshot | residuals | review | json")
-  // --store is parsed by the parent `persist` command (same commander
-  // dispatch constraint as `get` — see the note there).
+ // --store is parsed by the parent `persist` command (same commander
+ // dispatch constraint as `get` — see the note there).
   .action(async (kind: string, _options: object, command: Command) => {
     try {
       const parsedKind = parsePersistKind(kind);
-      // D5: json keys are absolute paths — usage error exit 2 BEFORE
-      // calling list (engine list("json") still throws for in-process
-      // callers).
+ // D5: json keys are absolute paths — usage error exit 2 BEFORE
+ // calling list (engine list("json") still throws for in-process
+ // callers).
       if (parsedKind === "json") {
         throw new SddScriptError("ArtifactStore json keys are absolute paths and cannot be listed", 2);
       }
@@ -1283,14 +1283,14 @@ persistCommand
       const store = typeof parentOpts.store === "string" ? parentOpts.store : undefined;
       await resolvePersistStore(store);
       const artifactStore = getArtifactStore();
-      // D4: probe the optional method — an injected store without list is a
-      // usage error exit 2, never a TypeError mapped to exit 1.
+ // D4: probe the optional method — an injected store without list is a
+ // usage error exit 2, never a TypeError mapped to exit 1.
       if (typeof artifactStore.list !== "function") {
         throw new SddScriptError("store does not support list", 2);
       }
       const refs = await artifactStore.list(parsedKind);
-      // Keys only, ascending, no header — pipe-friendly (D5). Sort here so
-      // the contract holds for injected stores too, not just FsStore.
+ // Keys only, ascending, no header — pipe-friendly (D5). Sort here so
+ // the contract holds for injected stores too, not just FsStore.
       for (const key of refs.map((ref) => ref.key).sort()) {
         console.log(key);
       }
@@ -1302,8 +1302,8 @@ persistCommand
   .command("delete")
   .description("Delete the stored document for <kind>/<key> (idempotent: absent is a no-op; no prompt)")
   .argument("<kind>", "status | snapshot | residuals | review | json")
-  // --key / --store are parsed by the parent `persist` command (same
-  // commander dispatch constraint as `get` — see the note there).
+ // --key / --store are parsed by the parent `persist` command (same
+ // commander dispatch constraint as `get` — see the note there).
   .action(async (kind: string, _options: object, command: Command) => {
     try {
       const parsedKind = parsePersistKind(kind);
@@ -1315,8 +1315,8 @@ persistCommand
       }
       await resolvePersistStore(store);
       const artifactStore = getArtifactStore();
-      // D2: probe the optional method — an injected store without delete is
-      // a usage error exit 2, never a TypeError mapped to exit 1.
+ // D2: probe the optional method — an injected store without delete is
+ // a usage error exit 2, never a TypeError mapped to exit 1.
       if (typeof artifactStore.delete !== "function") {
         throw new SddScriptError("store does not support delete", 2);
       }
@@ -1535,9 +1535,9 @@ sddCommand
   .argument("[control-root]", "Control worktree root (default: MSTAR_CONTROL_ROOT or the cwd's git top-level)")
   .action((planId: string | undefined, controlRoot?: string) => {
     try {
-      // Optional args + explicit count check: commander's own
-      // missing-argument error exits 1, which would bypass the usage
-      // contract (exit 2) \u2014 validate in-handler instead (qc2 F-005).
+ // Optional args + explicit count check: commander's own
+ // missing-argument error exits 1, which would bypass the usage
+       // contract (exit 2) \u2014 validate in-handler instead.
       if (!planId) {
         throw new SddScriptError(
           "usage: mstar sdd workspace PLAN_ID [CONTROL_ROOT]\n" +
@@ -1564,7 +1564,7 @@ sddCommand
   .option("--context <path>", "Absolute path to a SddExecutionContext JSON — binds the artifact write (spec A3)")
   .action((planFile: string | undefined, taskNumber: string | undefined, outfile?: string, options: { context?: string } = {}) => {
     try {
-      // Optional args + explicit count check (usage exit 2).
+ // Optional args + explicit count check (usage exit 2).
       if (!planFile || !taskNumber) {
         throw new SddScriptError("usage: mstar sdd task-brief PLAN_FILE TASK_NUMBER [OUTFILE] [--context <absolute.json>]", 2);
       }
@@ -1590,7 +1590,7 @@ sddCommand
   .option("--context <path>", "Absolute path to a SddExecutionContext JSON — binds the artifact write (spec A3)")
   .action((base: string | undefined, head: string | undefined, outfile?: string, options: { context?: string } = {}) => {
     try {
-      // Optional args + explicit count check (usage exit 2).
+ // Optional args + explicit count check (usage exit 2).
       if (!base || !head) {
         throw new SddScriptError("usage: mstar sdd review-package BASE HEAD [OUTFILE] [--context <absolute.json>]", 2);
       }
@@ -1615,8 +1615,8 @@ sddCommand
   .option("--target <path>", "Path the action would touch (required for artifact; optional for source/launch)")
   .action((options: { context?: string; kind?: string; target?: string }) => {
     try {
-      // Explicit usage checks (exit 2) — commander's own errors would exit 1
-      // and bypass the ported usage contract (qc2 F-005).
+ // Explicit usage checks (exit 2) — commander's own errors would exit 1
+       // and bypass the ported usage contract.
       if (!options.context) {
         throw new SddScriptError("usage: mstar sdd check-context --context <absolute.json> --kind source|artifact|launch [--target <path>]", 2);
       }
@@ -1690,7 +1690,7 @@ iterationCommand
     "Evaluate the phase-transition gate: prints the transition (phase-2-execute / phase-3-close / phase-4-pr-delivery) " +
       "plus the \u00a73.1 entry and \u00a73.5 exit checklists. Exit 1 when the gate verdict fails \u2014 during the Phase-3 window " +
       "(transition: phase-3-close) exit 1 is EXPECTED until the \u00a73.4 close items (status: completed + end_date) are " +
-      "written: the exit checklist gates Phase 4, not the Phase-3 entry (qc2 F-003)",
+      "written: the exit checklist gates Phase 4, not the Phase-3 entry",
   )
   .requiredOption("--workflow <id>", "Workflow id whose snapshot is evaluated")
   .requiredOption("--compass <path>", "delivery-compass.md path")
@@ -1757,8 +1757,8 @@ dispatchCommand
   )
   .action((assignmentFile: string | undefined, options: { branch?: string }) => {
     try {
-      // Optional arg + explicit count check (bash-parity usage exit 2, slice-2
-      // convention: commander's own missing-argument error would exit 1).
+ // Optional arg + explicit count check (bash-parity usage exit 2, slice-2
+ // convention: commander's own missing-argument error would exit 1).
       if (!assignmentFile) {
         throw new SddScriptError("usage: dispatch validate <assignment-file> [--branch <branch>]", 2);
       }
@@ -1768,23 +1768,23 @@ dispatchCommand
       }
       const text = fs.readFileSync(file, "utf8");
 
-      // Read-only orientation roles (scout/explore, engine SSOT) skip the
-      // branch-form gate AND the default-branch gate \u2014 no writable work on a
-      // branch (qc3 F-1 / qc2 S-5): `mstar dispatch validate` on a scout
-      // Assignment without a Working branch exits 0.
+ // Read-only orientation roles (scout/explore, engine SSOT) skip the
+ // branch-form gate AND the default-branch gate \u2014 no writable work on a
+ // branch : `mstar dispatch validate` on a scout
+ // Assignment without a Working branch exits 0.
       const readOnly = isReadOnlyAssignmentRole(parseAssignmentFields(text).executeAs ?? "");
       const violations = [...validateAssignmentFields(text, { writable: readOnly ? false : undefined }).violations];
 
       if (!readOnly) {
-        // Default-branch gate: the checked branch is derived FROM THE
-        // ASSIGNMENT \u2014 create-form → the created branch, existing form → the
-        // branch, `Branch policy` → the exception branch \u2014 so the documented
-        // preflight invocation (`dispatch validate <assignment-file>`, no
-        // --branch) actually gates (qc2 W-1). `--branch` / $MSTAR_WORKING_BRANCH
-        // are context fallbacks for assignments without a branch form (qc3
-        // F-2: "create feature/x from main" checks feature/x, not main). A
-        // well-formed `Branch policy: direct on <branch> \u2014 <reason>` exception
-        // is honored only when its branch is the one being checked.
+ // Default-branch gate: the checked branch is derived FROM THE
+ // ASSIGNMENT \u2014 create-form → the created branch, existing form → the
+ // branch, `Branch policy` → the exception branch \u2014 so the documented
+ // preflight invocation (`dispatch validate <assignment-file>`, no
+ // --branch) actually gates. `--branch` / $MSTAR_WORKING_BRANCH
+ // are context fallbacks for assignments without a branch form
+ // ("create feature/x from main" checks feature/x, not main). A
+ // well-formed `Branch policy: direct on <branch> \u2014 <reason>` exception
+ // is honored only when its branch is the one being checked.
         const forms = parseAssignmentBranchForms(text);
         const branch =
           forms.createForm?.name ?? forms.workingBranch ?? forms.directOn?.branch ?? options.branch ?? process.env.MSTAR_WORKING_BRANCH;
@@ -1863,7 +1863,7 @@ worktreeCommand
           if (!gate.ok) process.exitCode = 1;
           return;
         }
-        // plan-id positional or --plan (option wins when both are given).
+ // plan-id positional or --plan (option wins when both are given).
         const plan = options.plan ?? planId;
         if (!plan) {
           throw new SddScriptError(
@@ -1948,9 +1948,9 @@ worktreeCommand
           throw new Error(`assignment file not found: ${file}`);
         }
         const text = fs.readFileSync(file, "utf8");
-        // The canonical PM label combines both range fields in one value
-        // (`**Review range / Diff basis**: ...`); a separate `Review range` /
-        // `Diff basis` label wins over the combined value for its own field.
+ // The canonical PM label combines both range fields in one value
+ // (`**Review range / Diff basis**: ...`); a separate `Review range` /
+ // `Diff basis` label wins over the combined value for its own field.
         const combinedRange = parseAssignmentHeaderField(text, "Review range / Diff basis");
         const planId = parseAssignmentHeaderField(text, "plan_id");
         const reviewRange = parseAssignmentHeaderField(text, "Review range") || combinedRange;
@@ -2009,7 +2009,7 @@ reviewCommand
   .option("--reviewers <list>", "Comma-separated reviewer roles (targeted seats; tri-identity checked when mode is sdd)")
   .action((assignmentFile: string | undefined, options: { mode?: string; reviewers?: string }) => {
     try {
-      // Optional arg + explicit count check (bash-parity usage exit 2).
+ // Optional arg + explicit count check (bash-parity usage exit 2).
       if (!assignmentFile) {
         throw new SddScriptError("usage: review seats <assignment-file> [--mode sdd|inline|targeted] [--reviewers <role1,role2,...>]", 2);
       }
@@ -2029,8 +2029,8 @@ reviewCommand
         process.exitCode = 1;
         return;
       }
-      // Tri identity on sdd only when an initial-wave reviewer list is given
-      // (dispatch-gates § QC tri-review: exactly qc-specialist/-2/-3).
+ // Tri identity on sdd only when an initial-wave reviewer list is given
+ // (dispatch-gates § QC tri-review: exactly qc-specialist/-2/-3).
       const normalizedMode = mode.trim().toLowerCase().split(/\s+/)[0] ?? "";
       if (normalizedMode === "sdd" && reviewers.length > 0) {
         const tri = assertTriIdentity(reviewers);
@@ -2269,15 +2269,14 @@ designMdCommand
  * Parse the `audit scaffold` findings file. Two accepted shapes:
  * - a bare JSON array of finding objects (legacy), or
  * - an object `{ findings: [...], needsVerification?: [...], hardeningChecked?: [...] }`
- *   carrying the security-disposition entries documented by
- *   `mstar-audit/references/security-review.md` alongside the findings.
+ * carrying the security-disposition entries documented by
+ * `mstar-audit/references/security-review.md` alongside the findings.
  *
  * `dependsOn` is validated against the Status-block contract and normalized:
  * `"none"` / `plans/NNN-*.md` pass through, a bare plan number (`002`) from
  * the scaffolded numbering scheme is rendered as `plans/002-*.md`, anything
  * else is a usage error \u2014 so every scaffolded plan round-trips through
- * `validateAuditStatusBlocks` (qc2 F-001 / qc3 F-002).
- */
+ * `validateAuditStatusBlocks`. */
 type AuditScaffoldInput = {
   findings: AuditFinding[];
   needsVerification?: { lead: string; how: string; evidence?: string }[];
@@ -2345,7 +2344,7 @@ function parseAuditScaffoldInput(text: string): AuditScaffoldInput {
     }
     const dependsOn =
       rawDependsOn === undefined ? undefined : /^\d{3}$/.test(rawDependsOn) ? `plans/${rawDependsOn}-*.md` : rawDependsOn;
-    // Enum memberships were validated above \u2014 cast the narrowed unions.
+ // Enum memberships were validated above \u2014 cast the narrowed unions.
     return {
       title,
       category: category as AuditCategory,
@@ -2412,7 +2411,7 @@ const auditCommand = program
  * Resolve the short repo SHA for the scaffolded `Planned at` field:
  * `--sha` override wins; otherwise `git rev-parse --short HEAD` from the
  * current working directory; `unknown` only when the cwd is not inside a
- * git repo (the documented validator fallback \u2014 qc2 F-001 / qc3 F-002).
+ * git repo (the documented validator fallback).
  */
 function resolveAuditShortSha(cwd: string, override?: string): string {
   if (override !== undefined && override !== "") return override;
@@ -2482,9 +2481,9 @@ auditCommand
   .option("--harness <dir>", "Harness dir containing status.json (default: resolveHarnessDir() / MSTAR_HARNESS_DIR)")
   .action(async (auditDir: string | undefined, options: { plans?: string; workflow?: string; harness?: string }) => {
     try {
-      // Optional flag + explicit check (same as `lease verify-integration`):
-      // commander's own missing-requiredOption error exits 1, which would
-      // bypass the usage contract (exit 2) \u2014 validate in-handler instead.
+ // Optional flag + explicit check (same as `lease verify-integration`):
+ // commander's own missing-requiredOption error exits 1, which would
+ // bypass the usage contract (exit 2) \u2014 validate in-handler instead.
       if (!auditDir) {
         throw new SddScriptError("usage: audit promote <audit-dir> --plans <ids> [--workflow <id>] [--harness <dir>]", 2);
       }
@@ -2497,9 +2496,9 @@ auditCommand
         throw new Error(`audit dir not found: ${outDir}`);
       }
       const harnessDir = resolveLeaseHarnessDir(options.harness);
-      // Store-root pinning (plan Task 4 Part B): the root upsert inside
-      // promoteAuditPlans puts through getArtifactStore() \u2014 pin it to the
-      // resolved harness root (identical to the default when --harness is absent).
+ // Store-root pinning ( Part B): the root upsert inside
+ // promoteAuditPlans puts through getArtifactStore() \u2014 pin it to the
+ // resolved harness root (identical to the default when --harness is absent).
       setArtifactStore(createFsStore(harnessDir));
       const result = await promoteAuditPlans(outDir, selected, {
         harnessDir,
@@ -2519,9 +2518,8 @@ auditCommand
  * already root-scoped \u2014 joining them to `root` is exact. A repository-
  * relative pathspec (`-- <root>`) would double-prefix nested roots
  * (`<root>/packages/engine/packages/engine/…`) and silently scan nothing
- * (qc1 W-001).
- *
- * Fail-closed (qc1 W-002 / qc3 W-1): a git failure (not a repository,
+ *. *
+ * Fail-closed : a git failure (not a repository,
  * missing executable, permission error) throws a usage-class error \u2014 it
  * must never masquerade as "clean". Read failures during the scan itself
  * are counted by {@link scanSecrets} via the returned reads result.
@@ -2553,9 +2551,9 @@ auditCommand
       }
       const files = listTrackedFiles(root);
       const { findings, unreadableFiles } = scanSecrets(files);
-      // Fail closed (qc1 W-002): selected-but-unreadable tracked files mean
-      // the scan did NOT see the full tree \u2014 exit non-zero even when the
-      // readable portion is clean. Findings are still printed first.
+ // Fail closed : selected-but-unreadable tracked files mean
+ // the scan did NOT see the full tree \u2014 exit non-zero even when the
+ // readable portion is clean. Findings are still printed first.
       if (unreadableFiles > 0) {
         console.error(pc.red(`secret-scan: failed to read ${unreadableFiles} tracked file${unreadableFiles === 1 ? "" : "s"} under ${root} \u2014 refusing to report clean`));
         for (const f of findings) console.log(JSON.stringify({ file: f.file, line: f.line, type: f.type }));
@@ -2568,7 +2566,7 @@ auditCommand
       }
       console.error(pc.red(`secret-scan: ${findings.length} finding${findings.length === 1 ? "" : "s"} under ${root}`));
       for (const f of findings) console.log(JSON.stringify({ file: f.file, line: f.line, type: f.type }));
-      // Hard Rule 4 shape only \u2014 no secret value is ever printed.
+ // Hard Rule 4 shape only \u2014 no secret value is ever printed.
       process.exitCode = 1;
     } catch (error) {
       failScript(error, "audit secret-scan");
@@ -2764,12 +2762,12 @@ skillCommand
       const frontmatter = lintFrontmatter(text);
       printChecklist("skill lint (frontmatter)", frontmatter);
       violations.push(...frontmatter.violations);
-      // Five-question profile: the Engine classifier is the single SSOT
-      // (spec A4) \u2014 exact `mstar-harness-core` core/null (EXEMPT row
-      // printed below; frontmatter + ephemeral checks still run), exact
-      // `mstar-skill-authoring` strict authoring, any other `mstar-*`
-      // runtime (locked alias table), everything else strict authoring.
-      // Identity = resolved target directory basename \u2014 never the YAML name.
+ // Five-question profile: the Engine classifier is the single SSOT
+ // (spec A4) \u2014 exact `mstar-harness-core` core/null (EXEMPT row
+ // printed below; frontmatter + ephemeral checks still run), exact
+ // `mstar-skill-authoring` strict authoring, any other `mstar-*`
+ // runtime (locked alias table), everything else strict authoring.
+ // Identity = resolved target directory basename \u2014 never the YAML name.
       const profile = classifySkillLint(path.basename(path.dirname(skillFile)));
       if (profile.mode === null) {
         console.log(pc.yellow("skill lint (five questions): EXEMPT \u2014 mstar-harness-core is exempt by design (hub headings)"));
@@ -2778,10 +2776,10 @@ skillCommand
         printChecklist("skill lint (five questions)", fiveQuestion);
         violations.push(...fiveQuestion.violations);
       }
-      // findEphemeralCitations is a discovery finder (array, no GateResult);
-      // wrap into a GateResult like the other skill lint checklists \u2014 empty
-      // array passes, each citation is one violation (codes
-      // skill.ephemeral.<kind>, knowledge conventions §3).
+ // findEphemeralCitations is a discovery finder (array, no GateResult);
+ // wrap into a GateResult like the other skill lint checklists \u2014 empty
+ // array passes, each citation is one violation (codes
+ // skill.ephemeral.<kind>, knowledge conventions §3).
       const ephemeral = findEphemeralCitations(text);
       const ephemeralGate: GateResult = {
         ok: ephemeral.length === 0,
@@ -2821,10 +2819,10 @@ rolesCommand
     try {
       const rolesDir = resolveCliPath(options.rolesDir ?? "skills/mstar-roles");
       const skillsRoot = options.skillsDir ? resolveCliPath(options.skillsDir) : path.dirname(rolesDir);
-      // Thin mirror of the dsh seam validateRolesState (packages/dsh/src/gates/seams.ts):
-      // validateRoleMapping(rolesDir) + lintLoadOrder over sibling mstar-* SKILL.md
-      // texts; unreadable siblings are skipped best-effort so a bad read can never
-      // take the gate down.
+ // Thin mirror of the dsh seam validateRolesState (packages/dsh/src/gates/seams.ts):
+ // validateRoleMapping(rolesDir) + lintLoadOrder over sibling mstar-* SKILL.md
+ // texts; unreadable siblings are skipped best-effort so a bad read can never
+ // take the gate down.
       const violations: ValidationResult[] = [];
       const mapping = validateRoleMapping(rolesDir);
       printChecklist("roles validate (mapping)", mapping);
@@ -2837,17 +2835,17 @@ rolesCommand
         try {
           skillTexts[entry.name] = fs.readFileSync(skillFile, "utf8");
         } catch {
-          // skip unreadable sibling \u2014 the mapping checks still stand
+ // skip unreadable sibling \u2014 the mapping checks still stand
         }
       }
       const loadOrder = lintLoadOrder(skillTexts);
       printChecklist("roles validate (load order)", loadOrder);
       violations.push(...loadOrder.violations);
       const total = violations.length;
-      // Two distinct counts for the same corpus: siblings scanned (all
-      // readable mstar-* dirs, incl. mstar-harness-core) vs skills actually
-      // load-order-linted (core is exempt inside the engine) \u2014 keep the
-      // labels distinct so 18-vs-17 is not misread as a discrepancy.
+ // Two distinct counts for the same corpus: siblings scanned (all
+ // readable mstar-* dirs, incl. mstar-harness-core) vs skills actually
+ // load-order-linted (core is exempt inside the engine) \u2014 keep the
+ // labels distinct so 18-vs-17 is not misread as a discrepancy.
       const siblingCount = Object.keys(skillTexts).length;
       const loadOrderChecked = Object.keys(skillTexts).filter((name) => name !== "mstar-harness-core").length;
       const coreExempt = loadOrderChecked !== siblingCount;
@@ -2928,11 +2926,11 @@ prReviewCommand
         }
         return { mergeClass: mergeClass as MergeClass };
       });
-      // Plain decimal digits only (plan-QC F-004) \u2014 same integer grammar as
-      // parsePrReviewTarget and the validator's tally parser; Number() would
-      // accept `1e2`, `0x10` or `1.0`.
-      // Cap at the engine's TALLY_CAP (plan-QC S-02): absurd counts would
-      // materialize that many unmetAc objects before computePrTally.
+ // Plain decimal digits only \u2014 same integer grammar as
+ // parsePrReviewTarget and the validator's tally parser; Number() would
+ // accept `1e2`, `0x10` or `1.0`.
+ // Cap at the engine's TALLY_CAP (plan-QC S-02): absurd counts would
+ // materialize that many unmetAc objects before computePrTally.
       const TALLY_COUNT_CAP = 50;
       const countOption = (flag: string, raw: string | undefined): number | undefined => {
         if (raw === undefined) return undefined;
@@ -3022,7 +3020,7 @@ prReviewCommand
   });
 
 // ---------------------------------------------------------------------------
-// Task 3 (20260826-prreview-execution): pr-review post / worktree-setup /
+// (20260826-prreview-execution): pr-review post / worktree-setup /
 // worktree-cleanup / size / seat-prompt \u2014 thin CLI wrappers; the
 // deterministic part lives in @mstar-harness/engine prreview.ts, the CLI owns
 // process/git/gh side effects only.
@@ -3080,15 +3078,15 @@ function refResolves(ref: string, cwd: string): boolean {
 /**
  * Changeset non-emptiness probe per mode (pr-review.md § Worktree isolation):
  * - working-tree: `git diff` + `git diff --cached`, FOLDED WITH untracked
- *   output from `git ls-files --others --exclude-standard` (untracked-only
- *   counts as a non-empty changeset)
+ * output from `git ls-files --others --exclude-standard` (untracked-only
+ * counts as a non-empty changeset)
  * - every other mode: the recorded diffCmd must produce at least one line
  */
 function probeChangesetEmpty(diffCmdArgs: string[], cwd: string, worktreePath: string): boolean {
   if (diffCmdArgs[0] === "__working_tree__") {
-    // A probe that cannot run (broken git / >64 MiB overflow) must NOT read
-    // as "empty changeset" — null → not empty → proceed; the snapshot
-    // capture then fails loudly at the same ceiling and rolls back.
+ // A probe that cannot run (broken git / >64 MiB overflow) must NOT read
+ // as "empty changeset" — null → not empty → proceed; the snapshot
+ // capture then fails loudly at the same ceiling and rolls back.
     const diffOut = gitProbe(["diff"], worktreePath);
     const cachedOut = gitProbe(["diff", "--cached"], worktreePath);
     if (diffOut === null || cachedOut === null) return false;
@@ -3102,10 +3100,10 @@ function probeChangesetEmpty(diffCmdArgs: string[], cwd: string, worktreePath: s
     } catch { /* read-only failure counts as empty */ }
     return untracked.trim() === "";
   }
-  // commit mode (`git show <sha>`): git always emits the commit header even
-  // for an empty commit \u2014 only hunks count as a changeset. Probe a header-free
-  // diff instead: parent→commit where a parent resolves, otherwise (history
-  // root) the canonical empty tree → commit.
+ // commit mode (`git show <sha>`): git always emits the commit header even
+ // for an empty commit \u2014 only hunks count as a changeset. Probe a header-free
+ // diff instead: parent→commit where a parent resolves, otherwise (history
+ // root) the canonical empty tree → commit.
   if (diffCmdArgs[0] === "show") {
     const sha = diffCmdArgs[1]!;
     const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
@@ -3202,8 +3200,8 @@ prReviewCommand
           throw new Error(`--findings is not valid JSON: ${(error as Error).message}`);
         }
         if (!Array.isArray(parsed)) throw new Error("findings file must be a JSON array of {path, line, body} objects");
-        // File may also carry folded plan entries or section notes \u2014 only
-        // well-shaped {path,line,body} objects become inline comments.
+ // File may also carry folded plan entries or section notes \u2014 only
+ // well-shaped {path,line,body} objects become inline comments.
         comments = parsed.flatMap((entry, index) => {
           const parsedEntry = parseFindingEntry(entry, index);
           return parsedEntry === null ? [] : [parsedEntry];
@@ -3213,10 +3211,10 @@ prReviewCommand
         }
       }
 
-      // Step 1 \u2014 resolve target: base owner/repo comes from url ONLY.
-      // planReviewPost IGNORES prView.headRepository by contract (fork-PR
-      // data must never feed owner/repo \u2014 see planReviewPost JSDoc); do not
-      // add `headRepository` to this fetch or pass it downstream.
+ // Step 1 \u2014 resolve target: base owner/repo comes from url ONLY.
+ // planReviewPost IGNORES prView.headRepository by contract (fork-PR
+ // data must never feed owner/repo \u2014 see planReviewPost JSDoc); do not
+ // add `headRepository` to this fetch or pass it downstream.
       const viewJson = ghSync(["pr", "view", String(prNumber), "--json", "url,headRefOid"]);
       let prView: { url?: string; headRepository?: unknown; headRefOid?: string };
       try {
@@ -3226,7 +3224,7 @@ prReviewCommand
       }
       const plan = planReviewPost(prView, { body, comments });
 
-      // Step 2+3 \u2014 POST with payload on stdin; step 4 = at-most-ONE fallback retry.
+ // Step 2+3 \u2014 POST with payload on stdin; step 4 = at-most-ONE fallback retry.
       const apiPath = `repos/${plan.ownerRepo}/pulls/${plan.pr}/reviews`;
       const buildPayload = (kept: ReviewPostPlan["inlineComments"], dropped: ReviewPostPlan["inlineComments"]): string =>
         JSON.stringify({
@@ -3236,9 +3234,9 @@ prReviewCommand
           ...(kept.length > 0 ? { comments: kept.map((comment) => ({ path: comment.path, line: comment.line, side: comment.side, body: comment.body })) } : {}),
         });
 
-      // gh prints its API-error line to STDERR (`gh: HTTP 422: ...`), and
-      // GitHub's 422 JSON body typically carries no `"status"` field \u2014 scan
-      // stderr, then stdout, then the process exit status for the code.
+ // gh prints its API-error line to STDERR (`gh: HTTP 422: ...`), and
+ // GitHub's 422 JSON body typically carries no `"status"` field \u2014 scan
+ // stderr, then stdout, then the process exit status for the code.
       type GhApiError = Error & { status?: number; stderr?: Buffer | string; stdout?: Buffer | string };
       const errorStreamText = (value?: Buffer | string): string => (typeof value === "string" ? value : value?.toString() ?? "");
       let reviewResponse: string;
@@ -3262,7 +3260,7 @@ prReviewCommand
         const parsedReview = JSON.parse(reviewResponse) as { html_url?: unknown };
         reviewUrl = typeof parsedReview.html_url === "string" ? parsedReview.html_url : "";
       } catch {
-        // keep stdout text as the url line content \u2014 never fail after a good POST
+ // keep stdout text as the url line content \u2014 never fail after a good POST
         reviewUrl = reviewResponse;
       }
       console.log(JSON.stringify({ posted: true, comments: "posted", review_url: reviewUrl || "(gh response)" }, null, 2));
@@ -3308,17 +3306,17 @@ type ReviewWorktreeSidecar = {
   diffCmd: string;
   reportSaved: boolean;
   createdAt: string;
-  /** Git repo root that created this sidecar \u2014 every cleanup git command runs from here. */
+ /** Git repo root that created this sidecar \u2014 every cleanup git command runs from here. */
   repoRoot: string;
-  /** Absolute path to the pinned diff snapshot (review artifact beside the sidecar). */
+ /** Absolute path to the pinned diff snapshot (review artifact beside the sidecar). */
   diffFile?: string;
-  /** sha-256 of the diff snapshot this setup wrote - informational only, never an ownership gate. */
+ /** sha-256 of the diff snapshot this setup wrote - informational only, never an ownership gate. */
   diffFileSha256?: string;
-  /** Device id of the snapshot file this setup wrote - inode identity for cleanup ownership. */
+ /** Device id of the snapshot file this setup wrote - inode identity for cleanup ownership. */
   diffFileDev?: number;
-  /** Inode number of the snapshot file this setup wrote (string - ino can exceed JSON number safety). */
+ /** Inode number of the snapshot file this setup wrote (string - ino can exceed JSON number safety). */
   diffFileIno?: string;
-  /** mtime (ms) of the snapshot file this setup wrote - closes the ext4 inode-reuse hole (a replacement can inherit dev+ino, never the mtime). */
+ /** mtime (ms) of the snapshot file this setup wrote - closes the ext4 inode-reuse hole (a replacement can inherit dev+ino, never the mtime). */
   diffFileMtimeMs?: number;
 };
 
@@ -3351,9 +3349,9 @@ prReviewCommand
       if (modesDeclared > 1) {
         throw new SddScriptError("usage: pr-review worktree-setup \u2014 the five input modes are mutually exclusive", 2);
       }
-      // The review target is whatever git repo contains the cwd the user
-      // invoked us from \u2014 resolve BEFORE any other command (an ambient repo,
-      // like the harness checkout itself, must never be mistaken for it).
+ // The review target is whatever git repo contains the cwd the user
+ // invoked us from \u2014 resolve BEFORE any other command (an ambient repo,
+ // like the harness checkout itself, must never be mistaken for it).
       const startDir = process.cwd();
       if (!fs.existsSync(path.join(startDir, ".git")) && gitIf(["rev-parse", "--git-dir"], startDir) === "") {
         throw new Error(`not a git repository: ${startDir}`);
@@ -3370,11 +3368,11 @@ prReviewCommand
       else if (options.workingTree === true) mode = "working-tree";
       else mode = "commit";
 
-      // No-worktree modes: preflight the changeset BEFORE reporting success \u2014
-      // pr-review.md § Worktree isolation Pre-flight applies in ALL modes, and
-      // an empty changeset must stop before any lens fan-out. `--diff` has no
-      // CLI-owned file contents to probe (the caller hands over a changeset),
-      // so its emptiness is the caller's contract; working-tree is probeable.
+ // No-worktree modes: preflight the changeset BEFORE reporting success \u2014
+ // pr-review.md § Worktree isolation Pre-flight applies in ALL modes, and
+ // an empty changeset must stop before any lens fan-out. `--diff` has no
+ // CLI-owned file contents to probe (the caller hands over a changeset),
+ // so its emptiness is the caller's contract; working-tree is probeable.
       if (mode === "diff" || mode === "working-tree") {
         if (mode === "working-tree" && probeChangesetEmpty(["__working_tree__"], repoRoot, repoRoot)) {
           printChecklist("pr-review worktree-setup preflight", preflightChangeset(mode, { refsResolve: true, changesetEmpty: true }));
@@ -3385,7 +3383,7 @@ prReviewCommand
         return;
       }
 
-      // Resolve the real base first \u2014 never assume main.
+ // Resolve the real base first \u2014 never assume main.
       let prNumber = 0;
       let baseRef = "";
       let headSpec = "";
@@ -3398,8 +3396,8 @@ prReviewCommand
         headSpec = `pull/${prNumber}/head`;
       } else if (mode === "branch") {
         const branchName = options.branch!;
-        // Real base first \u2014 git symbolic-ref origin/HEAD, then a remote-ls
-        // probe, then origin/main only when it genuinely resolves.
+ // Real base first \u2014 git symbolic-ref origin/HEAD, then a remote-ls
+ // probe, then origin/main only when it genuinely resolves.
         let originDefault = gitIf(["symbolic-ref", "refs/remotes/origin/HEAD"], repoRoot).replace("refs/remotes/origin/", "").trim();
         if (originDefault === "") {
           const remoteHeads = gitIf(["ls-remote", "--symref", "origin", "HEAD"], repoRoot);
@@ -3427,12 +3425,12 @@ prReviewCommand
         headSpec = commitSha;
       }
 
-      // Collision-free branch name BEFORE any fetch.
+ // Collision-free branch name BEFORE any fetch.
       const existing = listLocalBranches(repoRoot);
-      // pr-<n> naming only applies to PR input; non-PR modes still want a
-      // collision-free name \u2014 derive it from the head spec with the same
-      // date-suffix loop semantics (n=0 never reaches the engine, which
-      // requires a positive integer).
+ // pr-<n> naming only applies to PR input; non-PR modes still want a
+ // collision-free name \u2014 derive it from the head spec with the same
+ // date-suffix loop semantics (n=0 never reaches the engine, which
+ // requires a positive integer).
       const namePrNumber = prNumber >= 1 ? prNumber : 1;
       const baseCandidate =
         mode === "pr" ? namePrNumber
@@ -3440,11 +3438,11 @@ prReviewCommand
       const reviewBranch = pickReviewBranchName(existing, baseCandidate === 0 ? 1 : baseCandidate, cliToday().replace(/-/g, ""));
       const branchSuffix = mode === "pr" ? "" : `-${headSpec.slice(0, 8)}`;
       const worktreePath = path.resolve(options.path ?? path.join(repoRoot, ".worktrees", `review-${reviewBranch}${branchSuffix}`));
-      // Default review worktrees live under <repoRoot>/.worktrees/ per the
-      // mstar-branch-worktree convention. The target repo may not gitignore
-      // that directory — ensure it exists and, when the repo does not already
-      // ignore it, add `.worktrees/` to .git/info/exclude (idempotent,
-      // local-only; never touch a tracked .gitignore).
+ // Default review worktrees live under <repoRoot>/.worktrees/ per the
+ // mstar-branch-worktree convention. The target repo may not gitignore
+ // that directory — ensure it exists and, when the repo does not already
+ // ignore it, add `.worktrees/` to .git/info/exclude (idempotent,
+ // local-only; never touch a tracked .gitignore).
       if (options.path === undefined) {
         fs.mkdirSync(path.join(repoRoot, ".worktrees"), { recursive: true });
         if (gitIf(["check-ignore", ".worktrees/"], repoRoot) === "") {
@@ -3456,18 +3454,18 @@ prReviewCommand
         }
       }
 
-      // Establish named refs with explicit refspecs FIRST (pr-review.md §
-      // Worktree isolation: "+refs/heads/<base>:refs/remotes/origin/<base>
-      // updates the remote-tracking ref even on narrowed fetch configs"),
-      // THEN run the pre-flight re-probe before creating anything.
+ // Establish named refs with explicit refspecs FIRST (pr-review.md §
+ // Worktree isolation: "+refs/heads/<base>:refs/remotes/origin/<base>
+ // updates the remote-tracking ref even on narrowed fetch configs"),
+ // THEN run the pre-flight re-probe before creating anything.
       const originUrl = gitIf(["remote", "get-url", "origin"], repoRoot);
       let fetched = true;
       try {
         if (originUrl !== "") {
-          // ALWAYS refresh the base's remote-tracking ref explicitly \u2014
-          // baseRef is usually a SHORT name (`gh pr view --json baseRefName`
-          // → "main"), and the stale-or-missing case is exactly what the
-          // explicit refspec exists to prevent.
+ // ALWAYS refresh the base's remote-tracking ref explicitly \u2014
+ // baseRef is usually a SHORT name (`gh pr view --json baseRefName`
+ // → "main"), and the stale-or-missing case is exactly what the
+ // explicit refspec exists to prevent.
           const baseShort = baseRef.replace(/^origin\//, "");
           gitSync(["fetch", "origin", `+refs/heads/${baseShort}:refs/remotes/origin/${baseShort}`], repoRoot);
           if (mode === "pr") {
@@ -3480,27 +3478,27 @@ prReviewCommand
         fetched = false; // resolution gate below reports it
       }
 
-      // Ownership gates for the review artifacts: set only after THIS process
-      // successfully wrote the file. Rollback must never unlink a pre-existing
-      // file or directory at the deterministic artifact paths (empty-changeset
-      // rollback, capture throw, EEXIST/EISDIR write failure) \u2014 the sidecar
-      // only when THIS setup created it, the snapshot only when THIS setup
-      // created it (inode-identified via the in-memory sidecar).
+ // Ownership gates for the review artifacts: set only after THIS process
+ // successfully wrote the file. Rollback must never unlink a pre-existing
+ // file or directory at the deterministic artifact paths (empty-changeset
+ // rollback, capture throw, EEXIST/EISDIR write failure) \u2014 the sidecar
+ // only when THIS setup created it, the snapshot only when THIS setup
+ // created it (inode-identified via the in-memory sidecar).
       let wroteSnapshot = false;
       let wroteSidecar = false;
-      // The in-memory sidecar (with the snapshot's inode identity) once the
-      // snapshot write succeeded \u2014 lets rollback verify ownership by inode.
+ // The in-memory sidecar (with the snapshot's inode identity) once the
+ // snapshot write succeeded \u2014 lets rollback verify ownership by inode.
       let pendingSidecar: ReviewWorktreeSidecar | undefined;
-      // ONE fd held from exclusive creation through the final identity
-      // rewrite: every sidecar write targets this verified inode, never the
-      // pathname, so a concurrent replacement of the path cannot be
-      // truncated. The fd IS the identity - rollback proves ownership by
-      // fstat on it, never by a pathname read a replacement could spoof.
-      // Closed by the final rewrite (success); a failure leaves it open for
-      // removeOwnedFreshSidecarFile to close on every rollback path.
+ // ONE fd held from exclusive creation through the final identity
+ // rewrite: every sidecar write targets this verified inode, never the
+ // pathname, so a concurrent replacement of the path cannot be
+ // truncated. The fd IS the identity - rollback proves ownership by
+ // fstat on it, never by a pathname read a replacement could spoof.
+ // Closed by the final rewrite (success); a failure leaves it open for
+ // removeOwnedFreshSidecarFile to close on every rollback path.
       let sidecarFd: number | undefined;
 
-      /** Remove a just-created worktree + branch when setup fails late. */
+ /** Remove a just-created worktree + branch when setup fails late. */
       const cleanupOnFailure = (branchToDelete: string): void => {
         try {
           if (fs.existsSync(worktreePath)) gitSync(["worktree", "remove", "--force", worktreePath], repoRoot);
@@ -3508,26 +3506,26 @@ prReviewCommand
           if (branchToDelete !== "" && !existing.has(branchToDelete)) {
             gitSync(["branch", "-D", branchToDelete], repoRoot);
           }
-          // A FAILing setup must not leave the review artifacts it wrote
-          // behind either (they live beside the worktree, outside it) \u2014 but
-          // ONLY this process's artifacts: the sidecar only when THIS setup
-          // created it (exclusive create \u2014 a pre-existing sidecar is foreign
-          // and stays), the snapshot only when THIS setup wrote it (inode
-          // verified). Anything pre-existing at the paths is unowned and
-          // stays untouched (never recursive).
+ // A FAILing setup must not leave the review artifacts it wrote
+ // behind either (they live beside the worktree, outside it) \u2014 but
+ // ONLY this process's artifacts: the sidecar only when THIS setup
+ // created it (exclusive create \u2014 a pre-existing sidecar is foreign
+ // and stays), the snapshot only when THIS setup wrote it (inode
+ // verified). Anything pre-existing at the paths is unowned and
+ // stays untouched (never recursive).
           if (wroteSidecar && sidecarFd !== undefined) {
-            // Verified detach-unlink through the held fd - the accepted
-            // removeOwnedSnapshotFile doctrine, second application: identity
-            // is proven by fstat on the fd (never by a pathname read), the
-            // verified inode's only name is detached to an unguessable tmp,
-            // and a replacement swapped in between is restored without ever
-            // overwriting. The helper closes the fd on every rollback path.
+ // Verified detach-unlink through the held fd - the accepted
+ // removeOwnedSnapshotFile doctrine, second application: identity
+ // is proven by fstat on the fd (never by a pathname read), the
+ // verified inode's only name is detached to an unguessable tmp,
+ // and a replacement swapped in between is restored without ever
+ // overwriting. The helper closes the fd on every rollback path.
             removeOwnedFreshSidecarFile(sidecarFd, worktreePath);
             sidecarFd = undefined;
           }
           if (wroteSnapshot && pendingSidecar !== undefined) removeOwnedSnapshotFile(worktreePath, pendingSidecar);
         } catch {
-          // rollback best-effort; the preflight FAIL below still exits non-zero
+ // rollback best-effort; the preflight FAIL below still exits non-zero
         }
       };
 
@@ -3551,7 +3549,7 @@ prReviewCommand
         gitSync(["worktree", "add", "--detach", worktreePath, headSpec], repoRoot);
       }
 
-      // Diff basis computed INSIDE the worktree against recorded refs.
+ // Diff basis computed INSIDE the worktree against recorded refs.
       let mergeBase = "";
       let diffArgs: string[];
       if (mode === "pr") {
@@ -3569,8 +3567,8 @@ prReviewCommand
       const changesetEmpty = probeChangesetEmpty(diffArgs, worktreePath, worktreePath);
       const emptyGate = preflightChangeset(mode, { refsResolve: true, changesetEmpty });
       if (changesetEmpty) {
-        // Discovered only AFTER the worktree exists \u2014 roll it back so a FAIL
-        // never leaves an orphaned worktree + freshly created branch behind.
+ // Discovered only AFTER the worktree exists \u2014 roll it back so a FAIL
+ // never leaves an orphaned worktree + freshly created branch behind.
         cleanupOnFailure(mode === "pr" ? reviewBranch : "");
       }
       if (!emptyGate.ok && emptyGate.violations.some((v) => v.code === "prreview.preflight.changeset-empty")) {
@@ -3579,10 +3577,10 @@ prReviewCommand
         return;
       }
 
-      // Diff snapshot: review artifact beside the sidecar (never inside the
-      // worktree). Mirrors SDD reviewPackage section layout AND its capture
-      // mechanics (Buffer parts + 64 MiB maxBuffer); commit mode has no
-      // range, so its Commits section is the single commit line.
+ // Diff snapshot: review artifact beside the sidecar (never inside the
+ // worktree). Mirrors SDD reviewPackage section layout AND its capture
+ // mechanics (Buffer parts + 64 MiB maxBuffer); commit mode has no
+ // range, so its Commits section is the single commit line.
       const captureAndRecordSnapshot = (): ReviewWorktreeSidecar => {
         const diffFile = prReviewArtifactPathFor(worktreePath, "diff");
         const sidecarPath = prReviewArtifactPathFor(worktreePath, "json");
@@ -3623,30 +3621,30 @@ prReviewCommand
           diffFile,
           diffFileSha256: createHash("sha256").update(snapshot).digest("hex"),
         };
-        // Sidecar FIRST, exclusive create through ONE held fd ("wx+" =
-        // O_CREAT|O_EXCL|O_RDWR). Ownership of the deterministic artifact
-        // paths is established by creation order, never by content sniffing:
-        // a pre-existing sidecar is by definition foreign (an earlier review
-        // never cleaned) — refuse and point at the documented cleanup path;
-        // never clean a foreign review. On EEXIST / EISDIR this throws with
-        // wroteSidecar still false, so rollback leaves the occupant
-        // byte-untouched. The fd stays open through setup — every later
-        // sidecar write (the initial JSON here, the identity rewrite after
-        // the snapshot) targets this verified inode, never the pathname.
+ // Sidecar FIRST, exclusive create through ONE held fd ("wx+" =
+ // O_CREAT|O_EXCL|O_RDWR). Ownership of the deterministic artifact
+ // paths is established by creation order, never by content sniffing:
+ // a pre-existing sidecar is by definition foreign (an earlier review
+ // never cleaned) — refuse and point at the documented cleanup path;
+ // never clean a foreign review. On EEXIST / EISDIR this throws with
+ // wroteSidecar still false, so rollback leaves the occupant
+ // byte-untouched. The fd stays open through setup — every later
+ // sidecar write (the initial JSON here, the identity rewrite after
+ // the snapshot) targets this verified inode, never the pathname.
         try {
           sidecarFd = fs.openSync(sidecarPath, "wx+");
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code !== "EEXIST" && (error as NodeJS.ErrnoException).code !== "EISDIR") throw error;
           throw new Error(`cannot record setup sidecar at ${sidecarPath} - run mstar pr-review worktree-cleanup first (never cleaning a foreign review)`);
         }
-        // No recorded identity snapshot needed: the held fd IS the identity
-        // (rollback verifies through it, see removeOwnedFreshSidecarFile).
+ // No recorded identity snapshot needed: the held fd IS the identity
+ // (rollback verifies through it, see removeOwnedFreshSidecarFile).
         writeFdSync(sidecarFd, Buffer.from(JSON.stringify(sidecar, null, 2), "utf8"));
         wroteSidecar = true; // the sidecar at sidecarPath is now owned by this process
-        // Snapshot SECOND, exclusive create. Our own sidecar was JUST created
-        // above, so any occupant at the snapshot path is by definition not
-        // ours — refuse and leave it byte-untouched (never truncate, never
-        // unlink, never shape-sniff).
+ // Snapshot SECOND, exclusive create. Our own sidecar was JUST created
+ // above, so any occupant at the snapshot path is by definition not
+ // ours — refuse and leave it byte-untouched (never truncate, never
+ // unlink, never shape-sniff).
         try {
           fs.writeFileSync(diffFile, snapshot, { flag: "wx" });
         } catch (error) {
@@ -3654,30 +3652,30 @@ prReviewCommand
           throw new Error(`refusing to overwrite pre-existing non-snapshot path ${diffFile}`);
         }
         wroteSnapshot = true; // the file at diffFile is now owned by this process
-        // Record the snapshot's identity on the in-memory sidecar, then
-        // rewrite the sidecar through the SAME held fd (ftruncate + full
-        // write, positional from offset 0) — no pathname write anywhere after
-        // creation, so a concurrent replacement of the path cannot be
-        // truncated. Cleanup proves ownership by identity, never by content:
-        // identical bytes on a new inode are a replacement, not our snapshot.
-        // The mtime closes the ext4 inode-reuse hole — a replacement can
-        // inherit dev+ino, never the mtime of the file this setup wrote.
+ // Record the snapshot's identity on the in-memory sidecar, then
+ // rewrite the sidecar through the SAME held fd (ftruncate + full
+ // write, positional from offset 0) — no pathname write anywhere after
+ // creation, so a concurrent replacement of the path cannot be
+ // truncated. Cleanup proves ownership by identity, never by content:
+ // identical bytes on a new inode are a replacement, not our snapshot.
+ // The mtime closes the ext4 inode-reuse hole — a replacement can
+ // inherit dev+ino, never the mtime of the file this setup wrote.
         const snapshotStat = fs.lstatSync(diffFile);
         sidecar.diffFileDev = snapshotStat.dev;
         sidecar.diffFileIno = String(snapshotStat.ino);
         sidecar.diffFileMtimeMs = snapshotStat.mtimeMs;
         pendingSidecar = sidecar;
-        // Close here; a failure before this close leaves the fd to rollback,
-        // which closes it before the verified unlink.
+ // Close here; a failure before this close leaves the fd to rollback,
+ // which closes it before the verified unlink.
         fs.ftruncateSync(sidecarFd, 0);
         writeFdSync(sidecarFd, Buffer.from(JSON.stringify(sidecar, null, 2), "utf8"));
         fs.closeSync(sidecarFd);
         sidecarFd = undefined;
         return sidecar;
       };
-      // Snapshot capture, write, and the sidecar write are the last failure
-      // points after the worktree exists — a FAIL here must roll the new
-      // worktree back (never an orphaned worktree + no sidecar), then fail.
+ // Snapshot capture, write, and the sidecar write are the last failure
+ // points after the worktree exists — a FAIL here must roll the new
+ // worktree back (never an orphaned worktree + no sidecar), then fail.
       let sidecar: ReviewWorktreeSidecar;
       try {
         sidecar = captureAndRecordSnapshot();
@@ -3771,26 +3769,26 @@ function removeOwnedSnapshotFile(worktreePath: string, sidecar: ReviewWorktreeSi
       && String(st.ino) === recordedIno && st.dev === recordedDev
       && st.mtimeMs === recordedMtimeMs;
     if (!owned) {
-      // Replacement file (new inode \u2014 even with a reused inode number,
-      // the mtime differs), or a sidecar without recorded identity:
-      // ownership cannot be proven \u2014 leave the path in place, never
-      // unlink by content (identical bytes are not identity).
+ // Replacement file (new inode \u2014 even with a reused inode number,
+ // the mtime differs), or a sidecar without recorded identity:
+ // ownership cannot be proven \u2014 leave the path in place, never
+ // unlink by content (identical bytes are not identity).
       console.error(pc.yellow(`worktree-cleanup: snapshot at ${snapshotPath} left in place (file identity does not match the recorded snapshot)`));
       return;
     }
     if (st.nlink !== 1) {
-      // 0 = our inode was already unlinked (the path holds a replacement);
-      // >1 = unexpected hardlink. Either way ownership is not provable.
+ // 0 = our inode was already unlinked (the path holds a replacement);
+ // >1 = unexpected hardlink. Either way ownership is not provable.
       console.error(pc.yellow(`worktree-cleanup: snapshot at ${snapshotPath} left in place (link count does not match the recorded snapshot)`));
       return;
     }
-    // The verified inode's only link is the path we created it at. Detach it
-    // to an UNGUESSABLE sibling name (pid + randomUUID \u2014 a pre-swapped
-    // entry at a predictable name can no longer be targeted), then re-check
-    // the fd: the inode now at tmp must BE the inode we opened \u2014 only
-    // then is unlinking tmp removing exactly our snapshot. Anything else at
-    // tmp is a replacement swapped in between open and rename \u2014 restore
-    // it byte-identical, never delete.
+ // The verified inode's only link is the path we created it at. Detach it
+ // to an UNGUESSABLE sibling name (pid + randomUUID \u2014 a pre-swapped
+ // entry at a predictable name can no longer be targeted), then re-check
+ // the fd: the inode now at tmp must BE the inode we opened \u2014 only
+ // then is unlinking tmp removing exactly our snapshot. Anything else at
+ // tmp is a replacement swapped in between open and rename \u2014 restore
+ // it byte-identical, never delete.
     const tmp = `${snapshotPath}.cleanup.${process.pid}.${randomUUID()}`;
     try {
       fs.renameSync(snapshotPath, tmp);
@@ -3805,39 +3803,39 @@ function removeOwnedSnapshotFile(worktreePath: string, sidecar: ReviewWorktreeSi
     } catch {
       tmpStat = undefined;
     }
-    // Pre-unlink binding: the inode at tmp must BE the inode we opened AND
-    // still hold exactly its tmp link (fstat nlink === 1 AND lstat tmp
-    // nlink === 1) \u2014 only then does unlinking tmp remove exactly our
-    // snapshot. Any mismatch (a replacement swapped in between open and
-    // rename, or a hardlink added) takes the restore branch below.
+ // Pre-unlink binding: the inode at tmp must BE the inode we opened AND
+ // still hold exactly its tmp link (fstat nlink === 1 AND lstat tmp
+ // nlink === 1) \u2014 only then does unlinking tmp remove exactly our
+ // snapshot. Any mismatch (a replacement swapped in between open and
+ // rename, or a hardlink added) takes the restore branch below.
     if (tmpStat !== undefined && tmpStat.ino === st2.ino && tmpStat.dev === st2.dev && st2.nlink === 1 && tmpStat.nlink === 1) {
-      // Portable ceiling: Node has no fd-bound unlink, so the unlink below is
-      // pathname-based. The unguessable tmp name + the pre-unlink nlink/inode
-      // checks above + the post-unlink nlink === 0 verification below
-      // minimize the lstat\u2192unlink window to microseconds.
+ // Portable ceiling: Node has no fd-bound unlink, so the unlink below is
+ // pathname-based. The unguessable tmp name + the pre-unlink nlink/inode
+ // checks above + the post-unlink nlink === 0 verification below
+ // minimize the lstat\u2192unlink window to microseconds.
       fs.unlinkSync(tmp);
-      // Post-unlink verification: the unlink must have detached OUR verified
-      // inode (nlink 1 \u2192 0). If the fd still has a link, the unlink
-      // detached a pathname replacement \u2014 detection is best-effort
-      // (POSIX/Node has no fd-bound unlink); name both paths loudly.
+ // Post-unlink verification: the unlink must have detached OUR verified
+ // inode (nlink 1 \u2192 0). If the fd still has a link, the unlink
+ // detached a pathname replacement \u2014 detection is best-effort
+ // (POSIX/Node has no fd-bound unlink); name both paths loudly.
       const st3 = fs.fstatSync(fd);
       if (st3.nlink !== 0) {
         console.error(pc.yellow(`worktree-cleanup: unlink at ${tmp} detached a pathname replacement, not the verified snapshot inode (${snapshotPath} still holds ${st3.nlink} link(s)) - the replacement is gone, the verified snapshot was NOT deleted`));
       }
     } else {
-      // The inode at tmp is NOT the one we opened — a replacement was
-      // swapped in between open and rename. Restore it to the snapshot
-      // path WITHOUT overwriting: link() fails with EEXIST if a concurrent
-      // creator took the path (POSIX rename would silently replace it).
-      // Only tmp (our own unique name) is ever unlinked, and only after
-      // link() proved it now shares the inode with the path.
+ // The inode at tmp is NOT the one we opened — a replacement was
+ // swapped in between open and rename. Restore it to the snapshot
+ // path WITHOUT overwriting: link() fails with EEXIST if a concurrent
+ // creator took the path (POSIX rename would silently replace it).
+ // Only tmp (our own unique name) is ever unlinked, and only after
+ // link() proved it now shares the inode with the path.
       try {
         fs.linkSync(tmp, snapshotPath); // EEXIST if a concurrent creator took the path — never overwrites
         fs.unlinkSync(tmp); // inode is back at the snapshot path; drop the tmp name
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "EEXIST") {
           console.error(pc.yellow(`worktree-cleanup: snapshot replacement left at ${tmp} (snapshot path was recreated concurrently)`));
-          // tmp keeps the earlier replacement; path keeps the concurrent file. Nothing deleted.
+ // tmp keeps the earlier replacement; path keeps the concurrent file. Nothing deleted.
         } else {
           console.error(pc.yellow(`worktree-cleanup: snapshot replacement left at ${tmp} (restore failed: ${(error as Error).message})`));
         }
@@ -3866,18 +3864,18 @@ function removeOwnedFreshSidecarFile(sidecarFd: number, worktreePath: string): v
   try {
     const st = fs.fstatSync(sidecarFd);
     if (!st.isFile() || st.nlink !== 1) {
-      // nlink 0 = our inode is already detached (the path holds a
-      // replacement); >1 = unexpected hardlink. Either way the path occupant
-      // is not exclusively ours - never touch it.
+ // nlink 0 = our inode is already detached (the path holds a
+ // replacement); >1 = unexpected hardlink. Either way the path occupant
+ // is not exclusively ours - never touch it.
       console.error(pc.yellow(`worktree-setup rollback: sidecar at ${sidecarPath} left in place (identity no longer held)`));
       return;
     }
-    // The verified inode's only link is the sidecar path this setup created
-    // it at. Detach it to an unguessable sibling name, then re-check the fd:
-    // the inode now at tmp must BE the inode we opened - only then is
-    // unlinking tmp removing exactly our sidecar. Anything else at tmp is a
-    // replacement swapped in between creation and rename - restore it
-    // byte-identical, never delete.
+ // The verified inode's only link is the sidecar path this setup created
+ // it at. Detach it to an unguessable sibling name, then re-check the fd:
+ // the inode now at tmp must BE the inode we opened - only then is
+ // unlinking tmp removing exactly our sidecar. Anything else at tmp is a
+ // replacement swapped in between creation and rename - restore it
+ // byte-identical, never delete.
     const tmp = `${sidecarPath}.cleanup.${process.pid}.${randomUUID()}`;
     try {
       fs.renameSync(sidecarPath, tmp);
@@ -3892,38 +3890,38 @@ function removeOwnedFreshSidecarFile(sidecarFd: number, worktreePath: string): v
     } catch {
       tmpStat = undefined; // ENOENT -> nothing at tmp
     }
-    // Pre-unlink binding: the inode at tmp must BE the inode this setup
-    // created (fstat on the held fd) - only then does unlinking tmp remove
-    // exactly our sidecar. Any mismatch (a replacement swapped in before the
-    // rename) takes the restore branch below.
+ // Pre-unlink binding: the inode at tmp must BE the inode this setup
+ // created (fstat on the held fd) - only then does unlinking tmp remove
+ // exactly our sidecar. Any mismatch (a replacement swapped in before the
+ // rename) takes the restore branch below.
     if (tmpStat !== undefined && tmpStat.ino === st2.ino && tmpStat.dev === st2.dev) {
-      // Portable ceiling: Node has no fd-bound unlink, so the unlink below is
-      // pathname-based. The unguessable tmp name + the pre-unlink fd/lstat
-      // identity check above + the post-unlink nlink === 0 verification below
-      // minimize the lstat->unlink window to microseconds.
+ // Portable ceiling: Node has no fd-bound unlink, so the unlink below is
+ // pathname-based. The unguessable tmp name + the pre-unlink fd/lstat
+ // identity check above + the post-unlink nlink === 0 verification below
+ // minimize the lstat->unlink window to microseconds.
       fs.unlinkSync(tmp);
-      // Post-unlink verification: the unlink must have detached OUR verified
-      // inode (nlink 1 -> 0). If the fd still has a link, the unlink detached
-      // a pathname replacement - detection is best-effort (POSIX/Node has no
-      // fd-bound unlink); name both paths loudly.
+ // Post-unlink verification: the unlink must have detached OUR verified
+ // inode (nlink 1 -> 0). If the fd still has a link, the unlink detached
+ // a pathname replacement - detection is best-effort (POSIX/Node has no
+ // fd-bound unlink); name both paths loudly.
       const st3 = fs.fstatSync(sidecarFd);
       if (st3.nlink !== 0) {
         console.error(pc.yellow(`worktree-setup rollback: unlink at ${tmp} detached a pathname replacement, not the verified sidecar inode (${sidecarPath} still holds ${st3.nlink} link(s)) - the replacement is gone, the verified sidecar was NOT deleted`));
       }
     } else {
-      // The inode at tmp is NOT the one this setup created - a replacement
-      // was swapped in between the fd's creation and the rename. Restore it
-      // to the sidecar path WITHOUT overwriting: link() fails with EEXIST if
-      // a concurrent creator took the path (POSIX rename would silently
-      // replace it). Only tmp (our own unique name) is ever unlinked, and
-      // only after link() proved it now shares the inode with the path.
+ // The inode at tmp is NOT the one this setup created - a replacement
+ // was swapped in between the fd's creation and the rename. Restore it
+ // to the sidecar path WITHOUT overwriting: link() fails with EEXIST if
+ // a concurrent creator took the path (POSIX rename would silently
+ // replace it). Only tmp (our own unique name) is ever unlinked, and
+ // only after link() proved it now shares the inode with the path.
       try {
         fs.linkSync(tmp, sidecarPath); // EEXIST if a concurrent creator took the path - never overwrites
         fs.unlinkSync(tmp); // inode is back at the sidecar path; drop the tmp name
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === "EEXIST") {
           console.error(pc.yellow(`worktree-setup rollback: sidecar replacement left at ${tmp} (sidecar path was recreated concurrently)`));
-          // tmp keeps the earlier replacement; path keeps the concurrent file. Nothing deleted.
+ // tmp keeps the earlier replacement; path keeps the concurrent file. Nothing deleted.
         } else {
           console.error(pc.yellow(`worktree-setup rollback: sidecar replacement left at ${tmp} (restore failed: ${(error as Error).message})`));
         }
@@ -3959,16 +3957,16 @@ prReviewCommand
       } catch (error) {
         throw new Error(`setup sidecar at ${sidecarPath} is not valid JSON: ${(error as Error).message}`);
       }
-      // All git below runs from the REPO ROOT recorded at setup \u2014 never the
-      // worktree being removed, never the user's cwd (which may even be
-      // deleted after a successful remove). Legacy sidecars without the field
-      // fall back to the worktree's parent directory.
+ // All git below runs from the REPO ROOT recorded at setup \u2014 never the
+ // worktree being removed, never the user's cwd (which may even be
+ // deleted after a successful remove). Legacy sidecars without the field
+ // fall back to the worktree's parent directory.
       const gitRoot = typeof sidecar.repoRoot === "string" && sidecar.repoRoot !== ""
         ? sidecar.repoRoot
         : path.dirname(worktreePath);
       if (sidecar.reviewBranch === "") {
-        // Detached review worktree (branch / commit mode): nothing to delete,
-        // and any claimed --branch is by definition foreign.
+ // Detached review worktree (branch / commit mode): nothing to delete,
+ // and any claimed --branch is by definition foreign.
         if (options.branch !== "") {
           throw new Error(
             `this setup recorded no review branch (detached review) - refusing ${JSON.stringify(options.branch)} as a foreign branch`,
@@ -3993,13 +3991,13 @@ prReviewCommand
         }
         gitSync(["branch", "-D", sidecar.reviewBranch], gitRoot);
       }
-      // The diff snapshot is a review artifact beside the sidecar \u2014 remove it
-      // BEFORE the sidecar (a snapshot-rm failure must not strand an orphan a
-      // retry can't reach: once the sidecar is gone, cleanup refuses). Use the
-      // SAME computed path the rollback uses \u2014 immune to doctored sidecar
-      // fields and symlink-spelled paths (macOS /tmp vs /private/tmp). Only a
-      // regular file at that path is a snapshot this flow wrote; directories /
-      // symlinks / other entries are unowned and left in place (never recursive).
+ // The diff snapshot is a review artifact beside the sidecar \u2014 remove it
+ // BEFORE the sidecar (a snapshot-rm failure must not strand an orphan a
+ // retry can't reach: once the sidecar is gone, cleanup refuses). Use the
+ // SAME computed path the rollback uses \u2014 immune to doctored sidecar
+ // fields and symlink-spelled paths (macOS /tmp vs /private/tmp). Only a
+ // regular file at that path is a snapshot this flow wrote; directories /
+ // symlinks / other entries are unowned and left in place (never recursive).
       removeOwnedSnapshotFile(worktreePath, sidecar);
       fs.rmSync(sidecarPath, { force: true });
       console.log(pc.green(`worktree-cleanup: removed ${worktreePath}${sidecar.reviewBranch !== "" ? ` + deleted ${sidecar.reviewBranch}` : " (no local branch to delete)"}`));

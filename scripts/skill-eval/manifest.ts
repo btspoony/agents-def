@@ -1,5 +1,5 @@
 /**
- * scripts/skill-eval/manifest.ts — Task 1 of plan 20260907-skill-eval-baseline.
+ * scripts/skill-eval/manifest.ts — immutable manifest builder.
  *
  * `prepare` freezes the skill-eval baseline: it validates the runner-owned
  * config and the frozen 30-case set, resolves an immutable manifest v1,
@@ -8,15 +8,15 @@
  *
  * Hard contract (Spec A1):
  * - prepare performs ZERO model calls. The only production subprocess it may
- *   run is read-only git (source-tree closure hashing), and every subprocess
- *   must go through the injected `exec` seam so tests can spy on it.
+ * run is read-only git (source-tree closure hashing), and every subprocess
+ * must go through the injected `exec` seam so tests can spy on it.
  * - exit 0 => immutable resolved manifest + fixture/closure hashes written
- *   under the disposable fixture root; exit 2 => invalid config, nothing
- *   written anywhere (validation completes before any filesystem write).
+ * under the disposable fixture root; exit 2 => invalid config, nothing
+ * written anywhere (validation completes before any filesystem write).
  * - Model identity is never invented: an unavailable model is preserved as
- *   `null` plus an explicit reason.
+ * `null` plus an explicit reason.
  * - All writes stay inside `<repoRoot>/.tmp/skill-eval/` (disposable); the
- *   real main/control source roots are never a write target.
+ * real main/control source roots are never a write target.
  *
  * Stage entry (Task 1): `bun scripts/skill-eval/manifest.ts prepare --config
  * <absolute-config.json> --out <absolute-run-dir>`. The canonical dispatcher
@@ -92,7 +92,7 @@ export const REPEATS_ALLOWED = [1, 3] as const;
 export const FIXTURE_ROOT_SEGMENT = join(".tmp", "skill-eval");
 
 /**
- * C-W3 (QC wave 1): the per-arm freeze closure covers the complete reachable
+ * C-W3: the per-arm freeze closure covers the complete reachable
  * skill/reference closure of the pinned ref (Spec A1) — the `skills/` tree
  * PLUS the repo-root contract and command surfaces that skill content
  * load-bearingly references (`AGENTS.md` — proven injected by the real smoke —
@@ -112,7 +112,7 @@ const SECRET_KEY_RE = /(token|secret|password|passwd|api[-_]?key|authorization|c
 // ---------------------------------------------------------------------------
 
 export interface FixtureFileDef {
-  /** Relative path inside the case fixture directory; must not escape it. */
+ /** Relative path inside the case fixture directory; must not escape it. */
   path: string;
   content: string;
 }
@@ -124,17 +124,17 @@ export interface FixtureDef {
 export interface CaseAssertion {
   id: string;
   kind: AssertionKind;
-  /** string for *_contains kinds, string[] for diff_paths_within, true for thread_reused. */
+ /** string for *_contains kinds, string[] for diff_paths_within, true for thread_reused. */
   value: string | string[] | true;
   note?: string;
 }
 
 export interface CaseProvenance {
-  /** Provenance seed, e.g. "routing-evals.json#small-backend-clean@v27". */
+ /** Provenance seed, e.g. "routing-evals.json#small-backend-clean@v27". */
   seed?: string;
   note?: string;
   coverage: string[];
-  /** Marks the 3 smoke dev cases (derived `--split smoke` selection). */
+ /** Marks the 3 smoke dev cases (derived `--split smoke` selection). */
   smoke?: boolean;
 }
 
@@ -147,7 +147,7 @@ export interface RawCase {
   resumePrompt?: string;
   assertions: CaseAssertion[];
   provenance: CaseProvenance;
-  /** Optional per-case override of the global sandbox. */
+ /** Optional per-case override of the global sandbox. */
   sandbox?: SandboxMode;
 }
 
@@ -211,7 +211,7 @@ export interface EvalManifest {
   timeoutMs: number;
   repeats: number;
   interleaveSeed: number;
-  /** sha256 over the sorted heldout (id, integrityHash) pairs — frozen before tuning. */
+ /** sha256 over the sorted heldout (id, integrityHash) pairs — frozen before tuning. */
   heldoutDigest: string;
 }
 
@@ -302,7 +302,7 @@ export function validateRunSplit(split: string): string[] {
 
 export const defaultExecArgv: ExecArgv = (file, args) =>
   new Promise((res, rej) => {
-    // argv array only — no shell, no string interpolation.
+ // argv array only — no shell, no string interpolation.
     execFile(file, args, { encoding: "buffer", maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => {
       if (error) rej(error);
       else res({ stdout: stdout as Buffer });
@@ -397,7 +397,7 @@ export function validateConfig(raw: unknown): { config?: PrepareConfigInput; err
   assertType(raw, "object", "config", errors);
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { errors };
 
-  // Runner-owned NONSECRET configuration only — reject secret-looking keys up front.
+ // Runner-owned NONSECRET configuration only — reject secret-looking keys up front.
   for (const key of Object.keys(raw as Record<string, unknown>)) {
     if (SECRET_KEY_RE.test(key)) {
       errors.push(`config key ${JSON.stringify(key)} looks like a secret; configHash covers runner-owned nonsecret configuration only`);
@@ -415,8 +415,8 @@ export function validateConfig(raw: unknown): { config?: PrepareConfigInput; err
     for (const arm of ["baseline", "candidate"] as const) {
       const ref = sr[arm];
       if (typeof ref !== "string" || !FULL_SHA_RE.test(ref)) {
-        // Mutable refs (branch names, HEAD, short SHAs) are rejected: the
-        // manifest must pin immutable full SHAs.
+ // Mutable refs (branch names, HEAD, short SHAs) are rejected: the
+ // manifest must pin immutable full SHAs.
         errors.push(
           `config.sourceRefs.${arm} is a mutable or non-full ref: ${JSON.stringify(ref ?? null)} (require 40-hex full SHA)`,
         );
@@ -441,7 +441,7 @@ export function validateConfig(raw: unknown): { config?: PrepareConfigInput; err
     const value = cfg[field];
     const reasonField = field === "requestedModel" ? "requestedModelReason" : "observedModelReason";
     if (value === null) {
-      // Missing model identity is preserved as null + explicit reason.
+ // Missing model identity is preserved as null + explicit reason.
       if (!nonEmptyString(cfg[reasonField])) {
         errors.push(`config.${field} is null and requires a non-empty config.${reasonField}`);
       }
@@ -562,7 +562,7 @@ export function validateCases(
     if (!(ROUTES as readonly string[]).includes(c.route as string)) {
       errors.push(`${label}.route unknown: ${JSON.stringify(c.route ?? null)} (expected one of ${ROUTES.join("|")})`);
     }
-    // Unknown split rejection (case records carry dev|heldout; smoke is derived).
+ // Unknown split rejection (case records carry dev|heldout; smoke is derived).
     if (!(CASE_SPLITS as readonly string[]).includes(c.split as string)) {
       errors.push(`${label}.split unknown: ${JSON.stringify(c.split ?? null)} (expected one of ${CASE_SPLITS.join("|")})`);
     }
@@ -624,8 +624,8 @@ export function validateCases(
           ) {
             errors.push(`${alabel}.value must be an array of safe relative allowed paths`);
           }
-          // Only a non-empty allowed-paths set means the case intends writes;
-          // an empty set asserts "nothing written" and is valid read-only.
+ // Only a non-empty allowed-paths set means the case intends writes;
+ // an empty set asserts "nothing written" and is valid read-only.
           if (Array.isArray(rec.value) && rec.value.length > 0) hasWritePaths = true;
         } else if (kind === "thread_reused") {
           hasThreadReused = true;
@@ -770,8 +770,8 @@ export async function validateResolvedManifest(
     }
   }
 
-  // configHash is recomputed from manifest fields — tampering with any
-  // runner-owned config field breaks the recorded hash.
+ // configHash is recomputed from manifest fields — tampering with any
+ // runner-owned config field breaks the recorded hash.
   const recomputedConfigHash = computeConfigHash({
     plan: manifest.plan,
     sourceRefs: manifest.sourceRefs,
@@ -790,7 +790,7 @@ export async function validateResolvedManifest(
     errors.push("manifest.configHash does not match the resolved config fields");
   }
 
-  // Variants: fixed ids, closure validated per arm (cross-arm edges rejected).
+ // Variants: fixed ids, closure validated per arm (cross-arm edges rejected).
   const variantIds = manifest.variants?.map((v) => v.id) ?? [];
   const idSet = new Set(variantIds);
   if (variantIds.length !== VARIANT_IDS.length || !VARIANT_IDS.every((id) => idSet.has(id))) {
@@ -874,7 +874,7 @@ export async function validateResolvedManifest(
     }
   }
 
-  // Case records: distribution and per-case integrity structure.
+ // Case records: distribution and per-case integrity structure.
   const cases = manifest.cases ?? [];
   if (cases.length !== TOTAL_CASES) errors.push(`manifest.cases must contain ${TOTAL_CASES} cases, got ${cases.length}`);
   const perRoute = new Map<Route, { dev: number; heldout: number }>();
@@ -900,7 +900,7 @@ export async function validateResolvedManifest(
   }
   if (smokeCount !== SMOKE_CASE_COUNT) errors.push(`manifest must carry exactly ${SMOKE_CASE_COUNT} smoke cases, got ${smokeCount}`);
 
-  // Heldout digest is recomputed from manifest fields — versioned before tuning.
+ // Heldout digest is recomputed from manifest fields — versioned before tuning.
   const heldoutPairs = cases
     .filter((c) => c.split === "heldout")
     .map((c) => ({ id: c.id, integrityHash: c.integrityHash }))
@@ -932,10 +932,10 @@ export function validateOutDirShape(outDir: string, repoRoot: string): { resolve
 
 function assertRealpathInside(outDir: string, fixtureRoot: string, io: Io): string[] {
   const errors: string[] = [];
-  // Walk both target and fixture root up to their nearest existing ancestor,
-  // then resolve symlinks; a symlinked ancestor escaping the fixture root is
-  // rejected. Walking (instead of requiring existence) lets every stage run
-  // this check BEFORE creating anything, so a rejected request writes nothing.
+ // Walk both target and fixture root up to their nearest existing ancestor,
+ // then resolve symlinks; a symlinked ancestor escaping the fixture root is
+ // rejected. Walking (instead of requiring existence) lets every stage run
+ // this check BEFORE creating anything, so a rejected request writes nothing.
   const ancestor = nearestExistingAncestor(outDir, io);
   const fixtureAncestor = nearestExistingAncestor(fixtureRoot, io);
   if (ancestor === null || fixtureAncestor === null) {
@@ -972,7 +972,7 @@ function nearestExistingAncestor(target: string, io: Io): string | null {
 }
 
 /**
- * C-W2 (QC wave 1): shared disposable-root write containment for EVERY stage
+ * C-W2: shared disposable-root write containment for EVERY stage
  * that writes under a run dir (prepare / run / report). The target must be
  * strictly inside `<repoRoot>/.tmp/skill-eval/` (shape check) with no symlink
  * ancestor escaping it (realpath check). Performs no filesystem writes, so a
@@ -1022,7 +1022,7 @@ export interface PrepareArgs {
   repoRoot: string;
   io?: Io;
   readSourceTree?: SourceTreeReader;
-  /** Every subprocess (including read-only git) must flow through this seam. */
+ /** Every subprocess (including read-only git) must flow through this seam. */
   exec?: ExecArgv;
 }
 
@@ -1038,7 +1038,7 @@ export async function prepareManifest(args: PrepareArgs): Promise<PrepareResult>
 
   const fail = (errors: string[]): PrepareResult => ({ exit: 2 as const, errors });
 
-  // -- Phase A: read + validate inputs (no writes) -------------------------
+ // -- Phase A: read + validate inputs (no writes) -------------------------
   let configRaw: unknown;
   try {
     configRaw = JSON.parse(io.readText(args.configPath));
@@ -1060,7 +1060,7 @@ export async function prepareManifest(args: PrepareArgs): Promise<PrepareResult>
   const earlyErrors = configErrors.concat(caseErrors);
   if (earlyErrors.length > 0 || !config || !cases) return fail(earlyErrors);
 
-  // -- Phase B: resolve trees + build manifest (no writes) -----------------
+ // -- Phase B: resolve trees + build manifest (no writes) -----------------
   const trees = new Map<string, SourceTree>();
   for (const arm of ["baseline", "candidate"] as const) {
     try {
@@ -1131,11 +1131,11 @@ export async function prepareManifest(args: PrepareArgs): Promise<PrepareResult>
   const resolvedErrors = await validateResolvedManifest(manifest, readSourceTree);
   if (resolvedErrors.length > 0) return fail(resolvedErrors);
 
-  // -- Phase C: output safety, then (only now) writes ----------------------
-  // Containment (shape + realpath/symlink walk) completes BEFORE any mkdir:
-  // a rejected prepare creates nothing, not even the gitignored fixture root
-  // (QC wave 1: the previous ensureDir-before-check ordering could create the
-  // disposable root directory on rejection).
+ // -- Phase C: output safety, then (only now) writes ----------------------
+ // Containment (shape + realpath/symlink walk) completes BEFORE any mkdir:
+ // a rejected prepare creates nothing, not even the gitignored fixture root
+ // (the previous ensureDir-before-check ordering could create the
+ // disposable root directory on rejection).
   const { resolved, fixtureRoot, errors: outErrors } = validateOutDirShape(args.outDir, args.repoRoot);
   if (outErrors.length > 0 || resolved === undefined) return fail(outErrors);
 
@@ -1148,7 +1148,7 @@ export async function prepareManifest(args: PrepareArgs): Promise<PrepareResult>
     const caseDir = join(resolved, "fixtures", c.id);
     for (const file of c.fixture.files) {
       const target = join(caseDir, file.path);
-      // Re-check every materialized path against the case fixture directory.
+ // Re-check every materialized path against the case fixture directory.
       const rel = relative(caseDir, target);
       if (rel.startsWith("..") || isAbsolute(rel) || !isSafeFixtureRelPath(file.path)) {
         return fail([`case ${c.id}: fixture path ${JSON.stringify(file.path)} escapes the fixture directory`]);

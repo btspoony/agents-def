@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "artifact": "A5 bounded-ablation inventory (Task 1 freeze, plan 20260907-skill-hotpath-thinning)",
+  "artifact": "A5 bounded-ablation inventory (frozen)",
   "capturedAt": "2026-09-07",
   "plannedAtSha": "ec7cc1bc794f189d6fb000e3170911bc94b9534e",
   "frozenAt": {
@@ -23,7 +23,7 @@
       "SP3 sdd-execution-paths: deterministic causal replay (disposable checkouts) + wiring smoke using a deterministic stub codex — wiring evidence only, no model claim.",
       "SP4 skill-lint-parity: deterministic before/after lint parity on real corpus, CLI/dsh/Guard5 aligned through the shared classifier."
     ],
-    "armMaterializationLimitation": "SP2-QA adjudicated (plan 20260907-skill-load-contract): the runner does not materialize closure content, arm divergence is provenance-only, and model-visible inputs were identical — so A2's behavioral effect is not causally established. This inventory therefore claims NO behavioral/causal effect for any row; rows cite observed bytes/reads, source-line evidence, or deterministic checks only.",
+    "armMaterializationLimitation": "Adjudicated: the runner does not materialize closure content, arm divergence is provenance-only, and model-visible inputs were identical — so A2's behavioral effect is not causally established. This inventory therefore claims NO behavioral/causal effect for any row; rows cite observed bytes/reads, source-line evidence, or deterministic checks only.",
     "removalBasisEnum": {
       "duplicated-rule-owner-exists": "A surviving owner file keeps the semantics; the duplicate here is removed by a Task 2 batch with the owner named.",
       "model-native-teaching-hypothesis": "Content is plausibly model-native generic teaching; must be proven by a bounded Task 2 paired experiment before adoption; restore otherwise.",
@@ -66,7 +66,7 @@
       }
     ]
   },
-  "coverageRefNote": "coverageRefs are ruleIds of the per-rule/action coverage map produced by plan 20260907-skill-load-contract (control SDD eval artifact; not a tracked repo path). They are informational provenance; the tracked test validates caseIds and structural anchors, not control artifacts.",
+  "coverageRefNote": "coverageRefs are ruleIds of the per-rule/action coverage map produced by the control SDD eval artifacts (not a tracked repo path). They are informational provenance; the tracked test validates caseIds and structural anchors, not control artifacts.",
   "caseIdNote": "caseIds are structural anchors into scripts/skill-eval/cases.json (corpus v2, 30 cases): cases whose fixture/coverage class exercises the rule family. Because SP1 efficacy is BLOCKED, a caseId here asserts design coverage, NOT a verified behavioral pass.",
   "rules": [
     {
@@ -79,7 +79,7 @@
       },
       "ac1Category": "framework-judgment-policy",
       "provenance": {
-        "origin": "#144 preset semantics; rewritten by SP2 plan 20260907-skill-load-contract (A2) and pinned by closure.test.ts",
+        "origin": "#144 preset semantics; rewritten by the load-contract work (A2) and pinned by closure.test.ts",
         "commit": "5b897950479375213db9872cd6148cc16e96c381",
         "userPolicy": "#144"
       },
@@ -908,7 +908,7 @@
       },
       "ac1Category": "mechanically-covered-contract",
       "provenance": {
-        "origin": "SP4 plan 20260907-skill-lint-parity verified parity: this skill passes the runtime profile via the shared classifier",
+        "origin": "Parity verified: this skill passes the runtime profile via the shared classifier",
         "commit": null,
         "userPolicy": null
       },

@@ -1,7 +1,7 @@
 /**
- * AgentCanvasPage (spec panel-tabs §4/§6.2, plan 20260811-panel-agent-canvas
- * Task 2) — the 代理执行 tab: a DRAGGABLE agent canvas. Replaces the muted
- * placeholder page (tabs-shell Task 3) and the stage-column AgentFlowZone
+ * AgentCanvasPage (spec panel-tabs §4/§6.2
+ * — the 代理执行 tab: a DRAGGABLE agent canvas. Replaces the muted
+ * placeholder page  and the stage-column AgentFlowZone
  * (deleted by this plan — the free canvas supersedes it).
  *
  * Canvas contract (spec §6.2 — zero third-party deps):
@@ -29,28 +29,28 @@
  * `data-agent-record` (never the title). Idle (no dispatch evidence) cards
  * are muted (`data-agent-idle`); lit cards follow the projection's status
  * priority (running/settled/error/denied/advisory). Settled cards get a
- * standalone GREEN DONE FRAME + green ✓ (Task 8 — user feedback #1/#3:
+ * standalone GREEN DONE FRAME + green ✓ (
  * `data-agent-done="true"`, the frame is a full-strength success ring on the
  * rounded card body) ONLY when `emphasis !== 'off'` — an off-tier role
  * (already-passed / stage-less on-demand + general) never shows the
  * completion marker (the v3 leak: the ✓ survived the off-tier low
  * transparency).
  *
- * Shared iteration section (Task 8 — user feedback #4): the page renders the
+ * Shared iteration section : the page renders the
  * SAME `IterationInfoSection` the tasks tab uses, from the SAME
  * `view.iteration` data — 两个 tab 显示同一迭代信息块.
  *
- * Edges (spec §4 + plan 20260812-panel-f5-design-system Task 5 — the
+ * Edges (spec §4 — the
  * finalized 2026-08-12 line semantics, design doc §2): ONLY the actual
  * handoffs (business entity→entity — role-keyed, general endpoints
  * filtered, one edge per pair) and the supervise line (plan
- * 20260812-panel-f5-agent-layout Task 2 — the static bidirectional
+ *  Task 2 — the static bidirectional
  * implementor ↔ sdd-reviewer sub-bucket line inside the `sdd-implement`
  * column, dim dashed by default, lit business when the projected
  * `evidenced` flag is true — never a fabricated activation) — all drawn as
  * SVG bezier `C` paths (design doc §2.6) over the layout computed by the
  * exported pure `layoutAgents`. The `expected` stage skeleton and the
- * animated `next` edge are REMOVED (user feedback #1/#5 — the column order
+ * animated `next` edge are REMOVED ( — the column order
  * implies the flow, the running card glow + status point carry the
  * position). Every line anchors to a CARD PORT (4 fixed edge-midpoint
  * ports, design doc §2.5 — hover-visible dots, static-invisible) or the
@@ -58,22 +58,17 @@
  * at the STANDOFF point 10px off the target port (arrow along the endpoint
  * tangent — H1) and no line crosses text (H2: standoff + side-gap routing
  * for caption-crossing same-column flows + column-gap crossings). Col-skip
- * cross-column edges (plan QC tri R1 — a source/target pair whose columns
- * are separated by an intermediate column, e.g. writing-specialist →
- * qc-specialist) reroute via a multi-`L` side-gap DETOUR below the
+ * cross-column edges  reroute via a multi-`L` side-gap DETOUR below the
  * intermediate card band instead of a direct bezier through the card bodies
  * (H1).
  *
- * Layout (plan 20260812-panel-f5-agent-layout Task 2 + plan
- * 20260812-panel-f5-design-system Task 5 + Task 8 — the F5 rework; plan
- * 20260813-panel-agent-canvas-legend-layout Task 2 — the left-right
- * rework): deterministic columns per EXPECTED_ROLE_FLOW stage
+ * Layout : deterministic columns per EXPECTED_ROLE_FLOW stage
  * (review-edit-chain → sdd-implement → qc-tri → qa-gate) — FOUR columns
- * total (user 2026-08-12 feedback #3: the standalone rightmost UNKNOWN
+ * total (: the standalone rightmost UNKNOWN
  * column is REMOVED; `zone: 'general'` entities render in an "unknown /
  * 未匹配角色" SUB-PARTITION at the bottom of the LAST column,
  * `data-sub-bucket="unknown"`), laid out in TWO SIDE-BY-SIDE PHASE GROUPS
- * (Task 8 — user feedback #2; Task 2 — user 2026-08-13 feedback #2): the
+ * — the
  * Phase 1 group LEFTMOST (review-edit-chain — the sequential Review & Edit
  * chain: product-manager → architect → writing-specialist) and the Phase 2
  * group to its RIGHT (sdd-implement → qc-tri → qa-gate — the iterative plan
@@ -87,9 +82,9 @@
  * reviewer partition (code-reviewer, idle included) below, with the
  * implementor / sdd-reviewer caption labels. `zone: 'on-demand'` entities
  * have NO standalone column anymore — they live in the implementor
- * partition. The former F4.2 "general sinks to the bottom of
- * the sdd-implement column" placement is superseded (Task 2), as is the
- * Task-2 rightmost unknown column (Task 5); the former
+ * partition. The former "general sinks to the bottom of
+ * the sdd-implement column" placement is superseded, as is the
+ * rightmost unknown column; the former
  * sdd-implement → general SDD loop back-edge stays REMOVED (the render
  * draws no loop branch).
  *
@@ -97,10 +92,9 @@
  * yields the full idle roster, so the canvas renders it with the muted
  * `data-canvas-note` (degraded = ledger missing; empty = no events;
  * settle-only = events but no dispatch rows — review T2-Imp-2 restored the
- * old zone's distinct settle-only anchor; F-002: the empty/settle-only note
+ * old zone's distinct settle-only anchor; the empty/settle-only note
  * is PROJECTED metadata, never inferred from the entity list). The Legend
- * (idle / collaboration swatches, plan Task 3) sits BELOW the viewport
- * (plan 20260813-panel-quick-fixes Task 3 — user 2026-08-13 feedback).
+ * (idle / collaboration swatches) sits BELOW the viewport.
  * `initialPan` is a deterministic SSR/test seed — the live page starts at the
  * origin.
  */
@@ -118,8 +112,7 @@ export interface AgentCanvasPageProps {
   /** The projected agents zone (spec §6.2 — `ZoneView['agents']`). */
   view: ZoneView['agents']
   /** The projected iteration zone (spec §3) — the SHARED iteration info
-   * block (plan 20260812-panel-f5-design-system Task 8, user 2026-08-12
-   * feedback #4): BOTH the tasks tab and this page render the SAME
+   * block : BOTH the tasks tab and this page render the SAME
    * `IterationInfoSection` from the SAME `view.iteration` data. */
   iteration: ZoneView['iteration']
   t: TranslateNS<'mstar-panel'>
@@ -174,10 +167,7 @@ export interface CanvasColumn extends CanvasBox {
 }
 
 /**
- * One PHASE group of the canvas (plan 20260812-panel-f5-design-system Task 8
- * — user 2026-08-12 feedback #2; plan
- * 20260813-panel-agent-canvas-legend-layout Task 2 — the left-right
- * rework): the stage columns split into two SIDE-BY-SIDE groups by iteration
+ * One PHASE group of the canvas : the stage columns split into two SIDE-BY-SIDE groups by iteration
  * phase — **Phase 1** (review-edit-chain, the sequential Review & Edit
  * chain: product-manager → architect → writing-specialist) LEFTMOST,
  * **Phase 2** (sdd-implement → qc-tri → qa-gate, the iterative plan loop) to
@@ -198,7 +188,7 @@ export interface CanvasGroup {
   label: { x: number; y: number; w: number; h: number }
   /** The stage column ids of this group, stage order. */
   columnIds: readonly string[]
-  /** Current-plan annotation host (design doc §1.2 — user feedback #2):
+  /** Current-plan annotation host (design doc §1.2 —):
    * true for the `autonomous-execute` phase group (the iterative plan loop)
    * only. */
   planNote: boolean
@@ -210,21 +200,19 @@ export interface CanvasLayout {
   height: number
   columns: readonly CanvasColumn[]
   cards: ReadonlyMap<string, CanvasBox>
-  /** Sub-bucket geometry per column id (plan 20260812-panel-f5-agent-layout
-   * Task 2): the `sdd-implement` column's implementor/reviewer caption seats
-   * + card bands — the supervise line anchors to the band edges (the
+  /** Sub-bucket geometry per column id (the supervise line anchors to the band edges (the
    * inter-partition gap; QC W-001).
    * Columns without sub-buckets are absent from the map. */
   subBuckets: ReadonlyMap<string, SubBucketGeometry>
   /** The unknown sub-partition at the bottom of the LAST column (plan
-   * 20260812-panel-f5-design-system Task 5 — user 2026-08-12 feedback #3:
+   *  Task 5 —:
    * `zone: 'general'` entities sink into a qa-gate-column-bottom sub-partition
    * instead of a standalone fifth column). The caption seat + card band;
    * null when the layout has no columns (total function — never a throw). */
   unknown: UnknownSubPartition | null
-  /** The Phase groups (plan 20260812-panel-f5-design-system Task 8 — user
+  /** The Phase groups (user
    * 2026-08-12 feedback #2; plan
-   * 20260813-panel-agent-canvas-legend-layout Task 2): Phase 1 leftmost /
+   * Phase 1 leftmost /
    * Phase 2 right, top-aligned, each with its label seat; empty when the
    * layout has no columns. */
   groups: readonly CanvasGroup[]
@@ -241,21 +229,17 @@ const PAD_Y = 24
 const COL_PAD = 12
 /** Column label band height (the cards start below it). */
 const LABEL_H = 18
-/** Sub-bucket caption row height (plan 20260812-panel-f5-agent-layout Task
- * 2): the implementor / sdd-reviewer partition labels inside the
+/** Sub-bucket caption row height : the implementor / sdd-reviewer partition labels inside the
  * `sdd-implement` column (the caption consumes its own row above the
  * partition's cards). */
 const SUB_LABEL_H = 14
 /** Gap between a sub-bucket caption row and its first card (canvas metric). */
 const SUB_GAP = 4
-/** Horizontal gap between the Phase groups (plan 20260812-panel-f5-design-system
- * Task 8 — design doc §1.2; plan 20260813-panel-agent-canvas-legend-layout
- * Task 2 — canvas metric): the Phase 1 group and the Phase 2 group sit
+/** Horizontal gap between the Phase groups : the Phase 1 group and the Phase 2 group sit
  * side-by-side with this separation. */
 const GROUP_GAP = 24
 
-/** The arrow-tip standoff (plan 20260812-panel-f5-design-system Task 5 —
- * design doc §2.5, H1): every actual-edge path END retreats this far from
+/** The arrow-tip standoff : every actual-edge path END retreats this far from
  * the target port along the endpoint tangent, so the arrow tip sits 10px
  * OUTSIDE the card border (不贴卡). Same-column flows with a tighter gap
  * reduce it so the 6px arrowhead never overlaps the source card (see
@@ -268,15 +252,14 @@ const STANDOFF = 10
  * text (H2). */
 const SIDE_GAP = 18
 
-/** The unknown sub-partition id (plan 20260812-panel-f5-design-system Task 5
- * — design doc §1.2): `zone: 'general'` entities render in a bottom
+/** The unknown sub-partition id : `zone: 'general'` entities render in a bottom
  * sub-partition of the LAST column titled「unknown / 未匹配角色」and marked
  * `data-sub-bucket="unknown"`. The former standalone rightmost UNKNOWN column
- * (plan 20260812-panel-f5-agent-layout Task 2) is REMOVED — the constant
+ *  is REMOVED — the constant
  * value survives as the sub-partition bucket id. */
 export const UNKNOWN_COLUMN = 'unknown'
 
-/** The sdd-implement stage id (plan 20260812-panel-f5-agent-layout Task 2):
+/** The sdd-implement stage id :
  * the sub-bucket host column (implementor partition above / reviewer
  * partition below) AND the implementor sink for `zone: 'on-demand'`
  * entities (ops-engineer / prompt-engineer — the standalone on-demand column
@@ -290,7 +273,7 @@ export const UNKNOWN_COLUMN = 'unknown'
 const GENERAL_SINK_STAGE = 'sdd-implement'
 
 /** One sub-bucket partition inside the `sdd-implement` column (plan
- * 20260812-panel-f5-agent-layout Task 2): the caption seat + the cards'
+ * the caption seat + the cards'
  * band — the supervise line anchors to the band's edge (implementor:
  * bottom edge; reviewer: top edge — the inter-partition gap; QC W-001). */
 export interface SubBucketPartition {
@@ -303,7 +286,7 @@ export interface SubBucketPartition {
   band: CanvasBox | null
 }
 
-/** The sub-bucket geometry of one column (plan f5 Task 2): implementor +
+/** The sub-bucket geometry of one column : implementor +
  * reviewer partitions. Present ONLY for the `sdd-implement` column — the
  * supervise anchors read the bands. */
 export interface SubBucketGeometry {
@@ -311,8 +294,7 @@ export interface SubBucketGeometry {
   reviewer: SubBucketPartition
 }
 
-/** The unknown sub-partition of the LAST column (plan 20260812-panel-f5-design-system
- * Task 5 — design doc §1.2): the caption seat + the general cards' band. The
+/** The unknown sub-partition of the LAST column : the caption seat + the general cards' band. The
  * caption row (SUB_LABEL_H) sits ROW_GAP below the last flow card; the
  * general cards follow SUB_GAP below it. */
 export interface UnknownSubPartition {
@@ -325,19 +307,18 @@ export interface UnknownSubPartition {
 }
 
 /**
- * Deterministic canvas layout (spec §4 + plan 20260812-panel-f5-agent-layout
- * Task 2 + plan 20260812-panel-f5-design-system Task 5 + Task 8 + plan
- * 20260813-panel-agent-canvas-legend-layout Task 2 — the F5 rework + the
+ * Deterministic canvas layout (spec §4
+ * + Task 8 + plan
+ *  Task 2 — the F5 rework + the
  * left-right rework): one column per EXPECTED_ROLE_FLOW stage (view order:
  * review-edit-chain → sdd-implement → qc-tri → qa-gate) — FOUR columns
- * total, laid out in TWO SIDE-BY-SIDE PHASE GROUPS (Task 8, user 2026-08-12
- * feedback #2; Task 2, user 2026-08-13 feedback #2): the **Phase 1 group
+ * total, laid out in TWO SIDE-BY-SIDE PHASE GROUPS (the **Phase 1 group
  * LEFTMOST** (review-edit-chain — the sequential Review & Edit chain:
  * product-manager → architect → writing-specialist) and the **Phase 2 group
  * to its RIGHT** (sdd-implement → qc-tri → qa-gate — the iterative plan
  * loop, annotated with the current `activePlanId`), every group label row
  * TOP-ALIGNED at PAD_Y (design doc §1.2; the standalone rightmost unknown
- * column is REMOVED — Task 5, user feedback #3). The `sdd-implement` column
+ * column is REMOVED ). The `sdd-implement` column
  * is split into sub-buckets by the
  * PROJECTED `entity.bucket` (never a render-side guess): the implementor
  * partition above — flow roles in the stage's original EXPECTED_ROLE_FLOW
@@ -374,11 +355,11 @@ export function layoutAgents(view: ZoneView['agents']): CanvasLayout {
 
   const buckets = new Map<string, AgentEntityView[]>()
   for (const entity of view.entities) {
-    // zone → column (plan f5 Task 2 + Task 5): 'flow' → the entity's stage
+    // zone → column: 'flow' → the entity's stage
     // column (the sdd-implement column re-partitions it by bucket below);
     // 'on-demand' → the sdd-implement column (implementor partition — NO
     // standalone on-demand column anymore); 'general' → the LAST column's
-    // unknown sub-partition (NO standalone unknown column anymore — Task 5).
+    // unknown sub-partition (NO standalone unknown column anymore ).
     const colId = entity.zone === GENERAL_BUCKET
       ? unknownSinkId
       : entity.zone === 'on-demand'
@@ -392,9 +373,9 @@ export function layoutAgents(view: ZoneView['agents']): CanvasLayout {
     else bucket.push(entity)
   }
 
-  // Phase groups (plan 20260812-panel-f5-design-system Task 8 — user
+  // Phase groups (user
   // 2026-08-12 feedback #2, design doc §1.2; plan
-  // 20260813-panel-agent-canvas-legend-layout Task 2): the stage columns
+  // the stage columns
   // split into SIDE-BY-SIDE groups by iteration phase — Phase 1
   // (review-edit-chain — the sequential Review & Edit chain:
   // product-manager → architect → writing-specialist) LEFTMOST, Phase 2
@@ -423,8 +404,7 @@ export function layoutAgents(view: ZoneView['agents']): CanvasLayout {
   const columns: CanvasColumn[] = []
   const subBuckets = new Map<string, SubBucketGeometry>()
   let unknown: UnknownSubPartition | null = null
-  // LEFT-RIGHT groups (plan 20260813-panel-agent-canvas-legend-layout Task 2
-  // — user 2026-08-13 feedback #2): the Phase groups advance along x (Phase
+  // LEFT-RIGHT groups : the Phase groups advance along x (Phase
   // 1 leftmost, then Phase 2), sharing ONE top-anchored column row.
   const colY = PAD_Y + LABEL_H + COL_PAD
   let groupX = PAD_X
@@ -444,14 +424,14 @@ export function layoutAgents(view: ZoneView['agents']): CanvasLayout {
       columns.push(column)
       const list = buckets.get(id) ?? []
       if (id === sddSinkId && sddStage !== undefined) {
-        // Deterministic sub-bucket partition (plan f5 Task 2 — the partition
+        // Deterministic sub-bucket partition (the partition
         // boundary comes from the PROJECTED `entity.bucket`, never a render
-        // guess; same determinism discipline as the former F4.2 general sink):
+        // guess; same determinism discipline as the former general sink):
         // the implementor partition above — flow roles in the stage's original
         // EXPECTED_ROLE_FLOW order, then the on-demand roles in roster order —
         // the reviewer partition (code-reviewer) below. The bands (each
         // bucket's card y-extent) become the supervise-line anchor edges —
-        // the line spans the inter-partition gap (QC W-001).
+                // the line spans the inter-partition gap.
         const implementor = list.filter((e) => e.bucket === 'implementor')
         const reviewer = list.filter((e) => e.bucket === 'reviewer')
         const rest = list.filter((e) => e.bucket !== 'implementor' && e.bucket !== 'reviewer')
@@ -512,7 +492,7 @@ export function layoutAgents(view: ZoneView['agents']): CanvasLayout {
         })
       } else if (id === unknownSinkId) {
         // The LAST column (qa-gate in the current pipeline) hosts the unknown
-        // sub-partition (plan 20260812-panel-f5-design-system Task 5 — design
+        // sub-partition (design
         // doc §1.2): the flow cards (qa-gate entities) stack first, then the
         //「unknown / 未匹配角色」caption row (SUB_LABEL_H) ROW_GAP below the last
         // flow card, then the general cards SUB_GAP below the caption. The
@@ -580,9 +560,7 @@ export function layoutAgents(view: ZoneView['agents']): CanvasLayout {
 
 /**
  * Resolve one supervise anchor `<col-id>:<bucket>` to the side-gap vertical
- * anchor point (plan 20260812-panel-f5-agent-layout Task 2 + plan
- * 20260812-panel-f5-design-system Task 5 — design doc §2.5/§2.7, user
- * 2026-08-12 feedback #4): the column id is the anchor prefix BEFORE the
+ * anchor point : the column id is the anchor prefix BEFORE the
  * last `:` (column ids themselves contain `:`, so the bucket suffix is the
  * LAST segment); the implementor anchor lands at the band's BOTTOM edge and
  * the reviewer anchor at the band's TOP edge — the inter-partition gap (the
@@ -610,7 +588,7 @@ function superviseAnchor(anchor: string, layout: CanvasLayout): { x: number; y: 
   const partition = bucket === 'implementor' ? geometry.implementor : geometry.reviewer
   const band = partition.band
   if (band === null) return null
-  // Inter-partition gap anchor (QC W-001): the endpoint sits on the band
+  // Inter-partition gap anchor : the endpoint sits on the band
   // EDGE — implementor at its bottom edge, reviewer at its top edge — so
   // the supervise line spans the ~30 px gap (ROW_GAP + the reviewer caption
   // row + SUB_GAP) and both arrowheads stay visible. x = the side-gap
@@ -637,9 +615,7 @@ function portPoint(box: CanvasBox, port: PortId): { x: number; y: number } {
 }
 
 /** The canvas column index of a card box (deterministic — columns never
- * overlap in BOTH axes: the LEFT-RIGHT group layout (plan
- * 20260812-panel-f5-design-system Task 8 + plan
- * 20260813-panel-agent-canvas-legend-layout Task 2) places every group's
+ * overlap in BOTH axes: the LEFT-RIGHT group layout places every group's
  * columns at DISJOINT x positions sharing ONE top-aligned y band, so the
  * x-range alone disambiguates (the y-range condition is now redundant —
  * retained as a defensive guard). -1 only when the layout has no columns
@@ -719,7 +695,7 @@ function boxOverlaps(a: { x: number; y: number; w: number; h: number }, b: { x: 
 }
 
 /** The SIDE-GAP DETOUR for a col-skip cross-column edge (design doc §2.0
- * 绕行策略 ③ — plan QC tri R1): a multi-segment polyline that clears the
+ * 绕行策略 ③ — ): a multi-segment polyline that clears the
  * intermediate columns' WHOLE card band —
  *
  *   source port (east/west)
@@ -770,11 +746,11 @@ function sideGapDetour(
  * tight ROW_GAP (12px) — shrink to fit: standoff = min(STANDOFF, gap − 8)
  * keeps the arrow BASE ≥ 2px clear of the source card. The arrow markers are
  * pinned to a fixed 6px user-space body (`markerUnits="userSpaceOnUse"` —
- * QC F-001: the old strokeWidth-scaled marker rendered ~9.45px, so its base
+  * The old strokeWidth-scaled marker rendered ~9.45px, so its base
  * reached INTO the source card), so 6px arrow + 2px base clearance = the 8
  * the formula reserves. `gap` is the inter-card distance in the flow
  * direction (target north − source south for forward, source north − target
- * south for reverse — always ≥ 0, QC W-001). (simplify: the vertical
+ * south for reverse — always ≥ 0. (simplify: the vertical
  * arrowhead needs ~8px of the gap; a future larger ROW_GAP token restores
  * the full 10px standoff.) */
 function sameColumnStandoff(gap: number): number {
@@ -788,7 +764,7 @@ function sameColumnStandoff(gap: number): number {
  * through those card bodies). Detected against the zero-width vertical segment
  * spanning `startY`↔`endY` at `cx`; the source/target cards themselves are the
  * allowed ports (excluded). When it fires, the flow reroutes into the column's
- * LEFT side gap (like the caption-crossing case — H1, the user 2026-08-13
+ * LEFT side gap (like the caption-crossing case — H1, the
  * "线穿过卡片" report). */
 function crossesSameColumnCard(
   layout: CanvasLayout,
@@ -813,7 +789,7 @@ function crossesSameColumnCard(
 export interface EdgeGeometry {
   /** The SVG path `d` — a single `C` cubic-bezier command for the standard
    * curves, or the multi-command `M … L … L … L … L … L …` side-gap detour
-   * polyline for col-skip cross-column edges (plan QC tri R1). The render
+   * polyline for col-skip cross-column edges . The render
    * passes `d` through verbatim; `marker-end orient="auto"` follows the
    * FINAL segment, so the arrow always rides the endpoint tangent (H1). */
   d: string
@@ -826,7 +802,7 @@ export interface EdgeGeometry {
 /** The horizontal bezier (design doc §2.6): `M sx sy C (sx + dir·off) sy,
  * (tx − dir·off) ty, tx ty` with off = max(|tx−sx|/2, 24) — endpoint tangents
  * horizontal → the arrow rides the line (H1). DIRECTION-AWARE (plan
- * 20260813-panel-quick-fixes T3 H1): `dir` = the x direction, so the controls
+ *  T3 H1): `dir` = the x direction, so the controls
  * always fall BETWEEN the endpoints — a REVERSE flow (source west → target
  * east, traveling LEFT) keeps its S-curve inside the inter-column gap instead
  * of bulging past each endpoint into the adjacent cards/text. */
@@ -852,19 +828,18 @@ function verticalCurve(sx: number, sy: number, tx: number, ty: number): EdgeGeom
 }
 
 /**
- * One edge's SVG bezier geometry (plan 20260812-panel-f5-design-system Task
- * 5 — design doc §2.5/§2.6); null when an anchor is missing (total
+ * One edge's SVG bezier geometry ; null when an anchor is missing (total
  * function).
  *
  * Port selection (design doc §2.5 — lines connect ports only, never through
  * a card): forward (source column < target column) → source EAST → target
  * WEST; reverse (source column > target column) → source WEST → target
- * EAST; same column → the vertical flow (direction-aware, QC W-001). The
+ * EAST; same column → the vertical flow (direction-aware. The
  * path END stands off STANDOFF px from the target port along the endpoint
  * tangent (arrow tip off the card, H1); the source starts AT its port (no
  * arrow there).
  *
- * Direction-aware vertical endpoints (plan QC tri qc3 W-001): a same-column
+ * Direction-aware vertical endpoints : a same-column
  * (or side-gap) flow whose SOURCE sits BELOW the target — the implement →
  * review → rework cycle collapses to `code-reviewer → fullstack-dev` (the
  * projection pair-dedupe keeps the LATEST direction) — must approach the
@@ -886,13 +861,11 @@ function verticalCurve(sx: number, sy: number, tx: number, ty: number): EdgeGeom
  * bezier hangs at `card left edge − SIDE_GAP`, clear of every text (H2) and
  * every card body (H1).
  *
- * Inter-phase flows (plan 20260812-panel-f5-design-system Task 8 + plan
- * 20260813-panel-agent-canvas-legend-layout Task 2 — the left-right
- * layout): a Phase 1 → Phase 2 handoff (e.g. writing-specialist →
+ * Inter-phase flows : a Phase 1 → Phase 2 handoff (e.g. writing-specialist →
  * fullstack-dev — a real same-plan Review&Edit→implement transfer) is a
  * normal FORWARD horizontal bezier (source east → target west) — the groups
  * sit side-by-side at one top-aligned y band, so no label row lies between
- * the cards. The CARD-AWARE guard (plan QC tri R1 — 绕行策略 ③): a
+ * the cards. The CARD-AWARE guard : a
  * cross-column edge whose columns SKIP an intermediate column (e.g.
  * writing-specialist → qc-specialist — a real docs-only / inline / QA-gate
  * ledger chain) would run its direct horizontal bezier THROUGH the
@@ -903,8 +876,7 @@ function verticalCurve(sx: number, sy: number, tx: number, ty: number): EdgeGeom
  */
 export function edgePath(edge: AgentEdge, layout: CanvasLayout): EdgeGeometry | null {
   if (edge.kind === 'supervise') {
-    // The bidirectional sub-bucket supervision line (plan f5 Task 2 + Task
-    // 5): implementor ↔ sdd-reviewer — a vertical bezier in the side gap
+    // The bidirectional sub-bucket supervision line: implementor ↔ sdd-reviewer — a vertical bezier in the side gap
     // (implementor band bottom → reviewer band top at card right edge +
     // SIDE_GAP), so the outward double-arrow markers stay visible AND clear
     // of the caption text (H2 — the v3 side-gap fix).
@@ -922,7 +894,7 @@ export function edgePath(edge: AgentEdge, layout: CanvasLayout): EdgeGeometry | 
   if (srcCol < tgtCol) {
     // Forward: source east → target west; the path ends 10px LEFT of the
     // west edge (outside the card) with a horizontal tangent (H1). The
-    // CARD-AWARE guard (plan QC tri R1): a direct bezier whose bbox hits ANY
+    // CARD-AWARE guard : a direct bezier whose bbox hits ANY
     // card body in the INTERMEDIATE columns (a col-skip edge — e.g.
     // writing-specialist → qc-specialist — would otherwise run its straight
     // line through the sdd-implement cards) reroutes via the side-gap
@@ -950,7 +922,7 @@ export function edgePath(edge: AgentEdge, layout: CanvasLayout): EdgeGeometry | 
     return horizontalCurve(s.x, s.y, endX, t.y)
   }
   // Same column: the vertical flow (design doc §2.5). DIRECTION-AWARE
-  // endpoints (QC W-001): forward = source above → source SOUTH → target
+  // endpoints : forward = source above → source SOUTH → target
   // NORTH + standoff; reverse = source below (the rework cycle —
   // `code-reviewer → fullstack-dev`) → source NORTH → target SOUTH +
   // standoff — the tip lands on the target's NEAR side, the line stays in
@@ -979,7 +951,7 @@ export function edgePath(edge: AgentEdge, layout: CanvasLayout): EdgeGeometry | 
 
 /** The card status point (spec §4): running glows, settled shows the ✓,
  * idle stays muted. The ✓ is the COMPLETION marker (plan
- * 20260812-panel-f5-design-system Task 8 — user 2026-08-12 feedback #1/#3):
+ *  Task 8 —):
  * it renders ONLY for a settled entity whose emphasis is NOT 'off' (`done`
  * — the card also carries the green done frame); a settled entity on an
  * 'off' tier (already-passed / stage-less on-demand + general roles) shows
@@ -1012,7 +984,7 @@ function StatusPoint({ status, done }: { status: AgentEntityStatus; done: boolea
  */
 function EntityCard({ entity, t, box }: { entity: AgentEntityView; t: TranslateNS<'mstar-panel'>; box: CanvasBox }) {
   const running = entity.status === 'running'
-  // Done frame (plan 20260812-panel-f5-design-system Task 8 — user 2026-08-12
+  // Done frame (
   // feedback #1/#3): settled AND emphasis ≠ 'off' → the standalone GREEN
   // frame + green ✓. emphasis === 'off' (already-passed / stage-less
   // on-demand + general roles) NEVER shows the completion marker — the
@@ -1044,7 +1016,7 @@ function EntityCard({ entity, t, box }: { entity: AgentEntityView; t: TranslateN
       data-agent-bucket={entity.bucket ?? undefined}
       data-agent-emphasis={entity.emphasis ?? undefined}
     >
-      {/* On-demand badge (plan 20260812-panel-f5-agent-layout Task 2): the
+      {/* On-demand badge : the
        * implementor-sub-bucket on-demand roles (ops-engineer /
        * prompt-engineer) carry the badge — the PROJECTED `zone ===
        * 'on-demand'`, never a render guess. The badge marks the on-demand
@@ -1055,7 +1027,7 @@ function EntityCard({ entity, t, box }: { entity: AgentEntityView; t: TranslateN
           {t('zone.agents.on-demand')}
         </span>
       )}
-      {/* Card ports (plan 20260812-panel-f5-design-system Task 5 — design
+      {/* Card ports (design
        * doc §2.5): the 4 fixed edge-midpoint anchors (north / south / west /
        * east). Static-INVISIBLE geometry (no dot at rest); the CSS reveals
        * them on card hover / selected (running cards hover in business
@@ -1089,7 +1061,7 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
   const [pan, setPan] = useState<PanState>(() => initialPan ?? PAN_ORIGIN)
   const dragRef = useRef<PanDrag | null>(null)
   const layout = useMemo(() => layoutAgents(view), [view])
-  // F-002 (qc3): edge geometries are hoisted off the pan-drag hot path — the
+  // Edge geometries are hoisted off the pan-drag hot path — the
   // pointer handlers re-render the canvas every pan frame, and `edgePath`
   // (with its cross-card clearance scans) must not run per frame. It
   // recomputes only when `edges` or `layout` change (one-to-one with edges).
@@ -1127,7 +1099,7 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
   // classifies the readable ledger — 'empty' = 0 events, 'settle-only' =
   // events but no dispatch rows, null = dispatch evidence (the old
   // AgentFlowZone `data-zone-empty="settle-only"` semantic, review
-  // T2-Imp-2, restored as `data-canvas-note="settle-only"`). F-002: the
+  // restored as `data-canvas-note="settle-only"`). The
   // note comes from the PROJECTION, never from an `entities.every(idle)`
   // heuristic — a garbage ledger would fake settle-only.
   const noteInfo = degraded
@@ -1140,8 +1112,7 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
 
   return (
     <div className={css.canvasPage} data-mstar-page="agents">
-      {/* The SHARED iteration info section (plan 20260812-panel-f5-design-system
-          Task 8 — user 2026-08-12 feedback #4): the SAME block the tasks tab
+      {/* The SHARED iteration info section (): the SAME block the tasks tab
           renders (IterationInfoSection), from the SAME `view.iteration` data —
           两个 tab 显示同一迭代信息块. */}
       <IterationInfoSection iteration={iteration} t={t} />
@@ -1174,10 +1145,7 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
           data-canvas-pan
           style={{ transform: panTransform(pan), width: layout.width, height: layout.height }}
         >
-          {/* Phase group labels (plan 20260812-panel-f5-design-system Task 8 —
-           * user 2026-08-12 feedback #2; plan
-           * 20260813-panel-agent-canvas-legend-layout Task 2 — the left-right
-           * rework): the canvas splits into TWO SIDE-BY-SIDE groups — Phase 1
+          {/* Phase group labels : the canvas splits into TWO SIDE-BY-SIDE groups — Phase 1
            * (the sequential review-edit-chain) LEFTMOST, Phase 2 (the iterative
            * plan loop: sdd-implement → qc-tri → qa-gate) to its RIGHT — all
            * top-aligned on one label row. The Phase-2 row carries the
@@ -1226,7 +1194,7 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
               style={{ left: col.x, top: col.y }}
               data-canvas-column={col.id}
             >
-              {/* Stage column labels (plan f5 Task 5 — design doc §1.2: FOUR
+              {/* Stage column labels (design doc §1.2: FOUR
                * columns, the standalone unknown column is removed; the last
                * column's label stays the stage id, the general bucket lives
                * in its bottom unknown SUB-partition instead). */}
@@ -1234,7 +1202,7 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
             </span>
           ))}
 
-          {/* Sub-bucket captions (plan f5 Task 2): the implementor /
+          {/* Sub-bucket captions : the implementor /
            * sdd-reviewer partition labels inside the `sdd-implement` column —
            * rendered only while the partition has cards (the band exists);
            * the caption seat + band come from the deterministic layout. */}
@@ -1261,8 +1229,7 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
             </span>
           ))}
 
-          {/* The unknown sub-partition caption (plan 20260812-panel-f5-design-system
-           * Task 5 — design doc §1.2, user 2026-08-12 feedback #3): the
+          {/* The unknown sub-partition caption : the
            *「unknown / 未匹配角色」caption of the LAST column's bottom
            * sub-partition (the general bucket). Rendered only while the
            * partition has cards (the band exists — the layout records the
@@ -1279,14 +1246,14 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
 
           <svg className={css.canvasEdges} width={layout.width} height={layout.height} aria-hidden="true">
             <defs>
-              {/* Task 5 line set (design doc §2.2/§2.6): actual + supervise
+              {/* line edge set (design doc §2.2/§2.6): actual + supervise
                * markers only — the expected / next markers are REMOVED. All
                * markers use orient="auto" (H1: the arrow rides the path's
                * endpoint tangent — the bezier shapes guarantee the tangent
                * equals the line's dominant direction, §2.6); supervise uses
                * orient="auto-start-reverse" so BOTH ends point outward — the
                * bidirectional implementor ↔ sdd-reviewer double arrow. QC
-               * F-001: every marker is pinned to a fixed 6px user-space body
+               * Every marker is pinned to a fixed 6px user-space body
                * (markerUnits="userSpaceOnUse" — the 6-wide viewBox maps 1:1,
                * tip at refX 6, so the rendered arrow is EXACTLY 6px long,
                * independent of the stroke-width): the same-column standoff
@@ -1306,8 +1273,8 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
               const curve = geom.curve
               if (curve === null) return null
               if (geom.edge.kind === 'supervise') {
-                // The static bidirectional supervision line (plan f5 Task 2 +
-                // Task 5): dim dashed without implement/review dispatch
+                // The static bidirectional supervision line (evidence-driven lighting —
+                // dim dashed without implement/review dispatch
                 // evidence, lit business with it — `evidenced` is PROJECTED,
                 // never a render-side fabrication. A vertical bezier in the
                 // side gap (card right edge + SIDE_GAP) — H2 (clear of the
@@ -1350,7 +1317,7 @@ export function AgentCanvasPage({ view, iteration, t, initialPan }: AgentCanvasP
         </div>
       </div>
 
-      {/* Legend BELOW the canvas (plan 20260813-panel-quick-fixes Task 3 — user
+      {/* Legend BELOW the canvas (user
        * 2026-08-13 feedback: the legend moves UNDER the viewport, after the
        * draggable canvas; the header / summary / note stay above). */}
       <div className={css.canvasLegend}>

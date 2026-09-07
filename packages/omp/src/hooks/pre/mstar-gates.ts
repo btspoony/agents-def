@@ -44,14 +44,14 @@
  * violation), which can block under a hard compass. A content-less write to
  * a gated document that does not exist yet (fresh scaffold/init) passes
  * silently, mirroring opencode `validateStatusWrite`'s existsSync guard.
- * Size guard (qc3 F-005, extended per fix-wave S-d): content strings beyond
+ * Size guard ( extended per S-d): content strings beyond
  * ~2MB AND on-disk gated documents beyond ~2MB (the edit path, which carries
  * no content string) are skipped without parsing — a pathologically large
  * write must not approach omp's 30s handler timeout (fail-CLOSED in soft
  * mode); the oversized write/edit passes silently (documented degradation,
  * same as other content-glue limits).
  *
- * Engine-version compatibility (qc3 F-001, fix-wave W-B): besides
+ * Engine-version compatibility ( W-B): besides
  * `composeDispatchGate` (Gate 2, lazy-loaded below), the snapshot/register
  * validators (`validateWorkflowSnapshot` / `validateProjectRegister`) are
  * P1-only exports absent from the published engine floor `^2.0.2` — they
@@ -63,7 +63,7 @@
  * No semantic fork: every rule check is an engine call (status.validateStatus,
  * workflow.validateWorkflowSnapshot, project.validateProjectRegister,
  * dispatch.composeDispatchGate — the single shared host dispatch-gate
- * composition, qc1 F-001/F-006 — status.resolveCompassEnforcement …). Local
+ * composition — status.resolveCompassEnforcement …). Local
  * code is shape-guards (path/basename filtering, task wire-shape
  * extraction), the JSON.parse glue for `input.content`, and reason
  * formatting — the same composition `packages/opencode/src/mstar.ts`
@@ -90,7 +90,7 @@ const STATUS_SKILL_POINTER = "skill: mstar-artifacts/references/status-and-resid
 const DISPATCH_SKILL_POINTER = "skill: mstar-dispatch-gates";
 
 /**
- * Engine-version compat (qc3 F-001 / fix-wave W-B): `validateWorkflowSnapshot`
+ * Engine-version compat : `validateWorkflowSnapshot`
  * and `validateProjectRegister` postdate the published engine floor
  * (`^2.0.2` lacks them) — a static named import would fail at module link
  * on older engines and drop the WHOLE hook (both gates). They are loaded
@@ -201,7 +201,7 @@ function warnNewValidatorsDegraded(logger: unknown, reason: "missing" | "error",
         | undefined
     )?.warn?.(message);
   } catch {
-    // degrade path must never throw
+ // degrade path must never throw
   }
 }
 
@@ -247,8 +247,7 @@ function hasEntry(dir: string, name: string): boolean {
 /**
  * True when `dir` carries the v2 coordination-document markers that make
  * it a harness root: a `status.json` root file plus BOTH layout dirs.
- * Default-layout fast path: the `workflows/` + `projects/` names (fix-wave
- * W-REV-1). Phase-5 F1: with the lazily-loaded engine dir resolvers, a
+ * Default-layout fast path: the `workflows/` + `projects/` names). With the lazily-loaded engine dir resolvers, with the lazily-loaded engine dir resolvers, a
  * `.mstarc` custom `workflow_dir` / `project_dir` layout is recognized via
  * the resolved absolute dirs (stale engine -> resolvers null -> default
  * names only). Never throws — a missing/unreadable path is not a marker.
@@ -269,8 +268,7 @@ function hasHarnessRootMarkers(dir: string): boolean {
 }
 
 /**
- * Resolve the harness root containing `startDir` by marker probe (fix-wave
- * W-REV-1): the nearest ancestor holding the v2 coordination-document
+ * Resolve the harness root containing `startDir` by marker probe (): the nearest ancestor holding the v2 coordination-document
  * markers — a `status.json` root file plus the layout directories — IS the
  * harness root. Unlike `resolveHarnessDir`'s rung-3 `plans/` probe, this
  * never mistakes the NESTED `{HARNESS_DIR}/plans` subdir of the default
@@ -295,7 +293,7 @@ function resolveHarnessRootOf(target: string): string | null {
  * document: basename is `status.json` at the harness root, `snapshot.json`
  * under `{WORKFLOW_DIR}/<id>/`, or `residuals.json` under
  * `{PROJECT_DIR}/<id>/` (harness-relative, one path component each), AND
- * the harness root resolves — marker probe first (fix-wave W-REV-1,
+ * the harness root resolves — marker probe first (
  * custom-layout-aware Phase-5 F1), `resolveHarnessDir` as the declared-root
  * fallback. The snapshot/register rel is computed against the RESOLVED
  * layout dirs (`.mstarc` `workflow_dir`/`project_dir` honored, defaults
@@ -340,9 +338,9 @@ function harnessDocKindOfTarget(targetPath: unknown): { harnessDir: string; kind
   if (harnessDir === null) return null;
   const classified = classify(harnessDir);
   if (classified !== null) return classified;
-  // W-REV-3: probe root hit but rel non-canonical — pathological double
-  // harness (a nested sparse harness below a full-marker ancestor). Rebuild
-  // rel against the declared-root resolution before giving up.
+ // W-REV-3: probe root hit but rel non-canonical — pathological double
+ // harness (a nested sparse harness below a full-marker ancestor). Rebuild
+ // rel against the declared-root resolution before giving up.
   if (probeRoot === null) return null;
   const fallbackDir = resolveHarnessDir(dirname(resolved));
   if (fallbackDir === null || fallbackDir === probeRoot) return null;
@@ -377,7 +375,7 @@ function taskDispatchEntries(input: unknown): DispatchEntry[] {
     }
     return entries;
   }
-  // Flat form: the input itself is the entry (`input.task` single string).
+ // Flat form: the input itself is the entry (`input.task` single string).
   const flat = toEntry(record);
   return flat !== null && flat.task !== "" ? [flat] : [];
 }
@@ -393,7 +391,7 @@ function violationLine(violation: ValidationResult): string {
 }
 
 /**
- * Size guard (qc3 F-005): content strings beyond ~2MB are skipped without
+ * Size guard : content strings beyond ~2MB are skipped without
  * parsing — a pathologically large write must not approach omp's 30s handler
  * timeout (which fails CLOSED even in soft mode). The oversized write passes
  * silently; documented in the module header.
@@ -406,7 +404,7 @@ const MAX_STATUS_CONTENT_LENGTH = 2 * 1024 * 1024;
  * and run the matching engine validator on the parsed doc — a parse failure
  * is a violation (`status.invalid-json`, the same code/message shape the
  * engine emits for an unparseable file). Parsed `null` / non-object / array
- * content is a `status.invalid-json` violation too (qc3 F-004 — the JSON
+ * content is a `status.invalid-json` violation too (the JSON
  * literal `null` would otherwise slip through `validateStatus`'s
  * destructuring into the outer catch's silent pass). Without a content
  * string (edit-style events) the on-disk file is validated — unless it does
@@ -447,11 +445,11 @@ function validateStatusWriteDoc(
     return validateDocByKind(doc, kind, newValidators);
   }
   if (!existsSync(filePath)) return []; // fresh scaffold/init write — nothing to validate
-  // Size guard on the ON-DISK edit path (qc2 S-1 / qc3 S-5 / fix-wave S-d):
-  // edit events carry no content string, so the guard above never ran —
-  // stat the target and apply the same 2MB skip before read+parse+validate
-  // (a pathologically large gated doc must not approach omp's 30s handler
-  // timeout; oversized edits pass silently, same documented degradation).
+ // Size guard on the ON-DISK edit path (sizing):
+ // edit events carry no content string, so the guard above never ran —
+ // stat the target and apply the same 2MB skip before read+parse+validate
+ // (a pathologically large gated doc must not approach omp's 30s handler
+ // timeout; oversized edits pass silently, same documented degradation).
   try {
     if (statSync(filePath).size > MAX_STATUS_CONTENT_LENGTH) return [];
   } catch {
@@ -462,8 +460,8 @@ function validateStatusWriteDoc(
   try {
     doc = readJson(filePath);
   } catch (error) {
-    // Mirror the engine's unparseable-file violation for snapshot/register
-    // targets (their validators take a doc, not a path).
+ // Mirror the engine's unparseable-file violation for snapshot/register
+ // targets (their validators take a doc, not a path).
     return [
       {
         ok: false,
@@ -497,7 +495,7 @@ function validateDocByKind(doc: unknown, kind: HarnessDocKind, newValidators: Ne
  * declares `enforcement: hard`. Soft (or no compass) → silent pass.
  *
  * Snapshot/register targets need the lazily-loaded P1 validators
- * (engine-version compat, fix-wave W-B): on a stale engine the loader
+ * (engine-version compat, W-B): on a stale engine the loader
  * reports missing/error and those targets are SKIPPED (silent pass) with
  * a one-time warning — the root status.json gate keeps working.
  */
@@ -506,9 +504,9 @@ async function gateStatusWrite(
   warnDegraded: (reason: "missing" | "error", error?: unknown) => void,
 ): Promise<{ block: true; reason: string } | undefined> {
   const input = eventInput as Record<string, unknown>;
-  // Phase-5 F1: ensure the custom-layout dir resolvers are loaded before
-  // classifying — the sync slot feeds `harnessDocKindOfTarget` (stale
-  // engine -> null -> default-layout names, the pre-F1 behavior).
+ // Phase-5 F1: ensure the custom-layout dir resolvers are loaded before
+ // classifying — the sync slot feeds `harnessDocKindOfTarget` (stale
+ // engine -> null -> default-layout names, the pre-F1 behavior).
   classifyDirResolvers = await dirResolversLoader.load();
   let newValidators: NewValidatorsLoad | null = null;
   for (const rawPath of eventTargetPaths(input)) {
@@ -611,16 +609,16 @@ function warnDispatchGateDegraded(logger: unknown, reason: "missing" | "error", 
         | undefined
     )?.warn?.(message);
   } catch {
-    // degrade path must never throw
+ // degrade path must never throw
   }
 }
 
 /**
  * Validate one dispatch entry via the engine's single shared composition
- * `dispatch.composeDispatchGate` (qc1 F-001/F-006 — the same composition
+ * `dispatch.composeDispatchGate` (the same composition
  * opencode `validateDispatchAssignment` and `mstar_dispatch_validate` use,
- * incl. the `$MSTAR_WORKING_BRANCH` env fallback, qc1 F-002 / qc2 F-007 /
- * qc3 F-008): field validation with `writable: false` for read-only roles,
+ * incl. the `$MSTAR_WORKING_BRANCH` env fallback /
+ * ): field validation with `writable: false` for read-only roles,
  * and the default-branch gate for writable roles. NO anti-recursion leg on
  * omp (issue #156): `entry.agent` is the spawn TARGET, and omp's
  * `tool_call` event carries no caller identity (ToolCallEvent =
@@ -635,7 +633,7 @@ function validateDispatchEntry(
   composeDispatchGate: DispatchGateFn,
 ): { violations: ValidationResult[]; hard: boolean } {
   const text = entry.task;
-  // Read-only roles (scout/explore) skip the branch-form/default-branch gates.
+ // Read-only roles (scout/explore) skip the branch-form/default-branch gates.
   const writable = isReadOnlyAssignmentRole(parseAssignmentFields(text).executeAs ?? "") ? false : undefined;
   const composed = composeDispatchGate(text, { writable });
   return { violations: composed.violations, hard: composed.enforcement.hard };
@@ -667,8 +665,8 @@ async function gateTaskDispatch(
     return undefined;
   }
   const composeDispatchGate = load.gate;
-  // Repo-level hard (`.mstarc` wins, else compass) hardens flag-less
-  // entries — same source Gate 1 uses for coordination writes.
+ // Repo-level hard (`.mstarc` wins, else compass) hardens flag-less
+ // entries — same source Gate 1 uses for coordination writes.
   const harnessDir = resolveHarnessDir();
   const repoHard = harnessDir !== null && resolveRepoEnforcement(harnessDir).hard;
   const blocked: string[] = [];
@@ -677,7 +675,7 @@ async function gateTaskDispatch(
     if (violations.length === 0) continue;
     const label = entry.name !== "" ? `"${entry.name}"` : entry.agent !== "" ? `agent "${entry.agent}"` : "(unnamed)";
     if (!hard && !repoHard) {
-      // Soft mode: never block, but surface the violations (opencode parity).
+ // Soft mode: never block, but surface the violations (opencode parity).
       for (const violation of violations) {
         logSoft(`task dispatch entry ${label}: ${violationLine(violation)} (${DISPATCH_SKILL_POINTER})`);
       }
@@ -715,14 +713,14 @@ export default function mstarGates(pi: ExtensionAPI): void {
                 | undefined
             )?.warn?.(line);
           } catch {
-            // the warn channel must never throw into the fail-closed host path
+ // the warn channel must never throw into the fail-closed host path
           }
         });
       }
       return block;
     } catch {
-      // NEVER throw, NEVER block on unexpected errors: omp fails CLOSED when
-      // a handler throws — every unexpected failure degrades to silent pass.
+ // NEVER throw, NEVER block on unexpected errors: omp fails CLOSED when
+ // a handler throws — every unexpected failure degrades to silent pass.
       return undefined;
     }
   });

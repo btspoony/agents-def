@@ -3,7 +3,7 @@
  * via the engine dispatch gates.
  *
  * Composition is the engine's single shared `dispatch.composeDispatchGate`
- * (qc1 F-001/F-006 — the same composition the opencode adapter and the omp
+ * (the same composition the opencode adapter and the omp
  * blocking hook use): field validation, the default-branch gate (incl. the
  * `$MSTAR_WORKING_BRANCH` env fallback) and the header-region enforcement
  * flag. The anti-recursion precheck is CALLER-scoped (issue #156): pass
@@ -99,12 +99,12 @@ export default function mstarDispatchValidate(pi: CustomToolAPI): CustomTool {
         if (text.trim() === "") {
           return result("mstar_dispatch_validate: assignmentText is required", { ok: false }, true);
         }
-        // Dynamic engine load (qc3 F-001 parity with mstar_iteration_gate):
-        // engine versions that predate the export lack composeDispatchGate —
-        // a static named import would fail at module link and silently drop
-        // the tool. Missing export -> explicit upgrade error; real import
-        // failure -> `mstar_dispatch_validate failed: …` (parity with
-        // mstar_iteration_gate's outer catch).
+ // Dynamic engine load (parity with mstar_iteration_gate):
+ // engine versions that predate the export lack composeDispatchGate —
+ // a static named import would fail at module link and silently drop
+ // the tool. Missing export -> explicit upgrade error; real import
+ // failure -> `mstar_dispatch_validate failed: …` (parity with
+ // mstar_iteration_gate's outer catch).
         const load = await composeDispatchGateLoader.load();
         if (load.status === "missing") {
           return result(

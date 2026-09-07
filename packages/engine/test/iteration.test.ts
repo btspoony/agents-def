@@ -4,31 +4,31 @@
  *
  * Spec sources (each test cites the skill/reference section it enforces):
  * - Compass template + frontmatter fields (iteration_id / start_date /
- *   status / iteration_base_branch / target_branch / plans; `end_date` only
- *   at close): `skills/mstar-iteration/SKILL.md` §1.3 +
- *   `skills/mstar-iteration/references/iteration-compass-template.md`
- *   (Fields guide: `end_date` — No — Phase 3 §3.4 only; `status` values
- *   `active` | `locked` | `completed`).
+ * status / iteration_base_branch / target_branch / plans; `end_date` only
+ * at close): `skills/mstar-iteration/SKILL.md` §1.3 +
+ * `skills/mstar-iteration/references/iteration-compass-template.md`
+ * (Fields guide: `end_date` — No — Phase 3 §3.4 only; `status` values
+ * `active` | `locked` | `completed`).
  * - Phase transition gates (all compass-registered plans `Done` → Phase 3
- *   required; §3.5 exit checklist all `[x]` + frontmatter `completed` +
- *   `end_date` → Phase 4): `skills/mstar-iteration/SKILL.md` Phase
- *   transition gates table.
+ * required; §3.5 exit checklist all `[x]` + frontmatter `completed` +
+ * `end_date` → Phase 4): `skills/mstar-iteration/SKILL.md` Phase
+ * transition gates table.
  * - §3.1 close entry checklist (checkable subset: plans all Done, compass
- *   frontmatter complete — the residual item relocated to the project-layer
- *   `findingsCleanupGate(register, planId)` in the v3 cutover; the workflow
- *   snapshot carries no residuals): `skills/mstar-iteration/references/
- *   phase-3-iteration-close.md` §3.1.
+ * frontmatter complete — the residual item relocated to the project-layer
+ * `findingsCleanupGate(register, planId)` in the v3 cutover; the workflow
+ * snapshot carries no residuals): `skills/mstar-iteration/references/
+ * phase-3-iteration-close.md` §3.1.
  * - §3.5 close exit checklist (checkable subset: frontmatter `status:
- *   completed` + `end_date` present, current branch is
- *   `spec_integration_branch`, PR base = `target_branch`):
- *   `skills/mstar-iteration/references/phase-3-iteration-close.md` §3.5.
+ * completed` + `end_date` present, current branch is
+ * `spec_integration_branch`, PR base = `target_branch`):
+ * `skills/mstar-iteration/references/phase-3-iteration-close.md` §3.5.
  * - Push cadence probe (never push while CI is queued/in_progress or an AI
- *   review wave is running): `skills/mstar-iteration/SKILL.md` §5.1a +
- *   `skills/mstar-iteration/references/phase-4-5-pr-delivery.md` §5.1a
- *   (push gate 1 + 2).
+ * review wave is running): `skills/mstar-iteration/SKILL.md` §5.1a +
+ * `skills/mstar-iteration/references/phase-4-5-pr-delivery.md` §5.1a
+ * (push gate 1 + 2).
  * - Index obligations (one row per iteration in `{ITERATION_DIR}/README.md`,
- *   table header on first creation): `skills/mstar-iteration/SKILL.md`
- *   §1.4.
+ * table header on first creation): `skills/mstar-iteration/SKILL.md`
+ * §1.4.
  */
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -128,7 +128,7 @@ describe("validateCompassFrontmatter — compass schema (mstar-iteration §1.3 +
     for (const good of ["active", "locked"]) {
       expect(validateCompassFrontmatter(compass({ status: good })).ok).toBe(true);
     }
-    // `completed` is a legal status value; it also needs end_date (Phase 3 §3.4)
+ // `completed` is a legal status value; it also needs end_date (Phase 3 §3.4)
     expect(validateCompassFrontmatter(compass({ status: "completed", end_date: "2026-08-10" })).ok).toBe(true);
   });
 
@@ -233,7 +233,7 @@ describe("evaluatePhaseGate — phase transitions on workflow snapshot input (ms
     expect(result.allPlansDone).toBe(true);
     expect(result.transition).toBe("phase-3-close");
     expect(result.entry.ok).toBe(true);
-    // exit still missing: frontmatter not completed yet
+ // exit still missing: frontmatter not completed yet
     expect(result.exit.ok).toBe(false);
     expect(result.ok).toBe(false);
   });
@@ -285,7 +285,7 @@ describe("evaluatePhaseGate — phase transitions on workflow snapshot input (ms
       { prBaseBranch: "develop" },
     );
     expect(result.exit.violations.some((v) => v.code === "EXIT_PR_BASE_MISMATCH")).toBe(true);
-    // documented main target: PR base main == target_branch main passes
+ // documented main target: PR base main == target_branch main passes
     const okBase = evaluatePhaseGate(
       snapshotDoc({ "plan-a": "Done", "plan-b": "Done" }),
       compass({ status: "completed", end_date: "2026-08-10", target_branch: "main" }),
@@ -329,7 +329,7 @@ describe("evaluatePhaseGate — phase transitions on workflow snapshot input (ms
     const missing = result.entry.violations.filter((v) => v.code === "PLAN_NOT_IN_STATUS");
     expect(missing.length).toBe(4);
     expect(missing.every((v) => v.message.includes("20260808-slice"))).toBe(true);
-    // slice1 IS in the real status shape, but still InProgress → not Done
+ // slice1 IS in the real status shape, but still InProgress → not Done
     const notDone = result.entry.violations.find((v) => v.code === "PLAN_NOT_DONE");
     expect(notDone).toBeDefined();
     expect(notDone!.message).toContain("20260808-slice1-engine-foundation");
@@ -531,7 +531,7 @@ plans: [plan-a, plan-b]
     }
   });
 
-  test("nested flow-style array → throws the precise message (qc2 F-009 / qc3 F-010)", () => {
+  test("nested flow-style array → throws the precise message", () => {
     const dir = tmpRoot("mstar-compass-");
     try {
       const file = join(dir, "delivery-compass.md");
@@ -544,7 +544,7 @@ plans: [plan-a, plan-b]
     }
   });
 
-  test("quoted-item-with-comma flow-style array → throws the ambiguity message (qc2 F-009 / qc3 F-010)", () => {
+  test("quoted-item-with-comma flow-style array → throws the ambiguity message", () => {
     const dir = tmpRoot("mstar-compass-");
     try {
       const file = join(dir, "delivery-compass.md");
@@ -557,7 +557,7 @@ plans: [plan-a, plan-b]
     }
   });
 
-  test("unterminated quote in flow-style array → throws the quote message (qc2 F-009 / qc3 F-010)", () => {
+  test("unterminated quote in flow-style array → throws the quote message", () => {
     const dir = tmpRoot("mstar-compass-");
     try {
       const file = join(dir, "delivery-compass.md");
@@ -570,7 +570,7 @@ plans: [plan-a, plan-b]
     }
   });
 
-  test("unsupported frontmatter line → throws the line message (qc2 F-009 / qc3 F-010)", () => {
+  test("unsupported frontmatter line → throws the line message", () => {
     const dir = tmpRoot("mstar-compass-");
     try {
       const file = join(dir, "delivery-compass.md");
