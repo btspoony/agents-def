@@ -173,6 +173,7 @@ export {
   readProgressLedger,
   resolveSddExecutionContext,
   reviewPackage,
+  runInSddContext,
   sddWorkspace,
   taskBrief,
   taskReportExists,

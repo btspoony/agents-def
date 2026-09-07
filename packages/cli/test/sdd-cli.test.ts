@@ -1,22 +1,26 @@
 /**
- * CLI `mstar sdd workspace|task-brief|review-package` — engine-backed
- * wrappers with ported exit codes.
+ * CLI `mstar sdd workspace|task-brief|review-package|check-context|exec` —
+ * engine-backed wrappers with ported exit codes.
  *
  * Each case runs the real CLI as a subprocess against temp fixtures
  * (sample plan file; temp git repos incl. a linked worktree for the
- * fail-closed guard). Exit codes follow the ported engine contracts via
- * `SddScriptError`:
+ * fail-closed guard, plus disposable primary/control/feature checkouts for
+ * the spec-A3 bound surface). Exit codes follow the ported engine contracts
+ * via `SddScriptError`:
  * - `workspace`: 1 = resolution failure (linked worktree w/o control root,
  *   bad CONTROL_ROOT), 2 = usage.
  * - `task-brief`: 2 = usage / missing plan file / missing SDD_DIR, 3 = task
  *   N not found in the plan.
  * - `review-package`: 2 = bad BASE/HEAD ref / missing SDD_DIR.
+ * - `check-context` (spec A3): 0 = pass, 1 = gate fail, 2 = usage.
+ * - `exec` (spec A3): 1 = gate failure (no child), 2 = usage,
+ *   127 = spawn-not-found, child exit preserved, signals 128+n.
  */
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const CLI_ROOT = resolve(import.meta.dir, "..");
 const SRC_ENTRY = join(CLI_ROOT, "src/index.ts");
@@ -352,6 +356,336 @@ describe("mstar sdd review-package — commits + stat + diff -U10 for BASE..HEAD
       const result = runCli(["sdd", "review-package"], { cwd: root });
       expect(result.exitCode).toBe(2);
       expect(result.stderr).toContain("usage: mstar sdd review-package");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Spec-A3 bound execution surface (plan 20260907-sdd-execution-paths
+// Task 2): `sdd check-context`, `sdd exec` and `--context` on
+// task-brief/review-package. Fixtures build disposable primary/control/
+// feature checkouts with real `git worktree add` — never the real main
+// checkout; the context JSON lives in the control sdd dir.
+// ---------------------------------------------------------------------------
+
+const PLAN_ID = "20260907-sdd-execution-paths";
+
+interface ExecFixture {
+  root: string;
+  primary: string;
+  control: string;
+  feature: string;
+  harnessDir: string;
+  planFile: string;
+  sddDir: string;
+  ctxFile: string;
+  workingBranch: string;
+}
+
+function executionFixture(root: string): ExecFixture {
+  const primary = join(root, "primary");
+  mkdirSync(primary);
+  git(["init", "-q"], primary);
+  git(["checkout", "-q", "-b", "main"], primary);
+  git(["config", "user.email", "sdd-cli-test@example.com"], primary);
+  git(["config", "user.name", "SDD CLI Test"], primary);
+  writeFileSync(join(primary, "src-sentinel.txt"), "primary source sentinel\n");
+  git(["add", "-A"], primary);
+  git(["commit", "-q", "-m", "primary base"], primary);
+
+  const control = join(root, "control");
+  git(["worktree", "add", "-q", "-b", "codex/iter-integration", control], primary);
+  const workingBranch = `feature/${PLAN_ID}`;
+  const feature = join(root, "feature");
+  git(["worktree", "add", "-q", "-b", workingBranch, feature], primary);
+
+  const harnessDir = join(control, ".mstar");
+  const planFile = join(harnessDir, "plans", `${PLAN_ID}.md`);
+  mkdirSync(dirname(planFile), { recursive: true });
+  writeFileSync(planFile, "# Plan\n\n## Task 1\n\n- implement\n");
+  const sddDir = join(harnessDir, "sdd", PLAN_ID);
+  mkdirSync(sddDir, { recursive: true });
+  const ctxFile = join(sddDir, "context.json");
+  writeFileSync(
+    ctxFile,
+    JSON.stringify({ planId: PLAN_ID, controlHarnessRoot: harnessDir, featureCwd: feature, workingBranch, planFile, sddDir }, null, 2),
+  );
+  return { root, primary, control, feature, harnessDir, planFile, sddDir, ctxFile, workingBranch };
+}
+
+/** Child fixture: records {cwd, argv} as JSON into its first argument. */
+function childWriterFixture(root: string): string {
+  const writer = join(root, "child-writer.mjs");
+  writeFileSync(
+    writer,
+    "import { writeFileSync } from 'node:fs';\n" +
+      "const [out, ...rest] = process.argv.slice(2);\n" +
+      "writeFileSync(out, JSON.stringify({ cwd: process.cwd(), argv: rest }));\n",
+  );
+  return writer;
+}
+
+describe("mstar sdd check-context — gate one action seam (spec A3)", () => {
+  test("help advertises --context/--kind/--target", () => {
+    const result = runCli(["sdd", "check-context", "--help"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("--context");
+    expect(result.stdout).toContain("--kind");
+    expect(result.stdout).toContain("--target");
+  });
+
+  test("launch kind passes from the control checkout (destination is gated, not the parent cwd)", () => {
+    const root = tmpRoot("mstar-sdd-cc-ok-");
+    try {
+      const f = executionFixture(root);
+      const result = runCli(["sdd", "check-context", "--context", f.ctxFile, "--kind", "launch"], { cwd: f.control });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("check-context: OK");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("source kind from the control checkout fails the gate (exit 1, no write)", () => {
+    const root = tmpRoot("mstar-sdd-cc-src-");
+    try {
+      const f = executionFixture(root);
+      const result = runCli(
+        ["sdd", "check-context", "--context", f.ctxFile, "--kind", "source", "--target", "src/probe.txt"],
+        { cwd: f.control },
+      );
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("sdd.context.source-cwd-outside-feature");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("artifact escape is blocked before write (exit 1)", () => {
+    const root = tmpRoot("mstar-sdd-cc-esc-");
+    try {
+      const f = executionFixture(root);
+      symlinkSync(f.primary, join(realpathSync(f.sddDir), "escape"));
+      const result = runCli(
+        ["sdd", "check-context", "--context", f.ctxFile, "--kind", "artifact", "--target", join(realpathSync(f.sddDir), "escape", "x.md")],
+        { cwd: f.control },
+      );
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("sdd.context.artifact-symlink-escape");
+      expect(existsSync(join(f.primary, "x.md"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("usage errors exit 2: missing --context, missing --kind, bad kind, relative/missing/unparseable context file", () => {
+    const root = tmpRoot("mstar-sdd-cc-usage-");
+    try {
+      const f = executionFixture(root);
+      const missingContext = runCli(["sdd", "check-context", "--kind", "launch"], { cwd: root });
+      expect(missingContext.exitCode).toBe(2);
+      expect(missingContext.stderr).toContain("usage: mstar sdd check-context");
+
+      const missingKind = runCli(["sdd", "check-context", "--context", f.ctxFile], { cwd: f.control });
+      expect(missingKind.exitCode).toBe(2);
+      expect(missingKind.stderr).toContain("--kind");
+
+      const badKind = runCli(["sdd", "check-context", "--context", f.ctxFile, "--kind", "rename"], { cwd: f.control });
+      expect(badKind.exitCode).toBe(2);
+      expect(badKind.stderr).toContain("source|artifact|launch");
+
+      const relativeCtx = runCli(["sdd", "check-context", "--context", "relative/context.json", "--kind", "launch"], { cwd: f.control });
+      expect(relativeCtx.exitCode).toBe(2);
+      expect(relativeCtx.stderr).toContain("absolute path");
+
+      const noFile = runCli(["sdd", "check-context", "--context", join(root, "no-such.json"), "--kind", "launch"], { cwd: root });
+      expect(noFile.exitCode).toBe(2);
+      expect(noFile.stderr).toContain("no such context file");
+
+      const badJson = join(root, "bad.json");
+      writeFileSync(badJson, "{ not json");
+      const unparseable = runCli(["sdd", "check-context", "--context", badJson, "--kind", "launch"], { cwd: root });
+      expect(unparseable.exitCode).toBe(2);
+      expect(unparseable.stderr).toContain("not valid JSON");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("mstar sdd exec — bound argv launcher (spec A3)", () => {
+  test("help advertises --context and the literal argv placement after --", () => {
+    const result = runCli(["sdd", "exec", "--help"]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("--context");
+    expect(result.stdout).toContain("--");
+  });
+
+  test("child runs in the feature worktree; argv literal with spaces/$()/backticks arrives unchanged (no shell)", () => {
+    const root = tmpRoot("mstar-sdd-exec-literal-");
+    try {
+      const f = executionFixture(root);
+      const writer = childWriterFixture(root);
+      const record = join(root, "record.json");
+      const result = runCli(
+        ["sdd", "exec", "--context", f.ctxFile, "--", process.execPath, writer, record, "a b", "$(touch pwn.txt)", "`touch pwn.txt`", "*"],
+        { cwd: f.control },
+      );
+      expect(result.exitCode).toBe(0);
+      const doc = JSON.parse(readFileSync(record, "utf8")) as { cwd: string; argv: string[] };
+      expect(doc.cwd).toBe(realpathSync(f.feature));
+      expect(doc.argv).toEqual(["a b", "$(touch pwn.txt)", "`touch pwn.txt`", "*"]);
+      // No shell ever ran: the command substitutions left nothing behind.
+      expect(existsSync(join(f.feature, "pwn.txt"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("context failure exits 1 and launches no child", () => {
+    const root = tmpRoot("mstar-sdd-exec-gate-");
+    try {
+      const f = executionFixture(root);
+      const writer = childWriterFixture(root);
+      // Branch swap after the context file was written: the child itself is
+      // the probe (it would write the probe file as its first action).
+      git(["checkout", "-q", "-b", "feature/detour"], f.feature);
+      const probe = join(f.feature, "probe-should-not-exist.json");
+      const result = runCli(["sdd", "exec", "--context", f.ctxFile, "--", process.execPath, writer, probe], { cwd: f.control });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("worktree.branch-mismatch");
+      expect(existsSync(probe)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("child exit 7 returns 7; spawn-not-found returns 127", () => {
+    const root = tmpRoot("mstar-sdd-exec-exit-");
+    try {
+      const f = executionFixture(root);
+      const exit7 = runCli(["sdd", "exec", "--context", f.ctxFile, "--", process.execPath, "-e", "process.exit(7)"], { cwd: f.control });
+      expect(exit7.exitCode).toBe(7);
+      const notFound = runCli(["sdd", "exec", "--context", f.ctxFile, "--", "definitely-not-a-real-binary-xyz"], { cwd: f.control });
+      expect(notFound.exitCode).toBe(127);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("SIGTERM is forwarded and the launcher settles at 128+15 (fixture child cleaned)", async () => {
+    const root = tmpRoot("mstar-sdd-exec-term-");
+    try {
+      const f = executionFixture(root);
+      // The child announces startup (handlers are installed before the child
+      // can possibly run), so the kill below can only take the forwarding
+      // path — never a vacuous default-disposition death.
+      const marker = join(root, "child-started.txt");
+      const childScript = join(root, "sleepy-child.mjs");
+      writeFileSync(
+        childScript,
+        "import { writeFileSync } from 'node:fs';\n" +
+          `writeFileSync(${JSON.stringify(marker)}, "started\\n");\n` +
+          "setInterval(() => {}, 1000);\n",
+      );
+      const proc = Bun.spawn(
+        [process.execPath, "run", SRC_ENTRY, "sdd", "exec", "--context", f.ctxFile, "--", process.execPath, childScript],
+        { cwd: f.control, env: cliEnv(), stdin: "ignore", stdout: "ignore", stderr: "ignore" },
+      );
+      const deadline = Date.now() + 10_000;
+      while (!existsSync(marker) && Date.now() < deadline) await Bun.sleep(50);
+      expect(existsSync(marker)).toBe(true);
+      proc.kill("SIGTERM");
+      expect(await proc.exited).toBe(128 + 15);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("usage errors exit 2: no --context, no argv after --, relative --context", () => {
+    const root = tmpRoot("mstar-sdd-exec-usage-");
+    try {
+      const f = executionFixture(root);
+      const noContext = runCli(["sdd", "exec"], { cwd: root });
+      expect(noContext.exitCode).toBe(2);
+      expect(noContext.stderr).toContain("usage: mstar sdd exec");
+
+      const noArgv = runCli(["sdd", "exec", "--context", f.ctxFile], { cwd: f.control });
+      expect(noArgv.exitCode).toBe(2);
+      expect(noArgv.stderr).toContain("usage: mstar sdd exec");
+
+      const relativeCtx = runCli(["sdd", "exec", "--context", "ctx.json", "--", "true"], { cwd: f.control });
+      expect(relativeCtx.exitCode).toBe(2);
+      expect(relativeCtx.stderr).toContain("absolute path");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("mstar sdd task-brief/review-package --context — bound artifact producers (spec A3)", () => {
+  test("help advertises --context on both commands (positional surface unchanged)", () => {
+    const briefHelp = runCli(["sdd", "task-brief", "--help"]);
+    expect(briefHelp.exitCode).toBe(0);
+    expect(briefHelp.stdout).toContain("--context");
+    expect(briefHelp.stdout).toContain("[plan-file]");
+    expect(briefHelp.stdout).toContain("[outfile]");
+    const rpHelp = runCli(["sdd", "review-package", "--help"]);
+    expect(rpHelp.exitCode).toBe(0);
+    expect(rpHelp.stdout).toContain("--context");
+    expect(rpHelp.stdout).toContain("[base]");
+    expect(rpHelp.stdout).toContain("[outfile]");
+  });
+
+  test("bound task-brief writes into the control sddDir without SDD_DIR and prints an absolute path", () => {
+    const root = tmpRoot("mstar-sdd-brief-ctx-");
+    try {
+      const f = executionFixture(root);
+      const result = runCli(["sdd", "task-brief", f.planFile, "1", "--context", f.ctxFile], { cwd: f.control });
+      expect(result.exitCode).toBe(0);
+      const expected = realpathSync(join(f.sddDir, "task-1-brief.md"));
+      expect(result.stdout).toContain(`task 1 brief: ${expected}`);
+      expect(readFileSync(expected, "utf8")).toContain("- implement");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("bound review-package probes the feature worktree and lands in the control sddDir", () => {
+    const root = tmpRoot("mstar-sdd-rp-ctx-");
+    try {
+      const f = executionFixture(root);
+      writeFileSync(join(f.feature, "feature-file.txt"), "feature change\n");
+      git(["add", "-A"], f.feature);
+      git(["commit", "-q", "-m", "feature commit"], f.feature);
+      const base = git(["rev-parse", "main"], f.primary);
+      const head = git(["rev-parse", "HEAD"], f.feature);
+      const result = runCli(["sdd", "review-package", base, head, "--context", f.ctxFile], { cwd: f.control });
+      expect(result.exitCode).toBe(0);
+      const expected = realpathSync(join(f.sddDir, `review-${base.slice(0, 7)}..${head.slice(0, 7)}.diff`));
+      expect(result.stdout).toContain(`review package: ${expected}`);
+      expect(readFileSync(expected, "utf8")).toContain("feature-file.txt");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("bound review-package refuses an artifact outside the plan (exit 1, nothing written)", () => {
+    const root = tmpRoot("mstar-sdd-rp-ctx-esc-");
+    try {
+      const f = executionFixture(root);
+      writeFileSync(join(f.feature, "feature-file.txt"), "feature change\n");
+      git(["add", "-A"], f.feature);
+      git(["commit", "-q", "-m", "feature commit"], f.feature);
+      const base = git(["rev-parse", "main"], f.primary);
+      const head = git(["rev-parse", "HEAD"], f.feature);
+      const destination = join(f.control, "elsewhere.diff");
+      const result = runCli(["sdd", "review-package", base, head, destination, "--context", f.ctxFile], { cwd: f.control });
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("sdd.context.artifact-outside-plan");
+      expect(existsSync(destination)).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -16,19 +16,24 @@
  * (`.mstar`/`.agents`) and picks the wrong root in repos with another root;
  * the engine honors the explicit override in addition to CONTROL_ROOT.
  *
- * SDD execution context (spec A3, plan 20260907-sdd-execution-paths Task 1):
+ * SDD execution context (spec A3, plan 20260907-sdd-execution-paths):
  * `SddExecutionContext` / `resolveSddExecutionContext` / `checkSddAction`
  * resolve the control harness root / feature worktree cwd / artifact
  * destinations and gate actions at supported seams (source cwd, artifact
- * target, launch destination) before mutation. Branch/lease/path semantics
+ * target, launch destination) before mutation; `runInSddContext` is the
+ * bound argv launcher (cwd = feature worktree, no shell, inherited env and
+ * stdio), and `taskBrief` / `reviewPackage` accept an optional `context` to
+ * gate their artifact writes before mkdir/write. Branch/lease/path semantics
  * are reused from `worktree.ts` / `lease.ts` / `path.ts` — never duplicated.
- * Checks are read-only: a refused action performs no write. Remaining blind
- * spots are part of the contract (A3): a child can deliberately chdir, pass
- * an overriding cwd flag, or write an absolute path; explicit check-context
- * is a snapshot, not a future-write lock.
+ * Checks are read-only: a refused action performs no write. Context-less
+ * helper calls remain explicitly unbound — no protection claim. Remaining
+ * blind spots are part of the contract (A3): a child can deliberately
+ * chdir, pass an overriding cwd flag, or write an absolute path; explicit
+ * check-context is a snapshot, not a future-write lock.
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { constants as osConstants } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import {
   assertPlanWritingPath,
@@ -70,15 +75,39 @@ export type SddWorkspaceOptions = {
   cwd?: string;
 };
 
-/** Options for `taskBrief` (mirrors `$SDD_DIR` for the default out path). */
+/**
+ * Options for `taskBrief` (mirrors `$SDD_DIR` for the default out path).
+ *
+ * Bound mode (spec A3, plan 20260907-sdd-execution-paths Task 2): passing
+ * `context` makes the destination an artifact gate check (before any
+ * mkdir/write), defaults the destination to `{context.sddDir}/task-N-brief.md`
+ * and returns/emits an absolute path. Without `context` the legacy helper
+ * stays explicitly UNBOUND — a context-less call has no protection claim
+ * (A3: "context-less legacy helper calls remain explicitly unbound").
+ */
 export type TaskBriefOptions = {
   sddDir?: string;
+  /** Resolved SDD execution context — binds the artifact write (A3). */
+  context?: SddExecutionContext;
+  /** Observed invocation cwd for the artifact gate; default `process.cwd()`. */
+  cwd?: string;
 };
 
-/** Options for `reviewPackage` (mirrors `$SDD_DIR` + git probe cwd). */
+/**
+ * Options for `reviewPackage` (mirrors `$SDD_DIR` + git probe cwd).
+ *
+ * Bound mode (spec A3): passing `context` makes the destination an artifact
+ * gate check (before any mkdir/write), defaults the git probe cwd to the
+ * context's feature worktree ("feature Git cwd, control artifact out") and
+ * returns/emits an absolute path. Without `context` the legacy helper stays
+ * explicitly UNBOUND — no protection claim.
+ */
 export type ReviewPackageOptions = {
   sddDir?: string;
+  /** Git probe cwd; bound mode defaults to `context.featureCwd`. */
   cwd?: string;
+  /** Resolved SDD execution context — binds the artifact write (A3). */
+  context?: SddExecutionContext;
 };
 
 function isDirectory(dir: string): boolean {
@@ -291,11 +320,18 @@ export function sddWorkspace(planId: string, opts: SddWorkspaceOptions = {}): st
  * EOF for the last task) — a later Task heading resets the section. A
  * missing task writes an empty file then fails with exit-3
  * (`SddScriptError.exitCode === 3`).
+ *
+ * Bound mode (`opts.context`, spec A3): the artifact destination is gated
+ * with `checkSddAction` BEFORE any mkdir/write — a refused destination
+ * writes nothing — and the returned path is absolute. Context-less calls
+ * keep the legacy unbound behavior (no protection claim).
  */
 export function taskBrief(planFile: string, taskN: number, outFile?: string, opts: TaskBriefOptions = {}): string {
   if (!planFile || !Number.isInteger(taskN) || taskN < 1) {
     throw new SddScriptError("usage: mstar sdd task-brief PLAN_FILE TASK_NUMBER [OUTFILE]", 2);
   }
+  const bound = opts.context;
+  const observedCwd = opts.cwd ?? process.cwd();
   let content: string;
   try {
     content = readFileSync(planFile, "utf8");
@@ -304,8 +340,13 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
   }
 
   let out: string;
+  let mkdirAfterGate: string | null = null;
   if (outFile) {
-    out = outFile;
+    // Bound mode emits absolute paths; unbound keeps the legacy literal path.
+    out = bound ? resolve(observedCwd, outFile) : outFile;
+  } else if (bound) {
+    out = join(bound.sddDir, `task-${taskN}-brief.md`);
+    mkdirAfterGate = bound.sddDir;
   } else {
     const sddDir = opts.sddDir ?? process.env.SDD_DIR;
     if (!sddDir) {
@@ -316,6 +357,12 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
     }
     mkdirSync(sddDir, { recursive: true });
     out = join(sddDir, `task-${taskN}-brief.md`);
+  }
+  if (bound) {
+    // Gate BEFORE mkdir/write — a refused destination creates nothing.
+    const gate = checkSddAction(bound, { kind: "artifact", cwd: observedCwd, target: out });
+    if (!gate.ok) throwGateFail(gate.violations);
+    if (mkdirAfterGate !== null) mkdirSync(mkdirAfterGate, { recursive: true });
   }
 
   // awk records: every newline-terminated line plus a final unterminated
@@ -337,7 +384,9 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
   if (printed.length === 0) {
     throw new SddScriptError(`task ${taskN} not found in ${planFile} (no heading matching Task ${taskN})`, 3);
   }
-  return out;
+  // Bound mode emits absolute paths (A3: handoff producers carry absolute
+  // destinations); unbound keeps the legacy literal return.
+  return bound ? resolve(observedCwd, out) : out;
 }
 
 /**
@@ -346,12 +395,22 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
  * Both refs are validated with `git rev-parse --verify --quiet` (any ref
  * the original accepted is accepted here; the SHA-only guard is
  * `assertBaseSha`).
+ *
+ * Bound mode (`opts.context`, spec A3): the review range is probed in the
+ * context's feature worktree (feature Git cwd) while the package lands in
+ * the plan's control artifacts — gated with `checkSddAction` BEFORE any
+ * mkdir/write (a refused destination writes nothing). The returned path is
+ * absolute. Context-less calls keep the legacy unbound behavior (no
+ * protection claim); an explicit `opts.cwd` still overrides the git probe
+ * cwd in both modes.
  */
 export function reviewPackage(base: string, head: string, outFile?: string, opts: ReviewPackageOptions = {}): string {
   if (!base || !head) {
     throw new SddScriptError("usage: mstar sdd review-package BASE HEAD [OUTFILE]", 2);
   }
-  const cwd = opts.cwd ?? process.cwd();
+  const bound = opts.context;
+  const cwd = bound && opts.cwd === undefined ? bound.featureCwd : (opts.cwd ?? process.cwd());
+  const observedCwd = opts.cwd ?? process.cwd();
 
   const verifyRef = (ref: string, what: "BASE" | "HEAD"): void => {
     try {
@@ -364,8 +423,15 @@ export function reviewPackage(base: string, head: string, outFile?: string, opts
   verifyRef(head, "HEAD");
 
   let out: string;
+  let mkdirAfterGate: string | null = null;
   if (outFile) {
-    out = outFile;
+    // Bound mode emits absolute paths; unbound keeps the legacy literal path.
+    out = bound ? resolve(observedCwd, outFile) : outFile;
+  } else if (bound) {
+    const shortBase = gitOut(cwd, ["rev-parse", "--short", base]) ?? base;
+    const shortHead = gitOut(cwd, ["rev-parse", "--short", head]) ?? head;
+    out = join(bound.sddDir, `review-${shortBase}..${shortHead}.diff`);
+    mkdirAfterGate = bound.sddDir;
   } else {
     const sddDir = opts.sddDir ?? process.env.SDD_DIR;
     if (!sddDir) {
@@ -375,6 +441,12 @@ export function reviewPackage(base: string, head: string, outFile?: string, opts
     const shortBase = gitOut(cwd, ["rev-parse", "--short", base]) ?? base;
     const shortHead = gitOut(cwd, ["rev-parse", "--short", head]) ?? head;
     out = join(sddDir, `review-${shortBase}..${shortHead}.diff`);
+  }
+  if (bound) {
+    // Gate BEFORE mkdir/write — a refused destination creates nothing.
+    const gate = checkSddAction(bound, { kind: "artifact", cwd: observedCwd, target: out });
+    if (!gate.ok) throwGateFail(gate.violations);
+    if (mkdirAfterGate !== null) mkdirSync(mkdirAfterGate, { recursive: true });
   }
 
   const run = (args: string[]): Buffer =>
@@ -389,7 +461,8 @@ export function reviewPackage(base: string, head: string, outFile?: string, opts
     run(["diff", "-U10", `${base}..${head}`]),
   ];
   writeFileSync(out, Buffer.concat(parts));
-  return out;
+  // Bound mode emits absolute paths (A3); unbound keeps the legacy return.
+  return bound ? resolve(observedCwd, out) : out;
 }
 
 /**
@@ -649,8 +722,16 @@ function findWorkflowPlanRow(controlHarnessRoot: string, planId: string): Record
  *   `assertPlanWritingPath` (inside `{PLAN_DIR}` of the control harness,
  *   symlink escape checked against the canonical path);
  * - `sddDir` equals `resolveSddDir(controlHarnessRoot, planId)` (the path
- *   SSOT composition, `.mstarc` overrides included) and — when it exists —
- *   canonicalizes inside the control harness;
+ *   SSOT composition, `.mstarc` overrides included). Composition equality
+ *   subsumes the escape case — a declared sddDir cannot equal the
+ *   composition and escape at the same time — so divergence is classified at
+ *   one decision point: divergence because the declared path physically
+ *   canonicalizes OUTSIDE the control harness (symlinked sdd segment routing
+ *   out) is environmental → `sdd.context.sdd-dir-escape` gate fail (exit 1);
+ *   any other divergence (wrong declaration) is usage (exit 2). A context
+ *   matching a `.mstarc`-declared sdd base is honored wherever the repo's
+ *   own path SSOT composes it — the engine never second-guesses a
+ *   composition it would itself produce (`resolveSddDir` is authoritative);
  * - `featureCwd` exists and never nests with the control checkout
  *   (`featureCwd` inside the control checkout, or the control harness
  *   inside the feature checkout, are both refused — L1 hard rules);
@@ -725,8 +806,26 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
     throwUsage(`SddExecutionContext.planFile rejected: ${planGate.code}: ${planGate.message}`);
   }
 
+  // sddDir identity vs the path-SSOT composition, classified at one
+  // decision point (task-1 review Minor 1 — the former standalone escape
+  // check was dead: composition equality subsumes escape, so an escaping
+  // declaration could only ever surface as the exit-2 mismatch). Now:
+  // divergence + physical canonicalization outside the control harness =
+  // environmental symlink escape (gate fail, exit 1, same classification as
+  // the planFile symlink escape); any other divergence = wrong declaration
+  // (usage, exit 2).
   const composedSddDir = resolveSddDir(canonicalControlHarnessRoot, planId);
-  if (canonicalizeNearestExisting(input.sddDir) !== composedSddDir) {
+  const canonicalSddDir = canonicalizeNearestExisting(input.sddDir);
+  if (canonicalSddDir !== composedSddDir) {
+    if (!isInside(canonicalSddDir, canonicalControlHarnessRoot)) {
+      throwGateFail([
+        contextViolation(
+          "high",
+          "sdd.context.sdd-dir-escape",
+          `sddDir "${input.sddDir}" canonicalizes to "${canonicalSddDir}", outside the control harness "${canonicalControlHarnessRoot}" — symlink escape refused (environmental gate failure)`,
+        ),
+      ]);
+    }
     throwUsage(
       `SddExecutionContext.sddDir "${input.sddDir}" does not match plan "${planId}" — expected the {SDD_DIR} composition ${composedSddDir}`,
     );
@@ -766,17 +865,9 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
     ]);
   }
 
-  // Canonical escape check for an existing sddDir (symlinked sdd tree).
-  const canonicalSddDir = canonicalizeNearestExisting(input.sddDir);
-  if (!isInside(canonicalSddDir, canonicalControlHarnessRoot)) {
-    throwGateFail([
-      contextViolation(
-        "high",
-        "sdd.context.sdd-dir-escape",
-        `sddDir "${input.sddDir}" canonicalizes to "${canonicalSddDir}", outside the control harness "${canonicalControlHarnessRoot}" — symlink escape refused`,
-      ),
-    ]);
-  }
+  // (The sddDir escape classification ran with the composition check above;
+  // from here `canonicalSddDir === composedSddDir` — a composition produced
+  // from the canonical control harness root, so no separate escape check.)
 
   // Branch/lease policy: verified lease when an active workflow supplies one,
   // standalone branch alignment otherwise (spec A3 — no new global lease mandate).
@@ -857,6 +948,14 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
  * `lease.*`, `plan-path.*`) — the rules stay single-sourced. A3 limits
  * apply: this is a snapshot check, not a future-write lock, and offers no
  * protection against a concurrent hostile symlink swap.
+ *
+ * API contract (task-1 review Minor 2): `context` must be a
+ * `resolveSddExecutionContext`-produced (or equivalently already-validated)
+ * context. This function gates the action seam only and does NOT
+ * re-validate the context declaration — identity, branch, lease and
+ * control/feature nesting checks run at resolve time — so a hand-assembled
+ * structurally-valid context gets no protection claim from this check
+ * alone.
  */
 export function checkSddAction(context: SddExecutionContext, action: SddAction): GateResult {
   const violations: ValidationResult[] = [];
@@ -972,4 +1071,105 @@ export function checkSddAction(context: SddExecutionContext, action: SddAction):
   }
 
   return { ok: violations.length === 0, violations };
+}
+
+/**
+ * POSIX signal name → conventional exit number (bash `128+n` convention),
+ * resolved from the runtime's public signal constants. An unlisted name
+ * falls back to 0 (→ exit 128) — documented edge, not a protection claim.
+ */
+function signalExitNumber(signal: string): number {
+  return (osConstants.signals as Record<string, number>)[signal] ?? 0;
+}
+
+/**
+ * Bound argv launcher (spec A3, plan 20260907-sdd-execution-paths Task 2):
+ * resolve + gate the context, then spawn a DIRECT executable argv — never
+ * a shell (no command-string interpolation; the argv array reaches the
+ * child literally, spaces/`$()`/backticks unchanged) — with
+ * cwd = the resolved feature worktree, inherited stdio and the inherited
+ * process environment unchanged (no HOME/CODEX_HOME edits, no credential
+ * copies). The parent's own cwd is deliberately not gated: a launch may
+ * run from control/main, and the `launch` seam validates the resolved
+ * launch destination (featureCwd + workingBranch) instead.
+ *
+ * Exit contract (Task 2 CLI mapping):
+ * - empty/invalid argv → `SddScriptError` exit 2 (usage);
+ * - context/gate failure → `SddScriptError` exit 1 (usage-class declaration
+ *   errors from resolution keep their own exit 2);
+ * - spawn-not-found (ENOENT) → resolves 127;
+ * - numeric child exit → resolved unchanged (exit 7 returns 7);
+ * - child killed by signal n → resolves 128+n (SIGTERM → 143, SIGINT → 130).
+ *
+ * SIGINT/SIGTERM are forwarded to the running child; the listeners are
+ * removed once the child settles — the launcher leaves no handlers behind.
+ *
+ * A3 limits apply unchanged: the launcher binds the child's STARTING cwd;
+ * it is not a sandbox — a child can later chdir, pass an overriding cwd
+ * flag, write absolute paths elsewhere, or use host edit tooling. Other
+ * spawn errors (e.g. EACCES) reject; the CLI maps them to exit 1 with the
+ * cause in the message.
+ */
+export async function runInSddContext(context: SddExecutionContext, argv: readonly string[]): Promise<number> {
+  if (!Array.isArray(argv) || argv.length === 0 || typeof argv[0] !== "string" || argv[0].trim() === "") {
+    throwUsage(
+      "runInSddContext: argv must be [executable, ...args] with a non-empty executable — the array is passed to the child literally (no shell)",
+    );
+  }
+  const resolved = resolveSddExecutionContext(context);
+  const gate = checkSddAction(resolved, { kind: "launch", cwd: process.cwd() });
+  if (!gate.ok) throwGateFail(gate.violations);
+
+  return await new Promise<number>((settle, reject) => {
+    let child: ChildProcess;
+    try {
+      child = spawn(argv[0], argv.slice(1), {
+        cwd: resolved.featureCwd,
+        shell: false, // never a shell — the argv literal arrives unchanged
+        stdio: "inherit",
+      });
+    } catch (err) {
+      // Synchronous spawn failure (rare); ENOENT keeps the 127 contract.
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        settle(127);
+        return;
+      }
+      throw err;
+    }
+
+    let done = false;
+    let spawnError: NodeJS.ErrnoException | null = null;
+    const forward = (signal: NodeJS.Signals): void => {
+      // Never signal a child that already settled.
+      if (!done && child.exitCode === null && child.signalCode === null) child.kill(signal);
+    };
+    const cleanup = (): void => {
+      process.removeListener("SIGINT", forward);
+      process.removeListener("SIGTERM", forward);
+    };
+    process.on("SIGINT", forward);
+    process.on("SIGTERM", forward);
+    child.on("error", (err: NodeJS.ErrnoException) => {
+      spawnError = err;
+      if (err.code !== "ENOENT" && !done) {
+        // Non-ENOENT errors have no conventional exit code — reject ('close'
+        // is not guaranteed for every error class; settle here once).
+        done = true;
+        cleanup();
+        reject(err);
+      }
+    });
+    child.on("close", (code, signal) => {
+      if (done) return;
+      done = true;
+      cleanup();
+      if (spawnError !== null) {
+        if (spawnError.code === "ENOENT") settle(127);
+        else reject(spawnError);
+        return;
+      }
+      if (signal !== null) settle(128 + signalExitNumber(signal));
+      else settle(code ?? 0);
+    });
+  });
 }

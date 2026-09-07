@@ -14,6 +14,7 @@ import {
   assertQcAlignment,
   assertSddTddTriple,
   assertTriIdentity,
+  checkSddAction,
   AUDIT_CATEGORIES,
   AUDIT_EFFORTS,
   AUDIT_PRIORITIES,
@@ -51,10 +52,12 @@ import {
   pushCadenceProbe,
   resolveHarnessDir,
   resolveProjectDir,
+  resolveSddExecutionContext,
   resolveSkillRoot,
   resolveSpecsDir,
   resolveWorkflowDir,
   reviewPackage,
+  runInSddContext,
   scaffoldAuditPlan,
   scanSecrets,
   setArtifactStore,
@@ -106,6 +109,7 @@ import {
   type PrSizeBand,
   type ReviewChangesetMode,
   type ReviewPostPlan,
+  type SddExecutionContext,
   type ToolSignal,
   type ValidationResult,
   type WorktreeTrack,
@@ -1485,9 +1489,44 @@ function failScript(error: unknown, context: string): void {
   process.exitCode = 1;
 }
 
+/**
+ * Load a declared `SddExecutionContext` from an absolute JSON path (spec A3
+ * CLI contract: `--context <absolute.json>`). Usage-class failures —
+ * missing/relative path, unreadable file, non-JSON or non-object body — are
+ * `SddScriptError` exit 2; semantic validation (identity, branch, lease,
+ * nesting) is `resolveSddExecutionContext`'s job and runs downstream.
+ */
+function loadSddContextFile(pathValue: string | undefined): SddExecutionContext {
+  if (!pathValue || !path.isAbsolute(pathValue)) {
+    throw new SddScriptError(
+      `--context must be an absolute path to a SddExecutionContext JSON file; got ${JSON.stringify(pathValue ?? "")}`,
+      2,
+    );
+  }
+  let raw: string;
+  try {
+    raw = fs.readFileSync(pathValue, "utf8");
+  } catch {
+    throw new SddScriptError(`no such context file: ${pathValue}`, 2);
+  }
+  let doc: unknown;
+  try {
+    doc = JSON.parse(raw);
+  } catch (error) {
+    throw new SddScriptError(`context file is not valid JSON: ${pathValue} (${(error as Error).message})`, 2);
+  }
+  if (typeof doc !== "object" || doc === null || Array.isArray(doc)) {
+    throw new SddScriptError(`context file must contain a JSON object: ${pathValue}`, 2);
+  }
+  return doc as SddExecutionContext;
+}
+
 const sddCommand = program
   .command("sdd")
-  .description("SDD workspace / task-brief / review-package helpers (engine-backed)");
+  .description(
+    "SDD workspace / task-brief / review-package / check-context / exec helpers (engine-backed; " +
+      "check-context + exec + --context are the spec-A3 bound execution surface)",
+  );
 
 sddCommand
   .command("workspace")
@@ -1515,17 +1554,24 @@ sddCommand
 
 sddCommand
   .command("task-brief")
-  .description("Extract the `## Task N` section of a plan into a brief file (exit 3 when task N is missing)")
+  .description(
+    "Extract the `## Task N` section of a plan into a brief file (exit 3 when task N is missing). " +
+      "With --context the artifact destination is gate-checked before mkdir/write and the emitted path is absolute",
+  )
   .argument("[plan-file]", "Plan markdown file")
   .argument("[task-number]", "Task number whose brief is extracted")
   .argument("[outfile]", "Output file (default: {SDD_DIR}/task-N-brief.md)")
-  .action((planFile: string | undefined, taskNumber: string | undefined, outfile?: string) => {
+  .option("--context <path>", "Absolute path to a SddExecutionContext JSON — binds the artifact write (spec A3)")
+  .action((planFile: string | undefined, taskNumber: string | undefined, outfile?: string, options: { context?: string } = {}) => {
     try {
       // Optional args + explicit count check (usage exit 2).
       if (!planFile || !taskNumber) {
-        throw new SddScriptError("usage: mstar sdd task-brief PLAN_FILE TASK_NUMBER [OUTFILE]", 2);
+        throw new SddScriptError("usage: mstar sdd task-brief PLAN_FILE TASK_NUMBER [OUTFILE] [--context <absolute.json>]", 2);
       }
-      const out = taskBrief(planFile, Number(taskNumber), outfile);
+      const bound = options.context
+        ? { context: resolveSddExecutionContext(loadSddContextFile(options.context)) }
+        : undefined;
+      const out = taskBrief(planFile, Number(taskNumber), outfile, bound);
       console.log(pc.green(`task ${taskNumber} brief: ${out}`));
     } catch (error) {
       failScript(error, "sdd task-brief");
@@ -1534,20 +1580,89 @@ sddCommand
 
 sddCommand
   .command("review-package")
-  .description("Write commits + stat + diff -U10 for BASE..HEAD into a review file (exit 2 on bad refs)")
+  .description(
+    "Write commits + stat + diff -U10 for BASE..HEAD into a review file (exit 2 on bad refs). " +
+      "With --context the review range is probed in the feature worktree and the package is gate-checked into the plan's control artifacts",
+  )
   .argument("[base]", "Base ref (commit SHA)")
   .argument("[head]", "Head ref (commit SHA)")
   .argument("[outfile]", "Output file (default: {SDD_DIR}/review-<short-base>..<short-head>.diff)")
-  .action((base: string | undefined, head: string | undefined, outfile?: string) => {
+  .option("--context <path>", "Absolute path to a SddExecutionContext JSON — binds the artifact write (spec A3)")
+  .action((base: string | undefined, head: string | undefined, outfile?: string, options: { context?: string } = {}) => {
     try {
       // Optional args + explicit count check (usage exit 2).
       if (!base || !head) {
-        throw new SddScriptError("usage: mstar sdd review-package BASE HEAD [OUTFILE]", 2);
+        throw new SddScriptError("usage: mstar sdd review-package BASE HEAD [OUTFILE] [--context <absolute.json>]", 2);
       }
-      const out = reviewPackage(base, head, outfile);
+      const bound = options.context
+        ? { context: resolveSddExecutionContext(loadSddContextFile(options.context)) }
+        : undefined;
+      const out = reviewPackage(base, head, outfile, bound);
       console.log(pc.green(`review package: ${out}`));
     } catch (error) {
       failScript(error, "sdd review-package");
+    }
+  });
+
+sddCommand
+  .command("check-context")
+  .description(
+    "Gate one action seam against a resolved SDD execution context (spec A3): the observed cwd is this process's cwd. " +
+      "Exit 0 pass, 1 gate fail, 2 usage; a refused action performs no write",
+  )
+  .option("--context <path>", "Absolute path to the SddExecutionContext JSON file")
+  .option("--kind <kind>", "Action seam kind: source | artifact | launch")
+  .option("--target <path>", "Path the action would touch (required for artifact; optional for source/launch)")
+  .action((options: { context?: string; kind?: string; target?: string }) => {
+    try {
+      // Explicit usage checks (exit 2) — commander's own errors would exit 1
+      // and bypass the ported usage contract (qc2 F-005).
+      if (!options.context) {
+        throw new SddScriptError("usage: mstar sdd check-context --context <absolute.json> --kind source|artifact|launch [--target <path>]", 2);
+      }
+      if (!options.kind) {
+        throw new SddScriptError("usage: mstar sdd check-context --context <absolute.json> --kind source|artifact|launch [--target <path>]", 2);
+      }
+      if (options.kind !== "source" && options.kind !== "artifact" && options.kind !== "launch") {
+        throw new SddScriptError(`usage: --kind must be source|artifact|launch; got ${JSON.stringify(options.kind)}`, 2);
+      }
+      const resolved = resolveSddExecutionContext(loadSddContextFile(options.context));
+      const gate = checkSddAction(resolved, { kind: options.kind, cwd: process.cwd(), target: options.target });
+      if (!gate.ok) {
+        printChecklist("sdd check-context", gate);
+        process.exitCode = 1;
+        return;
+      }
+      console.log(pc.green(`check-context: OK — ${options.kind} action allowed under plan "${resolved.planId}"`));
+    } catch (error) {
+      failScript(error, "sdd check-context");
+    }
+  });
+
+sddCommand
+  .command("exec")
+  .description(
+    "Run an argv child bound to a resolved SDD execution context (spec A3): spawn cwd = the context's feature worktree, " +
+      "no shell (the argv after -- reaches the child literally), inherited env + stdio. " +
+      "Gate failure exits 1, usage 2, spawn-not-found 127, child exit preserved, signal termination 128+signal (SIGINT/SIGTERM forwarded)",
+  )
+  .option("--context <path>", "Absolute path to the SddExecutionContext JSON file")
+  .argument("[argv...]", "Child executable + args placed after -- (passed through unchanged)")
+  .action(async (argv: string[], options: { context?: string }) => {
+    try {
+      if (!options.context) {
+        throw new SddScriptError("usage: mstar sdd exec --context <absolute.json> -- <executable> [args...]", 2);
+      }
+      if (argv.length === 0) {
+        throw new SddScriptError(
+          "usage: mstar sdd exec --context <absolute.json> -- <executable> [args...]\n  The argv after -- is passed to the child literally (no shell).",
+          2,
+        );
+      }
+      const code = await runInSddContext(loadSddContextFile(options.context), argv);
+      process.exitCode = code;
+    } catch (error) {
+      failScript(error, "sdd exec");
     }
   });
 
