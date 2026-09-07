@@ -1561,7 +1561,7 @@ sddCommand
   .argument("[plan-file]", "Plan markdown file")
   .argument("[task-number]", "Task number whose brief is extracted")
   .argument("[outfile]", "Output file (default: {SDD_DIR}/task-N-brief.md)")
-  .option("--context <path>", "Absolute path to a SddExecutionContext JSON — binds the artifact write (spec A3)")
+  .option("--context <path>", "Absolute path to a SddExecutionContext JSON \u2014 binds the artifact write (spec A3)")
   .action((planFile: string | undefined, taskNumber: string | undefined, outfile?: string, options: { context?: string } = {}) => {
     try {
  // Optional args + explicit count check (usage exit 2).
@@ -1587,7 +1587,7 @@ sddCommand
   .argument("[base]", "Base ref (commit SHA)")
   .argument("[head]", "Head ref (commit SHA)")
   .argument("[outfile]", "Output file (default: {SDD_DIR}/review-<short-base>..<short-head>.diff)")
-  .option("--context <path>", "Absolute path to a SddExecutionContext JSON — binds the artifact write (spec A3)")
+  .option("--context <path>", "Absolute path to a SddExecutionContext JSON \u2014 binds the artifact write (spec A3)")
   .action((base: string | undefined, head: string | undefined, outfile?: string, options: { context?: string } = {}) => {
     try {
  // Optional args + explicit count check (usage exit 2).
@@ -1633,7 +1633,7 @@ sddCommand
         process.exitCode = 1;
         return;
       }
-      console.log(pc.green(`check-context: OK — ${options.kind} action allowed under plan "${resolved.planId}"`));
+      console.log(pc.green(`check-context: OK \u2014 ${options.kind} action allowed under plan "${resolved.planId}"`));
     } catch (error) {
       failScript(error, "sdd check-context");
     }

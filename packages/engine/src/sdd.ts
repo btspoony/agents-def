@@ -346,7 +346,7 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
         contextViolation(
           "high",
           "sdd.context.plan-file-mismatch",
-          `plan file "${planFile}" does not match the bound context plan file "${bound.planFile}" — ` +
+          `plan file "${planFile}" does not match the bound context plan file "${bound.planFile}" \u2014 ` +
             "bound mode extracts only the resolved context's plan; refused before any read or write",
         ),
       ]);
@@ -873,7 +873,7 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
       contextViolation(
         "high",
         "sdd.context.control-root-missing",
-        `controlHarnessRoot "${input.controlHarnessRoot}" does not exist or is not a directory — a declared control root is authoritative and is never re-inferred from the feature cwd (A3)`,
+        `controlHarnessRoot "${input.controlHarnessRoot}" does not exist or is not a directory \u2014 a declared control root is authoritative and is never re-inferred from the feature cwd (A3)`,
       ),
     ]);
   }
@@ -881,7 +881,7 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
   const stem = basename(input.planFile).replace(/\.md$/, "");
   if (stem !== planId) {
     throwUsage(
-      `SddExecutionContext.planFile "${input.planFile}" does not match plan "${planId}" — the plan file must be {PLAN_DIR}/<plan-id>.md under the declared control harness`,
+      `SddExecutionContext.planFile "${input.planFile}" does not match plan "${planId}" \u2014 the plan file must be {PLAN_DIR}/<plan-id>.md under the declared control harness`,
     );
   }
   if (!isFile(input.planFile)) {
@@ -920,12 +920,12 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
         contextViolation(
           "high",
           "sdd.context.sdd-dir-escape",
-          `sddDir "${input.sddDir}" canonicalizes to "${canonicalSddDir}", outside the control harness "${canonicalControlHarnessRoot}" — symlink escape refused (environmental gate failure)`,
+          `sddDir "${input.sddDir}" canonicalizes to "${canonicalSddDir}", outside the control harness "${canonicalControlHarnessRoot}" \u2014 symlink escape refused (environmental gate failure)`,
         ),
       ]);
     }
     throwUsage(
-      `SddExecutionContext.sddDir "${input.sddDir}" does not match plan "${planId}" — expected the {SDD_DIR} composition ${composedSddDir}`,
+      `SddExecutionContext.sddDir "${input.sddDir}" does not match plan "${planId}" \u2014 expected the {SDD_DIR} composition ${composedSddDir}`,
     );
   }
 
@@ -935,7 +935,7 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
       contextViolation(
         "high",
         "sdd.context.feature-cwd-missing",
-        `featureCwd "${input.featureCwd}" does not exist or is not a directory — the feature worktree is the required cwd for product edits`,
+        `featureCwd "${input.featureCwd}" does not exist or is not a directory \u2014 the feature worktree is the required cwd for product edits`,
         `create the feature worktree first (git worktree add ${input.featureCwd} ${workingBranch})`,
       ),
     ]);
@@ -948,7 +948,7 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
       contextViolation(
         "critical",
         "sdd.context.feature-in-control",
-        `featureCwd "${canonicalFeatureCwd}" is inside the control checkout "${controlCheckout}" — product edits never land in the control checkout (execution_lease.worktree_path MUST differ from metadata.control_worktree_path)`,
+        `featureCwd "${canonicalFeatureCwd}" is inside the control checkout "${controlCheckout}" \u2014 product edits never land in the control checkout (execution_lease.worktree_path MUST differ from metadata.control_worktree_path)`,
         "use a distinct feature worktree for the plan",
       ),
     ]);
@@ -958,7 +958,7 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
       contextViolation(
         "critical",
         "sdd.context.control-inside-feature",
-        `controlHarnessRoot "${canonicalControlHarnessRoot}" is inside featureCwd "${canonicalFeatureCwd}" — a feature worktree's same-looking {HARNESS_DIR} is not the SSOT; the control harness must live outside the feature checkout`,
+        `controlHarnessRoot "${canonicalControlHarnessRoot}" is inside featureCwd "${canonicalFeatureCwd}" \u2014 a feature worktree's same-looking {HARNESS_DIR} is not the SSOT; the control harness must live outside the feature checkout`,
       ),
     ]);
   }
@@ -978,7 +978,7 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
       contextViolation(
         "high",
         "sdd.context.workflow-plan-ambiguous",
-        `plan "${planId}" appears in multiple registered active workflows (${match.workflowIds.join(", ")}) — ` +
+        `plan "${planId}" appears in multiple registered active workflows (${match.workflowIds.join(", ")}) \u2014 ` +
           "the governing execution_lease is undecidable; resolve the duplicate registration before dispatch",
       ),
     ]);
@@ -1000,7 +1000,7 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
         contextViolation(
           "high",
           "sdd.context.lease-worktree-mismatch",
-          `SddExecutionContext.featureCwd "${canonicalFeatureCwd}" does not match the verified execution_lease.worktree_path "${String(lease.worktree_path)}" — the context must match the verified lease (A3)`,
+          `SddExecutionContext.featureCwd "${canonicalFeatureCwd}" does not match the verified execution_lease.worktree_path "${String(lease.worktree_path)}" \u2014 the context must match the verified lease (A3)`,
         ),
       ]);
     }
@@ -1076,11 +1076,11 @@ export function checkSddAction(context: SddExecutionContext, action: SddAction):
   };
 
   if (action.kind !== "source" && action.kind !== "artifact" && action.kind !== "launch") {
-    add("sdd.context.kind-unknown", `unknown action kind ${JSON.stringify((action as { kind?: unknown }).kind)} — expected "source" | "artifact" | "launch"`);
+    add("sdd.context.kind-unknown", `unknown action kind ${JSON.stringify((action as { kind?: unknown }).kind)} \u2014 expected "source" | "artifact" | "launch"`);
     return { ok: false, violations };
   }
   if (typeof action.cwd !== "string" || action.cwd.trim() === "") {
-    add("sdd.context.cwd-missing", "action.cwd (the observed invocation cwd) is required — never an Assignment echo");
+    add("sdd.context.cwd-missing", "action.cwd (the observed invocation cwd) is required \u2014 never an Assignment echo");
     return { ok: false, violations };
   }
 
@@ -1106,12 +1106,12 @@ export function checkSddAction(context: SddExecutionContext, action: SddAction):
       if (declaredPrefix) {
         add(
           "sdd.context.target-symlink-escape",
-          `${kind} target "${target}" canonicalizes to "${canonical}", outside the feature worktree — symlink escape refused before mutation`,
+          `${kind} target "${target}" canonicalizes to "${canonical}", outside the feature worktree \u2014 symlink escape refused before mutation`,
         );
       } else {
         add(
           `sdd.context.${kind}-target-outside-feature`,
-          `${kind} target "${target}" resolves to "${targetAbs}", outside the feature worktree "${featureReal}" — refused before mutation`,
+          `${kind} target "${target}" resolves to "${targetAbs}", outside the feature worktree "${featureReal}" \u2014 refused before mutation`,
         );
       }
     }
@@ -1126,7 +1126,7 @@ export function checkSddAction(context: SddExecutionContext, action: SddAction):
     if (featureReal === null || !isInside(cwdReal, featureReal)) {
       add(
         "sdd.context.source-cwd-outside-feature",
-        `observed source cwd "${cwdReal}" is outside the feature worktree "${context.featureCwd}" — a declared-correct context does not make a wrong-checkout write safe (A3)`,
+        `observed source cwd "${cwdReal}" is outside the feature worktree "${context.featureCwd}" \u2014 a declared-correct context does not make a wrong-checkout write safe (A3)`,
         `run the source action from inside ${context.featureCwd}`,
       );
       return { ok: false, violations };
@@ -1155,12 +1155,12 @@ export function checkSddAction(context: SddExecutionContext, action: SddAction):
       if (declaredPrefix) {
         add(
           "sdd.context.artifact-symlink-escape",
-          `artifact target "${targetAbs}" canonicalizes to "${canonical}", outside the plan's control sddDir — symlink escape refused before write`,
+          `artifact target "${targetAbs}" canonicalizes to "${canonical}", outside the plan's control sddDir \u2014 symlink escape refused before write`,
         );
       } else {
         add(
           "sdd.context.artifact-outside-plan",
-          `artifact target "${targetAbs}" is outside the plan's control sddDir "${context.sddDir}" and is not the declared planFile "${context.planFile}" — legitimate control artifact edits stay inside the plan's artifacts; arbitrary control source edits are not allowed (A3)`,
+          `artifact target "${targetAbs}" is outside the plan's control sddDir "${context.sddDir}" and is not the declared planFile "${context.planFile}" \u2014 legitimate control artifact edits stay inside the plan's artifacts; arbitrary control source edits are not allowed (A3)`,
         );
       }
     }
@@ -1169,7 +1169,7 @@ export function checkSddAction(context: SddExecutionContext, action: SddAction):
     if (featureReal === null) {
       add(
         "sdd.context.launch-cwd-missing",
-        `feature worktree "${context.featureCwd}" does not exist or is not a directory — cannot bind the child's starting cwd`,
+        `feature worktree "${context.featureCwd}" does not exist or is not a directory \u2014 cannot bind the child's starting cwd`,
       );
     } else {
  // Reused branch semantics (worktree.branch-* codes) — not duplicated.
@@ -1225,7 +1225,7 @@ function signalExitNumber(signal: string): number {
 export async function runInSddContext(context: SddExecutionContext, argv: readonly string[]): Promise<number> {
   if (!Array.isArray(argv) || argv.length === 0 || typeof argv[0] !== "string" || argv[0].trim() === "") {
     throwUsage(
-      "runInSddContext: argv must be [executable, ...args] with a non-empty executable — the array is passed to the child literally (no shell)",
+      "runInSddContext: argv must be [executable, ...args] with a non-empty executable \u2014 the array is passed to the child literally (no shell)",
     );
   }
   const resolved = resolveSddExecutionContext(context);
