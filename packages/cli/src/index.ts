@@ -15,6 +15,7 @@ import {
   assertSddTddTriple,
   assertTriIdentity,
   checkSddAction,
+  classifySkillLint,
   AUDIT_CATEGORIES,
   AUDIT_EFFORTS,
   AUDIT_PRIORITIES,
@@ -98,7 +99,6 @@ import {
   type AuditFinding,
   type AuditPriority,
   type AuditRisk,
-  type FiveQuestionMode,
   type GateResult,
   type HostId,
   type L1PreDispatchInput,
@@ -2764,20 +2764,17 @@ skillCommand
       const frontmatter = lintFrontmatter(text);
       printChecklist("skill lint (frontmatter)", frontmatter);
       violations.push(...frontmatter.violations);
-      // Five-question mode selection: runtime for shipped `mstar-*` topic
-      // skills (locked alias table), authoring / strict for
-      // `mstar-skill-authoring` (the standard's own definition) and for
-      // non-`mstar-*` skills. `mstar-harness-core` is exempt by design
-      // (hub headings) \u2014 print an explicit exempt row; frontmatter and
-      // ephemeral-citation checks still run.
-      const skillBase = path.basename(path.dirname(skillFile));
-      const isCore = skillBase === "mstar-harness-core";
-      const fiveQuestionMode: FiveQuestionMode =
-        skillBase.startsWith("mstar-") && !isCore && skillBase !== "mstar-skill-authoring" ? "runtime" : "authoring";
-      if (isCore) {
+      // Five-question profile: the Engine classifier is the single SSOT
+      // (spec A4) \u2014 exact `mstar-harness-core` core/null (EXEMPT row
+      // printed below; frontmatter + ephemeral checks still run), exact
+      // `mstar-skill-authoring` strict authoring, any other `mstar-*`
+      // runtime (locked alias table), everything else strict authoring.
+      // Identity = resolved target directory basename \u2014 never the YAML name.
+      const profile = classifySkillLint(path.basename(path.dirname(skillFile)));
+      if (profile.mode === null) {
         console.log(pc.yellow("skill lint (five questions): EXEMPT \u2014 mstar-harness-core is exempt by design (hub headings)"));
       } else {
-        const fiveQuestion = lintFiveQuestion(stripFrontmatter(text), fiveQuestionMode);
+        const fiveQuestion = lintFiveQuestion(stripFrontmatter(text), profile.mode);
         printChecklist("skill lint (five questions)", fiveQuestion);
         violations.push(...fiveQuestion.violations);
       }

@@ -17,6 +17,10 @@
  *   lint; deleting an alias-covered heading (mstar-audit `## Output
  *   format`) or a Step-3 aligned heading (mstar-sdd `## Progress ledger`)
  *   fails; non-corpus files are ignored (load-bearing per plan Step 7).
+ *   Classifier wiring (plan 20260907-skill-lint-parity Task 2): the
+ *   runtime corpus is selected by the shared Engine classifier and agrees
+ *   row for row with the canonical fixture table consumed by the Engine,
+ *   CLI and dsh suites.
  * - checkRolesCorpus (guard 4) — roles/load-order corpus smoke: the real
  *   corpus passes load-order lint + role mapping (19 skills, 0 mapping
  *   violations); deleting a Load Order section
@@ -590,6 +594,60 @@ describe("checkFiveQuestionCorpus — Guard 5 five-question runtime smoke", () =
     ]);
     expect(checked).toBe(0);
     expect(failures).toEqual([]);
+  });
+
+  test("canonical fixture corpus: the classifier selects exactly the runtime rows (spec A4 parity)", () => {
+    // The same canonical rows the Engine, CLI and dsh suites consume —
+    // Guard5's corpus selection must agree row for row (plan
+    // 20260907-skill-lint-parity Task 2, cross-consumer decision parity).
+    type FixtureRow = {
+      id: string;
+      skillId: string | null;
+      doc: string;
+      expectedKind: "core" | "runtime" | "authoring";
+      expectedFiveQuestionCodes: string[] | null;
+    };
+    const fixtures = JSON.parse(
+      readFileSync(
+        join(import.meta.dir, "..", "packages", "engine", "test", "fixtures", "skill-lint-profiles.json"),
+        "utf8",
+      ),
+    ) as { schemaVersion: number; rows: FixtureRow[] };
+    const codeOf = (failureRow: string) =>
+      failureRow.match(/ five-question runtime smoke ([\w.-]+) - /)?.[1] ?? "";
+
+    // Runtime rows: guard checks them and reports exactly the expected codes.
+    for (const row of fixtures.rows.filter((r) => r.expectedKind === "runtime")) {
+      const single = checkFiveQuestionCorpus([
+        { rel: `skills/${row.skillId}/SKILL.md`, text: row.doc },
+      ]);
+      expect(single.checked).toBe(1);
+      expect(single.failures.map(codeOf)).toEqual(row.expectedFiveQuestionCodes ?? []);
+    }
+
+    // Non-runtime rows (core exemption + standard-bearing authoring + strict
+    // defaults) never enter the runtime corpus, regardless of their bodies —
+    // the fence/alias bodies that would fail authoring produce no guard rows.
+    for (const row of fixtures.rows.filter((r) => r.expectedKind !== "runtime")) {
+      const single = checkFiveQuestionCorpus([
+        { rel: `skills/${row.skillId ?? "unparented-skill"}/SKILL.md`, text: row.doc },
+      ]);
+      expect(single).toEqual({ checked: 0, failures: [] });
+    }
+
+    // Aggregate over the full table: checked = runtime rows only; the only
+    // expected failure is the fence-only workflow gap on the shared fixture
+    // identity (load-bearing: the corpus decision is the fixture decision).
+    const all = checkFiveQuestionCorpus(
+      fixtures.rows.map((row) => ({
+        rel: `skills/${row.skillId ?? "unparented-skill"}/SKILL.md`,
+        text: row.doc,
+      })),
+    );
+    expect(all.checked).toBe(fixtures.rows.filter((r) => r.expectedKind === "runtime").length);
+    expect(all.failures).toHaveLength(1);
+    expect(all.failures[0]).toContain("skills/mstar-topic-fixture/SKILL.md");
+    expect(codeOf(all.failures[0])).toBe("skill-authoring.five-question.workflow");
   });
 });
 
