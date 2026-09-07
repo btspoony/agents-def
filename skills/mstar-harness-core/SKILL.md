@@ -1,6 +1,6 @@
 ---
 name: mstar-harness-core
-description: Morning Star (启明星) harness **强制全局入口** —— 信息源优先级、最小交付循环、状态机与 Done 权限、Task category 路由（含 quick 禁豁免）、@explore 边界、长任务纪律、核心研发守则、护栏不变量、反模式索引、Morning Star Skill 索引与宿主入口。**任何**非平凡任务开始前必须先 Read 本 skill；再按角色与任务 **按需** Read 其它 `mstar-*` 专题（勿默认通读全部）。`@project-manager` 开轮必读 + `mstar-dispatch-gates` / `mstar-phase-gates` / `mstar-conventions` 等；实现/审查/QA 必读本 skill + `mstar-coding-behavior` 及角色清单（见 `mstar-roles`）。Prepare/派发/Git/residual/QC 细则在专题 skill，不在此重复。
+description: Morning Star (启明星) harness **生命周期 / 授权语义权威与全局入口** —— 信息源优先级、最小交付循环、状态机与 Done 权限、Task category 路由（含 quick 禁豁免）、@explore 边界、长任务纪律、核心研发守则、护栏不变量、反模式索引、Morning Star Skill 索引与宿主入口。加载**选择**权威在 **`mstar-roles`**（hub § Load Order 按 Assignment `Skill presets:` 决策；本 skill 不另设全局必读表）：PM 与标准路线仍以本 skill 为全局入口；独立直接调用专题时本 skill 是首个依赖；explicit `none` 角色路线以身份 + 角色自有方法自洽（唯一 hub bootstrap 例外）。`@project-manager` 开轮必读 + `mstar-dispatch-gates` / `mstar-phase-gates` / `mstar-conventions` 等；实现/审查/QA 按其角色 preset 清单加载。Prepare/派发/Git/residual/QC 细则在专题 skill，不在此重复。
 ---
 
 # Morning Star Harness Core（启明星核心）
@@ -9,9 +9,9 @@ description: Morning Star (启明星) harness **强制全局入口** —— 信�
 
 ## 与其它 `mstar-*` skill 的加载契约
 
-- 凡 **`mstar-*`**（`name` ≠ `mstar-harness-core`）假定读者**已 Read 本 skill**。
-- **仅读专题、未读核心** → 未完成 harness 加载。
-- 各专题 SKILL.md 含 **Load order**；按 **`mstar-harness-core`** 专题 skill 索引 + 角色 load contract 按需加载，**禁止**为「保险」通读全部专题。
+- 本 skill 是 harness 的**生命周期 / 授权语义权威**（状态机、Done 权限、门禁、路由以本 skill 为准）；加载**选择**权威是 **`mstar-roles`**（hub bootstrap → 角色身份 → Assignment `Skill presets:` 决策，见其 § Load Order）。本 skill 不维护第二份全局必读角色表。
+- **独立直接调用专题**（不经角色 hub bootstrap）时，`mstar-harness-core` 仍是首个依赖：各专题 SKILL.md 的 Load Order / First action 节须声明 core-first。**唯一例外**是 `mstar-roles` hub bootstrap —— explicit `none` 下角色以身份 + 角色自有方法自洽，不强制读任何专题（含本 skill）；此时授权、反递归、证据诚实等 load-bearing 语义由角色引用与其 leaf 边界承接。
+- 各专题 SKILL.md 含 **Load order**；按 **`mstar-roles`** 的加载选择 + 本 skill 专题索引按需加载，**禁止**为「保险」通读全部专题。
 - **加载条件（`mstar-engine-legacy`）**：`mstar-engine-legacy` 是**条件契约档案**（engine-absent fallback）。**engine 约束激活（或宿主含 engine 能力）时不加载**——engine-present 宿主以运行时 skills 的 engine-check 指针 + engine 校验为权威；仅 engine-absent 宿主（无 `mstar` CLI / engine import）为找回被 engine 校验接管的 contract 全文而读取（触发契约见其 description）。
 
 ## Standalone harness（`mstar-*` 自洽）
@@ -38,9 +38,11 @@ description: Morning Star (启明星) harness **强制全局入口** —— 信�
 
 ## 加载约定（强制）
 
+加载选择 SSOT：**`mstar-roles`** hub § Load Order（Assignment `Skill presets:` 决策；PM required reading 不受 preset 门控）。下表是各角色的**典型追加指引**，不是第二套选择机制；冲突时以 hub 为准。
+
 | 角色 | 始终 | 按任务追加（典型） |
 |------|------|-------------------|
-| **全部** | 本 skill | — |
+| **全部** | 加载选择 → **`mstar-roles`**（hub § Load Order；本 skill = 生命周期/授权权威，`mstar-roles` hub bootstrap 是 core-first 的唯一例外） | — |
 | **`@project-manager`** | 本 skill | `mstar-dispatch-gates`、`mstar-phase-gates`、`mstar-conventions`、`mstar-roles`；implement 波次 `mstar-sdd`；派 QC 前 `mstar-review-qc`；并行/审查 `mstar-branch-worktree`；plan/status/review bundle `mstar-artifacts`；UI 类 plan Prepare 阶段 `mstar-design-md`（DESIGN.md 门禁）；新建/大改 skill 时 `mstar-skill-authoring`；迭代管理 `mstar-iteration`（Phase 1–5）；战略性工作 `mstar-strategy`；`audit` 类请求 `mstar-audit`（执行归 `@code-reviewer`）。**不**读 `mstar-coding-behavior` |
 | **实现/审查/运维** | 本 skill + `mstar-coding-behavior` + 角色 ref | 有 git 写：`mstar-branch-worktree`；有 plan 路径：`mstar-conventions`；**PM** 派 QC 前：`mstar-review-qc`；**`qc-specialist*`**：`mstar-roles` → `references/qc-specialist/`；`qa-engineer`：`references/qa-engineer/`；改 status/residual：`mstar-artifacts`；UI：`mstar-design-md`；知识库：`mstar-compound`（PM） |
 | **leaf 承接方** | 上栏 + **`mstar-dispatch-gates`**（反递归节） | — |

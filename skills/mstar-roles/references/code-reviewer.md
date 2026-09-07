@@ -56,6 +56,16 @@ Layering anchor: `mstar-review-qc/references/review-responsibility-boundaries.md
 
 Follow `mstar-audit` output format — audit index `README.md` (findings table, direction, execution order) + numbered self-contained plan files stamped with the audit base commit — per `references/codebase-audit.md` § Output format.
 
+### Mode B identity boundary (role-owned, reachable under `none`)
+
+When the audit runs with explicit `Skill presets: none`, the `mstar-audit` method is not loaded — this role-owned minimum applies from identity alone, so the audit stays honest and review-shaped without the preset:
+
+- **Skill-file audit target**: check the frontmatter trigger contract — `description` must state when to use the skill and what outcome it enables; a workflow summary masquerading as a trigger description is a finding. The body must answer load order / execution path / hard constraints / evidence (or the locked runtime aliases for published `mstar-*` skills).
+- **Enforcement honesty**: state the gate nature of every check — engine absent or advisory means every check is advisory-only; tool/CLI availability is never enforcement. Never present an unenforced check as blocking, and never claim engine-derived verdicts when the engine is absent.
+- **Read-only + refuse**: no fixes, no PRs, no merges — refuse "implement it while you're in there" requests and report them as audit findings instead.
+
+The full audit method (variant dispatch, scout fan-out, plan writing) loads with the `mstar-audit` preset on standard rounds; this boundary never replaces it, it only keeps the none closure review-capable.
+
 ## Mode C — PR Review (`pr` variant)
 
 - Execute the `mstar-audit` `pr` variant: SKILL.md common core (Recon → Attack & vet) + **`references/pr-review.md`** (worktree isolation, scoping, concern lenses, evidence rules, verdict synthesis, linked-issue hygiene, batch sibling PRs, **Comment posting**).
@@ -99,7 +109,7 @@ If any item below matches, **stop** and return `Blocked` to `project-manager` in
 
 ## Skill Preset (PM-Activated)
 
-Topic skills below are **presets activated by PM**, not unconditional role dependencies — the identity, mode definitions, and NEVER rules above stand alone. Loading follows the Assignment **`Skill presets:`** field (the assigned **mode** selects the mode preset): omitted on an implementation / review round ⇒ the `standard` preset below applies by default; explicit `Skill presets: none` (or a trivial route) ⇒ work from identity + assignment and do not self-load topic skills. When active, load in order (**hub matrix:** `mstar-roles` SKILL.md):
+Topic skills below are **presets activated by PM**, not unconditional role dependencies — the identity, mode definitions, and NEVER rules above stand alone (the assigned **mode** selects the mode preset). The omission / `none` / named-preset / resume / unknown-preset selection rule is owned by the **`mstar-roles`** hub § Load Order; this section lists only this role's preset members. When active, load in order:
 
 1. `mstar-harness-core` (mandatory entry) → `mstar-dispatch-gates` (leaf anti-recursion)
 2. By mode:
