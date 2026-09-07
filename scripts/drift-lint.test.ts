@@ -20,7 +20,10 @@
  *   Classifier wiring (plan 20260907-skill-lint-parity Task 2): the
  *   runtime corpus is selected by the shared Engine classifier and agrees
  *   row for row with the canonical fixture table consumed by the Engine,
- *   CLI and dsh suites.
+ *   CLI and dsh suites. Task 3 red probes (isolated injection): an
+ *   intentionally mismatched classification (core hub body under a
+ *   runtime identity) fails the corpus, and removing a real load-order
+ *   heading fails it — each restored to green through the same seam.
  * - checkRolesCorpus (guard 4) — roles/load-order corpus smoke: the real
  *   corpus passes load-order lint + role mapping (19 skills, 0 mapping
  *   violations); deleting a Load Order section
@@ -648,6 +651,51 @@ describe("checkFiveQuestionCorpus — Guard 5 five-question runtime smoke", () =
     expect(all.failures).toHaveLength(1);
     expect(all.failures[0]).toContain("skills/mstar-topic-fixture/SKILL.md");
     expect(codeOf(all.failures[0])).toBe("skill-authoring.five-question.workflow");
+  });
+
+  test("red probe (Task 3): intentionally mismatched classification fails the corpus; restore passes", () => {
+    // Inject the core hub body under mstar-audit's runtime identity: the
+    // classifier still selects runtime for the rel basename, but the
+    // injected content does not answer the runtime corpus contract — the
+    // guard must go RED (spec A4 / AC5: the drift guard rejects an
+    // intentionally mismatched classification). Isolated test injection
+    // only — no shipped file and no production rule is touched.
+    const corpus = realCorpus();
+    const core = corpus.find((e) => e.rel === "skills/mstar-harness-core/SKILL.md");
+    const audit = corpus.find((e) => e.rel === "skills/mstar-audit/SKILL.md");
+    expect(core).toBeDefined();
+    expect(audit).toBeDefined();
+    const mismatched = corpus.map((e) =>
+      e.rel === "skills/mstar-audit/SKILL.md" ? { ...e, text: core!.text } : e,
+    );
+    const red = checkFiveQuestionCorpus(mismatched);
+    expect(red.checked).toBe(corpus.length - 2); // runtime corpus selection unchanged
+    // The hub body covers decision-rules only via the locked 反模式 alias;
+    // load-order / workflow / evidence / references stay uncovered.
+    expect(red.failures).toHaveLength(4);
+    expect(red.failures.every((row) => row.includes("skills/mstar-audit/SKILL.md"))).toBe(true);
+    // Restore the real shipped content through the same seam — green again.
+    expect(checkFiveQuestionCorpus(corpus)).toEqual({ checked: corpus.length - 2, failures: [] });
+  });
+
+  test("red probe (Task 3): removing a real heading (mstar-branch-worktree Load order) fails the corpus; restore passes", () => {
+    // load-order has no alias row (plan 20260816-audit-001 Step 2), so the
+    // single real `Load order` heading is the only cover — dropping it must
+    // flip the guard red for exactly that question. In-memory drop only;
+    // the shipped file is never modified.
+    const rel = "skills/mstar-branch-worktree/SKILL.md";
+    const corpus = realCorpus();
+    const sample = corpus.find((e) => e.rel === rel);
+    expect(sample).toBeDefined();
+    expect(sample!.text).toMatch(/^#{1,6}\s+Load order/m);
+    const gapped = dropHeading(corpus, rel, /^#{1,6}\s+Load order\b.*$/);
+    const red = checkFiveQuestionCorpus(gapped);
+    expect(red.checked).toBe(corpus.length - 2);
+    expect(red.failures).toHaveLength(1);
+    expect(red.failures[0]).toContain(rel);
+    expect(red.failures[0]).toContain("five-question.load-order");
+    // Restore: the untouched corpus is green through the same seam.
+    expect(checkFiveQuestionCorpus(corpus).failures).toEqual([]);
   });
 });
 

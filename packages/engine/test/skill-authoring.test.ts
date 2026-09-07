@@ -641,6 +641,49 @@ describe("canonical fixture corpus (skill-lint-profiles.json)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Real corpus parity — before/after lint decisions (plan 20260907-skill-lint-
+// parity Task 3, spec A4 / AC2+AC5). The pre-fix dsh gate classified every
+// document as authoring (`lintFiveQuestion` without a mode) while the CLI
+// selected runtime for shipped `mstar-*` topics — conflicting judgments on
+// identical files. These probes pin both decisions on the real shipped
+// corpus, isolated to test injection: no production rule or shipped file
+// is modified.
+// ---------------------------------------------------------------------------
+
+describe("real corpus parity — before/after lint decisions (Task 3, spec A4)", () => {
+  test("before: the pre-fix authoring classification is RED on real runtime bodies (the dsh mis-judgment)", () => {
+    // Baseline capture (commit 9ec66785, disposable worktree probe): the
+    // pre-fix dsh gate failed 15/20 shipped mstar skills — 14 of the 18
+    // runtime-corpus skills — while the CLI passed them in runtime mode.
+    const beforeFails: string[] = [];
+    for (const { name, body } of runtimeCorpus()) {
+      if (!lintFiveQuestion(body, "authoring").ok) beforeFails.push(name);
+    }
+    expect(beforeFails).toContain("mstar-branch-worktree");
+    expect(beforeFails).toContain("mstar-audit");
+  });
+
+  test("after: the shared classifier's runtime mode is GREEN on the same unchanged bodies (dsh/CLI parity decision)", () => {
+    for (const { name, body } of runtimeCorpus()) {
+      const profile = classifySkillLint(name);
+      expect(profile).toEqual({ kind: "runtime", mode: "runtime" });
+      expect(lintFiveQuestion(body, profile.mode!).ok).toBe(true);
+    }
+  });
+
+  test("red probe: mismatched classification is never silently green (runtime body under the standard-bearing strict identity)", () => {
+    const sample = runtimeCorpus().find((s) => s.name === "mstar-branch-worktree");
+    expect(sample).toBeDefined();
+    // The standard's own identity stays strict authoring…
+    expect(classifySkillLint("mstar-skill-authoring")).toEqual({ kind: "authoring", mode: "authoring" });
+    // …so the injected runtime body mismatches and fails there…
+    expect(lintFiveQuestion(sample!.body, "authoring").ok).toBe(false);
+    // …while its true identity keeps it green (restore = classify correctly).
+    expect(lintFiveQuestion(sample!.body, "runtime").ok).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // resolveAssetPath — skill-relative asset paths per host resolution table
 // ---------------------------------------------------------------------------
 
