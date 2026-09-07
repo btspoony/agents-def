@@ -1,0 +1,39 @@
+# plugin-scanner severity override for one verified, unfixable-here false
+# positive in this repo.
+#
+# Scope: exactly one rule ID is downgraded to "medium". The finding stays
+# visible in every report; only the "high" fail-gate is unblocked.
+#
+# Which stack fires this rule: plugin-scanner 2.0.1116 with transitive
+# cisco-ai-skill-scanner 2.0.14 — the stack pinned by the
+# hashgraph-online/awesome-ai-plugins action (pin 55616c9) that scans this
+# repository when a plugin-listing PR is opened.
+# Our own pinned stack (plugin-scanner 3.0.104 + cisco-ai-skill-scanner 2.0.12,
+# see .github/workflows/plugin-scanner.yml) does not fire this rule and
+# reports zero high on the same commits.
+# Our own workflow additionally ignores repo config entirely: it sets
+# `trust_repository_policy: false` (.github/workflows/plugin-scanner.yml:41),
+# so the action runner never loads this file — the override takes effect only
+# in honoring contexts (the legacy awesome-ai-plugins scan, direct CLI runs).
+#
+# Why this rule is kept (unfixable remainder): cisco's
+# `skill_scanner/core/analyzers/static.py` `_OBFUSCATED_INSTRUCTION_RE` has no
+# word boundaries — `read` matches "readability"/"ready"/"Read DESIGN.md", and
+# any of token/ssh/credentials/environment within ~160 chars completes the hit
+# (actual spans in our docs: "readability→token", "ready→environment"). Every
+# CJK-bilingual doc qualifies via the NFKC (>=3 changed chars) and confusable
+# (>=3) gates, so ordinary Chinese text in bilingual skill docs is flagged
+# HIGH. Rewording to dodge the signature would gut the bilingual/design
+# content; the real fix is upstream.
+#
+# SHELL_INJECTION_PATTERN used to be overridden here; its two trigger sites
+# were eliminated at source instead — line-based frontmatter parsing with a
+# static regex in packages/dsh/src/index.ts, and plain-concatenation script
+# assembly in packages/engine/test/audit-static.test.ts.
+#
+# Revisit trigger: re-evaluate (and delete the override) when upstream adds
+# word boundaries to the signature regex or the awesome-ai-plugins action pin
+# moves. Genuine future hits of this rule ID remain visible as "medium".
+
+[rules.severity_overrides]
+UNICODE_OBFUSCATED_INSTRUCTION = "medium"

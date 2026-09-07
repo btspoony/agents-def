@@ -1,0 +1,8 @@
+---
+packages: root
+---
+
+- **Root-caused** the legacy plugin-scanner `SHELL_INJECTION_PATTERN` false positives instead of suppressing them: `packages/dsh` command-frontmatter parsing now matches labels line-by-line against a static value regex (no `RegExp` assembled from label strings), and the engine audit child-process test assembles its script by plain concatenation (no template literal near `Bun.spawnSync`). The repo-root **`.plugin-scanner.toml`** now downgrades only `UNICODE_OBFUSCATED_INSTRUCTION` to `medium` — the unfixable remainder: cisco's obfuscated-instruction signature regex has no word boundaries ("readability→token", "ready→environment"), so ordinary Chinese text in bilingual skill docs trips it under the awesome-ai-plugins legacy stack (`plugin-scanner` 2.0.1116 + `cisco-ai-skill-scanner` 2.0.14). Our pinned stack (scanner 3.0.104 + cisco 2.0.12) is unaffected, and our own CI ignores repo config (`trust_repository_policy: false`); findings stay visible, only the legacy `high` gate is unblocked.
+
+<!-- CN -->
+- **根因修复**旧版 plugin-scanner 的 `SHELL_INJECTION_PATTERN` 误报，而非依赖压制：`packages/dsh` 命令 frontmatter 解析改为逐行匹配 label + 静态值正则（不再用 label 动态拼 `RegExp`）；engine 审计子进程测试改为纯字符串拼接构建脚本（`Bun.spawnSync` 附近不再出现模板字符串）。仓库根 **`.plugin-scanner.toml`** 现仅将 `UNICODE_OBFUSCATED_INSTRUCTION` 降级为 `medium`——这是仓库侧无法修复的残余：cisco 混淆指令签名正则无词边界（"readability→token"、"ready→environment"），双语文档中的普通中文文本在 awesome-ai-plugins 旧扫描栈（`plugin-scanner` 2.0.1116 + `cisco-ai-skill-scanner` 2.0.14）下必触发。我们的锁定栈（scanner 3.0.104 + cisco 2.0.12）不受影响，且自身 CI 不加载仓库配置（`trust_repository_policy: false`）；发现项保持可见，仅解除旧栈 `high` 门禁。
