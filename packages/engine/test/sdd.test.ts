@@ -27,19 +27,23 @@
  */
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative } from "node:path";
 import {
   SddScriptError,
   assertBaseSha,
+  checkSddAction,
   implementerSessionStickyRules,
   readProgressLedger,
+  resolveSddExecutionContext,
   reviewPackage,
+  runInSddContext,
   sddWorkspace,
   taskBrief,
   taskReportExists,
   type ImplementerSessionLedger,
+  type SddExecutionContext,
 } from "../src/sdd.js";
 
 const MSTAR_CONTROL_ROOT = "MSTAR_CONTROL_ROOT";
@@ -111,6 +115,17 @@ function gitFixture(root: string): { base: string; head: string } {
 function errOf(fn: () => unknown): SddScriptError {
   try {
     fn();
+  } catch (e) {
+    expect(e).toBeInstanceOf(SddScriptError);
+    return e as SddScriptError;
+  }
+  throw new Error("expected SddScriptError, got no throw");
+}
+
+/** Async twin of `errOf` for the launcher's promise rejections. */
+async function errOfAsync(fn: () => Promise<unknown>): Promise<SddScriptError> {
+  try {
+    await fn();
   } catch (e) {
     expect(e).toBeInstanceOf(SddScriptError);
     return e as SddScriptError;
@@ -715,6 +730,673 @@ describe("engine helper contracts (bash originals removed in slice 5 — behavio
     } finally {
       rmSync(main, { recursive: true, force: true });
       rmSync(parent, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SDD execution context + action checks (spec A3, plan
+// 20260907-sdd-execution-paths Task 1). Fixtures build separate disposable
+// primary / control / feature checkouts with real `git worktree add` — never
+// the real main checkout. Checks must be read-only.
+// ---------------------------------------------------------------------------
+
+type ExecutionFixture = {
+  root: string;
+  /** Disposable "primary checkout" on `main` — stands in for the incident scene. */
+  primary: string;
+  /** Control worktree on an integration branch, carrying the control harness. */
+  control: string;
+  /** Feature worktree on the plan's Working branch. */
+  feature: string;
+  harnessDir: string;
+  planId: string;
+  planFile: string;
+  sddDir: string;
+  workingBranch: string;
+};
+
+const PLAN_ID = "20260907-sdd-execution-paths";
+
+function executionFixture(root: string): ExecutionFixture {
+  const primary = join(root, "primary");
+  mkdirSync(primary);
+  git(["init", "-q"], primary);
+  git(["checkout", "-q", "-b", "main"], primary); // deterministic default branch
+  git(["config", "user.email", "sdd-test@example.com"], primary);
+  git(["config", "user.name", "SDD Test"], primary);
+  writeFileSync(join(primary, "src-sentinel.txt"), "primary source sentinel\n");
+  mkdirSync(join(primary, "src"));
+  writeFileSync(join(primary, "src", "module.ts"), "export const primary = true;\n");
+  git(["add", "-A"], primary);
+  git(["commit", "-q", "-m", "primary base"], primary);
+
+  const control = join(root, "control");
+  git(["worktree", "add", "-q", "-b", "codex/iter-integration", control], primary);
+  const workingBranch = `feature/${PLAN_ID}`;
+  const feature = join(root, "feature");
+  git(["worktree", "add", "-q", "-b", workingBranch, feature], primary);
+
+  const harnessDir = join(control, ".mstar");
+  const planFile = join(harnessDir, "plans", `${PLAN_ID}.md`);
+  mkdirSync(dirname(planFile), { recursive: true });
+  writeFileSync(planFile, "# Plan\n\n## Task 1\n\n- implement\n");
+  const sddDir = join(harnessDir, "sdd", PLAN_ID);
+  mkdirSync(sddDir, { recursive: true });
+  return { root, primary, control, feature, harnessDir, planId: PLAN_ID, planFile, sddDir, workingBranch };
+}
+
+function contextOf(f: ExecutionFixture): SddExecutionContext {
+  return {
+    planId: f.planId,
+    controlHarnessRoot: f.harnessDir,
+    featureCwd: f.feature,
+    workingBranch: f.workingBranch,
+    planFile: f.planFile,
+    sddDir: f.sddDir,
+  };
+}
+
+function executionLease(f: ExecutionFixture, overrides: Record<string, string> = {}): Record<string, string> {
+  return {
+    holder: "fullstack-dev-2",
+    claimed_at: "2026-09-07T00:00:00Z",
+    worktree_path: f.feature,
+    working_branch: f.workingBranch,
+    ...overrides,
+  };
+}
+
+function writeSnapshot(f: ExecutionFixture, workflowId: string, plans: unknown[]): void {
+  const dir = join(f.harnessDir, "workflows", workflowId);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "snapshot.json"), JSON.stringify({ schema_version: 1, plans }));
+}
+
+function codesOf(result: { ok: boolean; violations: { code: string }[] }): string[] {
+  return result.violations.map((v) => v.code);
+}
+
+function listTree(root: string): string[] {
+  const out: string[] = [];
+  const walk = (dir: string): void => {
+    const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1));
+    for (const entry of entries) {
+      out.push(relative(root, join(dir, entry.name)));
+      if (entry.isDirectory()) walk(join(dir, entry.name));
+    }
+  };
+  walk(root);
+  return out;
+}
+
+describe("resolveSddExecutionContext — A3 declared-context resolution", () => {
+  test("resolves against the declared control root and canonicalizes every path", () => {
+    const root = tmpRoot("sdd-ctx-ok-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(resolved.planId).toBe(PLAN_ID);
+      expect(resolved.workingBranch).toBe(f.workingBranch);
+      expect(resolved.controlHarnessRoot).toBe(realpathSync(f.harnessDir));
+      expect(resolved.featureCwd).toBe(realpathSync(f.feature));
+      expect(resolved.planFile).toBe(realpathSync(f.planFile));
+      expect(resolved.sddDir).toBe(realpathSync(f.sddDir));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("mismatched declared branch fails the gate (exit 1, reused worktree.branch-mismatch)", () => {
+    const root = tmpRoot("sdd-ctx-branch-");
+    try {
+      const f = executionFixture(root);
+      const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), workingBranch: "feature/other" }));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("worktree.branch-mismatch");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("missing feature worktree fails the gate (exit 1)", () => {
+    const root = tmpRoot("sdd-ctx-nofeature-");
+    try {
+      const f = executionFixture(root);
+      const err = errOf(() =>
+        resolveSddExecutionContext({ ...contextOf(f), featureCwd: join(root, "no-such-feature") }),
+      );
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.feature-cwd-missing");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("usage errors are exit 2: relative paths, unsafe planId, plan/sdd identity mismatch", () => {
+    const root = tmpRoot("sdd-ctx-usage-");
+    try {
+      const f = executionFixture(root);
+      expect(errOf(() => resolveSddExecutionContext({ ...contextOf(f), controlHarnessRoot: "relative/.mstar" })).exitCode).toBe(2);
+      expect(errOf(() => resolveSddExecutionContext({ ...contextOf(f), planId: "../escape" })).exitCode).toBe(2);
+      expect(errOf(() => resolveSddExecutionContext({ ...contextOf(f), sddDir: join(f.harnessDir, "sdd", "other-plan") })).exitCode).toBe(2);
+      expect(errOf(() => resolveSddExecutionContext({ ...contextOf(f), planFile: join(f.harnessDir, "plans", "other-plan.md") })).exitCode).toBe(2);
+      expect(errOf(() => resolveSddExecutionContext({ ...contextOf(f), planFile: join(f.harnessDir, "plans", "no-such-plan.md") })).exitCode).toBe(2);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("feature cwd inside the control checkout is refused (L1 hard rule, exit 1)", () => {
+    const root = tmpRoot("sdd-ctx-nest1-");
+    try {
+      const f = executionFixture(root);
+      mkdirSync(join(f.control, "accidental-feature"));
+      const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), featureCwd: join(f.control, "accidental-feature") }));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.feature-in-control");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("control harness declared inside the feature checkout is refused (exit 1)", () => {
+    const root = tmpRoot("sdd-ctx-nest2-");
+    try {
+      const f = executionFixture(root);
+      const strayHarness = join(f.feature, ".mstar", "nested-harness");
+      const strayPlan = join(strayHarness, "plans", `${PLAN_ID}.md`);
+      mkdirSync(dirname(strayPlan), { recursive: true });
+      writeFileSync(strayPlan, "# stray\n");
+      const err = errOf(() =>
+        resolveSddExecutionContext({
+          ...contextOf(f),
+          controlHarnessRoot: strayHarness,
+          planFile: strayPlan,
+          sddDir: join(strayHarness, "sdd", PLAN_ID),
+        }),
+      );
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.control-inside-feature");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("active workflow lease matching the context resolves; a mismatching context is refused", () => {
+    const root = tmpRoot("sdd-ctx-lease-");
+    try {
+      const f = executionFixture(root);
+      writeSnapshot(f, "wf-1", [{ id: PLAN_ID, status: "InProgress", execution_lease: executionLease(f) }]);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(resolved.featureCwd).toBe(realpathSync(f.feature));
+
+      // Context featureCwd ≠ verified lease worktree (lease points at the
+      // primary checkout on main, so the reused L1 gate passes and the
+      // context binding is what refuses).
+      writeSnapshot(f, "wf-1", [
+        { id: PLAN_ID, status: "InProgress", execution_lease: executionLease(f, { worktree_path: f.primary, working_branch: "main" }) },
+      ]);
+      const worktreeErr = errOf(() => resolveSddExecutionContext(contextOf(f)));
+      expect(worktreeErr.exitCode).toBe(1);
+      expect(worktreeErr.message).toContain("sdd.context.lease-worktree-mismatch");
+
+      // Context workingBranch ≠ verified lease branch (lease matches the real
+      // checkout; the declared branch is what differs).
+      writeSnapshot(f, "wf-1", [{ id: PLAN_ID, status: "InProgress", execution_lease: executionLease(f) }]);
+      const branchErr = errOf(() => resolveSddExecutionContext({ ...contextOf(f), workingBranch: "feature/other" }));
+      expect(branchErr.exitCode).toBe(1);
+      expect(branchErr.message).toContain("sdd.context.lease-branch-mismatch");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("InProgress row without a lease is the orphan refusal (exit 1)", () => {
+    const root = tmpRoot("sdd-ctx-orphan-");
+    try {
+      const f = executionFixture(root);
+      writeSnapshot(f, "wf-1", [{ id: PLAN_ID, status: "InProgress" }]);
+      const err = errOf(() => resolveSddExecutionContext(contextOf(f)));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("lease.verify.orphan");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("standalone behavior is preserved: no snapshot / non-InProgress row without lease", () => {
+    const root = tmpRoot("sdd-ctx-standalone-");
+    try {
+      const f = executionFixture(root);
+      // No workflow snapshots at all — existing branch policy only.
+      expect(resolveSddExecutionContext(contextOf(f)).planId).toBe(PLAN_ID);
+      // A finished plan row without a lease never mandates one.
+      writeSnapshot(f, "wf-done", [{ id: PLAN_ID, status: "Done" }]);
+      expect(resolveSddExecutionContext(contextOf(f)).planId).toBe(PLAN_ID);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a declared control root is never re-inferred from a stray feature-local harness", () => {
+    const root = tmpRoot("sdd-ctx-stray-");
+    try {
+      const f = executionFixture(root);
+      // Feature-local second-harness shape (the Aug-26 incident scene).
+      const straySdd = join(f.feature, ".mstar", "sdd", PLAN_ID);
+      mkdirSync(straySdd, { recursive: true });
+      writeFileSync(join(f.feature, ".mstar", "status.json"), "{}\n");
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(resolved.controlHarnessRoot).toBe(realpathSync(f.harnessDir));
+      // …and the artifact gate refuses the stray feature-local SDD tree.
+      const stray = checkSddAction(resolved, {
+        kind: "artifact",
+        cwd: f.feature,
+        target: join(straySdd, "task-1-brief.md"),
+      });
+      expect(stray.ok).toBe(false);
+      expect(codesOf(stray)).toContain("sdd.context.artifact-outside-plan");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("checkSddAction — A3 source/artifact/launch seams", () => {
+  test("correct declared context with wrong actual source cwd fails", () => {
+    const root = tmpRoot("sdd-act-wrongcwd-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      const result = checkSddAction(resolved, { kind: "source", cwd: f.primary, target: "src/probe.txt" });
+      expect(result.ok).toBe(false);
+      expect(codesOf(result)).toContain("sdd.context.source-cwd-outside-feature");
+      // Unrelated directory outside both checkouts is equally refused.
+      const unrelated = checkSddAction(resolved, { kind: "source", cwd: root, target: "probe.txt" });
+      expect(codesOf(unrelated)).toContain("sdd.context.source-cwd-outside-feature");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("safe relative nested source passes; traversal and absolute escape fail", () => {
+    const root = tmpRoot("sdd-act-nested-");
+    try {
+      const f = executionFixture(root);
+      const nested = join(f.feature, "src", "nested");
+      mkdirSync(nested, { recursive: true });
+      writeFileSync(join(nested, "writer.ts"), "export const w = 1;\n");
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(
+        checkSddAction(resolved, { kind: "source", cwd: nested, target: "../../src/deep/new.txt" }).ok,
+      ).toBe(true);
+      const traversal = checkSddAction(resolved, { kind: "source", cwd: nested, target: "../../../outside.txt" });
+      expect(codesOf(traversal)).toContain("sdd.context.source-target-outside-feature");
+      const absolute = checkSddAction(resolved, { kind: "source", cwd: f.feature, target: join(f.primary, "src", "probe.txt") });
+      expect(codesOf(absolute)).toContain("sdd.context.source-target-outside-feature");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("symlink escape fails before mutation", () => {
+    const root = tmpRoot("sdd-act-symlink-");
+    try {
+      const f = executionFixture(root);
+      symlinkSync(join(f.primary, "src"), join(f.feature, "src", "escape"));
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      const result = checkSddAction(resolved, { kind: "source", cwd: f.feature, target: "src/escape/probe.txt" });
+      expect(result.ok).toBe(false);
+      expect(codesOf(result)).toContain("sdd.context.target-symlink-escape");
+      // …and nothing was written through the link.
+      expect(existsSync(join(f.primary, "src", "probe.txt"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("valid control artifact targets pass: fresh leaf, nested review dir, repair, planFile", () => {
+    const root = tmpRoot("sdd-act-artifact-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(
+        checkSddAction(resolved, { kind: "artifact", cwd: f.feature, target: join(f.sddDir, "task-1-report.md") }).ok,
+      ).toBe(true);
+      expect(
+        checkSddAction(resolved, { kind: "artifact", cwd: f.control, target: join(f.sddDir, "review", "qc1.md") }).ok,
+      ).toBe(true);
+      // Repair pass: overwriting an existing control artifact is allowed.
+      writeFileSync(join(f.sddDir, "task-1-report.md"), "# Task 1 report\n");
+      expect(
+        checkSddAction(resolved, { kind: "artifact", cwd: f.control, target: join(f.sddDir, "task-1-report.md") }).ok,
+      ).toBe(true);
+      // The declared planFile itself is a permitted artifact destination.
+      expect(checkSddAction(resolved, { kind: "artifact", cwd: f.control, target: f.planFile }).ok).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("arbitrary control source edits and artifact symlink escapes fail", () => {
+    const root = tmpRoot("sdd-act-artifact-bad-");
+    try {
+      const f = executionFixture(root);
+      symlinkSync(f.primary, join(f.sddDir, "escape"));
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      const controlSource = checkSddAction(resolved, {
+        kind: "artifact",
+        cwd: f.control,
+        target: join(f.control, "packages", "engine.ts"),
+      });
+      expect(codesOf(controlSource)).toContain("sdd.context.artifact-outside-plan");
+      // Declared inside the plan's sddDir (resolved context form) but routed
+      // through a symlinked ancestor out of the control artifacts.
+      const escape = checkSddAction(resolved, {
+        kind: "artifact",
+        cwd: f.control,
+        target: join(resolved.sddDir, "escape", "x.md"),
+      });
+      expect(codesOf(escape)).toContain("sdd.context.artifact-symlink-escape");
+      // …and nothing was written through the link.
+      expect(existsSync(join(f.primary, "x.md"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("launch check verifies the resolved launch destination, not the parent cwd", () => {
+    const root = tmpRoot("sdd-act-launch-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      // Launch may be invoked from control/main — the destination is what is gated.
+      expect(checkSddAction(resolved, { kind: "launch", cwd: f.primary }).ok).toBe(true);
+      expect(checkSddAction(resolved, { kind: "launch", cwd: f.control }).ok).toBe(true);
+      // An optional launch target resolves the way the child would (from featureCwd).
+      expect(checkSddAction(resolved, { kind: "launch", cwd: f.primary, target: "src/probe.txt" }).ok).toBe(true);
+      const escape = checkSddAction(resolved, { kind: "launch", cwd: f.primary, target: "../../../outside.txt" });
+      expect(codesOf(escape)).toContain("sdd.context.launch-target-outside-feature");
+      // A branch swapped after resolution still fails the launch gate.
+      git(["checkout", "-q", "-b", "feature/detour"], f.feature);
+      const branch = checkSddAction(resolved, { kind: "launch", cwd: f.control });
+      expect(branch.ok).toBe(false);
+      expect(codesOf(branch)).toContain("worktree.branch-mismatch");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("checks perform no writes anywhere in the fixture", () => {
+    const root = tmpRoot("sdd-act-readonly-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      const before = listTree(root);
+      checkSddAction(resolved, { kind: "artifact", cwd: f.control, target: join(f.sddDir, "review", "qc1.md") });
+      checkSddAction(resolved, { kind: "source", cwd: f.feature, target: "src/never.txt" });
+      checkSddAction(resolved, { kind: "launch", cwd: f.primary });
+      checkSddAction(resolved, { kind: "artifact", cwd: f.control, target: join(f.sddDir, "escape", "x.md") });
+      expect(listTree(root)).toEqual(before);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("usage-level refusals: unknown kind, missing cwd, artifact without target", () => {
+    const root = tmpRoot("sdd-act-usage-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(codesOf(checkSddAction(resolved, { kind: "rename" as never, cwd: f.feature }))).toContain("sdd.context.kind-unknown");
+      expect(codesOf(checkSddAction(resolved, { kind: "source", cwd: "" }))).toContain("sdd.context.cwd-missing");
+      expect(codesOf(checkSddAction(resolved, { kind: "artifact", cwd: f.control }))).toContain("sdd.context.target-missing");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Task 2 (plan 20260907-sdd-execution-paths): sddDir escape classification
+// (task-1 review Minor 1 prerequisite), the bound argv launcher and the
+// bound task-brief/review-package artifact writes.
+// ---------------------------------------------------------------------------
+
+describe("resolveSddExecutionContext sddDir escape classification (task-1 review Minor 1)", () => {
+  test("a declared sddDir that canonicalizes outside the control harness is a gate fail (exit 1, sdd.context.sdd-dir-escape)", () => {
+    const root = tmpRoot("sdd-esc-out-");
+    try {
+      const f = executionFixture(root);
+      // Replace the sdd tree with a symlink routing OUTSIDE the harness.
+      rmSync(f.sddDir, { recursive: true, force: true });
+      const outside = join(root, "outside-sdd", PLAN_ID);
+      mkdirSync(outside, { recursive: true });
+      symlinkSync(outside, f.sddDir);
+      const err = errOf(() => resolveSddExecutionContext(contextOf(f)));
+      // Environmental escape — exit 1, not the exit-2 usage mismatch.
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.sdd-dir-escape");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a divergent-but-inside sddDir stays a usage error (exit 2) — only the escaping divergence is exit 1", () => {
+    const root = tmpRoot("sdd-esc-in-");
+    try {
+      const f = executionFixture(root);
+      // Symlink divergence INSIDE the harness: the alias canonicalizes to a
+      // different real dir (not the composed plan dir) but never leaves the
+      // harness — a wrong declaration (exit 2), not an environmental escape.
+      const other = join(f.harnessDir, "sdd", "other-plan");
+      mkdirSync(other, { recursive: true });
+      const alias = join(f.harnessDir, "sdd", "alias-plan");
+      symlinkSync(other, alias);
+      const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), sddDir: alias }));
+      expect(err.exitCode).toBe(2);
+      expect(err.message).toMatch(/does not match plan/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+/** Child fixture: records {cwd, argv} as JSON into its first argument. */
+function childWriterFixture(root: string): string {
+  const writer = join(root, "child-writer.mjs");
+  writeFileSync(
+    writer,
+    "import { writeFileSync } from 'node:fs';\n" +
+      "const [out, ...rest] = process.argv.slice(2);\n" +
+      "writeFileSync(out, JSON.stringify({ cwd: process.cwd(), argv: rest }));\n",
+  );
+  return writer;
+}
+
+describe("runInSddContext — A3 bound argv launcher (plan Task 2)", () => {
+  test("runs the child in the feature worktree; the argv literal arrives unchanged (no shell)", async () => {
+    const root = tmpRoot("sdd-exec-cwd-");
+    try {
+      const f = executionFixture(root);
+      const writer = childWriterFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      const record = join(root, "record.json");
+      const code = await runInSddContext(resolved, [process.execPath, writer, record, "a b", "$(touch pwn.txt)", "`touch pwn.txt`", "*"]);
+      expect(code).toBe(0);
+      const doc = JSON.parse(readFileSync(record, "utf8")) as { cwd: string; argv: string[] };
+      expect(doc.cwd).toBe(realpathSync(f.feature));
+      expect(doc.argv).toEqual(["a b", "$(touch pwn.txt)", "`touch pwn.txt`", "*"]);
+      // No shell ever ran: the command substitutions left nothing behind.
+      expect(existsSync(join(f.feature, "pwn.txt"))).toBe(false);
+      expect(existsSync(join(root, "pwn.txt"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("numeric child exit is preserved (7 → 7); spawn-not-found resolves 127", async () => {
+    const root = tmpRoot("sdd-exec-exit-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(await runInSddContext(resolved, [process.execPath, "-e", "process.exit(7)"])).toBe(7);
+      expect(await runInSddContext(resolved, ["definitely-not-a-real-binary-xyz"])).toBe(127);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("gate failure throws (exit 1) and launches no child", async () => {
+    const root = tmpRoot("sdd-exec-gate-");
+    try {
+      const f = executionFixture(root);
+      const writer = childWriterFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      // Swap the feature branch after resolution: the gate must refuse
+      // BEFORE the child runs — the child itself is the probe (it would
+      // write the probe file as its first action).
+      git(["checkout", "-q", "-b", "feature/detour"], f.feature);
+      const probe = join(f.feature, "probe-should-not-exist.json");
+      const err = await errOfAsync(() => runInSddContext(resolved, [process.execPath, writer, probe]));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("worktree.branch-mismatch");
+      expect(existsSync(probe)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("SIGTERM is forwarded: child terminated 128+15, listeners cleaned", async () => {
+    const root = tmpRoot("sdd-exec-term-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      const beforeInt = process.listenerCount("SIGINT");
+      const beforeTerm = process.listenerCount("SIGTERM");
+      const pending = runInSddContext(resolved, [process.execPath, "-e", "setInterval(() => {}, 1000)"]);
+      await new Promise((r) => setTimeout(r, 300)); // child up
+      expect(process.listenerCount("SIGTERM")).toBe(beforeTerm + 1);
+      process.kill(process.pid, "SIGTERM");
+      expect(await pending).toBe(128 + 15);
+      expect(process.listenerCount("SIGINT")).toBe(beforeInt);
+      expect(process.listenerCount("SIGTERM")).toBe(beforeTerm);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("SIGINT is forwarded: child terminated 128+2, listeners cleaned", async () => {
+    const root = tmpRoot("sdd-exec-int-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      const beforeInt = process.listenerCount("SIGINT");
+      const pending = runInSddContext(resolved, [process.execPath, "-e", "setInterval(() => {}, 1000)"]);
+      await new Promise((r) => setTimeout(r, 300));
+      process.kill(process.pid, "SIGINT");
+      expect(await pending).toBe(128 + 2);
+      expect(process.listenerCount("SIGINT")).toBe(beforeInt);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("bound task-brief / review-package — A3 artifact producers (plan Task 2)", () => {
+  test("bound task-brief defaults into the control sddDir and emits an absolute path", () => {
+    const root = tmpRoot("sdd-bound-brief-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      // Observed invocation cwd = the primary checkout — the producer's own
+      // cwd is not gated; the ARTIFACT destination is.
+      const out = taskBrief(f.planFile, 1, undefined, { context: resolved, cwd: f.primary });
+      expect(out).toBe(join(resolved.sddDir, "task-1-brief.md"));
+      expect(isAbsolute(out)).toBe(true);
+      expect(readFileSync(out, "utf8")).toContain("- implement");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("bound task-brief refuses an escaping destination before any write (nothing created)", () => {
+    const root = tmpRoot("sdd-bound-brief-esc-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      // Same string universe as the resolved context (macOS /var →
+      // /private/var): the symlink escape diagnostic is a same-universe
+      // declared-prefix classification (Task-1 self-review note).
+      symlinkSync(f.primary, join(resolved.sddDir, "escape"));
+      const destination = join(resolved.sddDir, "escape", "brief.md");
+      const err = errOf(() => taskBrief(f.planFile, 1, destination, { context: resolved, cwd: f.primary }));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.artifact-symlink-escape");
+      // Refusal-before-mutation: nothing through the link, no partial output.
+      expect(existsSync(join(f.primary, "brief.md"))).toBe(false);
+      expect(existsSync(destination)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("bound review-package probes git in the feature worktree and lands in the control sddDir (absolute path)", () => {
+    const root = tmpRoot("sdd-bound-rp-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      writeFileSync(join(f.feature, "feature-file.txt"), "feature change\n");
+      git(["add", "-A"], f.feature);
+      git(["commit", "-q", "-m", "feature commit"], f.feature);
+      const base = git(["rev-parse", "main"], f.primary);
+      const head = git(["rev-parse", "HEAD"], f.feature);
+      // Invocation cwd = control checkout; bound git probe = feature worktree.
+      const out = reviewPackage(base, head, undefined, { context: resolved, cwd: f.control });
+      expect(out).toBe(join(resolved.sddDir, `review-${base.slice(0, 7)}..${head.slice(0, 7)}.diff`));
+      const content = readFileSync(out, "utf8");
+      expect(content).toContain("feature commit");
+      expect(content).toContain("feature-file.txt");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("bound review-package refuses an artifact outside the plan and writes nothing", () => {
+    const root = tmpRoot("sdd-bound-rp-esc-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      writeFileSync(join(f.feature, "feature-file.txt"), "feature change\n");
+      git(["add", "-A"], f.feature);
+      git(["commit", "-q", "-m", "feature commit"], f.feature);
+      const base = git(["rev-parse", "main"], f.primary);
+      const head = git(["rev-parse", "HEAD"], f.feature);
+      const destination = join(f.control, "elsewhere.diff");
+      const err = errOf(() => reviewPackage(base, head, destination, { context: resolved, cwd: f.control }));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.artifact-outside-plan");
+      expect(existsSync(destination)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("context-less helpers stay explicitly unbound (no protection claim, A3)", () => {
+    const root = tmpRoot("sdd-unbound-");
+    try {
+      const f = executionFixture(root);
+      // Legacy behavior: SDD_DIR alone directs the write anywhere — this is
+      // the documented UNBOUND mode, not evidence of action protection.
+      const arbitrary = join(root, "arbitrary-destination");
+      withEnv(SDD_DIR, arbitrary, () => {
+        const out = taskBrief(f.planFile, 1);
+        expect(out).toBe(join(arbitrary, "task-1-brief.md"));
+        expect(existsSync(out)).toBe(true);
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });

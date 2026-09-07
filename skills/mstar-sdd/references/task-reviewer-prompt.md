@@ -18,6 +18,13 @@ Dispatch:
 
     Brief: [BRIEF_FILE]
 
+    ## Destinations (absolute — read-only review)
+
+    - Control harness root: [CONTROL_ROOT] — implementer report [REPORT_FILE], diff [DIFF_FILE] are control artifacts.
+    - Feature worktree under review: [FEATURE_CWD] on branch [WORKING_BRANCH] — you do not write there or anywhere except [REPORT_FILE].
+    - The diff was produced by the bound `mstar sdd review-package --context [CONTEXT_FILE]` (git probed in the feature worktree, artifact written to the control sddDir).
+    - First step: confirm the paths above are absolute and present; if a path is missing or relative, report NEEDS_CONTEXT instead of guessing.
+
     Global constraints (verbatim):
     [GLOBAL_CONSTRAINTS]
 

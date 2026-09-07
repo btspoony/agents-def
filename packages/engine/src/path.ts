@@ -248,6 +248,35 @@ export function assertSafePathComponent(value: string, what: string): void {
 }
 
 /**
+ * Canonicalize `path` for containment checks when the leaf may not exist
+ * (A3 nonexistent-leaf rule): canonicalize the nearest existing ancestor
+ * (realpath — resolves macOS `/var` → `/private/var` and any symlinked
+ * ancestors) and append the not-yet-existing remaining segments lexically.
+ * `..`/`.` segments are collapsed lexically by `resolve` before the walk,
+ * so the result is the path a later write would actually land at. Pure
+ * read-only (stat/realpath only — never creates anything). When nothing up
+ * to the filesystem root exists, the lexically resolved input is returned.
+ */
+export function canonicalizeNearestExisting(path: string): string {
+  const abs = resolve(path);
+  let dir = abs;
+  const tail: string[] = [];
+  for (;;) {
+    if (existsSync(dir)) {
+      try {
+        return join(realpathSync(dir), ...tail);
+      } catch {
+        return abs;
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return abs; // reached the filesystem root
+    tail.unshift(basename(dir));
+    dir = parent;
+  }
+}
+
+/**
  * Compose `{SDD_DIR}` = `{HARNESS_DIR}/sdd/<plan-id>/` (plan-conventions
  * § 路径符号). A `.mstarc` `[config] sdd_dir` declaration replaces the
  * `sdd` base (the `<plan-id>` segment is still appended). The per-plan

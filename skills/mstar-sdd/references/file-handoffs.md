@@ -11,13 +11,28 @@ Run the SDD helpers through the engine CLI **`mstar sdd …`** (engine-backed; t
      `export MSTAR_CONTROL_ROOT=<control_worktree_path>`
      or `mstar sdd workspace <plan-id> <control_worktree_path>`
      so `{SDD_DIR}` lands on the control harness (default-gitignored plans/status/sdd). Do not create a second SDD tree under the feature checkout.
-2. `mstar sdd task-brief <plan-file> <N> "$SDD_DIR/task-N-brief.md"`
-3. Record `BASE_SHA` (`git rev-parse HEAD` before dispatch).
-4. Dispatch implementer with:
+2. Write the execution context file `$SDD_DIR/context.json` — the absolute destination contract every handoff cites:
+
+   ```json
+   {
+     "planId": "<plan-id>",
+     "controlHarnessRoot": "<absolute control harness root>",
+     "featureCwd": "<absolute feature worktree>",
+     "workingBranch": "<assigned branch>",
+     "planFile": "<absolute plan path under the control harness>",
+     "sddDir": "<absolute $SDD_DIR>"
+   }
+   ```
+
+   All paths absolute; `planFile`/`sddDir` must resolve inside the control harness; `featureCwd` must be the assigned feature worktree on `workingBranch`. The declared control root is authoritative — never re-inferred from the feature cwd.
+3. `mstar sdd task-brief <plan-file> <N> --context "$SDD_DIR/context.json"` — bound producer: validates the artifact destination **before** mkdir/write and prints the absolute brief path (`{SDD_DIR}/task-N-brief.md`).
+4. Record `BASE_SHA` (`git rev-parse HEAD` before dispatch).
+5. Dispatch implementer with:
    - One line scene-setting (where task fits)
-   - Brief path: read first — verbatim requirements
+   - Absolute brief path: read first — verbatim requirements
    - Interfaces / decisions brief cannot know
-   - Report path: `$SDD_DIR/task-N-report.md`
+   - Absolute report path: `$SDD_DIR/task-N-report.md`
+   - Absolute control root, feature cwd, plan and context-file paths (destination contract — see prompt templates)
    - `Model tier` → host-specific model (required)
    - **`SDD implementer session`**: `fresh` (new subagent) or `sticky` (resume — see **`sticky-implementer-session.md`**)
 
@@ -33,10 +48,28 @@ Implementer writes full report to `task-N-report.md`. Return to PM only:
 ## After implementer DONE
 
 1. `HEAD_SHA=$(git rev-parse HEAD)`
-2. `mstar sdd review-package "$BASE_SHA" "$HEAD_SHA" "$SDD_DIR/review-....diff"`
+2. `mstar sdd review-package "$BASE_SHA" "$HEAD_SHA" --context "$SDD_DIR/context.json"` — bound: probes git in `featureCwd`, writes the diff into the control sddDir, prints absolute paths.
 3. Dispatch task reviewer with: brief path, report path, diff path, Global Constraints (verbatim from plan).
 
 **Never use `HEAD~1` as BASE** — multi-commit tasks truncate.
+
+## Bound child launch (CLI-launchable children)
+
+When the implementer is a CLI command rather than a hosted subagent, launch it through the bound argv entry — never raw from a primary/control checkout:
+
+```bash
+mstar sdd exec --context "$SDD_DIR/context.json" -- <argv...>
+```
+
+- Resolves and re-validates the context (identity/branch/lease/nesting), then spawns the argv directly with cwd = `featureCwd`, `shell: false`, stdio and environment inherited unchanged. Exits: 1 = context/gate refusal (no child started), 2 = usage, 127 = spawn not found, child exit preserved, signal termination 128+n.
+- This binds the child's **starting cwd only** — it is not a sandbox. A child that later `chdir`s, passes an overriding cwd flag, writes an absolute path elsewhere, or uses host-native edit tooling (`apply_patch`, native-session edits) is **not blocked**; no arbitrary-shell interception is claimed.
+
+## Native hosted subagents — destination contract
+
+Hosted subagents are not cwd-bound by the launcher, so their dispatch prompt must carry the absolute destination contract (templates: `implementer-prompt.md`, `implementer-continuation-prompt.md`, `task-reviewer-prompt.md`) and their first step is to observe, then write:
+
+1. Observe `pwd` and the checked-out branch in the tool's workdir; both must equal `featureCwd`/`workingBranch`. On mismatch, stop and report — a declared-correct assignment does not make a wrong-checkout write safe.
+2. Source edits go through the tool workdir at `featureCwd` (or absolute feature paths); briefs/reports/diffs go only to the absolute control paths from the handoff.
 
 ## Fix loop
 
@@ -67,7 +100,7 @@ After all tasks:
 ```bash
 MERGE_BASE=$(git merge-base <target-branch> HEAD)
 mkdir -p "$SDD_DIR/review"
-mstar sdd review-package "$MERGE_BASE" HEAD "$SDD_DIR/review/branch-review-....diff"
+mstar sdd review-package "$MERGE_BASE" HEAD --context "$SDD_DIR/context.json" "$SDD_DIR/review/branch-review-....diff"
 ```
 
 Pass **branch** diff path and bundle report paths (`$SDD_DIR/review/qc1.md` …) to QC dispatch — not task-level diffs. Raw QC/QA files stay in the gitignored review bundle; PM records durable summary and open residuals in **local** plan / workflow snapshot + project register (`workflows/<id>/snapshot.json`, `projects/<id>/residuals.json` — session SSOT) and promotes cross-clone decisions into tracked knowledge/specs/`AGENTS.md` per `mstar-conventions` git policy.
