@@ -1,0 +1,37 @@
+# plugin-scanner severity overrides for verified false positives in this repo.
+#
+# Scope: exactly the two rule IDs below are downgraded to "medium". Findings
+# stay visible in every report; only the "high" fail-gate is unblocked.
+#
+# Which stack fires these rules: plugin-scanner 2.0.1116 with transitive
+# cisco-ai-skill-scanner 2.0.14 — the stack pinned by the
+# hashgraph-online/awesome-ai-plugins action (pin 55616c9) that scans this
+# repository when a plugin-listing PR is opened.
+# Our own pinned stack (plugin-scanner 3.0.104 + cisco-ai-skill-scanner 2.0.12,
+# see .github/workflows/plugin-scanner.yml) does not fire either rule and
+# reports zero high on the same commits.
+# Our own workflow additionally ignores repo config entirely: it sets
+# `trust_repository_policy: false` (.github/workflows/plugin-scanner.yml:41),
+# so the action runner never loads this file — the overrides take effect only
+# in honoring contexts (the legacy awesome-ai-plugins scan, direct CLI runs).
+#
+# Revisit trigger: re-evaluate (and delete the matching override) when the
+# awesome-ai-plugins action pin moves or these rules are fixed upstream.
+# Genuine future hits of these rule IDs remain visible as "medium".
+
+[rules.severity_overrides]
+# False positives on this repo:
+# - packages/dsh/src/index.ts:233 is RegExp.prototype.exec() (regex matching on
+#   a frontmatter string), not shell/command execution; the rule pattern-matches
+#   "template literal + `.exec(`".
+# - packages/engine/test/audit-static.test.ts:106 is array-form Bun.spawnSync
+#   inside a test — the structured-argv form the rule's own remediation
+#   recommends.
+SHELL_INJECTION_PATTERN = "medium"
+
+# False positive on this repo: cisco's unicode-normalization /
+# unicode-confusable detectors trip on ordinary Chinese text in bilingual skill
+# docs (mstar-roles deep-review-lenses.md, mstar-design-md SKILL.md and
+# vercel-example.md, mstar-audit security-review.md, mstar-host dsh.md); the
+# "recovered obfuscated text" is each document's own opening lines.
+UNICODE_OBFUSCATED_INSTRUCTION = "medium"
