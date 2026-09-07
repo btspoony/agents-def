@@ -21,6 +21,7 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
+  classifySkillLint,
   lintFiveQuestion,
   lintFrontmatter,
   resolveAssetPath,
@@ -541,6 +542,101 @@ Open references/x.md.
       }
     }
     expect(failures).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// classifySkillLint — one profile policy (spec A4; plan 20260907-skill-lint-
+// parity Task 1). Semantics preserve the CLI `skill lint` selection verbatim.
+// ---------------------------------------------------------------------------
+
+describe("classifySkillLint", () => {
+  test("exact mstar-harness-core → core / null (five-question exempt by design)", () => {
+    expect(classifySkillLint("mstar-harness-core")).toEqual({ kind: "core", mode: null });
+  });
+
+  test("exact mstar-skill-authoring → authoring (strict despite the mstar- prefix)", () => {
+    expect(classifySkillLint("mstar-skill-authoring")).toEqual({ kind: "authoring", mode: "authoring" });
+  });
+
+  test("other mstar-* → runtime (locked alias table applies)", () => {
+    expect(classifySkillLint("mstar-dispatch-gates")).toEqual({ kind: "runtime", mode: "runtime" });
+    expect(classifySkillLint("mstar-x")).toEqual({ kind: "runtime", mode: "runtime" });
+  });
+
+  test("core matching is exact — mstar-harness-core-* is runtime, not core", () => {
+    expect(classifySkillLint("mstar-harness-core-extra")).toEqual({ kind: "runtime", mode: "runtime" });
+  });
+
+  test("non-mstar and empty identities → authoring", () => {
+    expect(classifySkillLint("third-party-tool")).toEqual({ kind: "authoring", mode: "authoring" });
+    expect(classifySkillLint("")).toEqual({ kind: "authoring", mode: "authoring" });
+  });
+
+  test("missing identity defaults to authoring (undefined)", () => {
+    expect(classifySkillLint(undefined)).toEqual({ kind: "authoring", mode: "authoring" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Canonical fixture corpus — packages/engine/test/fixtures/skill-lint-
+// profiles.json (spec A4: shared fixture table consumed by Engine/CLI/dsh
+// tests; profile policy lives only in Engine source).
+// ---------------------------------------------------------------------------
+
+type ProfileFixtureRow = {
+  id: string;
+  note: string;
+  skillId: string | null;
+  doc: string;
+  expectedKind: "core" | "runtime" | "authoring";
+  expectedMode: "runtime" | "authoring" | null;
+  expectedFiveQuestionCodes: string[] | null;
+  expectedFrontmatterCodes: string[];
+};
+
+const PROFILE_FIXTURES: { schemaVersion: number; description: string; rows: ProfileFixtureRow[] } = JSON.parse(
+  readFileSync(join(import.meta.dir, "fixtures", "skill-lint-profiles.json"), "utf8"),
+);
+
+describe("canonical fixture corpus (skill-lint-profiles.json)", () => {
+  test("fixture table loads at the current schema with rows", () => {
+    expect(PROFILE_FIXTURES.schemaVersion).toBe(1);
+    expect(PROFILE_FIXTURES.rows.length).toBeGreaterThan(0);
+  });
+
+  for (const row of PROFILE_FIXTURES.rows) {
+    test(`row ${row.id}: classification and violation codes match`, () => {
+      // Classification is identity-driven: the classifier consumes the
+      // resolved target basename (null row identity → undefined at the API),
+      // never the doc's YAML name.
+      const profile = classifySkillLint(row.skillId ?? undefined);
+      expect(profile.kind).toBe(row.expectedKind);
+      expect(profile.mode).toBe(row.expectedMode);
+
+      // Five-question decision per profile mode. `null` mode = the caller
+      // skips the check (core exemption only); the contrast lint proves the
+      // exemption is doing real work — the body genuinely lacks coverage.
+      if (row.expectedMode === null) {
+        expect(row.expectedFiveQuestionCodes).toBeNull();
+        expect(lintFiveQuestion(stripFrontmatter(row.doc), "authoring").ok).toBe(false);
+      } else {
+        const result = lintFiveQuestion(stripFrontmatter(row.doc), row.expectedMode);
+        expect(result.violations.map((v) => v.code)).toEqual(row.expectedFiveQuestionCodes);
+      }
+
+      // Frontmatter stays independent of classification in every row.
+      const fm = lintFrontmatter(row.doc);
+      expect(fm.violations.map((v) => v.code)).toEqual(row.expectedFrontmatterCodes);
+    });
+  }
+
+  test("the misleading-YAML row keeps its intent (core name under a non-mstar basename)", () => {
+    const row = PROFILE_FIXTURES.rows.find((r) => r.id === "misleading-yaml-core-third-party");
+    expect(row).toBeDefined();
+    expect(row?.doc).toContain("name: mstar-harness-core");
+    expect(row?.skillId?.startsWith("mstar-")).toBe(false);
+    expect(row?.expectedKind).toBe("authoring");
   });
 });
 
