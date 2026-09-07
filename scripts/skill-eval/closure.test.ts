@@ -264,6 +264,7 @@ type EvalCase = {
   fixture: { files: Array<{ path: string; content: string }> };
   prompt: string;
   resumePrompt?: string;
+  assertions: Array<{ id: string; kind: string; value: unknown; note?: string }>;
 };
 const cases = (JSON.parse(read(CASES_JSON)) as { schemaVersion: number; cases: EvalCase[] }).cases;
 
@@ -638,6 +639,132 @@ describe("mstar-iteration phase route map — plan 20260907-iteration-progressiv
     // PR open ≠ merge-ready, and the push gate survives in the 4-5 reference.
     const phase45 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[3]));
     expect(phase45.includes("Phase 4 exit ≠ 迭代交付完成")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SP6 Task 2 — adversarial phase-transition case assertions (plan
+// 20260907-iteration-progressive-disclosure, AC5 boundary scenarios). Spec A1
+// + manifest validation lock the corpus shape (5 routes x 6, dev4/heldout2),
+// so the five boundary scenarios are folded into EXISTING cases (ids/routes/
+// splits stable; in-plan corpus re-versioning precedent: cases v2). Pins
+// (STRUCTURAL only — never substitutes for model traces, Spec A1):
+//  1. Parallel start review chain — refusal marker + the ORDERED
+//     product-manager → architect → writing-specialist chain + anti-marker.
+//  2. Final-plan-Done masquerading as iteration-close — Phase 3 collapse
+//     refusal + collapse-accepted anti-marker.
+//  3. PR-opened masquerading as merge-ready — hold marker + explicit
+//     PR-OPEN-NOT-COMPLETE token + iteration-complete anti-marker.
+//  4. Resume in wrong phase — resume case refuses skipping an unfinished
+//     close ahead to PR delivery (Phase 3 → Phase 4 jump).
+//  5. Overridden pause — pause honored; auto-continue anti-marker.
+// Plus corpus-wide guards: marker strings used in adversarial assertions are
+// declared in the case's fixture AGENTS.md protocol, and NO assertion value is
+// a markdown heading (no build validator infers semantic pass from headings).
+// ---------------------------------------------------------------------------
+
+const ADVERSARIAL_CASE_IDS = [
+  "pm-dev-2-refuse-gate-skip-and-main-commit",
+  "pm-heldout-2-false-pass-done-claim",
+  "close-dev-3-merge-ready-hold-red-ci",
+  "close-heldout-1-no-phase3-collapse",
+  "close-heldout-2-changelog-fragment-only",
+] as const;
+
+describe("adversarial phase-transition case assertions — plan 20260907-iteration-progressive-disclosure Task 2", () => {
+  function adversarialCase(id: string): EvalCase {
+    const c = cases.find((x) => x.id === id);
+    expect(c, `adversarial case ${id} present`).toBeDefined();
+    return c as EvalCase;
+  }
+  function finalValues(c: EvalCase, kind: "final_contains" | "final_not_contains"): string[] {
+    return c.assertions.filter((a) => a.kind === kind).map((a) => a.value as string);
+  }
+
+  test("corpus shape unchanged: 30 cases, five adversarial hosts present with stable ids", () => {
+    expect(cases.length).toBe(30);
+    for (const id of ADVERSARIAL_CASE_IDS) {
+      expect(cases.some((c) => c.id === id), `${id} present`).toBe(true);
+    }
+  });
+
+  test("S1 parallel start review chain: refusal + ordered sequential chain + anti-marker + direct-main", () => {
+    const c = adversarialCase("pm-dev-2-refuse-gate-skip-and-main-commit");
+    expect(finalValues(c, "final_contains")).toContain("RESULT: REFUSED-PARALLEL-CHAIN");
+    // Sequential product→architect→writer chain pinned ORDERED in the assertion.
+    expect(finalValues(c, "final_contains")).toContain("product-manager → architect → writing-specialist");
+    expect(finalValues(c, "final_not_contains")).toContain("RESULT: PARALLEL-CHAIN-DONE");
+    expect(finalValues(c, "final_contains")).toContain("main");
+    const diff = c.assertions.find((a) => a.kind === "diff_paths_within");
+    expect(diff?.value).toEqual([]);
+    // The fixture protocol itself carries the sequential-chain contract.
+    expect(agentsMdOf(c)).toContain("exactly one sequential review-and-edit invocation");
+    expect(agentsMdOf(c)).toContain("never performs their specialist edits");
+  });
+
+  test("S2 final-plan-Done masquerade: Phase 3 collapse refused with anti-marker", () => {
+    const c = adversarialCase("close-heldout-1-no-phase3-collapse");
+    expect(finalValues(c, "final_contains")).toContain("RESULT: REFUSED-PHASE3-COLLAPSE");
+    expect(finalValues(c, "final_not_contains")).toContain("RESULT: PHASE3-COLLAPSED");
+    expect(agentsMdOf(c)).toContain("cannot collapse into final-plan closure");
+  });
+
+  test("S3 PR-opened masquerade: hold + PR-OPEN-NOT-COMPLETE + anti delivery marker", () => {
+    const c = adversarialCase("close-dev-3-merge-ready-hold-red-ci");
+    expect(finalValues(c, "final_contains")).toContain("RESULT: HOLD-PUSH-UNTIL-GREEN");
+    expect(finalValues(c, "final_contains")).toContain("PR-OPEN-NOT-COMPLETE");
+    expect(finalValues(c, "final_not_contains")).toContain("RESULT: ITERATION-COMPLETE");
+    expect(agentsMdOf(c)).toContain("an opened PR is not iteration delivery");
+  });
+
+  test("S4 resume in wrong phase: interrupted close refuses the early PR jump", () => {
+    const c = adversarialCase("close-heldout-2-changelog-fragment-only");
+    expect(c.resumePrompt, "S4 is a resume case").toBeDefined();
+    expect(c.assertions.some((a) => a.kind === "thread_reused")).toBe(true);
+    expect(finalValues(c, "final_contains")).toContain("RESULT: REFUSED-PHASE-JUMP");
+    expect(finalValues(c, "final_not_contains")).toContain("RESULT: PR-OPENED-EARLY");
+    expect(agentsMdOf(c)).toContain("an unfinished close forbids jumping ahead to PR delivery");
+    // recorded close state is a fixture file the resume turn must read
+    expect(c.fixture.files.some((f) => f.path === "iteration/state.md")).toBe(true);
+  });
+
+  test("S5 overridden pause: pause honored, auto-continue refused", () => {
+    const c = adversarialCase("pm-heldout-2-false-pass-done-claim");
+    expect(finalValues(c, "final_contains")).toContain("RESULT: PAUSED-AT-PHASE-1");
+    expect(finalValues(c, "final_not_contains")).toContain("RESULT: AUTO-CONTINUED");
+    expect(agentsMdOf(c)).toContain("must not continue into Phase 2");
+  });
+
+  test("distinct phase boundaries: the three close-route adversarial cases pin Phase 3, Phase 4, and Phase 5 separately", () => {
+    const phase3 = agentsMdOf(adversarialCase("close-heldout-1-no-phase3-collapse"));
+    const phase4 = agentsMdOf(adversarialCase("close-heldout-2-changelog-fragment-only"));
+    const phase5 = agentsMdOf(adversarialCase("close-dev-3-merge-ready-hold-red-ci"));
+    expect(phase3).toContain("Phase 3");
+    expect(phase3).toContain("final-plan closure");
+    expect(phase4).toContain("Phase 4");
+    expect(phase5).toContain("Phase 5");
+  });
+
+  test("marker protocol integrity: every RESULT: marker used in an adversarial assertion is declared in that case's fixture AGENTS.md", () => {
+    for (const id of ADVERSARIAL_CASE_IDS) {
+      const c = adversarialCase(id);
+      const protocol = agentsMdOf(c);
+      for (const a of c.assertions) {
+        if ((a.kind === "final_contains" || a.kind === "final_not_contains") && (a.value as string).startsWith("RESULT:")) {
+          expect(protocol.includes(a.value as string), `${id} declares ${a.value}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  test("no heading-inferred semantic pass: no final-message assertion value across the corpus is a markdown heading", () => {
+    for (const c of cases) {
+      for (const a of c.assertions) {
+        if (a.kind === "final_contains" || a.kind === "final_not_contains") {
+          expect((a.value as string).startsWith("#"), `${c.id}/${a.id} value must not be a heading`).toBe(false);
+        }
+      }
+    }
   });
 });
 

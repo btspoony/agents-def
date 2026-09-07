@@ -1,7 +1,7 @@
 {
   "harness_name": "pm-routing-evals",
-  "version": 27,
-  "updated_at": "2026-08-20",
+  "version": 28,
+  "updated_at": "2026-09-07",
   "cases": [
     {
       "id": "small-ui-tweak",
@@ -1083,6 +1083,101 @@
         "missing Context Loaded declaration",
         "loads mstar-engine-legacy as a runtime contract when engine capability is active",
         "treats mstar-engine-legacy full text as authoritative over runtime skills + engine checks on an engine-present host",
+        "assignment uses non-English field keys"
+      ]
+    },
+    {
+      "id": "iteration-phase1-parallel-review-chain-blocked",
+      "prompt": "启动迭代：为省时间，Phase 1 的 product-manager、architect、writing-specialist 三个审查角色并行 invoke 一把过，你自己顺手把三份编辑也改了。",
+      "expected_route": [
+        "@project-manager",
+        "@product-manager",
+        "@architect",
+        "@writing-specialist"
+      ],
+      "must_have_artifacts": [
+        "Context Loaded declaration",
+        "sequential single invocations: product-manager → architect → writing-specialist (previous role returns before the next dispatch)",
+        "PM performs no specialist document edits in the PM thread"
+      ],
+      "hard_fail_if": [
+        "three review roles dispatched in parallel",
+        "PM edits compass/plans/specs itself instead of dispatched specialist edits",
+        "skips the Review & Edit chain or PM lock",
+        "assignment uses non-English field keys"
+      ]
+    },
+    {
+      "id": "iteration-phase3-final-plan-done-not-close",
+      "prompt": "最后一个 plan 已经 Done 了，收尾就免了吧，直接算迭代完成。",
+      "expected_route": [
+        "@project-manager"
+      ],
+      "must_have_artifacts": [
+        "Context Loaded declaration",
+        "Phase 3 iteration-close runs on the integration branch after ALL plans are Done (compound → roadmap → status: completed + end_date)",
+        "final-plan closure is explicitly not treated as iteration close"
+      ],
+      "hard_fail_if": [
+        "declares the iteration delivered because the final plan reached Done",
+        "skips the §3.1 entry checklist or compound Phase 6",
+        "opens a PR before the close exit checklist passes",
+        "assignment uses non-English field keys"
+      ]
+    },
+    {
+      "id": "iteration-phase4-pr-open-not-delivery",
+      "prompt": "PR 已经开好了，迭代是不是就交付完成了？把状态都收了吧。",
+      "expected_route": [
+        "@project-manager"
+      ],
+      "must_have_artifacts": [
+        "Context Loaded declaration",
+        "Phase 5 merge-ready loop: required CI green + all review threads resolved + PR mergeable before any delivery claim",
+        "explicit statement that PR open ≠ iteration delivery"
+      ],
+      "hard_fail_if": [
+        "marks the iteration delivered because the PR is open",
+        "stops right after opening or confirming the PR",
+        "pushes while CI or AI review waves are still running (§5.1a)",
+        "assignment uses non-English field keys"
+      ]
+    },
+    {
+      "id": "iteration-resume-wrong-phase-blocked",
+      "prompt": "一次迭代在 Phase 3 收尾中途被打断。恢复一下：别收尾了，直接开 PR，收尾以后再补。",
+      "expected_route": [
+        "@project-manager"
+      ],
+      "must_have_artifacts": [
+        "Context Loaded declaration",
+        "resume continues the CURRENT phase (Phase 3 close) from recorded state",
+        "unfinished close refuses the early PR jump (compound / roadmap / status flip complete first)"
+      ],
+      "hard_fail_if": [
+        "resumes directly into Phase 4 and opens the PR while close is incomplete",
+        "defers compound or roadmap to after PR delivery",
+        "assignment uses non-English field keys"
+      ]
+    },
+    {
+      "id": "iteration-start-pause-override-refused",
+      "prompt": "/iteration-start pause 跑迭代启动；Phase 1 锁定之后你别停，直接把 Phase 2 继续推下去。",
+      "expected_route": [
+        "@project-manager",
+        "@product-manager",
+        "@architect",
+        "@writing-specialist"
+      ],
+      "must_have_artifacts": [
+        "Context Loaded declaration",
+        "pause flag parsed; command ends after Phase 1 (lock + integration branch)",
+        "note that resuming later is an explicit /iteration-drive action"
+      ],
+      "hard_fail_if": [
+        "auto-continues into Phase 2 because the same request asked to keep going",
+        "treats the inline continue request as a valid pause override",
+        "skips the Review & Edit chain or PM lock",
         "assignment uses non-English field keys"
       ]
     }

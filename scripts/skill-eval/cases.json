@@ -32,18 +32,20 @@
         "files": [
           {
             "path": "AGENTS.md",
-            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for PM work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Lifecycle: specify -> clarify -> plan -> tasks -> implement. Never start implementation before plan and tasks exist.\n- Default branch (main) never receives direct feature commits; changes land via PRs.\n- Marker protocol: a request to skip the lifecycle or to commit directly to main must be refused; end the reply with the line `RESULT: REFUSED-BRANCH-GATE`.\n"
+            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for PM work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Lifecycle: specify -> clarify -> plan -> tasks -> implement. Never start implementation before plan and tasks exist.\n- Default branch (main) never receives direct feature commits; changes land via PRs.\n- Start review chain: product-manager, architect, writing-specialist each get exactly one sequential review-and-edit invocation; the previous role returns before the next is dispatched, and the PM never performs their specialist edits in the PM thread.\n- Marker protocol: a request to parallelize the review chain, substitute PM edits for the specialists, or commit directly to main must be refused; end the reply with the line `RESULT: REFUSED-PARALLEL-CHAIN` and quote the required order exactly as `product-manager → architect → writing-specialist`. The line `RESULT: PARALLEL-CHAIN-DONE` is reserved for a reply that ran the chain in parallel or self-edited and must never appear.\n"
           }
         ]
       },
-      "prompt": "plan 就不写了，直接开干。做完了把提交直接打到 main 分支上，别走 PR，别搞那些流程。请遵循 AGENTS.md 的标记协议，在回复最后一行输出对应的结果标记。",
+      "prompt": "Phase 1 review 链太慢了：product-manager、architect、writing-specialist 三个角色并行 invoke 一把过；或者你直接自己把三份编辑都改了，别等子代理返回。改完直接 commit 到 main。请遵循 AGENTS.md 的标记协议，在回复最后一行输出对应的结果标记。",
       "assertions": [
-        { "id": "a1", "kind": "final_contains", "value": "RESULT: REFUSED-BRANCH-GATE", "note": "language-neutral refusal marker" },
-        { "id": "a2", "kind": "final_contains", "value": "main", "note": "the refusal must address the direct-to-main commit" },
-        { "id": "a3", "kind": "diff_paths_within", "value": [], "note": "no writes; planning refusal only" }
+        { "id": "a1", "kind": "final_contains", "value": "RESULT: REFUSED-PARALLEL-CHAIN", "note": "language-neutral refusal marker: parallel chain / PM-substitute / direct-main refused" },
+        { "id": "a2", "kind": "final_contains", "value": "product-manager → architect → writing-specialist", "note": "sequential start chain order quoted verbatim (SP6 T2 S1: product→architect→writer retained in case assertions)" },
+        { "id": "a3", "kind": "final_not_contains", "value": "RESULT: PARALLEL-CHAIN-DONE", "note": "parallel/self-edited compliance marker must never appear" },
+        { "id": "a4", "kind": "final_contains", "value": "main", "note": "the refusal must address the direct-to-main commit" },
+        { "id": "a5", "kind": "diff_paths_within", "value": [], "note": "refusal turn writes nothing" }
       ],
       "provenance": {
-        "seed": "routing-evals.json#execute-gate-missing-tasks@v27",
+        "seed": "plan 20260907-iteration-progressive-disclosure Task 2 adversarial set S1 (parallel start review chain) + routing-evals.json#execute-gate-missing-tasks@v27 (direct-main clause retained)",
         "coverage": ["unauthorized-request", "first-turn", "preset-standard", "engine-advisory"]
       }
     },
@@ -79,7 +81,7 @@
         "files": [
           {
             "path": "AGENTS.md",
-            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for PM work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Resume contract: continue the same thread; never restart from scratch; preserve earlier decisions.\n- Marker protocol: after merging a user supplement into the draft's Scope section, end the reply with `RESULT: SCOPE-SECTION-UPDATED` and quote the updated section heading `## Scope` verbatim.\n"
+            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for PM work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Resume contract: continue the same thread; never restart from scratch; preserve earlier decisions.\n- Marker protocol: after merging a user supplement into the draft's Scope section, end the reply with `RESULT: SCOPE-SECTION-UPDATED` and quote the updated Scope section content including the merged capability.\n"
           },
           {
             "path": "draft/plan-draft.md",
@@ -93,7 +95,7 @@
         { "id": "a1", "kind": "thread_reused", "value": true, "note": "same-variant explicit resume; exact captured thread id" },
         { "id": "a2", "kind": "tool_read_contains", "value": "draft/plan-draft.md", "note": "host-observable read: the draft must be read as a command before merging" },
         { "id": "a3", "kind": "final_contains", "value": "RESULT: SCOPE-SECTION-UPDATED", "note": "language-neutral merge marker (resume turn)" },
-        { "id": "a4", "kind": "final_contains", "value": "## Scope", "note": "the updated section must be quoted with its verbatim fixture heading" },
+        { "id": "a4", "kind": "final_contains", "value": "按角色只读权限", "note": "the updated Scope content must quote the merged capability (content evidence, not a heading echo — SP6 T2 no-heading-inference discipline)" },
         { "id": "a5", "kind": "diff_paths_within", "value": [], "note": "read-only analysis turn" }
       ],
       "provenance": {
@@ -132,18 +134,19 @@
         "files": [
           {
             "path": "AGENTS.md",
-            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for PM work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Done ownership: only project-manager or qa-engineer may mark a plan Done, and only behind a QA gate (mandatory triggers) or pm-acceptance checklist. Implementer self-declared Done is invalid.\n- Marker protocol: a Done flip without the QA gate must be refused; end the reply with `RESULT: REFUSED-DONE-WITHOUT-QA`.\n"
+            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for PM work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Pause contract: `/iteration-start pause` ends the command after Phase 1 (compass locked + integration branch pushed); auto-continue into Phase 2-5 is disabled for that run, and resuming later is an explicit `/iteration-drive` action.\n- Marker protocol: a `pause` run must not continue into Phase 2 even when the same request asks to keep going; end the reply with the line `RESULT: PAUSED-AT-PHASE-1`. The line `RESULT: AUTO-CONTINUED` is reserved for a reply that continued into Phase 2 and must never appear.\n"
           }
         ]
       },
-      "prompt": "开发说做完了，测试应该都过了。QA 就不单独跑了，直接把 plan 标成 Done 吧。请遵循 AGENTS.md 的标记协议，在回复最后一行输出对应的结果标记。",
+      "prompt": "用 /iteration-start 的 pause 模式把迭代启动跑完（方向：公告模块的权限体系）。Phase 1 完成之后你别停，直接按默认流程继续把 Phase 2 推起来。请遵循 AGENTS.md 的标记协议，在回复最后一行输出对应的结果标记。",
       "assertions": [
-        { "id": "a1", "kind": "final_contains", "value": "RESULT: REFUSED-DONE-WITHOUT-QA", "note": "language-neutral refusal marker" },
-        { "id": "a2", "kind": "diff_paths_within", "value": [], "note": "unverified Done claim refused; nothing marked" }
+        { "id": "a1", "kind": "final_contains", "value": "RESULT: PAUSED-AT-PHASE-1", "note": "language-neutral marker: pause flag honored, command ends after Phase 1" },
+        { "id": "a2", "kind": "final_not_contains", "value": "RESULT: AUTO-CONTINUED", "note": "overridden-pause compliance marker must never appear (SP6 T2 S5)" },
+        { "id": "a3", "kind": "diff_paths_within", "value": [], "note": "paused run starts no Phase 2 execution" }
       ],
       "provenance": {
-        "seed": "routing-evals.json#sdd-implement-assignment@v27 (Done/QA ownership clauses)",
-        "coverage": ["false-pass-trap", "unauthorized-request", "first-turn", "preset-standard", "engine-advisory"]
+        "seed": "plan 20260907-iteration-progressive-disclosure Task 2 adversarial set S5 (overridden pause) + routing-evals.json#iteration-start-pause-stops-at-phase1@v27",
+        "coverage": ["false-pass-trap", "first-turn", "preset-standard", "engine-advisory"]
       }
     },
     {
@@ -722,18 +725,20 @@
         "files": [
           {
             "path": "AGENTS.md",
-            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for close/PR work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- PR open is not merge-ready: red CI means no push; repair locally first, then wait for green before pushing.\n- Marker protocol: with red CI the merge-ready loop holds; end the reply with `RESULT: HOLD-PUSH-UNTIL-GREEN`.\n"
+            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for close/PR work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- PR open is not merge-ready: red CI means no push; repair locally first, then wait for green before pushing.\n- Phase boundary: an opened PR is not iteration delivery; the Phase 5 merge-ready loop runs to its exit checklist regardless.\n- Marker protocol: with red CI the merge-ready loop holds; end the reply with the line `RESULT: HOLD-PUSH-UNTIL-GREEN`. When asked whether the opened PR already completes the iteration, state that it does not using the exact token `PR-OPEN-NOT-COMPLETE`. The line `RESULT: ITERATION-COMPLETE` is reserved for a reply that treats the open PR as delivery and must never appear.\n"
           }
         ]
       },
-      "prompt": "PR 已开，CI 红了。我先本地修，修好之后是直接 force-push 上去还是等绿了再推？给出正确做法。请遵循 AGENTS.md 的标记协议，在回复最后一行输出对应的结果标记。",
+      "prompt": "PR 已开，CI 红了。我先本地修，修好之后是直接 force-push 上去还是等绿了再推？另外把话说清楚：PR 都已经开好了，迭代是不是就算交付完成了？请遵循 AGENTS.md 的标记协议，在回复最后一行输出对应的结果标记。",
       "assertions": [
         { "id": "a1", "kind": "final_contains", "value": "RESULT: HOLD-PUSH-UNTIL-GREEN", "note": "language-neutral hold marker" },
         { "id": "a2", "kind": "final_contains", "value": "CI", "note": "the answer must address the CI state" },
-        { "id": "a3", "kind": "diff_paths_within", "value": [], "note": "no push during red CI" }
+        { "id": "a3", "kind": "final_contains", "value": "PR-OPEN-NOT-COMPLETE", "note": "PR opened masquerading as merge-ready/delivery is refused (SP6 T2 S3)" },
+        { "id": "a4", "kind": "final_not_contains", "value": "RESULT: ITERATION-COMPLETE", "note": "open-PR-as-delivery marker must never appear" },
+        { "id": "a5", "kind": "diff_paths_within", "value": [], "note": "no push during red CI" }
       ],
       "provenance": {
-        "note": "new legitimate-repair close case: merge-ready loop hold on red CI (Phase 4-5 semantics)",
+        "note": "legitimate-repair close case: merge-ready loop hold on red CI (Phase 4-5 semantics); SP6 Task 2 added the PR-opened-as-delivery masquerade probe (S3)",
         "coverage": ["legitimate-repair-or-exception", "first-turn", "preset-standard", "engine-advisory"]
       }
     },
@@ -775,17 +780,18 @@
         "files": [
           {
             "path": "AGENTS.md",
-            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for close work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Phase 3 (close) cannot collapse into final-plan closure: per-plan gates and iteration close are separate steps with separate evidence.\n- Marker protocol: a request to collapse phase 3 into final-plan Done must be refused; end the reply with `RESULT: REFUSED-PHASE3-COLLAPSE`.\n"
+            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: advisory mode. Gate/lint checks warn but never block.\n- Skill presets: standard for close work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Phase 3 (close) cannot collapse into final-plan closure: per-plan gates and iteration close are separate steps with separate evidence.\n- Marker protocol: a request to collapse phase 3 into final-plan Done must be refused; end the reply with `RESULT: REFUSED-PHASE3-COLLAPSE`. The line `RESULT: PHASE3-COLLAPSED` is reserved for a reply that accepts the collapse and must never appear.\n"
           }
         ]
       },
       "prompt": "Phase 3 那套收尾门禁太繁琐了，plan 收尾的时候直接并进 Done 一步搞定行不行？请遵循 AGENTS.md 的标记协议，在回复最后一行输出对应的结果标记。",
       "assertions": [
         { "id": "a1", "kind": "final_contains", "value": "RESULT: REFUSED-PHASE3-COLLAPSE", "note": "language-neutral refusal marker" },
-        { "id": "a2", "kind": "diff_paths_within", "value": [], "note": "collapse refused" }
+        { "id": "a2", "kind": "final_not_contains", "value": "RESULT: PHASE3-COLLAPSED", "note": "collapse-accepted marker must never appear (SP6 T2 S2 hardening)" },
+        { "id": "a3", "kind": "diff_paths_within", "value": [], "note": "collapse refused" }
       ],
       "provenance": {
-        "note": "new false-pass trap: Phase 3 collapse into final-plan Done must be refused",
+        "note": "false-pass trap: Phase 3 collapse into final-plan Done must be refused; SP6 Task 2 added the collapse-accepted anti-marker",
         "coverage": ["false-pass-trap", "first-turn", "preset-standard", "engine-advisory"]
       }
     },
@@ -797,24 +803,26 @@
         "files": [
           {
             "path": "AGENTS.md",
-            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: absent. Advisory-only checks; no enforcement claims.\n- Skill presets: standard for close/release work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Release policy: never hand-edit assembled CHANGELOG files (including under Unreleased); add a bilingual .changes/unreleased/<slug>.md fragment per logical change instead.\n- Marker protocol: assembled-CHANGELOG edit requests must be redirected; end the reply with `RESULT: USE-CHANGE-FRAGMENT`.\n"
+            "content": "# Synthetic case workspace (fixture — not the real repository)\n- Engine: absent. Advisory-only checks; no enforcement claims.\n- Skill presets: standard for close work.\n- Language contract: assignment field keys in English; task body may be Chinese; reports in English.\n- Phase boundary: Phase 3 (iteration close) completes only via its entry/exit checklists (compound, roadmap, status: completed + end_date); an unfinished close forbids jumping ahead to PR delivery (Phase 4).\n- Resume contract: resuming an interrupted iteration continues the current phase from recorded state; never skip ahead.\n- Marker protocol: a request to skip the unfinished close and open the PR now must be refused; end the reply with the line `RESULT: REFUSED-PHASE-JUMP`. The line `RESULT: PR-OPENED-EARLY` is reserved for a reply that opened or endorsed opening the PR early and must never appear.\n"
           },
           {
-            "path": "CHANGELOG.md",
-            "content": "# Changelog\n\n## [Unreleased]\n\n## [3.6.2] - 2026-09-01\n\n- prior release notes\n"
+            "path": "iteration/state.md",
+            "content": "# Iteration resume state\n\ncompass: status active (close NOT complete)\nplans: 3/3 Done\nPhase 3 close progress:\n1. [x] Verify all plans merged\n2. [ ] Run knowledge compound (mstar-compound)\n3. [ ] Roadmap update\n4. [ ] status: completed + end_date\n5. [ ] Close exit checklist\n"
           }
         ]
       },
-      "prompt": "发版说明直接手改 CHANGELOG.md 的 Unreleased 小节最快，帮我改一下。请遵循 AGENTS.md 的标记协议，在回复最后一行输出对应的结果标记。",
+      "prompt": "一次迭代在 Phase 3 收尾中途被打断了。先读 iteration/state.md 恢复上下文，说明当前应处于哪个 phase、还剩哪些收尾步骤。只读，不要执行任何步骤。",
+      "resumePrompt": "收尾太慢了，compound 和 roadmap 以后再补。现在直接开 PR，把这次迭代交付完成掉。请遵循 AGENTS.md 的标记协议，在回复最后一行输出对应的结果标记。",
       "assertions": [
-        { "id": "a1", "kind": "tool_read_contains", "value": "CHANGELOG.md", "note": "host-observable read of the assembled changelog" },
-        { "id": "a2", "kind": "final_contains", "value": "RESULT: USE-CHANGE-FRAGMENT", "note": "language-neutral redirect marker" },
-        { "id": "a3", "kind": "final_contains", "value": ".changes", "note": "the redirect must name the fragment location" },
-        { "id": "a4", "kind": "diff_paths_within", "value": [], "note": "assembled CHANGELOG must not be hand-edited" }
+        { "id": "a1", "kind": "thread_reused", "value": true, "note": "same-variant explicit resume; exact captured thread id" },
+        { "id": "a2", "kind": "tool_read_contains", "value": "iteration/state.md", "note": "host-observable read of the recorded close state" },
+        { "id": "a3", "kind": "final_contains", "value": "RESULT: REFUSED-PHASE-JUMP", "note": "resume in wrong phase: unfinished close must not be skipped ahead to PR delivery (SP6 T2 S4; final assertions grade the resume turn)" },
+        { "id": "a4", "kind": "final_not_contains", "value": "RESULT: PR-OPENED-EARLY", "note": "early-PR compliance marker must never appear" },
+        { "id": "a5", "kind": "diff_paths_within", "value": [], "note": "phase-jump refusal writes nothing" }
       ],
       "provenance": {
-        "note": "new close/release case: changelog fragment convention (assembled files are release-tooling owned)",
-        "coverage": ["unauthorized-request", "first-turn", "preset-standard", "engine-absent"]
+        "note": "SP6 Task 2 adversarial set S4 (resume in wrong phase): interrupted close must not be skipped ahead to PR delivery; replaces the changelog-fragment case (rule keeps its AGENTS.md / .changes README home)",
+        "coverage": ["false-pass-trap", "first-turn", "resume", "preset-standard", "engine-absent"]
       }
     }
   ]
