@@ -32,10 +32,12 @@
  */
 import { describe, expect, it, afterEach } from 'bun:test'
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
+import type { ValidationResult } from '@mstar-harness/engine'
 import type { FsTarget } from '@deepseek-ai/dsh-fs'
 import * as plugin from '../src/index.ts'
 import { lintSkillDoc, lintSkillWrite, SkillLintVetoError, type SkillLintAdvisory } from '../src/index.ts'
@@ -245,6 +247,125 @@ describe('lintSkillDoc — ephemeral citation wiring (plan 20260816-dsh-surface-
       const gate = lintSkillDoc(doc)
       expect(gate.violations.filter((v) => v.code.startsWith('skill.ephemeral.'))).toEqual([])
     }
+  })
+})
+
+describe('lintSkillDoc — classified profile, canonical fixture corpus (spec A4, plan 20260907-skill-lint-parity Task 2)', () => {
+  /** The canonical fixture table produced by plan Task 1 — the SAME rows the
+   * CLI suite (packages/cli/test/skill-lint-cli.test.ts) and the Guard5
+   * suite (scripts/drift-lint.test.ts) consume, so per-row assertions here
+   * prove cross-consumer decision equivalence with the fixture as pivot. */
+  type FixtureRow = {
+    id: string
+    skillId: string | null
+    doc: string
+    expectedKind: 'core' | 'runtime' | 'authoring'
+    expectedMode: 'runtime' | 'authoring' | null
+    expectedFiveQuestionCodes: string[] | null
+    expectedFrontmatterCodes: string[]
+  }
+  const FIXTURES = JSON.parse(
+    readFileSync(
+      fileURLToPath(new URL('../../engine/test/fixtures/skill-lint-profiles.json', import.meta.url)),
+      'utf8',
+    ),
+  ) as { schemaVersion: number; rows: FixtureRow[] }
+
+  const fiveQ = (gate: { violations: ValidationResult[] }) =>
+    gate.violations.map((v) => v.code).filter((c) => c.startsWith('skill-authoring.five-question.'))
+  const frontmatter = (gate: { violations: ValidationResult[] }) =>
+    gate.violations.map((v) => v.code).filter((c) => c.startsWith('lint.frontmatter.'))
+
+  it('every fixture row yields the canonical five-question + frontmatter decision for its skillId', () => {
+    for (const row of FIXTURES.rows) {
+      const gate = lintSkillDoc(row.doc, { skillId: row.skillId ?? undefined })
+      // Five-question decision: classified mode — core row (mode null)
+      // yields NO codes (check skipped); others exact-code equality.
+      expect(fiveQ(gate)).toEqual(row.expectedFiveQuestionCodes ?? [])
+      // Frontmatter stays active in every profile, exact codes.
+      expect(frontmatter(gate)).toEqual(row.expectedFrontmatterCodes)
+      // Ephemeral stays wired and clean on the fixture corpus.
+      expect(gate.violations.filter((v) => v.code.startsWith('skill.ephemeral.'))).toEqual([])
+    }
+  })
+
+  it('core row skip is the exemption at work: the same body fails under a non-mstar identity (contrast)', () => {
+    const core = FIXTURES.rows.find((r) => r.id === 'core-exempt-frontmatter-stays')!
+    const contrast = lintSkillDoc(core.doc, { skillId: 'third-party-contrast' })
+    expect(fiveQ(contrast).length).toBeGreaterThan(0)
+    expect(lintSkillDoc(core.doc, { skillId: 'mstar-harness-core' }).violations.filter((v) =>
+      v.code.startsWith('skill-authoring.five-question.'),
+    )).toEqual([])
+  })
+
+  it('doc-only calls stay strict authoring (no skillId = never loosened)', () => {
+    for (const row of FIXTURES.rows) {
+      const docOnly = lintSkillDoc(row.doc)
+      expect(docOnly).toEqual(lintSkillDoc(row.doc, { skillId: undefined }))
+    }
+    // The alias-body runtime row passes ONLY under its runtime identity —
+    // doc-only it fails strict with the uncovered-question codes (the
+    // classify-then-lint-with-classified-mode seam, exercised consumer-side).
+    const aliasRow = FIXTURES.rows.find((r) => r.id === 'runtime-alias-pass')!
+    const docOnly = lintSkillDoc(aliasRow.doc)
+    expect(docOnly.ok).toBe(false)
+    expect(fiveQ(docOnly)).toEqual([
+      'skill-authoring.five-question.workflow',
+      'skill-authoring.five-question.decision-rules',
+      'skill-authoring.five-question.evidence',
+      'skill-authoring.five-question.references',
+    ])
+    expect(lintSkillDoc(aliasRow.doc, { skillId: aliasRow.skillId! }).violations).toEqual([])
+  })
+
+  it('lintSkillWrite derives the profile from the trusted resolved target basename', () => {
+    const aliasRow = FIXTURES.rows.find((r) => r.id === 'runtime-alias-pass')!
+    // Incoming valid doc under a runtime target: hard mode passes (no veto).
+    expect(
+      lintSkillWrite(aliasRow.doc, { target: '/skills/mstar-alias-body/SKILL.md', hard: true }).ok,
+    ).toBe(true)
+    // Same doc against an authoring-named target stays strict: hard veto.
+    expect(() => lintSkillWrite(aliasRow.doc, { target: '/s/SKILL.md', hard: true })).toThrow(
+      SkillLintVetoError,
+    )
+  })
+
+  it('blind slot lints with the classified mode: runtime alias body on disk is a silent pass (warn mode)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-mstar-skilllint-'))
+    booted = await bootApp({ skillRoots: [root] })
+    const aliasRow = FIXTURES.rows.find((r) => r.id === 'runtime-alias-pass')!
+    await seedSkill(root, 'mstar-alias-body', aliasRow.doc)
+    const advisories = captureAdvisories(booted.ctx)
+
+    const intent = await booted.ctx.waterfall('fs/write-intent', skillTarget(root, 'mstar-alias-body'), {}, () => undefined)
+
+    // Pre-classification this doc failed authoring strict and warned; with
+    // the classified runtime profile it is clean — silent pass.
+    expect(intent).toBeUndefined()
+    expect(advisories).toHaveLength(0)
+  })
+
+  it('content-blind hard intent keeps the repair escape on a classified-runtime doc (no fake incoming validation)', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-mstar-skilllint-'))
+    booted = await bootApp({ enforcement: 'hard', skillRoots: [root] })
+    // Runtime identity whose body fails even in runtime mode (Workflow only
+    // inside a code fence) — the fence row, classified runtime.
+    const fenceRow = FIXTURES.rows.find((r) => r.id === 'fence-only-headings-fail')!
+    await seedSkill(root, 'mstar-fence-skill', fenceRow.doc)
+    const advisories = captureAdvisories(booted.ctx)
+
+    const intent = await booted.ctx.waterfall('fs/write-intent', skillTarget(root, 'mstar-fence-skill'), {}, () => undefined)
+
+    // Repair escape retained: the intent carries no incoming content, so the
+    // gate never pretends to validate it — the ALREADY-invalid doc allows
+    // the write as a repair with a loud advisory.
+    expect(intent).toBeUndefined()
+    expect(advisories).toHaveLength(1)
+    expect(advisories[0]!.hard).toBe(true)
+    expect(advisories[0]!.repair).toBe(true)
+    expect(advisories[0]!.result.violations.map((v) => v.code)).toContain(
+      'skill-authoring.five-question.workflow',
+    )
   })
 })
 

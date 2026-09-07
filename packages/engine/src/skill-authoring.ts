@@ -91,6 +91,40 @@ function collectHeadings(bodyText: string): string[] {
  * — shipped `mstar-*` topic skills). */
 export type FiveQuestionMode = "authoring" | "runtime";
 
+/** Skill-lint profile kind (spec A4): `core` = the `mstar-harness-core` hub
+ * (five-question exempt), `runtime` = shipped `mstar-*` topic skills, and
+ * `authoring` = the standard plus every non-`mstar-*`/unknown input. */
+export type SkillLintKind = "core" | "runtime" | "authoring";
+
+/** Classification result: the profile kind plus the five-question mode to
+ * apply — `null` mode means the five-question check is skipped entirely
+ * (core exemption only; every other check stays active). */
+export type SkillLintProfile = { kind: SkillLintKind; mode: FiveQuestionMode | null };
+
+/**
+ * One lint-classification policy (spec A4, plan 20260907-skill-lint-parity
+ * Task 1): the single profile SSOT the CLI, dsh and drift Guard 5 consume.
+ * Semantics preserve the CLI `skill lint` selection verbatim:
+ * - exact `mstar-harness-core` → `core` / `null` (five-question exempt by
+ *   design — hub headings; frontmatter + ephemeral checks still run);
+ * - exact `mstar-skill-authoring` → `authoring` (the standard's own
+ *   definition stays strict despite the `mstar-` prefix);
+ * - any other `mstar-*` → `runtime` (locked alias table applies);
+ * - unknown / non-`mstar-*` / missing identity → `authoring` (strict
+ *   default — greenfield inputs are never loosened).
+ * The `skillId` is the resolved target directory basename at the CLI and
+ * dsh configured skill-root boundaries — never an arbitrary YAML `name`
+ * alone (a misleading frontmatter name must not select a looser profile).
+ * These are lint profiles only: not authorization, not trusted origin.
+ */
+export function classifySkillLint(skillId: string | undefined): SkillLintProfile {
+  const id = skillId ?? "";
+  if (id === "mstar-harness-core") return { kind: "core", mode: null };
+  if (id === "mstar-skill-authoring") return { kind: "authoring", mode: "authoring" };
+  if (id.startsWith("mstar-")) return { kind: "runtime", mode: "runtime" };
+  return { kind: "authoring", mode: "authoring" };
+}
+
 /**
  * Locked runtime alias table (plan 20260816-audit-001-five-question-runtime-
  * alignment, Step 2): heading synonyms that answer the same question for

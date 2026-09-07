@@ -329,8 +329,9 @@ export {
 } from "./roles.js";
 export type { DetectResult, HostAdapter, HostId, SkillRootPaths, ToolSignal } from "./host.js";
 export { detectHost, resolveSkillRoot } from "./host.js";
-export type { FiveQuestionMode, FiveQuestionSection } from "./skill-authoring.js";
+export type { FiveQuestionMode, FiveQuestionSection, SkillLintKind, SkillLintProfile } from "./skill-authoring.js";
 export {
+  classifySkillLint,
   FIVE_QUESTION_SECTIONS,
   RUNTIME_HEADING_ALIASES,
   lintFiveQuestion,

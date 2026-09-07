@@ -27,12 +27,15 @@
  *      must resolve against the on-disk `references/<role>.md` layout
  *      (engine `validateRoleMapping` on `skills/mstar-roles`).
  *   5. skills corpus — five-question runtime smoke (plan
- *      20260816-audit-001-five-question-lint Task 2, audit finding 5):
- *      every shipped runtime `skills/mstar-*` SKILL.md (excluding
- *      `mstar-harness-core` and `mstar-skill-authoring`) must pass engine
- *      `lintFiveQuestion` in runtime mode, so the corpus cannot drift out
- *      of five-question alignment without failing CI. Guard numbers are
- *      per-plan locked, not positional.
+ *      20260816-audit-001-five-question-lint Task 2, audit finding 5;
+ *      classifier wiring per plan 20260907-skill-lint-parity Task 2):
+ *      every shipped `skills/mstar-*` SKILL.md selected as `runtime` by the
+ *      shared Engine classifier (`classifySkillLint`; the
+ *      `mstar-harness-core` hub and the standard-bearing
+ *      `mstar-skill-authoring` are not runtime corpus) must pass engine
+ *      `lintFiveQuestion` in its classified runtime mode, so the corpus
+ *      cannot drift out of five-question alignment without failing CI.
+ *      Guard numbers are per-plan locked, not positional.
  *   6. skills corpus — Engine-check callout dedup (plan
  *      20260822-skill-pointer-hygiene Task 2): the same normalized
  *      `**Engine check (when available):**` callout body must not appear
@@ -62,6 +65,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import {
   AUDIT_CATEGORIES,
+  classifySkillLint,
   findEphemeralCitations,
   lintFiveQuestion,
   lintLoadOrder,
@@ -350,32 +354,31 @@ export function readRolesCorpus(
 /* Guard 5 helpers: five-question runtime corpus smoke                 */
 /* ------------------------------------------------------------------ */
 
-/** Skills exempt from the five-question runtime corpus smoke (mirrors the
- * engine corpus test and the CLI's mode selection): `mstar-harness-core`
- * is exempt by design (hub headings), `mstar-skill-authoring` is the
- * standard's own definition and always lints in authoring/strict mode. */
-export const FIVE_QUESTION_CORPUS_EXEMPT: Record<string, true> = {
-  "mstar-harness-core": true,
-  "mstar-skill-authoring": true,
-};
-
-/** Guard 5 result: runtime skills checked (minus the exempt pair) plus
- * one failure row per uncovered question. */
+/** Guard 5 result: runtime skills checked (classifier-selected runtime
+ * profiles) plus one failure row per uncovered question. */
 export type FiveQuestionCorpusResult = { checked: number; failures: string[] };
 
 /** Guard 5 — five-question runtime smoke over the shipped `mstar-*`
- * corpus: every `skills/mstar-*` SKILL.md (excluding the exempt pair)
- * must pass `lintFiveQuestion` in runtime mode. Load-bearing: deleting a
- * Step-3 aligned heading or losing runtime alias coverage fails
- * drift-lint (regression-pinned by scripts/drift-lint.test.ts). */
+ * corpus: the shared Engine classifier (spec A4, `classifySkillLint` on the
+ * resolved skill-directory basename) selects the runtime corpus — the
+ * `mstar-harness-core` hub is five-question-exempt by design and the
+ * standard-bearing `mstar-skill-authoring` stays in its own strict
+ * authoring suite — and each selected skill must pass `lintFiveQuestion`
+ * in its classified runtime mode. No local exempt-name set is forked here.
+ * Load-bearing: deleting a Step-3 aligned heading or losing runtime alias
+ * coverage fails drift-lint (regression-pinned by scripts/drift-lint.test.ts). */
 export function checkFiveQuestionCorpus(files: Array<{ rel: string; text: string }>): FiveQuestionCorpusResult {
   const failures: string[] = [];
   let checked = 0;
   for (const { rel, text } of files) {
     const m = rel.match(/^skills\/(mstar-[\w-]+)\/SKILL\.md$/);
-    if (!m || FIVE_QUESTION_CORPUS_EXEMPT[m[1]]) continue;
+    if (!m) continue;
+    const profile = classifySkillLint(m[1]);
+    // Runtime-corpus scope only: mode null = core exemption; authoring = the
+    // standard's own suite. (`mode !== "runtime"` covers both by policy.)
+    if (profile.mode !== "runtime") continue;
     checked++;
-    const result = lintFiveQuestion(stripFrontmatter(text), "runtime");
+    const result = lintFiveQuestion(stripFrontmatter(text), profile.mode);
     for (const v of result.violations) {
       failures.push(`${rel}: five-question runtime smoke ${v.code} - ${v.message}`);
     }
