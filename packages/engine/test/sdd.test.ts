@@ -1273,12 +1273,15 @@ describe("resolveSddExecutionContext sddDir escape classification (task-1 review
     const root = tmpRoot("sdd-esc-out-");
     try {
       const f = executionFixture(root);
-      // Replace the sdd tree with a symlink routing OUTSIDE the harness.
-      rmSync(f.sddDir, { recursive: true, force: true });
+      // A DIFFERENT sddDir that routes outside the harness through a symlink:
+      // divergent from the composition AND physically escaping it is the
+      // environmental escape (exit 1). (A declaration whose canonical form
+      // EQUALS the composition is valid — see the canonical-equality tests.)
       const outside = join(root, "outside-sdd", PLAN_ID);
       mkdirSync(outside, { recursive: true });
-      symlinkSync(outside, f.sddDir);
-      const err = errOf(() => resolveSddExecutionContext(contextOf(f)));
+      const alias = join(f.harnessDir, "sdd", "escape-plan");
+      symlinkSync(outside, alias);
+      const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), sddDir: alias }));
       // Environmental escape — exit 1, not the exit-2 usage mismatch.
       expect(err.exitCode).toBe(1);
       expect(err.message).toContain("sdd.context.sdd-dir-escape");
@@ -1301,6 +1304,43 @@ describe("resolveSddExecutionContext sddDir escape classification (task-1 review
       const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), sddDir: alias }));
       expect(err.exitCode).toBe(2);
       expect(err.message).toMatch(/does not match plan/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a symlinked sdd base whose canonical form equals the composition is valid (canonical comparison on both sides)", () => {
+    const root = tmpRoot("sdd-esc-canonical-eq-");
+    try {
+      const f = executionFixture(root);
+      // The repo declares its sdd base through a symlink while the context
+      // carries the physical path: equivalent destinations in different
+      // string forms must resolve, not misclassify as a composition mismatch.
+      const realBase = join(f.harnessDir, "real-sdd");
+      mkdirSync(join(realBase, PLAN_ID), { recursive: true });
+      symlinkSync(realBase, join(f.harnessDir, "sdd-link"));
+      writeFileSync(join(f.control, ".mstarc"), `[config]\nsdd_dir=${join(".mstar", "sdd-link")}\n`);
+      const resolved = resolveSddExecutionContext({ ...contextOf(f), sddDir: join(realBase, PLAN_ID) });
+      expect(resolved.sddDir).toBe(realpathSync(join(realBase, PLAN_ID)));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a `.mstarc` sdd base composed outside the harness honors the matching declaration (canonical equality is valid)", () => {
+    const root = tmpRoot("sdd-esc-out-composed-");
+    try {
+      const f = executionFixture(root);
+      // The repo's own path SSOT composes an sdd base that physically lands
+      // outside the harness (symlinked declaration); the engine honors a
+      // context whose sddDir canonicalizes to that composition instead of
+      // refusing it as a symlink escape — resolveSddDir is authoritative.
+      const outside = join(root, "outside-sdd");
+      mkdirSync(join(outside, PLAN_ID), { recursive: true });
+      symlinkSync(outside, join(f.harnessDir, "outside-link"));
+      writeFileSync(join(f.control, ".mstarc"), `[config]\nsdd_dir=${join(".mstar", "outside-link")}\n`);
+      const resolved = resolveSddExecutionContext({ ...contextOf(f), sddDir: join(outside, PLAN_ID) });
+      expect(resolved.sddDir).toBe(realpathSync(join(outside, PLAN_ID)));
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

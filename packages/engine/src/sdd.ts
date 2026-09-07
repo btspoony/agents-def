@@ -808,17 +808,20 @@ function findWorkflowPlanRow(controlHarnessRoot: string, planId: string): Workfl
  * - `planFile` identity (basename stem = `planId`) + placement via
  *   `assertPlanWritingPath` (inside `{PLAN_DIR}` of the control harness,
  *   symlink escape checked against the canonical path);
- * - `sddDir` equals `resolveSddDir(controlHarnessRoot, planId)` (the path
- *   SSOT composition, `.mstarc` overrides included). Composition equality
- *   subsumes the escape case — a declared sddDir cannot equal the
- *   composition and escape at the same time — so divergence is classified at
- *   one decision point: divergence because the declared path physically
- *   canonicalizes OUTSIDE the control harness (symlinked sdd segment routing
- *   out) is environmental → `sdd.context.sdd-dir-escape` gate fail (exit 1);
- *   any other divergence (wrong declaration) is usage (exit 2). A context
- *   matching a `.mstarc`-declared sdd base is honored wherever the repo's
- *   own path SSOT composes it — the engine never second-guesses a
- *   composition it would itself produce (`resolveSddDir` is authoritative);
+ * - `sddDir` canonicalizes (nearest existing ancestor on BOTH sides) to the
+ *   same path as `resolveSddDir(controlHarnessRoot, planId)` — the path
+ *   SSOT composition, `.mstarc` overrides included; equivalent string forms
+ *   of one physical destination are valid. Composition equality on the
+ *   canonical pair subsumes the escape case — a declared sddDir cannot
+ *   equal the canonical composition and escape at the same time — so
+ *   divergence is classified at one decision point: divergence because the
+ *   declared path physically canonicalizes OUTSIDE the control harness
+ *   (symlinked sdd segment routing out) is environmental →
+ *   `sdd.context.sdd-dir-escape` gate fail (exit 1); any other divergence
+ *   (wrong declaration) is usage (exit 2). A context matching a
+ *   `.mstarc`-declared sdd base is honored wherever the repo's own path
+ *   SSOT composes it — the engine never second-guesses a composition it
+ *   would itself produce (`resolveSddDir` is authoritative);
  * - `featureCwd` exists and never nests with the control checkout
  *   (`featureCwd` inside the control checkout, or the control harness
  *   inside the feature checkout, are both refused — L1 hard rules);
@@ -897,16 +900,21 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
   }
 
   // sddDir identity vs the path-SSOT composition, classified at one
-  // decision point (task-1 review Minor 1 — the former standalone escape
-  // check was dead: composition equality subsumes escape, so an escaping
-  // declaration could only ever surface as the exit-2 mismatch). Now:
-  // divergence + physical canonicalization outside the control harness =
-  // environmental symlink escape (gate fail, exit 1, same classification as
-  // the planFile symlink escape); any other divergence = wrong declaration
-  // (usage, exit 2).
+  // decision point over the CANONICAL pair: both sides are canonicalized
+  // through their nearest existing ancestor, so equivalent destinations
+  // with different string forms (a `.mstarc` sdd base reached through a
+  // symlink, realpath divergence) compare equal and stay valid. On
+  // divergence: a declared path that physically canonicalizes OUTSIDE the
+  // control harness (symlinked sdd segment routing out) is environmental →
+  // `sdd.context.sdd-dir-escape` gate fail (exit 1); any other divergence
+  // (wrong declaration) is usage (exit 2). A context matching a
+  // `.mstarc`-declared sdd base is honored wherever the repo's own path
+  // SSOT composes it — the engine never second-guesses a composition it
+  // would itself produce (`resolveSddDir` is authoritative).
   const composedSddDir = resolveSddDir(canonicalControlHarnessRoot, planId);
+  const canonicalComposedSddDir = canonicalizeNearestExisting(composedSddDir);
   const canonicalSddDir = canonicalizeNearestExisting(input.sddDir);
-  if (canonicalSddDir !== composedSddDir) {
+  if (canonicalSddDir !== canonicalComposedSddDir) {
     if (!isInside(canonicalSddDir, canonicalControlHarnessRoot)) {
       throwGateFail([
         contextViolation(
@@ -956,8 +964,9 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
   }
 
   // (The sddDir escape classification ran with the composition check above;
-  // from here `canonicalSddDir === composedSddDir` — a composition produced
-  // from the canonical control harness root, so no separate escape check.)
+  // from here `canonicalSddDir === canonicalComposedSddDir` — the canonical
+  // form of the composition produced from the canonical control harness
+  // root, so no separate escape check.)
 
   // Branch/lease policy: verified lease when an active workflow supplies one,
   // standalone branch alignment otherwise (spec A3 — no new global lease mandate).
