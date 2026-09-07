@@ -668,29 +668,83 @@ function throwUsage(message: string): never {
 }
 
 /**
- * Find the plan row for `planId` across the control harness's workflow
- * snapshots (`{WORKFLOW_DIR}/<id>/snapshot.json`, v3 SSOT — same probe shape
- * as `probeHarnessWithStatus`). Unreadable/malformed snapshots are skipped
- * (consistent with `hasWorkflowSnapshot`): an unreadable snapshot cannot
- * establish an active workflow, so the standalone branch policy applies.
- * Read-only; `null` when no snapshot mentions the plan.
+ * Outcome of the workflow plan-row lookup: the governing row from the single
+ * registered active workflow holding the plan (`row`), no active workflow at
+ * all (`none` — standalone branch policy applies), or the plan claimed by
+ * more than one registered active workflow (`ambiguous` — fail-closed).
  */
-function findWorkflowPlanRow(controlHarnessRoot: string, planId: string): Record<string, unknown> | null {
+type WorkflowPlanRowMatch =
+  | { kind: "none" }
+  | { kind: "row"; workflowId: string; row: Record<string, unknown> }
+  | { kind: "ambiguous"; workflowIds: string[] };
+
+/**
+ * Registered active workflow ids from the v2 root `status.json`
+ * (`{HARNESS_DIR}/status.json` — the same harness root the snapshots live
+ * under). The `workflows[]` list holds ACTIVE lifecycles only
+ * (removal-at-terminal), so it is the register that decides which retained
+ * snapshot is live. Returns `null` when no v2 register is present or
+ * readable (missing file, malformed JSON, non-v2 document, missing
+ * `workflows[]`) — the caller then keeps the legacy first-match behavior.
+ * Read-only.
+ */
+function readActiveWorkflowIds(controlHarnessRoot: string): Set<string> | null {
+  const statusPath = join(controlHarnessRoot, "status.json");
+  if (!isFile(statusPath)) return null;
+  let doc: unknown;
+  try {
+    doc = readJson(statusPath);
+  } catch {
+    return null;
+  }
+  if (!isPlainObject(doc) || doc.version !== 2 || !Array.isArray(doc.workflows)) return null;
+  const ids = new Set<string>();
+  for (const entry of doc.workflows) {
+    if (isPlainObject(entry) && typeof entry.id === "string") ids.add(entry.id);
+  }
+  return ids;
+}
+
+/**
+ * Find the GOVERNING plan row for `planId` across the control harness's
+ * workflow snapshots (`{WORKFLOW_DIR}/<id>/snapshot.json`, v3 SSOT — same
+ * probe shape as `probeHarnessWithStatus`), resolved against the v2 root
+ * workflow register:
+ *
+ * - a snapshot whose workflow id is registered active in
+ *   `status.json` `workflows[]` wins over retained terminal snapshots —
+ *   filesystem scan order never lets a completed lifecycle shadow a live
+ *   one;
+ * - the plan appearing in MORE THAN ONE registered active workflow is
+ *   ambiguous — returned as `kind: "ambiguous"` so the caller fails closed
+ *   instead of silently picking one;
+ * - a match ONLY in snapshots that are not registered active (retained
+ *   terminal lifecycles) is `kind: "none"` — a terminal snapshot must never
+ *   satisfy lease enforcement;
+ * - without a v2 register the legacy behavior is unchanged: the first
+ *   snapshot mentioning the plan wins.
+ *
+ * Unreadable/malformed snapshots are skipped (consistent with
+ * `hasWorkflowSnapshot`): an unreadable snapshot cannot establish an active
+ * workflow. Read-only.
+ */
+function findWorkflowPlanRow(controlHarnessRoot: string, planId: string): WorkflowPlanRowMatch {
   let workflowsDir: string;
   try {
     workflowsDir = resolveWorkflowDir(controlHarnessRoot, { harnessDir: controlHarnessRoot });
   } catch {
-    return null;
+    return { kind: "none" };
   }
-  if (!isDirectory(workflowsDir)) return null;
+  if (!isDirectory(workflowsDir)) return { kind: "none" };
   let workflowIds: string[];
   try {
     workflowIds = readdirSync(workflowsDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name);
   } catch {
-    return null;
+    return { kind: "none" };
   }
+  const matches: { workflowId: string; row: Record<string, unknown> }[] = [];
   for (const id of workflowIds) {
     const snapshotPath = join(workflowsDir, id, WORKFLOW_SNAPSHOT_FILE);
     if (!isFile(snapshotPath)) continue;
@@ -703,10 +757,23 @@ function findWorkflowPlanRow(controlHarnessRoot: string, planId: string): Record
     const plans = doc.plans;
     if (!Array.isArray(plans)) continue;
     for (const row of plans) {
-      if (isPlainObject(row) && (row.id === planId || row.plan_id === planId)) return row;
+      if (isPlainObject(row) && (row.id === planId || row.plan_id === planId)) {
+        matches.push({ workflowId: id, row });
+        break; // one row per snapshot is enough for the register comparison
+      }
     }
   }
-  return null;
+  if (matches.length === 0) return { kind: "none" };
+  const registeredActive = readActiveWorkflowIds(controlHarnessRoot);
+  if (registeredActive === null) {
+    return { kind: "row", workflowId: matches[0]!.workflowId, row: matches[0]!.row };
+  }
+  const active = matches.filter((m) => registeredActive.has(m.workflowId));
+  if (active.length === 0) return { kind: "none" }; // only unregistered (terminal) snapshots mention the plan
+  if (active.length > 1) {
+    return { kind: "ambiguous", workflowIds: active.map((m) => m.workflowId) };
+  }
+  return { kind: "row", workflowId: active[0]!.workflowId, row: active[0]!.row };
 }
 
 /**
@@ -736,7 +803,10 @@ function findWorkflowPlanRow(controlHarnessRoot: string, planId: string): Record
  *   (`featureCwd` inside the control checkout, or the control harness
  *   inside the feature checkout, are both refused — L1 hard rules);
  * - branch/lease: when the control harness's workflow snapshots supply a
- *   plan row, its lease is verified (`verifyPlanExecutionLease`) and the
+ *   plan row from a REGISTERED ACTIVE workflow (v2 root `status.json`
+ *   `workflows[]`; a retained terminal snapshot never satisfies lease
+ *   enforcement, and a plan claimed by multiple active workflows fails
+ *   closed), its lease is verified (`verifyPlanExecutionLease`) and the
  *   L1 checklist runs (`l1PreDispatchCheck` with the control checkout);
  *   the context must then match the verified lease exactly. Without an
  *   active lease (no row, or a non-InProgress row without lease), the
@@ -871,7 +941,20 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
 
   // Branch/lease policy: verified lease when an active workflow supplies one,
   // standalone branch alignment otherwise (spec A3 — no new global lease mandate).
-  const row = findWorkflowPlanRow(canonicalControlHarnessRoot, planId);
+  const match = findWorkflowPlanRow(canonicalControlHarnessRoot, planId);
+  if (match.kind === "ambiguous") {
+    // Fail-closed: more than one registered active workflow claims this plan
+    // — the governing lease is undecidable, never a silent standalone fallback.
+    throwGateFail([
+      contextViolation(
+        "high",
+        "sdd.context.workflow-plan-ambiguous",
+        `plan "${planId}" appears in multiple registered active workflows (${match.workflowIds.join(", ")}) — ` +
+          "the governing execution_lease is undecidable; resolve the duplicate registration before dispatch",
+      ),
+    ]);
+  }
+  const row = match.kind === "row" ? match.row : null;
   if (row !== null && row.execution_lease !== undefined) {
     const leaseVerify = verifyPlanExecutionLease(row, planId);
     if (!leaseVerify.ok) throwGateFail(leaseVerify.violations);

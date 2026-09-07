@@ -813,6 +813,22 @@ function writeSnapshot(f: ExecutionFixture, workflowId: string, plans: unknown[]
   writeFileSync(join(dir, "snapshot.json"), JSON.stringify({ schema_version: 1, plans }));
 }
 
+/**
+ * Write the v2 root `status.json` register listing the given workflow ids as
+ * ACTIVE lifecycles (removal-at-terminal: the register holds the live set).
+ */
+function writeStatusRegister(f: ExecutionFixture, workflowIds: string[]): void {
+  writeFileSync(
+    join(f.harnessDir, "status.json"),
+    JSON.stringify({
+      version: 2,
+      updated_at: "2026-09-07",
+      workflows: workflowIds.map((id) => ({ id, type: "plan", started_at: "2026-09-07T00:00:00Z", dir: `workflows/${id}` })),
+    }),
+    "utf8",
+  );
+}
+
 function codesOf(result: { ok: boolean; violations: { code: string }[] }): string[] {
   return result.violations.map((v) => v.code);
 }
@@ -973,6 +989,94 @@ describe("resolveSddExecutionContext — A3 declared-context resolution", () => 
       expect(resolveSddExecutionContext(contextOf(f)).planId).toBe(PLAN_ID);
       // A finished plan row without a lease never mandates one.
       writeSnapshot(f, "wf-done", [{ id: PLAN_ID, status: "Done" }]);
+      expect(resolveSddExecutionContext(contextOf(f)).planId).toBe(PLAN_ID);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("the registered active workflow's lease governs even when a retained terminal snapshot also lists the plan", () => {
+    const root = tmpRoot("sdd-ctx-terminal-shadow-");
+    try {
+      const f = executionFixture(root);
+      // A completed lifecycle's snapshot stays on disk next to the live one;
+      // the root register names the live workflow, and scan order must never
+      // let the retained terminal row shadow it.
+      writeSnapshot(f, "wf-completed", [
+        { id: PLAN_ID, title: "finished run", file: `plans/${PLAN_ID}.md`, status: "Done" },
+      ]);
+      writeSnapshot(f, "wf-live", [
+        { id: PLAN_ID, title: "live run", file: `plans/${PLAN_ID}.md`, status: "InProgress", execution_lease: executionLease(f) },
+      ]);
+      writeStatusRegister(f, ["wf-live"]);
+      expect(resolveSddExecutionContext(contextOf(f)).planId).toBe(PLAN_ID);
+
+      // The ACTIVE row's lease is what got enforced: point that lease at the
+      // primary checkout and the context is refused with the lease mismatch —
+      // a terminal-row win would have fallen through to standalone success.
+      writeSnapshot(f, "wf-live", [
+        {
+          id: PLAN_ID,
+          title: "live run",
+          file: `plans/${PLAN_ID}.md`,
+          status: "InProgress",
+          execution_lease: executionLease(f, { worktree_path: f.primary, working_branch: "main" }),
+        },
+      ]);
+      const err = errOf(() => resolveSddExecutionContext(contextOf(f)));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.lease-worktree-mismatch");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a plan claimed by two registered active workflows fails closed (never a silent standalone fallback)", () => {
+    const root = tmpRoot("sdd-ctx-ambiguous-");
+    try {
+      const f = executionFixture(root);
+      // Both rows' leases match the declared context, so a silent standalone
+      // fallback would RESOLVE — the refusal itself is the contract.
+      writeStatusRegister(f, ["wf-a", "wf-b"]);
+      const row = {
+        id: PLAN_ID,
+        title: "claimed twice",
+        file: `plans/${PLAN_ID}.md`,
+        status: "InProgress",
+        execution_lease: executionLease(f),
+      };
+      writeSnapshot(f, "wf-a", [row]);
+      writeSnapshot(f, "wf-b", [row]);
+      const err = errOf(() => resolveSddExecutionContext(contextOf(f)));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.workflow-plan-ambiguous");
+      expect(err.message).toContain("wf-a");
+      expect(err.message).toContain("wf-b");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("a plan matching only unregistered (terminal) snapshots gets the standalone branch policy", () => {
+    const root = tmpRoot("sdd-ctx-terminal-only-");
+    try {
+      const f = executionFixture(root);
+      // The register names a different live workflow; the plan's only snapshot
+      // row belongs to a retained completed lifecycle and carries a stale
+      // lease that must NOT satisfy lease enforcement.
+      writeStatusRegister(f, ["wf-other"]);
+      writeSnapshot(f, "wf-other", [
+        { id: "another-plan", title: "other plan", file: "plans/another-plan.md", status: "InProgress" },
+      ]);
+      writeSnapshot(f, "wf-finished", [
+        {
+          id: PLAN_ID,
+          title: "finished",
+          file: `plans/${PLAN_ID}.md`,
+          status: "Done",
+          execution_lease: executionLease(f, { worktree_path: f.primary, working_branch: "main" }),
+        },
+      ]);
       expect(resolveSddExecutionContext(contextOf(f)).planId).toBe(PLAN_ID);
     } finally {
       rmSync(root, { recursive: true, force: true });
