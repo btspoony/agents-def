@@ -652,7 +652,7 @@ describe("checkFiveQuestionCorpus — Guard 5 five-question runtime smoke", () =
     expect(codeOf(all.failures[0])).toBe("skill-authoring.five-question.workflow");
   });
 
-  test("red probe (Task 3): intentionally mismatched classification fails the corpus; restore passes", () => {
+  test("red probe: intentionally mismatched classification fails the corpus; restore passes", () => {
  // Inject the core hub body under mstar-audit's runtime identity: the
  // classifier still selects runtime for the rel basename, but the
  // injected content does not answer the runtime corpus contract — the
@@ -669,15 +669,16 @@ describe("checkFiveQuestionCorpus — Guard 5 five-question runtime smoke", () =
     );
     const red = checkFiveQuestionCorpus(mismatched);
     expect(red.checked).toBe(corpus.length - 2); // runtime corpus selection unchanged
- // The hub body covers decision-rules only via the locked 反模式 alias;
- // load-order / workflow / evidence / references stay uncovered.
-    expect(red.failures).toHaveLength(4);
+ // The thinned hub body answers none of the five runtime alias rows, so
+ // under injection every runtime question is uncovered: load-order,
+ // workflow, decision-rules, evidence, references all go red.
+    expect(red.failures).toHaveLength(5);
     expect(red.failures.every((row) => row.includes("skills/mstar-audit/SKILL.md"))).toBe(true);
  // Restore the real shipped content through the same seam — green again.
     expect(checkFiveQuestionCorpus(corpus)).toEqual({ checked: corpus.length - 2, failures: [] });
   });
 
-  test("red probe (Task 3): removing a real heading (mstar-branch-worktree Load order) fails the corpus; restore passes", () => {
+  test("red probe: removing a real heading (mstar-branch-worktree Load order) fails the corpus; restore passes", () => {
  // load-order has no alias row, so the
  // single real `Load order` heading is the only cover — dropping it must
  // flip the guard red for exactly that question. In-memory drop only;
