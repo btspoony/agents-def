@@ -286,13 +286,13 @@ const LOAD_ORDER_HEADING_RE = /^#{1,6}\s+[^\r\n]*\b(?:load[\s-]*order|first\s+ac
  * preset, and the unknown-preset / missing-identity refusal arm.
  * Case-insensitive substring tokens — the hub declares the decision, the
  * lint verifies each arm is declared. */
-const HUB_BOOTSTRAP_ASSERTIONS: ReadonlyArray<{ token: string; why: string }> = [
-  { token: "identity-first", why: "identity boundary before any skill list" },
-  { token: "skill presets", why: "Assignment Skill presets decision field" },
-  { token: "none", why: "explicit none => identity only, no optional topic preset" },
-  { token: "standard", why: "omitted on a substantive round => standard preset" },
-  { token: "role-owned", why: "role-owned methods / evidence obligations load regardless of preset" },
-  { token: "unknown preset", why: "unknown preset / missing identity => Needs Context / Blocked, never infer PM" },
+const HUB_BOOTSTRAP_ASSERTIONS: ReadonlyArray<{ marker: string; why: string }> = [
+  { marker: "identity-first", why: "identity boundary before any skill list" },
+  { marker: "skill presets", why: "Assignment Skill presets decision field" },
+  { marker: "none", why: "explicit none => identity only, no optional topic preset" },
+  { marker: "standard", why: "omitted on a substantive round => standard preset" },
+  { marker: "role-owned", why: "role-owned methods / evidence obligations load regardless of preset" },
+  { marker: "unknown preset", why: "unknown preset / missing identity => Needs Context / Blocked, never infer PM" },
 ];
 
 /**
@@ -373,14 +373,14 @@ export function lintLoadOrder(skillTexts: Record<string, string>): GateResult {
       // name — any other topic claiming this bootstrap style still fails
       // the core-first check below (broad exemptions are rejected).
       const lower = section.toLowerCase();
-      const missing = HUB_BOOTSTRAP_ASSERTIONS.filter((a) => !lower.includes(a.token.toLowerCase()));
+      const missing = HUB_BOOTSTRAP_ASSERTIONS.filter((a) => !lower.includes(a.marker.toLowerCase()));
       if (missing.length > 0) {
         violations.push(
           violation(
             "medium",
             "roles.loadorder.hub.bootstrap.missing",
             `skill "${name}" Load Order section is missing the hub bootstrap decision matrix: ${missing
-              .map((m) => `"${m.token}" (${m.why})`)
+              .map((m) => `"${m.marker}" (${m.why})`)
               .join("; ")} (mstar-roles \u00a7 Load Order = single load-selection authority)`,
             "declare identity-first, the Skill presets none/standard decision, role-owned methods, and the unknown-preset / missing-identity refusal in the Load Order section",
           ),
