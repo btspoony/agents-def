@@ -46,6 +46,8 @@
  * This is STRUCTURAL evidence only — it never substitutes for model traces
  * (Spec A1 runner/efficacy gate separation).
  */
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -596,5 +598,192 @@ describe("closure checker red fixtures (synthetic root)", () => {
 
   afterAll(() => {
     rmSync(tmpRootParent, { recursive: true, force: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 (freeze)
+// ---------------------------------------------------------------------------
+
+type AblationRule = {
+  ruleId: string;
+  title: string;
+  owner: string;
+  sourceRef: { anchor: string; lines: string };
+  ac1Category: string;
+  provenance: { origin: string; commit: string | null; userPolicy: string | null };
+  disposition: "keep" | "delete" | "consolidate" | "experiment";
+  removalBasis: string | null;
+  enforcementClaim: "none" | "advisory-only" | "explicit-check" | "auto-blocking";
+  enforcementLimitations: string;
+  coverageRefs: string[];
+  caseIds: string[];
+  beforeSha256: string;
+  afterSha256: string | null;
+  restore: string;
+  notes: string;
+};
+type Ablations = {
+  schemaVersion: number;
+  artifact: string;
+  frozenAt: { branch: string; gitHead: string };
+  policyProtection: { refs: Array<{ ref: string; commit: string; title: string }> };
+  rules: AblationRule[];
+};
+
+const ABLATIONS_JSON = join(REPO_ROOT, "scripts/skill-eval/ablations.json");
+const ablations = JSON.parse(read(ABLATIONS_JSON)) as Ablations;
+const ruleIds = ablations.rules.map((r) => r.ruleId);
+const caseIdSet = new Set(cases.map((c) => c.id));
+const DISPOSITIONS = new Set(["keep", "delete", "consolidate", "experiment"]);
+const AC1_CATEGORIES = new Set([
+  "model-native-generic-teaching",
+  "duplicated-rule",
+  "mechanically-covered-contract",
+  "framework-judgment-policy",
+  "necessary-negative-constraint",
+]);
+const REMOVAL_BASES = new Set(["duplicated-rule-owner-exists", "model-native-teaching-hypothesis", "onboarding-only-hypothesis"]);
+
+function ownerTextOf(rule: AblationRule): string {
+  return read(join(REPO_ROOT, rule.owner));
+}
+function sha256Of(path: string): string {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+function gitObjectType(sha: string): string {
+  return execFileSync("git", ["-C", REPO_ROOT, "cat-file", "-t", sha], { encoding: "utf8" }).trim();
+}
+
+describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 (freeze)", () => {
+  test("inventory parses: schema, enums, and per-row field contract", () => {
+    expect(ablations.schemaVersion).toBe(1);
+    expect(ablations.rules.length).toBeGreaterThanOrEqual(30);
+    for (const rule of ablations.rules) {
+      expect(DISPOSITIONS.has(rule.disposition), `${rule.ruleId} disposition`).toBe(true);
+      expect(AC1_CATEGORIES.has(rule.ac1Category), `${rule.ruleId} ac1Category`).toBe(true);
+      expect(["none", "advisory-only", "explicit-check", "auto-blocking"].includes(rule.enforcementClaim), `${rule.ruleId} enforcementClaim`).toBe(true);
+      expect(rule.enforcementLimitations.length > 0, `${rule.ruleId} enforcementLimitations non-empty`).toBe(true);
+      expect(rule.sourceRef.anchor.length > 0, `${rule.ruleId} anchor`).toBe(true);
+      expect(rule.beforeSha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(rule.restore.length > 0, `${rule.ruleId} restore`).toBe(true);
+      // Task 1 is a freeze: after-hashes are filled by Task 2 batches, never now.
+      expect(rule.afterSha256, `${rule.ruleId} afterSha256 must stay null at freeze`).toBeNull();
+      // A non-keep row must name a concrete removal basis (never an enforcement argument).
+      if (rule.disposition !== "keep") {
+        expect(REMOVAL_BASES.has(rule.removalBasis ?? ""), `${rule.ruleId} removalBasis`).toBe(true);
+      } else {
+        expect(rule.removalBasis, `${rule.ruleId} keep row has no removalBasis`).toBeNull();
+      }
+    }
+  });
+
+  test("rule IDs are unique", () => {
+    expect(new Set(ruleIds).size).toBe(ruleIds.length);
+  });
+
+  test("every row's owner file exists, its anchor is present in the CURRENT text, and beforeSha256 pins the frozen bytes", () => {
+    for (const rule of ablations.rules) {
+      const abs = join(REPO_ROOT, rule.owner);
+      expect(existsSync(abs), `${rule.ruleId} owner ${rule.owner}`).toBe(true);
+      expect(ownerTextOf(rule).includes(rule.sourceRef.anchor), `${rule.ruleId} anchor "${rule.sourceRef.anchor}" in ${rule.owner}`).toBe(true);
+      expect(sha256Of(abs), `${rule.ruleId} beforeSha256 freeze pin`).toBe(rule.beforeSha256);
+    }
+  });
+
+  test("every caseId resolves against the 30-case corpus (structural coverage, not a verified pass)", () => {
+    for (const rule of ablations.rules) {
+      for (const id of rule.caseIds) {
+        expect(caseIdSet.has(id), `${rule.ruleId} caseId ${id}`).toBe(true);
+      }
+    }
+  });
+
+  test("no unsupported auto-blocking deletion: enforcement claims never justify removals and carry honest limitations", () => {
+    for (const rule of ablations.rules) {
+      // A removal's basis must be duplication or a teaching/onboarding hypothesis —
+      // never an enforcement argument ("mechanically covered" is not enough while
+      // efficacy evidence is blocked and coverage is explicit-check at best).
+      if (rule.disposition !== "keep") {
+        expect(rule.removalBasis === "duplicated-rule-owner-exists" || rule.removalBasis === "model-native-teaching-hypothesis" || rule.removalBasis === "onboarding-only-hypothesis", `${rule.ruleId} removal basis is not an enforcement argument`).toBe(true);
+      }
+      // Any auto-blocking claim must state its limitations (dsh-only, opt-in,
+      // declared-caller, or no-refusal-channel) so no row reads as blanket enforcement.
+      if (rule.enforcementClaim === "auto-blocking") {
+        expect(rule.enforcementLimitations, `${rule.ruleId} auto-blocking requires stated limitations`).toMatch(/dsh|opt-in|declared|refusal|unavailable/i);
+      }
+      // No row may claim behavioral/causal evidence: the arm-materialization
+      // limitation forbids it (SP2-QA adjudication).
+      expect(rule.notes, `${rule.ruleId} no causal-effect language in notes`).not.toMatch(/causally established|behavioral effect proven|proven token savings/i);
+    }
+    // And at least the four SP2-verified coverage anchors used above exist as
+    // identifiers this inventory consumes (done-ownership, engine-absent,
+    // dispatch x2, skill-lint x2) — resolution to the control coverage map is
+    // recorded in the plan report, not via a gitignored path in tracked files.
+    const used = new Set(ablations.rules.flatMap((r) => r.coverageRefs));
+    for (const expected of ["done-ownership.authority", "engine-absent.fallback-integrity", "dispatch-authorization.delegation-boundary", "dispatch-authorization.caller-identity", "skill-lint.authoring-default", "skill-lint.write-path-authoring-default"]) {
+      expect(used.has(expected), `coverageRef ${expected} consumed`).toBe(true);
+    }
+  });
+
+  test("consolidate rows name a surviving keep-row owner in the same inventory", () => {
+    const byId = new Map(ablations.rules.map((r) => [r.ruleId, r]));
+    for (const rule of ablations.rules.filter((r) => r.disposition === "consolidate")) {
+      expect(rule.notes, `${rule.ruleId} names its owner`).toMatch(/Surviving owner: /);
+      const ownerMention = /Surviving owner: ([a-z][a-z0-9.-]+)/.exec(rule.notes);
+      expect(ownerMention, `${rule.ruleId} owner ruleId parseable`).not.toBeNull();
+      const owner = byId.get(ownerMention![1]);
+      expect(owner, `${rule.ruleId} owner ${ownerMention![1]} exists in inventory`).toBeDefined();
+      expect(owner!.disposition, `${rule.ruleId} owner is a keep row`).toBe("keep");
+    }
+  });
+
+  test("policy rows carry read-only git evidence: provenance commits resolve in this repo", () => {
+    for (const rule of ablations.rules) {
+      if (rule.provenance.commit) {
+        expect(gitObjectType(rule.provenance.commit), `${rule.ruleId} provenance commit ${rule.provenance.commit.slice(0, 8)} exists`).toBe("commit");
+      }
+    }
+    for (const ref of ablations.policyProtection.refs) {
+      expect(gitObjectType(ref.commit), `policyProtection ${ref.ref} commit exists`).toBe("commit");
+    }
+  });
+
+  test("AC2 pins: #153/#156/#167 user policies are present in the CURRENT subject files (not accidentally reverted)", () => {
+    // #167: core engineering rules section + the coding-behavior link line.
+    expect(coreText.includes("## 核心研发守则")).toBe(true);
+    expect(coreText.includes("Do not preserve backward compatibility.")).toBe(true);
+    const codingText = read(join(SKILLS_DIR, "mstar-coding-behavior/SKILL.md"));
+    expect(codingText.includes("**Upstream invariants**: the global engineering rules live in `mstar-harness-core`（核心研发守则）")).toBe(true);
+    // #156: caller-scoped engine-scope blockquote in dispatch-gates.
+    const dispatchText = read(join(SKILLS_DIR, "mstar-dispatch-gates/SKILL.md"));
+    expect(dispatchText.includes("> **Engine 执行范围（caller-scoped，#156）**")).toBe(true);
+    // #153's payload lives in role references outside the Task-1 subject files;
+    // the policyProtection block records that non-overlap explicitly.
+    const p153 = ablations.policyProtection.refs.find((r) => r.ref === "#153");
+    expect(p153, "#153 recorded in policyProtection").toBeDefined();
+    expect(p153!.protectedInSubjectFiles).toContain("outside this plan's Files allowlist");
+    // #144/#109: delivered preset semantics survive in their post-SP2 form.
+    const p144 = ablations.policyProtection.refs.find((r) => r.ref === "#144");
+    expect(p144, "#144 recorded in policyProtection").toBeDefined();
+  });
+
+  test("disposition mix is bounded: not every positive removable, not every NEVER a duplicate, no outright deletes at freeze", () => {
+    const counts = { keep: 0, delete: 0, consolidate: 0, experiment: 0 } as Record<string, number>;
+    for (const rule of ablations.rules) counts[rule.disposition] += 1;
+    expect(counts.keep).toBeGreaterThanOrEqual(counts.experiment + counts.consolidate + counts.delete);
+    expect(counts.delete, "freeze uses experiments/consolidations, not outright deletes").toBe(0);
+    // Negative constraints keep an authoritative home: the shared leaf NEVER
+    // blocks are keep rows while the dispatch-gates duplicate is the experiment.
+    const byId = new Map(ablations.rules.map((r) => [r.ruleId, r]));
+    expect(byId.get("leaf.anti-recursion-never")!.disposition).toBe("keep");
+    expect(byId.get("leaf.non-recursive-shared")!.disposition).toBe("keep");
+    expect(byId.get("dispatch.leaf-anti-recursion")!.disposition).toBe("experiment");
+    // User-policy rows are untouchable keeps.
+    expect(byId.get("core.engineering-rules")!.disposition).toBe("keep");
+    expect(byId.get("coding.upstream-invariants")!.disposition).toBe("keep");
+    expect(byId.get("dispatch.caller-scope-156")!.disposition).toBe("keep");
+    // Engine-absent fallback stays (AC3).
+    expect(byId.get("core.engine-legacy-conditional")!.disposition).toBe("keep");
   });
 });
