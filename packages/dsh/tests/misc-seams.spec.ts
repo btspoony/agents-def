@@ -155,9 +155,9 @@ Body only.
 
 /**
  * Seed a fixture mstar-roles skill dir: SKILL.md (with a valid Load Order
- * section) + the 11 distinct references/<role>.md files the 14-row engine
- * mapping resolves to, plus one sibling `mstar-*` skill for load-order
- * linting.
+ * section incl. the hub bootstrap decision matrix) + the 11 distinct
+ * references/<role>.md files the 14-row engine mapping resolves to, plus one
+ * sibling `mstar-*` skill for load-order linting.
  * @param root - parent dir; the skill dir lands at `<root>/mstar-roles`.
  * @param options.missing - reference file basenames to omit (mapping break).
  * @param options.loadOrderOk - false → the sibling declares a Load Order
@@ -177,7 +177,9 @@ description: Fixture role hub.
 
 ## Load Order (Required)
 
-1. Read \`mstar-harness-core\` first.
+1. Read \`mstar-harness-core\` first (global entry; conflict authority).
+2. Read \`references/<role>.md\` **identity-first** — mission and NEVER rules before any skill list.
+3. Apply the Assignment \`Skill presets:\` decision: explicit \`none\` ⇒ identity only; omitted on a substantive round ⇒ \`standard\` preset; **role-owned** methods load regardless of preset; **unknown preset** ⇒ Needs Context / Blocked.
 `
   await writeFile(join(roles, 'SKILL.md'), skill)
   const refs = [
