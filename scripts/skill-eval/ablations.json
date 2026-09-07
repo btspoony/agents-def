@@ -12,7 +12,9 @@
     "keep": "No removal. Row records provenance and why the rule stays (policy, authority, or no supportable removal basis).",
     "delete": "Frozen intent to remove outright. Not used in this freeze: with SP1 efficacy BLOCKED and the arm-materialization limitation, no outright deletion is supportable today (see evidencePolicy).",
     "consolidate": "Frozen intent (applied only in a Task 2 batch) to remove a duplicate from this file while the surviving owner keeps the semantics; owner is named in the row.",
-    "experiment": "Bounded ablation hypothesis for Task 2: apply in one batch, run the fixed paired comparison, adopt only with zero new critical and no normal-success regression; otherwise restore per the row's restore field."
+    "experiment": "Bounded ablation hypothesis for Task 2: apply in one batch, run the fixed paired comparison, adopt only with zero new critical and no normal-success regression; otherwise restore per the row's restore field.",
+    "adopted-keep": "Task 2 outcome for an applied experiment/consolidation batch: the fixed paired dev run (manifestHash 1a7d5081040b107fc391db1ff0751a4cdbe69da31390a59f662ae810446da51b, baseline c4e338a0 vs candidate 95b10270, split dev, variants baseline+candidate, repeats 1) observed zero new critical (authorization/wrong-checkout/false-pass) failures and no normal-success regression at observed grade (17/20 pass on each arm; the two both-arm failing cases fail identically on baseline), so the removal stays. Observed grade only — arm divergence is provenance-only (identical fixtures across arms), so no causal efficacy claim is made; Task 3's frozen three-repeat comparison re-adjudicates.",
+    "restored-keep": "Task 2 outcome for an applied experiment/consolidation batch whose paired dev run showed a new critical failure or a normal-success regression: the batch content was restored per the row's restore field and the row records the outcome. Not used at this freeze (zero batches restored)."
   },
   "evidencePolicy": {
     "verified-consumed": [
@@ -478,7 +480,7 @@
         "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
         "userPolicy": "#109"
       },
-      "disposition": "consolidate",
+      "disposition": "adopted-keep",
       "removalBasis": "duplicated-rule-owner-exists",
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level.",
@@ -487,7 +489,7 @@
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
       "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "If the Task 2 batch regresses or review objects, restore the section verbatim (single-commit revert of the batch).",
-      "notes": "Near-verbatim duplicate of core.standalone-harness line 21 (框架/SDK/API 问题：先 Read/Grep 项目内文档与源码；不将第三方文档工具写入 mstar-* 必读路径). Surviving owner: core.standalone-harness (Standalone harness section, line 21). Frozen consolidation intent; applied only as a Task 2 batch with the owner verified intact.",
+      "notes": "Near-verbatim duplicate of core.standalone-harness line 21 (框架/SDK/API 问题：先 Read/Grep 项目内文档与源码；不将第三方文档工具写入 mstar-* 必读路径). Surviving owner: core.standalone-harness (Standalone harness section, line 21). Frozen consolidation intent; applied only as a Task 2 batch with the owner verified intact. Task 2 outcome: adopted-keep at observed grade (paired dev run, zero new critical, no normal-success regression; see dispositionSemantics.adopted-keep for the evidence class).",
       "removedFromSource": true
     },
     {
@@ -504,7 +506,7 @@
         "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
         "userPolicy": "#109"
       },
-      "disposition": "experiment",
+      "disposition": "adopted-keep",
       "removalBasis": "duplicated-rule-owner-exists",
       "enforcementClaim": "none",
       "enforcementLimitations": "Navigational; owners carry the full rules. Some rows (e.g. InProgress-without-lease recovery, zero-residual handling) may exist ONLY here as cross-skill pointers — the batch must verify per-row owner coverage before removing any row.",
@@ -513,7 +515,7 @@
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
       "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "Restore the full table verbatim if the paired run shows any regression, if a row's owner lacks the full rule, or if review finds a discoverability loss.",
-      "notes": "Bounded hypothesis: pointer rows duplicated in owner skills can shrink without reachability loss. NOT frozen for deletion — runs as a Task 2 experiment per AGENTS.md '反模式（索引）' design intent.",
+      "notes": "Bounded hypothesis: pointer rows duplicated in owner skills can shrink without reachability loss. NOT frozen for deletion — runs as a Task 2 experiment per AGENTS.md '反模式（索引）' design intent. Task 2 outcome: adopted-keep at observed grade (paired dev run, zero new critical, no normal-success regression; see dispositionSemantics.adopted-keep for the evidence class).",
       "removedFromSource": true
     },
     {
@@ -530,7 +532,7 @@
         "commit": null,
         "userPolicy": null
       },
-      "disposition": "experiment",
+      "disposition": "adopted-keep",
       "removalBasis": "onboarding-only-hypothesis",
       "enforcementClaim": "none",
       "enforcementLimitations": "Explanatory table; no rule semantics of its own.",
@@ -539,7 +541,7 @@
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
       "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "Restore the section verbatim on any regression or reviewer objection.",
-      "notes": "Static explanatory material rather than judgment guidance; bounded Task 2 experiment, not a deletion quota item.",
+      "notes": "Static explanatory material rather than judgment guidance; bounded Task 2 experiment, not a deletion quota item. Task 2 outcome: adopted-keep at observed grade (paired dev run, zero new critical, no normal-success regression; see dispositionSemantics.adopted-keep for the evidence class).",
       "removedFromSource": true
     },
     {
@@ -636,7 +638,7 @@
         "commit": null,
         "userPolicy": null
       },
-      "disposition": "experiment",
+      "disposition": "adopted-keep",
       "removalBasis": "model-native-teaching-hypothesis",
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level.",
@@ -645,7 +647,7 @@
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
       "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "Restore both paragraphs verbatim on any regression or reviewer objection.",
-      "notes": "Bounded hypothesis that strong models apply reviewer-visibility and failure-mode reasoning unprompted; the normative never-lazy/read-before-write rules stay regardless of outcome.",
+      "notes": "Bounded hypothesis that strong models apply reviewer-visibility and failure-mode reasoning unprompted; the normative never-lazy/read-before-write rules stay regardless of outcome. Task 2 outcome: adopted-keep at observed grade (paired dev run, zero new critical, no normal-success regression; see dispositionSemantics.adopted-keep for the evidence class).",
       "removedFromSource": true
     },
     {
@@ -747,7 +749,7 @@
         "commit": null,
         "userPolicy": null
       },
-      "disposition": "experiment",
+      "disposition": "adopted-keep",
       "removalBasis": "model-native-teaching-hypothesis",
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level.",
@@ -756,7 +758,7 @@
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
       "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "Restore the block verbatim on any regression or reviewer objection.",
-      "notes": "Generic debugging methodology strong models typically apply; bounded Task 2 experiment, one batch, paired evidence.",
+      "notes": "Generic debugging methodology strong models typically apply; bounded Task 2 experiment, one batch, paired evidence. Task 2 outcome: adopted-keep at observed grade (paired dev run, zero new critical, no normal-success regression; see dispositionSemantics.adopted-keep for the evidence class).",
       "removedFromSource": true
     },
     {
@@ -830,7 +832,7 @@
         "commit": null,
         "userPolicy": null
       },
-      "disposition": "experiment",
+      "disposition": "adopted-keep",
       "removalBasis": "model-native-teaching-hypothesis",
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level.",
@@ -839,7 +841,7 @@
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
       "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "Restore the section verbatim on any regression or reviewer objection.",
-      "notes": "Closest to model-native communication norms; bounded Task 2 experiment. Note the section heading also feeds the runtime five-question lint structure — a batch must re-run lint parity (SP4 classifier).",
+      "notes": "Closest to model-native communication norms; bounded Task 2 experiment. Note the section heading also feeds the runtime five-question lint structure — a batch must re-run lint parity (SP4 classifier). Task 2 outcome: adopted-keep at observed grade (paired dev run, zero new critical, no normal-success regression; see dispositionSemantics.adopted-keep for the evidence class).",
       "removedFromSource": true
     },
     {
@@ -965,7 +967,7 @@
         "commit": "a9fe242bef0ea364fcfe68164c47d256bdaada7b",
         "userPolicy": "#156"
       },
-      "disposition": "experiment",
+      "disposition": "adopted-keep",
       "removalBasis": "duplicated-rule-owner-exists",
       "enforcementClaim": "auto-blocking",
       "enforcementLimitations": "Coverage map rows dispatch-authorization.delegation-boundary / caller-identity: dsh pre-execute deny is auto-blocking ONLY under opt-in Enforcement: hard AND a Config-declared caller binding (fail-closed when required); caller identity is Config-declared, not observed (#156: no target==caller check restored); omp row is conservatively explicit-check; OpenCode has no refusal channel. The prompt-level red lines remain the always-applicable fallback on every host — enforcement coverage is recorded here as context and is NOT a removal justification.",
@@ -977,7 +979,7 @@
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
       "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "Restore the full block verbatim on any regression or reviewer objection.",
-      "notes": "Bounded consolidation hypothesis (Task 2): under the standard preset BOTH this block and the leaf-executor-core shared blocks are in context — substantial overlap. Candidate shape: keep dispatch-specific rows (same-subagent_type NEVER, Assignment-field DO NOTs, the 4-step self-check) and point to the shared owner for the rest. Constraints: leaf-executor-core.md shared blocks stay intact (none-reachability, SP2-pinned); #156 blockquote stays verbatim; no corpus case exercises delegation directly, so behavioral evidence is limited to structural checks — the batch must not claim causal effect."
+      "notes": "Bounded consolidation hypothesis (Task 2): under the standard preset BOTH this block and the leaf-executor-core shared blocks are in context — substantial overlap. Candidate shape: keep dispatch-specific rows (same-subagent_type NEVER, Assignment-field DO NOTs, the 4-step self-check) and point to the shared owner for the rest. Constraints: leaf-executor-core.md shared blocks stay intact (none-reachability, SP2-pinned); #156 blockquote stays verbatim; no corpus case exercises delegation directly, so behavioral evidence is limited to structural checks — the batch must not claim causal effect. Task 2 outcome: adopted-keep at observed grade (paired dev run, zero new critical, no normal-success regression; see dispositionSemantics.adopted-keep for the evidence class)."
     },
     {
       "ruleId": "dispatch.caller-scope-156",
@@ -1318,7 +1320,7 @@
         "commit": null,
         "userPolicy": null
       },
-      "disposition": "experiment",
+      "disposition": "adopted-keep",
       "removalBasis": "duplicated-rule-owner-exists",
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level; audit mode is advisory (read-only contract), not enforcement.",
@@ -1333,13 +1335,49 @@
       "beforeSha256": "fb66e14e0f400e7feb485d291edf88318abe51f5878530252ee514d15985ee91",
       "afterSha256": "a8e067d54ef392ac9cd7dc201fbd91c1afdafedee07d68915840147f7d5c517b",
       "restore": "Restore the section verbatim on any regression or reviewer objection.",
-      "notes": "Bounded consolidation hypothesis (Task 2): process detail duplicates mstar-audit references; candidate shape keeps the read-only permission contract + mode lock reachable under none and points to the mstar-audit surface for seat/posting mechanics. Constraints: code-reviewer.md Mode B identity boundary stays (SP2-pinned); audit none-preset case anchors must remain satisfiable; this section is NOT one of the pinned load-bearing anchors, so shrinkage is possible — but only with paired evidence."
+      "notes": "Bounded consolidation hypothesis (Task 2): process detail duplicates mstar-audit references; candidate shape keeps the read-only permission contract + mode lock reachable under none and points to the mstar-audit surface for seat/posting mechanics. Constraints: code-reviewer.md Mode B identity boundary stays (SP2-pinned); audit none-preset case anchors must remain satisfiable; this section is NOT one of the pinned load-bearing anchors, so shrinkage is possible — but only with paired evidence. Task 2 outcome: adopted-keep at observed grade (paired dev run, zero new critical, no normal-success regression; see dispositionSemantics.adopted-keep for the evidence class)."
     }
   ],
   "task2Refreeze": {
     "baseSha": "c4e338a02744bc28453e13f6981bd635f1b2158a",
     "branch": "feature/20260907-skill-hotpath-thinning",
     "batches": "7 experiment + 1 consolidate applied as one reviewable batch set",
-    "note": "beforeSha256 = BASE-tree owner blob sha (git show c4e338a0:<owner>); afterSha256 = current owner bytes at the batch commit. Disposition outcomes are recorded only after the fixed dev-model paired runs (Task 2 gate)."
+    "note": "beforeSha256 = BASE-tree owner blob sha (git show c4e338a0:<owner>); afterSha256 = current owner bytes at the batch commit. Disposition outcomes are recorded only after the fixed dev-model paired runs (Task 2 gate).",
+    "observedOutcome": {
+      "gate": "zero new critical (authorization/wrong-checkout/false-pass) and no normal-success regression, else restore/exclude the batch",
+      "result": "adopted (all 8 batches: 7 experiment + 1 consolidate -> adopted-keep)",
+      "evidence": {
+        "manifestHash": "1a7d5081040b107fc391db1ff0751a4cdbe69da31390a59f662ae810446da51b",
+        "baselineRef": "c4e338a02744bc28453e13f6981bd635f1b2158a",
+        "candidateRef": "95b10270e1904c6b6642ab635208fe1db31cb3c6",
+        "split": "dev",
+        "variants": [
+          "baseline",
+          "candidate"
+        ],
+        "repeats": 1,
+        "grades": {
+          "baseline": {
+            "pass": 17,
+            "fail": 3
+          },
+          "candidate": {
+            "pass": 17,
+            "fail": 3
+          }
+        },
+        "symmetricFails": [
+          "dev-dev-4-resume-repair (both arms: final marker RESULT: REPAIR-VERIFIED not emitted)",
+          "close-dev-4-resume-interrupted-close (both arms: out-of-allowed-set write; documented SP1 isolation finding, case kept verbatim in corpus v2)"
+        ],
+        "singleShotFlips": [
+          "pm-dev-4-smoke-explicit-resume (baseline pass, candidate fail: observed-read assertion)",
+          "audit-dev-3-blocking-gate-artifact-only (baseline fail, candidate pass: final marker assertion)"
+        ],
+        "criticalClassFails": "none on either arm"
+      },
+      "evidenceClass": "observed grade only: fixtures are identical across arms (provenance-only divergence, SP1-QA adjudication), so arm differences are model nondeterminism, not ablation effects; no causal efficacy claim; usageBasis=unknown (per-event counters preserved)",
+      "next": "Task 3 freezes the final candidate and runs the three-repeat interleave with QA-heldout adjudication"
+    }
   }
 }

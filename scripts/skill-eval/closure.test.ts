@@ -612,7 +612,7 @@ type AblationRule = {
   sourceRef: { anchor: string; lines: string };
   ac1Category: string;
   provenance: { origin: string; commit: string | null; userPolicy: string | null };
-  disposition: "keep" | "delete" | "consolidate" | "experiment";
+  disposition: "keep" | "delete" | "consolidate" | "experiment" | "adopted-keep" | "restored-keep";
   removalBasis: string | null;
   enforcementClaim: "none" | "advisory-only" | "explicit-check" | "auto-blocking";
   enforcementLimitations: string;
@@ -643,7 +643,7 @@ const ablations = JSON.parse(read(ABLATIONS_JSON)) as Ablations;
 const TASK1_BASE_SHA = "c4e338a02744bc28453e13f6981bd635f1b2158a";
 const ruleIds = ablations.rules.map((r) => r.ruleId);
 const caseIdSet = new Set(cases.map((c) => c.id));
-const DISPOSITIONS = new Set(["keep", "delete", "consolidate", "experiment"]);
+const DISPOSITIONS = new Set(["keep", "delete", "consolidate", "experiment", "adopted-keep", "restored-keep"]);
 const AC1_CATEGORIES = new Set([
   "model-native-generic-teaching",
   "duplicated-rule",
@@ -760,7 +760,9 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
 
   test("consolidate rows name a surviving keep-row owner in the same inventory", () => {
     const byId = new Map(ablations.rules.map((r) => [r.ruleId, r]));
-    for (const rule of ablations.rules.filter((r) => r.disposition === "consolidate")) {
+    // Outcome dispositions keep the owner-survival check active: an adopted
+    // consolidation must still point at a row that exists and stays a keep.
+    for (const rule of ablations.rules.filter((r) => r.disposition === "consolidate" || (r.disposition === "adopted-keep" && /Surviving owner: /.test(r.notes)))) {
       expect(rule.notes, `${rule.ruleId} names its owner`).toMatch(/Surviving owner: /);
       const ownerMention = /Surviving owner: ([a-z][a-z0-9.-]+)/.exec(rule.notes);
       expect(ownerMention, `${rule.ruleId} owner ruleId parseable`).not.toBeNull();
@@ -801,21 +803,47 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
   });
 
   test("disposition mix is bounded: not every positive removable, not every NEVER a duplicate, no outright deletes at freeze", () => {
-    const counts = { keep: 0, delete: 0, consolidate: 0, experiment: 0 } as Record<string, number>;
+    const counts = { keep: 0, delete: 0, consolidate: 0, experiment: 0, "adopted-keep": 0, "restored-keep": 0 } as Record<string, number>;
     for (const rule of ablations.rules) counts[rule.disposition] += 1;
-    expect(counts.keep).toBeGreaterThanOrEqual(counts.experiment + counts.consolidate + counts.delete);
+    expect(counts.keep).toBeGreaterThanOrEqual(counts.experiment + counts.consolidate + counts.delete + counts["adopted-keep"] + counts["restored-keep"]);
     expect(counts.delete, "freeze uses experiments/consolidations, not outright deletes").toBe(0);
     // Negative constraints keep an authoritative home: the shared leaf NEVER
     // blocks are keep rows while the dispatch-gates duplicate is the experiment.
     const byId = new Map(ablations.rules.map((r) => [r.ruleId, r]));
     expect(byId.get("leaf.anti-recursion-never")!.disposition).toBe("keep");
     expect(byId.get("leaf.non-recursive-shared")!.disposition).toBe("keep");
-    expect(byId.get("dispatch.leaf-anti-recursion")!.disposition).toBe("experiment");
+    // Task 2 outcome: the dispatch-gates duplicate batch was applied and
+    // adopted at observed grade (zero new critical, no normal-success
+    // regression in the paired dev run); the shared owner rows stay keeps.
+    expect(byId.get("dispatch.leaf-anti-recursion")!.disposition).toBe("adopted-keep");
     // User-policy rows are untouchable keeps.
     expect(byId.get("core.engineering-rules")!.disposition).toBe("keep");
     expect(byId.get("coding.upstream-invariants")!.disposition).toBe("keep");
     expect(byId.get("dispatch.caller-scope-156")!.disposition).toBe("keep");
     // Engine-absent fallback stays (AC3).
     expect(byId.get("core.engine-legacy-conditional")!.disposition).toBe("keep");
+  });
+
+  test("Task 2 outcome contract: adopted-keep rows record the observed gate outcome; no batch left pending or restored", () => {
+    const outcomes = { "adopted-keep": 0, "restored-keep": 0 } as Record<string, number>;
+    for (const rule of ablations.rules) {
+      if (rule.disposition === "adopted-keep" || rule.disposition === "restored-keep") {
+        outcomes[rule.disposition] += 1;
+        // Every outcome row keeps its audit trail: the applied removal basis,
+        // the restore record, and the observed-grade outcome note.
+        expect(REMOVAL_BASES.has(rule.removalBasis ?? ""), `${rule.ruleId} removal basis retained`).toBe(true);
+        expect(rule.restore.length > 0, `${rule.ruleId} restore record retained`).toBe(true);
+        expect(rule.notes, `${rule.ruleId} outcome note`).toMatch(/Task 2 outcome: (adopted|restored)-keep/);
+      }
+      // No causal-effect language anywhere, outcomes included.
+      expect(rule.notes, `${rule.ruleId} no causal-effect language in outcome`).not.toMatch(/causally established|behavioral effect proven|proven token savings/i);
+    }
+    expect(outcomes["adopted-keep"], "all applied batches recorded an outcome").toBeGreaterThanOrEqual(1);
+    expect(outcomes["adopted-keep"] + outcomes["restored-keep"], "every experiment/consolidation reached an outcome").toBe(8);
+    // The freeze record carries the observed-gate evidence block.
+    const refreeze = (ablations as unknown as { task2Refreeze?: { observedOutcome?: { result?: string; evidence?: { grades?: Record<string, unknown>; criticalClassFails?: string } } } }).task2Refreeze;
+    expect(refreeze?.observedOutcome?.result, "refreeze records the observed gate result").toMatch(/adopted/);
+    expect(refreeze?.observedOutcome?.evidence?.grades, "refreeze records per-arm observed grades").toBeDefined();
+    expect(refreeze?.observedOutcome?.evidence?.criticalClassFails, "refreeze records the critical-class scan").toMatch(/none/i);
   });
 });
