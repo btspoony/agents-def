@@ -512,6 +512,138 @@ describe("skill load closure — plan 20260907-skill-load-contract Tasks 1–2",
 });
 
 // ---------------------------------------------------------------------------
+// mstar-iteration phase route map — plan 20260907-iteration-progressive-
+// disclosure Task 1 (Spec A5). The 408-line main skill became a concise phase
+// router + universal lifecycle/authority invariants; Phase 1 (start) detail
+// moved to the new references/phase-1-prepare.md; §2.0–§2.5 moved into
+// references/phase-2-worktree-lease.md; phase 3 / 4-5 detail already lived in
+// their references. Pins (STRUCTURAL evidence only, AC1/AC2):
+//  1. Route map — start→phase1, execute/resume→phase2, close→phase3,
+//     PR/merge-ready→phase4-5; each route row names exactly its phase file.
+//  2. No missing local file/anchor — every dispatched file exists and carries
+//     its entry heading + load-bearing AC2 semantics (start chain, PM lock,
+//     five gates, push cadence, close/merge-ready guards, SP5 retargets).
+//  3. No unconditional all-phase read edge — the unconditional Load order
+//     names zero phase detail files, and no single line names ≥2 of them.
+// Never substitutes for model traces (Spec A1 runner/efficacy separation).
+// ---------------------------------------------------------------------------
+
+const ITERATION_SKILL = join(SKILLS_DIR, "mstar-iteration/SKILL.md");
+const ITERATION_DIR = join(SKILLS_DIR, "mstar-iteration");
+const PHASE_ROUTE_FILES = [
+  "references/phase-1-prepare.md",
+  "references/phase-2-worktree-lease.md",
+  "references/phase-3-iteration-close.md",
+  "references/phase-4-5-pr-delivery.md",
+  "references/phase5-helper-discovery.md",
+] as const;
+/** Route → dispatched file + keywords that must share ONE route-map row, and
+ * the entry heading that must exist in the dispatched file. */
+const PHASE_ROUTES: Array<{ keywords: string[]; file: string; entryAnchor: string }> = [
+  { keywords: ["start"], file: "references/phase-1-prepare.md", entryAnchor: "# Phase 1: start" },
+  { keywords: ["execute", "resume"], file: "references/phase-2-worktree-lease.md", entryAnchor: "# Phase 2: Autonomous Execute" },
+  { keywords: ["close"], file: "references/phase-3-iteration-close.md", entryAnchor: "# Phase 3: iteration-close" },
+  { keywords: ["PR", "merge-ready"], file: "references/phase-4-5-pr-delivery.md", entryAnchor: "# Phase 4 & 5" },
+];
+
+describe("mstar-iteration phase route map — plan 20260907-iteration-progressive-disclosure Task 1", () => {
+  const iterationText = read(ITERATION_SKILL);
+  const iterationLines = iterationText.split(/\r?\n/);
+  /** Lines of the `## <heading>` section (up to the next top-level `## `). */
+  function sectionLines(heading: string): string[] {
+    const start = iterationLines.findIndex((l) => l.startsWith(heading));
+    expect(start, `section ${heading} present`).toBeGreaterThanOrEqual(0);
+    const end = iterationLines.findIndex((l, i) => i > start && l.startsWith("## "));
+    return iterationLines.slice(start, end === -1 ? iterationLines.length : end);
+  }
+
+  test("route map: start→phase1, execute/resume→phase2, close→phase3, PR/merge-ready→phase4-5", () => {
+    // The single route map names every phase detail file (router completeness).
+    const routeMap = sectionLines("## Phase route map").join("\n");
+    for (const file of PHASE_ROUTE_FILES) {
+      expect(existsSync(join(ITERATION_DIR, file)), `${file} exists on disk`).toBe(true);
+      expect(routeMap.includes(file), `route map names ${file}`).toBe(true);
+    }
+    // Each iteration action reaches exactly its phase reference: one row
+    // carries the file name AND the action keywords together.
+    for (const { keywords, file } of PHASE_ROUTES) {
+      const row = iterationLines.find((l) => l.includes(`\`${file}\``) && keywords.every((k) => l.includes(k)));
+      expect(row, `route row dispatching ${keywords.join("+")} → ${file}`).toBeDefined();
+    }
+  });
+
+  test("no missing local file/anchor: entry headings + load-bearing AC2 semantics resolve", () => {
+    for (const { file, entryAnchor } of PHASE_ROUTES) {
+      expect(read(join(ITERATION_DIR, file)).includes(entryAnchor), `${file} entry anchor "${entryAnchor}"`).toBe(true);
+    }
+    expect(read(join(ITERATION_DIR, PHASE_ROUTE_FILES[4])).includes("# Phase 5 helper skill discovery")).toBe(true);
+    // Main skill: router + universal invariants only.
+    expect(iterationText.includes("## Phase transition gates（HARD — 防跳步）")).toBe(true);
+    expect(iterationText.includes("## 2.6 Continuous execution + push 纪律（Phase 2–5 通用 SSOT）")).toBe(true);
+    expect(iterationText.includes("Push cadence（§5.1a HARD）")).toBe(true);
+    expect(iterationText.includes("一次迭代 = 一个 PR")).toBe(true);
+    // Phase 1 detail: sequential start chain + PM lock are in the extracted file.
+    const phase1 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[0]));
+    expect(phase1.includes("## 1.6 Review & Edit chain")).toBe(true);
+    const pmIdx = phase1.indexOf("product-manager");
+    const archIdx = phase1.indexOf("architect");
+    const writingIdx = phase1.indexOf("writing-specialist");
+    expect(pmIdx).toBeGreaterThanOrEqual(0);
+    expect(pmIdx < archIdx).toBe(true);
+    expect(archIdx < writingIdx).toBe(true);
+    expect(phase1.includes("`status: locked`")).toBe(true);
+    expect(phase1.includes("corpus hygiene")).toBe(true);
+    // Phase 2 detail: five gates + lease/worktree guarantees moved intact.
+    const phase2 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[1]));
+    expect(phase2.includes("## 2.0 前置条件（五道闸）")).toBe(true);
+    expect(phase2.includes("execution_lease")).toBe(true);
+    expect(phase2.includes("integration_merge_lease")).toBe(true);
+    expect(phase2.includes("MUST differ from")).toBe(true);
+    expect(phase2.includes("### Same-host exclusive write lock")).toBe(true);
+    expect(phase2.includes("## Waiver")).toBe(true);
+    // Phase 3 / 4-5 detail keeps its hard gates.
+    const phase3 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[2]));
+    expect(phase3.includes("## 3.1 Close entry checklist（HARD GATE）")).toBe(true);
+    expect(phase3.includes("## 3.5 Close exit checklist + commit")).toBe(true);
+    const phase45 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[3]));
+    expect(phase45.includes("### 5.1a Push cadence")).toBe(true);
+    expect(phase45.includes("### 5.2 Phase 5 exit checklist")).toBe(true);
+  });
+
+  test("no unconditional all-phase read edge: Load order names zero phase files; no line names ≥2", () => {
+    // The unconditional bootstrap section must not pull in phase detail…
+    const loadOrder = sectionLines("## Load order").join("\n");
+    for (const file of PHASE_ROUTE_FILES) {
+      expect(loadOrder.includes(file), `Load order must not unconditionally name ${file}`).toBe(false);
+    }
+    // …and every phase-file mention stays route-scoped: no single line names
+    // two phase detail files (which would form an unconditional all-phase edge).
+    const offenders = iterationLines.filter((l) => PHASE_ROUTE_FILES.filter((f) => l.includes(f)).length >= 2);
+    expect(offenders, `lines naming ≥2 phase files: ${JSON.stringify(offenders)}`).toEqual([]);
+  });
+
+  test("AC2 pins: transition guards and SP5 retargets survive the extraction", () => {
+    // Sequential start chain + PM lock stay a HARD transition row in main…
+    expect(iterationText.includes("start → integration branch")).toBe(true);
+    expect(iterationText.includes("「Shared anti-recursion NEVER」")).toBe(true);
+    expect(iterationText.includes("mstar-roles/references/_shared/leaf-executor-core.md")).toBe(true);
+    // …and the extracted §1.6 carries the SP5-retargeted anti-pattern pointer.
+    const phase1 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[0]));
+    expect(phase1.includes("mstar-roles/references/_shared/leaf-executor-core.md")).toBe(true);
+    // Phase 3 cannot collapse into final-plan Done.
+    const phase3 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[2]));
+    expect(phase3.includes("## 3.0 Phase boundary（HARD）")).toBe(true);
+    expect(phase3.includes("不能替代 §3.1→§3.5")).toBe(true);
+    expect(iterationText.includes("不要将 Phase 4 开 PR 等同于迭代交付完成")).toBe(true);
+    // PR open ≠ merge-ready, and the push gate survives in the 4-5 reference.
+    const phase45 = read(join(ITERATION_DIR, PHASE_ROUTE_FILES[3]));
+    expect(phase45.includes("Phase 4 exit ≠ 迭代交付完成")).toBe(true);
+  });
+});
+
+
+
+// ---------------------------------------------------------------------------
 // Red fixtures — the checker must FAIL on removed targets/anchors and cycles
 // ---------------------------------------------------------------------------
 
