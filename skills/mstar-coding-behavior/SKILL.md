@@ -1,11 +1,11 @@
 ---
 name: mstar-coding-behavior
-description: Morning Star 跨角色通用编码行为准则 —— 任何实现、调试、重构、审查任务动手前必读。约束 Think Before Coding（先读懂再改、显式假设、不静默猜测）、Simplicity First（YAGNI、The Ladder、`simplify:` 标记、最小耐久切片）、Surgical Changes（改动可追溯、Bug 修根因先 grep 所有调用点、不 piggyback）、Debugging（先复现、一步一测、修前写复现测试）、Review Feedback Handling（先核实再改、证据反驳）、Goal-Driven Execution（非平凡逻辑留可运行检查、Step→verify）、Communication。`@fullstack-dev*` / `@frontend-dev` / `@architect` / `@qa-engineer` / `@ops-engineer` / `@prompt-engineer` 必读；QC 核对手术范围时必读。不覆盖分支门禁、QC/QA 路由、Assignment 权限。
+description: Morning Star 跨角色通用编码行为准则 —— 任何实现、调试、重构、审查任务动手前必读。约束 Think Before Coding（先读懂再改、显式假设、不静默猜测）、Simplicity First（YAGNI、The Ladder、`simplify:` 标记、最小耐久切片）、Surgical Changes（改动可追溯、Bug 修根因先 grep 所有调用点、不 piggyback）、Debugging（先复现、一步一测、修前写复现测试）、Review Feedback Handling（先核实再改、证据反驳）、Goal-Driven Execution（非平凡逻辑留可运行检查、Step→verify）。`@fullstack-dev*` / `@frontend-dev` / `@architect` / `@qa-engineer` / `@ops-engineer` / `@prompt-engineer` 必读；QC 核对手术范围时必读。不覆盖分支门禁、QC/QA 路由、Assignment 权限。
 ---
 
 ## Load order（必读顺序）
 
-**在同一会话或任务中首次 Read 本 skill 时：必须先 Read `mstar-harness-core` skill（SKILL.md）。** 本 skill 只约束 **编码与改动风格**（Think / Simplicity / Surgical / Debugging / Goal-Driven / Communication）；**Done 所有权、状态机** 仍以 **`mstar-harness-core`** 为准；**分支 / worktree / QC-QA 检出字段** → **`mstar-branch-worktree`**；**调度防串扰** → **`mstar-dispatch-gates`**。冲突时 **以 `mstar-harness-core` 为准**。
+**在同一会话或任务中首次 Read 本 skill 时：必须先 Read `mstar-harness-core` skill（SKILL.md）。** 本 skill 只约束 **编码与改动风格**（Think / Simplicity / Surgical / Debugging / Goal-Driven）；**Done 所有权、状态机** 仍以 **`mstar-harness-core`** 为准；**分支 / worktree / QC-QA 检出字段** → **`mstar-branch-worktree`**；**调度防串扰** → **`mstar-dispatch-gates`**。冲突时 **以 `mstar-harness-core` 为准**。
 
 **摘要**：`mstar-harness-core` — 不变量与门禁；本 skill — 实现与审查时的工程习惯，不替代 harness。
 
@@ -21,13 +21,9 @@ Lightweight, host-agnostic coding-behavior principles that reduce common agent m
 
 Do not silently choose an interpretation when ambiguity exists. State assumptions explicitly when material; if multiple plausible interpretations exist, present options and ask. Surface tradeoffs affecting scope/risk/maintainability. If critical context is missing, pause and clarify instead of guessing.
 
-Quick check: can another reviewer see the assumptions made? If assumptions are wrong, will the user detect it before large edits happen?
-
 **Never lazy about understanding.** Shorten the solution, never the reading. Read the task and every file the change touches fully first; trace the actual flow end to end. A small diff in the wrong place is not efficiency — it is a second bug shipped with confidence.
 
 **Read before you write.** Before generating code in an existing project: inspect imports (which libraries the project actually uses — do not introduce a different library for the same purpose); look at nearby tests (they document expected behavior more precisely than comments); follow existing patterns (API routes, file structure, error handling — match it, do not silently introduce a different one). If no precedent exists, say so and ask. If not 100% sure a signature/parameter exists, check source/docs before using it — confidently calling a non-existent API may compile then fail at runtime.
-
-The failure mode: "correct" code that is alien to the codebase — works but looks like a different person wrote it, forcing a rewrite or permanent inconsistency.
 
 ## 2) Simplicity First
 
@@ -94,11 +90,6 @@ When something does not work, investigate; do not guess.
 - **Run existing tests before and after changes.** If they passed before and fail after, you broke something. If they were already failing, say so.
 - **If stuck, say so.** "I tried X and Y; neither worked. I'm seeing Z. I think it might be W but am not sure" is infinitely more useful than silently trying random things for 20 iterations.
 
-**Dataflow-directed diagnosis — how to locate, verify, and falsify** (for where to fix, see Surgical Changes · bug=root-cause; for the pre-fix repro test, see the bullets above):
-- **Map the data flow before judging.** Trace input → processing → storage → output, noting who writes and who reads at each step. A bug is a state deviation from expectation at some point in that flow (expected state vs observed state) — locate it from the data, not by static code reading.
-- **Four verifiable cross-checks.** Every hypothesis must be cross-checkable: re-run the repro / log comparison / input-output comparison / dual-path comparison. A hypothesis that cannot be verified on the spot is not a conclusion.
-- **Falsify the fix.** After the fix, re-run the original repro and compare output with expectation. If the problem did not disappear, the root cause was wrong — report "verification failed" explicitly; never pretend success.
-
 ## 5) Goal-Driven Execution
 
 Convert vague requests into verifiable outcomes and iterate until verified. Define concrete success criteria before major edits; use brief `Step -> verify` checkpoints for multi-step tasks; for split delivery, maintain a durable roadmap (current slice, later slices, dependencies, owner/trigger, completion condition); prefer evidence-backed completion (tests, command output, reproducible checks). If verification fails, loop on diagnosis and fix before declaring completion. Do not finish with "next plan / later / follow-up" only in prose — remaining work must be written to the plan/status artifact or the task reports `Partial` / `Blocked`.
@@ -131,14 +122,6 @@ Feedback priority:
 
 Do not perform agreement. State the technical action, the verification result, or the technical reason for disagreement.
 
-## 7) Communication
-
-- **Say what you did and why** — not just a code dump ("moved validation into a separate function because it was duplicated in three places and this makes it testable independently").
-- **Flag concerns proactively** ("this works but makes a DB call per item — if the list grows large this will be slow; want me to batch it?").
-- **Be precise about uncertainty** ("I'm not sure if this library supports streaming responses" is useful; "I think this should work" is not — tell the reviewer exactly what to verify).
-- **Match explanation to context** — do not explain REST to someone who asked for a REST endpoint, or indexes to someone who asked for an index.
-- **Write specific commit messages** — "Fix null pointer in user lookup when email contains uppercase chars", not "Fix bug".
-
 ## Integration Notes
 
 - **SDD implementer reports** (`mstar-sdd`): completion evidence must include TDD triple — test file(s), command, output — in `task-N-report.md`; fix rounds add the same for new/changed tests.
@@ -155,7 +138,7 @@ Do not perform agreement. State the technical action, the verification result, o
 
 ## Workflow
 
-Apply the seven sections in reading order: **1) Think Before Coding**（读懂再改）→ **2) Simplicity First**（最小耐久切片）→ **3) Surgical Changes**（可追溯改动 / 根因修复）→ **4) Debugging**（先复现、一步一测）→ **5) Goal-Driven Execution**（Step → verify）→ **6) Review Feedback Handling**（先核实再改、证据反驳）→ **7) Communication**（说明做了什么与为什么）。
+Apply the six sections in reading order: **1) Think Before Coding**（读懂再改）→ **2) Simplicity First**（最小耐久切片）→ **3) Surgical Changes**（可追溯改动 / 根因修复）→ **4) Debugging**（先复现、一步一测）→ **5) Goal-Driven Execution**（Step → verify）→ **6) Review Feedback Handling**（先核实再改、证据反驳）。
 
 ## Evidence
 

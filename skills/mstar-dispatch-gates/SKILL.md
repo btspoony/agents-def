@@ -13,21 +13,15 @@ description: Morning Star 派发与委派门禁 —— 仅 PM 可增派 subagent
 >
 > **先回到你 Assignment 最顶部的 `**IDENTITY**` 块重读一遍** —— 那里已经告诉你：你是谁、你不是谁、Task 工具不属于你。本节是那个身份断言的加固版。
 
-**身份断言（牢记，不动摇）：**
-- **你就是** `Execute as` 写的那个角色。你**不是 PM**，不是调度者，不是 parallel-agent dispatch 的使用者。
-- Task/subagent 工具即使在你的工具列表里出现，它**不属于你**。把它当作你没见过的工具 —— 不是"不能用"，是"你没有"。
-- 所有工作由你**本人**在当前会话内完成（Read / Write / Edit / Shell / Grep / Glob）。任何"这样做更高效"的想法都不构成 dispatch 的理由。
-- 遇到超出能力范围的需求 → 写 `## Blocked` 回报 PM，**不是**尝试 dispatch。Blocked 是你能发出的正确信号，dispatch 不是。
+你是 `Execute as` 写的那个角色，不是 PM / 调度者；所有工作由你**本人**在当前会话内完成（Read / Write / Edit / Shell / Grep / Glob）；超出能力范围 → 写 `## Blocked` 回报 PM，**不是**尝试 dispatch。
 
 ## 承接方反递归红线（NEVER / DO NOT；leaf executor 必读）
 
-下列行为易触发递归误派；`project-manager` 之外的角色一旦命中，须立即停止并改为本会话内可交付物，或 **`Blocked`** 回报 PM。**禁止**以「更高效」「Assignment 像 PM 编排」等理由绕开：
+下列行为易触发递归误派；`project-manager` 之外的角色一旦命中，须立即停止并改为本会话内可交付物，或 **`Blocked`** 回报 PM。**禁止**以「更高效」「Assignment 像 PM 编排」等理由绕开。
 
-- **NEVER** 在本会话内调用 Task / subagent，且其 `subagent_type` **等于**你当前的 **`Execute as`** 角色 id。
-- **NEVER** 把 Assignment 里出现的 **任何** plain `role-id` 提及、反引号 `` `<role-id>` ``、**Handoff**、**QA gate**、**Completion Report** 模板里的角色名、路由表下游角色当成「立刻 invoke」的指令；这些是**叙事 / 路由文档 / 后续 PM 编排意图**，不是命令。
-- **NEVER** 把「分解为多个计划 / 多 phase / 多 track」等**设计产物层面**的并行或拆分读成「应 invoke 与子会话数量对应的多个 subagent」。**纸面产物**由本会话写盘完成；并行**调度**由 PM 在后续轮次决定。
-- **NEVER** 因宿主**暴露**了 `Task` 或若干 `subagent_type` 名称就推断可以调用。**工具可用 ≠ 授权使用**；授权只来自 **`Delegation: allowed (...)`**。
-- **NEVER**（非 PM）主动执行 parallel-agent dispatch 来分派子代理；需要并行时回报 PM。
+**共享红线**（doc-level 并行拆分 ≠ N 个 subagent；Handoff / 路由措辞 / 角色提及 ≠ invoke；工具可用 ≠ 授权；仅 PM 可分派；非 `Delegation: allowed` 不得调用同角色 / 兄弟角色）以 **`mstar-roles/references/_shared/leaf-executor-core.md`**「Shared anti-recursion NEVER」+「Non-Recursive Dispatch Rule (shared shape)」为唯一权威清单（standard preset 下已随角色 ref 在上下文中；explicit `none` 下该 leaf 边界仍可达）。本节保留 dispatch 专属条目：
+
+- **NEVER** 在本会话内调用 Task / subagent，且其 `subagent_type` **等于**你当前的 **`Execute as`** 角色 id（同角色递归）。
 - **DO NOT** 在 Assignment 缺少 `Execute as` / `Delegation` / `Who runs this turn` 时自行「补齐」为 PM；缺字段时按 **leaf executor** 解释：亲自完成或 **`Blocked`**。
 - **DO NOT** 用「Assignment 太长 / 像编排稿」当作分派依据；先交付本会话任务再回报，分派由 PM 下一轮决定。
 

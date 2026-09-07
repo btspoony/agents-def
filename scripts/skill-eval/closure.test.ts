@@ -620,6 +620,10 @@ type AblationRule = {
   caseIds: string[];
   beforeSha256: string;
   afterSha256: string | null;
+  /** Task 2 re-freeze: true when the batch removed the row's anchor text from
+   * the owner — the anchor's ABSENCE is then asserted (removal is proven,
+   * not assumed). Absent/undefined = the anchor must still be present. */
+  removedFromSource?: boolean;
   restore: string;
   notes: string;
 };
@@ -633,6 +637,10 @@ type Ablations = {
 
 const ABLATIONS_JSON = join(REPO_ROOT, "scripts/skill-eval/ablations.json");
 const ablations = JSON.parse(read(ABLATIONS_JSON)) as Ablations;
+/** Task 1 freeze BASE (recorded in the Task 1 report and ablations.task2Refreeze).
+ * beforeSha256 values are verified against THIS tree's owner blobs via git show,
+ * so the freeze pins stay meaningful after the Task 2 re-freeze. */
+const TASK1_BASE_SHA = "c4e338a02744bc28453e13f6981bd635f1b2158a";
 const ruleIds = ablations.rules.map((r) => r.ruleId);
 const caseIdSet = new Set(cases.map((c) => c.id));
 const DISPOSITIONS = new Set(["keep", "delete", "consolidate", "experiment"]);
@@ -651,6 +659,16 @@ function ownerTextOf(rule: AblationRule): string {
 function sha256Of(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
+/** sha256 of the file content at `<rev>:<relPath>` in git history (used to
+ * verify the Task 1 freeze pins against the BASE tree, independent of the
+ * working tree). */
+function sha256OfGitBlob(rev: string, relPath: string): string {
+  const bytes = execFileSync("git", ["-C", REPO_ROOT, "show", `${rev}:${relPath}`], {
+    encoding: "buffer",
+    maxBuffer: 16 * 1024 * 1024,
+  }) as Buffer;
+  return createHash("sha256").update(bytes).digest("hex");
+}
 function gitObjectType(sha: string): string {
   return execFileSync("git", ["-C", REPO_ROOT, "cat-file", "-t", sha], { encoding: "utf8" }).trim();
 }
@@ -667,8 +685,10 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
       expect(rule.sourceRef.anchor.length > 0, `${rule.ruleId} anchor`).toBe(true);
       expect(rule.beforeSha256).toMatch(/^[0-9a-f]{64}$/);
       expect(rule.restore.length > 0, `${rule.ruleId} restore`).toBe(true);
-      // Task 1 is a freeze: after-hashes are filled by Task 2 batches, never now.
-      expect(rule.afterSha256, `${rule.ruleId} afterSha256 must stay null at freeze`).toBeNull();
+      // Task 2 re-freeze: every owner file changed in the batch set, so every
+      // row carries a filled afterSha256 (current-bytes match is asserted by
+      // the re-freeze pin test below).
+      expect(rule.afterSha256, `${rule.ruleId} afterSha256 filled at re-freeze`).toMatch(/^[0-9a-f]{64}$/);
       // A non-keep row must name a concrete removal basis (never an enforcement argument).
       if (rule.disposition !== "keep") {
         expect(REMOVAL_BASES.has(rule.removalBasis ?? ""), `${rule.ruleId} removalBasis`).toBe(true);
@@ -682,12 +702,24 @@ describe("A5 ablation inventory — plan 20260907-skill-hotpath-thinning Task 1 
     expect(new Set(ruleIds).size).toBe(ruleIds.length);
   });
 
-  test("every row's owner file exists, its anchor is present in the CURRENT text, and beforeSha256 pins the frozen bytes", () => {
+  test("Task 2 re-freeze: beforeSha256 pins the BASE tree blob, afterSha256 pins current bytes, and removed anchors are proven gone", () => {
     for (const rule of ablations.rules) {
       const abs = join(REPO_ROOT, rule.owner);
       expect(existsSync(abs), `${rule.ruleId} owner ${rule.owner}`).toBe(true);
-      expect(ownerTextOf(rule).includes(rule.sourceRef.anchor), `${rule.ruleId} anchor "${rule.sourceRef.anchor}" in ${rule.owner}`).toBe(true);
-      expect(sha256Of(abs), `${rule.ruleId} beforeSha256 freeze pin`).toBe(rule.beforeSha256);
+      // Freeze provenance: the Task 1 pin must equal the owner blob at the
+      // recorded BASE commit — verified from git history, not the working tree.
+      expect(sha256OfGitBlob(TASK1_BASE_SHA, rule.owner), `${rule.ruleId} beforeSha256 pins the BASE blob of ${rule.owner}`).toBe(rule.beforeSha256);
+      // Re-freeze: afterSha256 matches the current owner bytes.
+      expect(rule.afterSha256, `${rule.ruleId} afterSha256 matches current bytes`).toBe(sha256Of(abs));
+      // Anchor contract: rows marked removedFromSource must REALLY have lost
+      // their anchor text (the batch happened); every other row's anchor must
+      // still be present.
+      const present = ownerTextOf(rule).includes(rule.sourceRef.anchor);
+      if (rule.removedFromSource) {
+        expect(present, `${rule.ruleId} anchor "${rule.sourceRef.anchor}" removed from ${rule.owner}`).toBe(false);
+      } else {
+        expect(present, `${rule.ruleId} anchor "${rule.sourceRef.anchor}" in ${rule.owner}`).toBe(true);
+      }
     }
   });
 

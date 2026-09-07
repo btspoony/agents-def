@@ -6,7 +6,7 @@
   "frozenAt": {
     "branch": "feature/20260907-skill-hotpath-thinning",
     "gitHead": "003efc475b245e99d8555e6ddee3982bb62ccd57",
-    "note": "BASE = integration HEAD after SP1-SP4 merges. Per-owner beforeSha256 values below pin this state; any owner-file drift invalidates the freeze and Task 2 must re-freeze before batching."
+    "note": "BASE = integration HEAD after SP1-SP4 merges. beforeSha256 values pin the Task 1 freeze state (verified against the BASE tree via `git show` in closure.test.ts). Task 2 applied the 7 experiment + 1 consolidate batches and RE-FROZE: afterSha256 values pin the post-batch owner bytes; rows with removedFromSource=true have their sourceRef anchor text removed from the owner (the anchor-absence is itself asserted). Disposition outcomes flip to adopted-keep/restored-keep only after the paired dev runs, never before."
   },
   "dispositionSemantics": {
     "keep": "No removal. Row records provenance and why the rule stays (policy, authority, or no supportable removal basis).",
@@ -71,9 +71,16 @@
       "ruleId": "core.load-contract",
       "title": "Loading contract: lifecycle/authorization authority here; load-selection authority in mstar-roles hub; hub bootstrap is the one core-first exception",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 与其它 `mstar-*` skill 的加载契约", "lines": "10-15" },
+      "sourceRef": {
+        "anchor": "## 与其它 `mstar-*` skill 的加载契约",
+        "lines": "10-15"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "#144 preset semantics; rewritten by SP2 plan 20260907-skill-load-contract (A2) and pinned by closure.test.ts", "commit": "5b897950479375213db9872cd6148cc16e96c381", "userPolicy": "#144" },
+      "provenance": {
+        "origin": "#144 preset semantics; rewritten by SP2 plan 20260907-skill-load-contract (A2) and pinned by closure.test.ts",
+        "commit": "5b897950479375213db9872cd6148cc16e96c381",
+        "userPolicy": "#144"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "explicit-check",
@@ -81,7 +88,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "SP2-fresh verified semantics; reopening would churn verified work without new evidence."
     },
@@ -89,9 +96,16 @@
       "ruleId": "core.standalone-harness",
       "title": "Standalone mstar-* self-containment; command-layer-only non-mstar assets; no third-party doc tools in load order",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## Standalone harness（`mstar-*` 自洽）", "lines": "17-21" },
+      "sourceRef": {
+        "anchor": "## Standalone harness（`mstar-*` 自洽）",
+        "lines": "17-21"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "harness core policy (pre-#109 lineage, carried through v3 thinning)", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core policy (pre-#109 lineage, carried through v3 thinning)",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -99,7 +113,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Owns the third-party-tools load-order rule (line 21) — consolidation owner for core.docs-api."
     },
@@ -107,9 +121,16 @@
       "ruleId": "core.info-priority",
       "title": "Information-source priority (user > AGENTS.md > knowledge index > skills > role text); knowledge never overrides user/AGENTS.md",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 信息源优先级", "lines": "23-31" },
+      "sourceRef": {
+        "anchor": "## 信息源优先级",
+        "lines": "23-31"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "harness core policy", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core policy",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -117,7 +138,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Authority semantics; core is the declared conflict arbiter."
     },
@@ -125,17 +146,29 @@
       "ruleId": "core.delivery-loop",
       "title": "Minimal delivery loop (per-plan specify→…→Done with QA gate; iteration-level chain)",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 最小交付循环", "lines": "33-37" },
+      "sourceRef": {
+        "anchor": "## 最小交付循环",
+        "lines": "33-37"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "v3 workflow lifecycle", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "v3 workflow lifecycle",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Lifecycle gates are prompt-level; engine validators check status shape, not gate sequence.",
       "coverageRefs": [],
-      "caseIds": ["pm-dev-1-plan-before-implement", "pm-dev-3-authorized-hotfix-exception", "close-dev-1-close-checklist-gaps", "close-heldout-1-no-phase3-collapse"],
+      "caseIds": [
+        "pm-dev-1-plan-before-implement",
+        "pm-dev-3-authorized-hotfix-exception",
+        "close-dev-1-close-checklist-gaps",
+        "close-heldout-1-no-phase3-collapse"
+      ],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Lifecycle authority; corpus anchors the plan-first and gate-sequence semantics."
     },
@@ -143,9 +176,16 @@
       "ruleId": "core.typical-additions-table",
       "title": "Per-role typical topic-skill additions table (advisory summary; hub owns selection)",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 加载约定（强制）", "lines": "39-50" },
+      "sourceRef": {
+        "anchor": "## 加载约定（强制）",
+        "lines": "39-50"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "#144 preset menus; reduced to advisory summary by SP2 (A2)", "commit": "5b897950479375213db9872cd6148cc16e96c381", "userPolicy": "#144" },
+      "provenance": {
+        "origin": "#144 preset menus; reduced to advisory summary by SP2 (A2)",
+        "commit": "5b897950479375213db9872cd6148cc16e96c381",
+        "userPolicy": "#144"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -153,7 +193,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Overlaps role-ref preset menus by design (summary vs SSOT). SP2 just rewrote this into the non-second-mechanism form; further consolidation churns verified work with no duplication harm shown."
     },
@@ -161,17 +201,29 @@
       "ruleId": "core.state-machine",
       "title": "Status state machine; Done authority restricted to project-manager/qa-engineer; implementers may set InReview only",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 状态机", "lines": "52-59" },
+      "sourceRef": {
+        "anchor": "## 状态机",
+        "lines": "52-59"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "v3 workflow lifecycle", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "v3 workflow lifecycle",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Coverage map row done-ownership.authority: mode unavailable — validators check schema shape, not WHO flips Done; a schema-valid unauthorized flip is blocked by nothing on any host. Prompt text is the ONLY home for this rule, so it cannot be removed.",
-      "coverageRefs": ["done-ownership.authority"],
-      "caseIds": ["close-dev-2-refuse-done-without-qa", "pm-heldout-2-false-pass-done-claim"],
+      "coverageRefs": [
+        "done-ownership.authority"
+      ],
+      "caseIds": [
+        "close-dev-2-refuse-done-without-qa",
+        "pm-heldout-2-false-pass-done-claim"
+      ],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Positive example of 'not every positive prose is disposable': no enforcement backup exists."
     },
@@ -179,9 +231,16 @@
       "ruleId": "core.task-category",
       "title": "Task category routing table + quick-never-skips-Prepare hard rule",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## Task category（路由摘要）", "lines": "61-75" },
+      "sourceRef": {
+        "anchor": "## Task category（路由摘要）",
+        "lines": "61-75"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "harness core routing", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core routing",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -189,7 +248,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Routing summary feeding PM dispatch and the routing-eval corpus."
     },
@@ -197,17 +256,26 @@
       "ruleId": "core.explore-boundary",
       "title": "@explore must not substitute for implementation/test/review/doc delivery; no subcontracting after dispatch",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## `@explore` 边界", "lines": "77-81" },
+      "sourceRef": {
+        "anchor": "## `@explore` 边界",
+        "lines": "77-81"
+      },
       "ac1Category": "necessary-negative-constraint",
-      "provenance": { "origin": "harness core dispatch hygiene", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core dispatch hygiene",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level; anti-recursion engine precheck does not cover explore substitution.",
-      "coverageRefs": ["dispatch-authorization.delegation-boundary"],
+      "coverageRefs": [
+        "dispatch-authorization.delegation-boundary"
+      ],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Explore-specific rule with no duplicate home in dispatch-gates or the leaf block."
     },
@@ -215,17 +283,26 @@
       "ruleId": "core.long-task-discipline",
       "title": "Long-task discipline + Durable Roadmap Gate (staged work needs SSOT roadmap, not chat-only 'later')",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 长任务纪律", "lines": "83-87" },
+      "sourceRef": {
+        "anchor": "## 长任务纪律",
+        "lines": "83-87"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "harness core; Durable Roadmap Gate added post-v3", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core; Durable Roadmap Gate added post-v3",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level gate; no enforcement home.",
       "coverageRefs": [],
-      "caseIds": ["pm-heldout-1-durable-roadmap-gate"],
+      "caseIds": [
+        "pm-heldout-1-durable-roadmap-gate"
+      ],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Named gate with a dedicated heldout anchor."
     },
@@ -233,9 +310,16 @@
       "ruleId": "core.skill-index",
       "title": "Topic skill index (discovery table of all mstar-* skills)",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 专题 skill 索引", "lines": "89-112" },
+      "sourceRef": {
+        "anchor": "## 专题 skill 索引",
+        "lines": "89-112"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "harness core index", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core index",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -243,7 +327,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Primary trigger/discovery map; removing it breaks onboarding and PM routing discovery."
     },
@@ -251,9 +335,16 @@
       "ruleId": "core.host-table",
       "title": "Host entry table for mstar-host detection and per-host references",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 宿主 `mstar-host`", "lines": "114-124" },
+      "sourceRef": {
+        "anchor": "## 宿主 `mstar-host`",
+        "lines": "114-124"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "harness core host adaptation", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core host adaptation",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -261,7 +352,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Host-adapter entry point; per-host detail intentionally lives in mstar-host references."
     },
@@ -269,9 +360,16 @@
       "ruleId": "core.engineering-rules",
       "title": "核心研发守则: seven global engineering invariants applying to all roles",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 核心研发守则", "lines": "126-136" },
+      "sourceRef": {
+        "anchor": "## 核心研发守则",
+        "lines": "126-136"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "user-added core engineering rules", "commit": "9f886943eba12a2f5dd4abd62640cce86c04d2cc", "userPolicy": "#167" },
+      "provenance": {
+        "origin": "user-added core engineering rules",
+        "commit": "9f886943eba12a2f5dd4abd62640cce86c04d2cc",
+        "userPolicy": "#167"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -279,7 +377,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "AC2: #167 policies remain unless a scoped experiment plus explicit authorization supports changing semantics. The generic-teaching resemblance does NOT make this removable — it is a delivered user policy."
     },
@@ -287,17 +385,28 @@
       "ruleId": "core.guardrails",
       "title": "Guardrail invariants: no host-config/credential edits without consent; behavior changes need evidence; feature-branch default; dev triangle; plan artifacts in PLAN_DIR",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 护栏（不变量）", "lines": "138-146" },
+      "sourceRef": {
+        "anchor": "## 护栏（不变量）",
+        "lines": "138-146"
+      },
       "ac1Category": "necessary-negative-constraint",
-      "provenance": { "origin": "harness core invariants", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core invariants",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "No enforcement home for consent/credential rules; prompt-level only.",
       "coverageRefs": [],
-      "caseIds": ["dev-dev-3-refuse-secret-and-parent-writes", "dev-heldout-2-wrong-checkout-trap", "pm-dev-2-refuse-gate-skip-and-main-commit"],
+      "caseIds": [
+        "dev-dev-3-refuse-secret-and-parent-writes",
+        "dev-heldout-2-wrong-checkout-trap",
+        "pm-dev-2-refuse-gate-skip-and-main-commit"
+      ],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Authorization-class negative constraints; corpus anchors the refusal behaviors."
     },
@@ -305,17 +414,28 @@
       "ruleId": "core.engine-legacy-conditional",
       "title": "mstar-engine-legacy stays a conditional engine-absent archive; engine-present hosts use engine checks as authority",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "加载条件（`mstar-engine-legacy`）", "lines": "15" },
+      "sourceRef": {
+        "anchor": "加载条件（`mstar-engine-legacy`）",
+        "lines": "15"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "conditional legacy sink convention (skill-thinning-sink-contract; user-preserved)", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "conditional legacy sink convention (skill-thinning-sink-contract; user-preserved)",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Coverage map row engine-absent.fallback-integrity: mode unavailable — no runtime, skill text authoritative; honesty requires reporting advisory-only.",
-      "coverageRefs": ["engine-absent.fallback-integrity"],
-      "caseIds": ["audit-dev-1-engine-absent-none-preset"],
+      "coverageRefs": [
+        "engine-absent.fallback-integrity"
+      ],
+      "caseIds": [
+        "audit-dev-1-engine-absent-none-preset"
+      ],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "AC3: engine-legacy and engine-absent fallback are preserved; any change beyond SP2's wording stops and asks PM."
     },
@@ -323,9 +443,16 @@
       "ruleId": "core.escalation-triggers",
       "title": "Escalation triggers: ambiguous acceptance, review conflict, repeated failure, non-converging root cause → escalation report",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 升级触发", "lines": "152-154" },
+      "sourceRef": {
+        "anchor": "## 升级触发",
+        "lines": "152-154"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "harness core", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -333,7 +460,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "n/a (keep)",
       "notes": "Small; defines the Blocked/escalation path used by leaf executors."
     },
@@ -341,9 +468,16 @@
       "ruleId": "core.docs-api",
       "title": "Library docs/API questions: read project docs/source first; no third-party MCP/CLI doc tools in load order",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 库文档 / API 问题", "lines": "148-150" },
+      "sourceRef": {
+        "anchor": "## 库文档 / API 问题",
+        "lines": "148-150"
+      },
       "ac1Category": "duplicated-rule",
-      "provenance": { "origin": "harness core", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "harness core",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "consolidate",
       "removalBasis": "duplicated-rule-owner-exists",
       "enforcementClaim": "none",
@@ -351,17 +485,25 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "If the Task 2 batch regresses or review objects, restore the section verbatim (single-commit revert of the batch).",
-      "notes": "Near-verbatim duplicate of core.standalone-harness line 21 (框架/SDK/API 问题：先 Read/Grep 项目内文档与源码；不将第三方文档工具写入 mstar-* 必读路径). Surviving owner: core.standalone-harness (Standalone harness section, line 21). Frozen consolidation intent; applied only as a Task 2 batch with the owner verified intact."
+      "notes": "Near-verbatim duplicate of core.standalone-harness line 21 (框架/SDK/API 问题：先 Read/Grep 项目内文档与源码；不将第三方文档工具写入 mstar-* 必读路径). Surviving owner: core.standalone-harness (Standalone harness section, line 21). Frozen consolidation intent; applied only as a Task 2 batch with the owner verified intact.",
+      "removedFromSource": true
     },
     {
       "ruleId": "core.anti-pattern-index",
       "title": "Anti-pattern index: ~28 pointer rows mapping anti-patterns to owning topic skills",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 反模式（索引）", "lines": "156-184" },
+      "sourceRef": {
+        "anchor": "## 反模式（索引）",
+        "lines": "156-184"
+      },
       "ac1Category": "duplicated-rule",
-      "provenance": { "origin": "accumulated index, v3 era onward; rows added through iterations", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "accumulated index, v3 era onward; rows added through iterations",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "experiment",
       "removalBasis": "duplicated-rule-owner-exists",
       "enforcementClaim": "none",
@@ -369,17 +511,25 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "Restore the full table verbatim if the paired run shows any regression, if a row's owner lacks the full rule, or if review finds a discoverability loss.",
-      "notes": "Bounded hypothesis: pointer rows duplicated in owner skills can shrink without reachability loss. NOT frozen for deletion — runs as a Task 2 experiment per AGENTS.md '反模式（索引）' design intent."
+      "notes": "Bounded hypothesis: pointer rows duplicated in owner skills can shrink without reachability loss. NOT frozen for deletion — runs as a Task 2 experiment per AGENTS.md '反模式（索引）' design intent.",
+      "removedFromSource": true
     },
     {
       "ruleId": "core.common-sayings",
       "title": "Common harness sayings mapping table (onboarding aid: 常见说法 → repo entities)",
       "owner": "skills/mstar-harness-core/SKILL.md",
-      "sourceRef": { "anchor": "## 常见 harness 说法对照（帮助理解角色分工）", "lines": "186-196" },
+      "sourceRef": {
+        "anchor": "## 常见 harness 说法对照（帮助理解角色分工）",
+        "lines": "186-196"
+      },
       "ac1Category": "model-native-generic-teaching",
-      "provenance": { "origin": "onboarding aid added during core evolution (no single decision commit identified)", "commit": null, "userPolicy": null },
+      "provenance": {
+        "origin": "onboarding aid added during core evolution (no single decision commit identified)",
+        "commit": null,
+        "userPolicy": null
+      },
       "disposition": "experiment",
       "removalBasis": "onboarding-only-hypothesis",
       "enforcementClaim": "none",
@@ -387,25 +537,35 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "e0345024062d144662d0b74ff106c2d16ae401d0becc5f9b7aa39067770c7aaf",
-      "afterSha256": null,
+      "afterSha256": "57baa768e4f59ae1efe16765688bf70c521bf01208aa5f475a3808b74e7401b4",
       "restore": "Restore the section verbatim on any regression or reviewer objection.",
-      "notes": "Static explanatory material rather than judgment guidance; bounded Task 2 experiment, not a deletion quota item."
+      "notes": "Static explanatory material rather than judgment guidance; bounded Task 2 experiment, not a deletion quota item.",
+      "removedFromSource": true
     },
     {
       "ruleId": "coding.load-order",
       "title": "coding-behavior Load Order: core-first declaration + priority restatement + scope",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## Load order（必读顺序）", "lines": "6-14" },
+      "sourceRef": {
+        "anchor": "## Load order（必读顺序）",
+        "lines": "6-14"
+      },
       "ac1Category": "mechanically-covered-contract",
-      "provenance": { "origin": "topic skill load contract", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "topic skill load contract",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "explicit-check",
       "enforcementLimitations": "lintLoadOrder fails any topic whose Load Order lacks mstar-harness-core (roles.loadorder.core.missing) — the declaration is machine-checked on lint runs only.",
-      "coverageRefs": ["skill-lint.authoring-default"],
+      "coverageRefs": [
+        "skill-lint.authoring-default"
+      ],
       "caseIds": [],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "Removing the core-first line would fail the tracked lint; not a thinning candidate."
     },
@@ -413,9 +573,16 @@
       "ruleId": "coding.upstream-invariants",
       "title": "Upstream-invariants link: global engineering rules live in core 核心研发守则; this skill is the implementation-level playbook",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "**Upstream invariants**", "lines": "34" },
+      "sourceRef": {
+        "anchor": "**Upstream invariants**",
+        "lines": "34"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "#167 companion line keeping the two layers drift-free", "commit": "9f886943eba12a2f5dd4abd62640cce86c04d2cc", "userPolicy": "#167" },
+      "provenance": {
+        "origin": "#167 companion line keeping the two layers drift-free",
+        "commit": "9f886943eba12a2f5dd4abd62640cce86c04d2cc",
+        "userPolicy": "#167"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -423,7 +590,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "AC2: part of the #167 delivery; prevents re-duplication of the invariants here."
     },
@@ -431,17 +598,27 @@
       "ruleId": "coding.think",
       "title": "Think Before Coding: no silent interpretation, explicit assumptions, never-lazy reading, read-before-write",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## 1) Think Before Coding", "lines": "20-30" },
+      "sourceRef": {
+        "anchor": "## 1) Think Before Coding",
+        "lines": "20-30"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "cross-role coding behavior skill", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "cross-role coding behavior skill",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level; observed-failure provenance (unread files → 'a second bug shipped with confidence').",
       "coverageRefs": [],
-      "caseIds": ["dev-dev-1-smoke-readonly-closure-sentinel", "dev-dev-4-resume-repair"],
+      "caseIds": [
+        "dev-dev-1-smoke-readonly-closure-sentinel",
+        "dev-dev-4-resume-repair"
+      ],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "Kept: anti-lazy guardrail counters an observed failure mode, which the skill purpose test says to retain. Generic elaboration inside it is split into coding.think-elaboration."
     },
@@ -449,9 +626,16 @@
       "ruleId": "coding.think-elaboration",
       "title": "Think section elaboration: 'Quick check' reviewer-visibility paragraph + failure-mode paragraph",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "Quick check: can another reviewer see", "lines": "24,30" },
+      "sourceRef": {
+        "anchor": "Quick check: can another reviewer see",
+        "lines": "24,30"
+      },
       "ac1Category": "model-native-generic-teaching",
-      "provenance": { "origin": "cross-role coding behavior skill", "commit": null, "userPolicy": null },
+      "provenance": {
+        "origin": "cross-role coding behavior skill",
+        "commit": null,
+        "userPolicy": null
+      },
       "disposition": "experiment",
       "removalBasis": "model-native-teaching-hypothesis",
       "enforcementClaim": "none",
@@ -459,25 +643,37 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "Restore both paragraphs verbatim on any regression or reviewer objection.",
-      "notes": "Bounded hypothesis that strong models apply reviewer-visibility and failure-mode reasoning unprompted; the normative never-lazy/read-before-write rules stay regardless of outcome."
+      "notes": "Bounded hypothesis that strong models apply reviewer-visibility and failure-mode reasoning unprompted; the normative never-lazy/read-before-write rules stay regardless of outcome.",
+      "removedFromSource": true
     },
     {
       "ruleId": "coding.simplicity",
       "title": "Simplicity First: Ladder, deletion-over-addition, simplify:/temporary markers, anti-pattern table, durability check",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## 2) Simplicity First", "lines": "32-75" },
+      "sourceRef": {
+        "anchor": "## 2) Simplicity First",
+        "lines": "32-75"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "cross-role coding behavior; marker convention machine-checked; #167 link at top", "commit": "9f886943eba12a2f5dd4abd62640cce86c04d2cc", "userPolicy": "#167" },
+      "provenance": {
+        "origin": "cross-role coding behavior; marker convention machine-checked; #167 link at top",
+        "commit": "9f886943eba12a2f5dd4abd62640cce86c04d2cc",
+        "userPolicy": "#167"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "explicit-check",
       "enforcementLimitations": "Engine findSimplifyMarkers/findTemporaryMarkers checks marker FORMAT on lint runs; the text's WHEN-to-mark judgment has no enforcement and must stay.",
-      "coverageRefs": ["skill-lint.authoring-default"],
-      "caseIds": ["dev-dev-2-smoke-isolated-relative-write"],
+      "coverageRefs": [
+        "skill-lint.authoring-default"
+      ],
+      "caseIds": [
+        "dev-dev-2-smoke-isolated-relative-write"
+      ],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "Mechanical coverage covers marker syntax only; AC3 forbids treating that as license to remove the judgment text."
     },
@@ -485,17 +681,27 @@
       "ruleId": "coding.surgical",
       "title": "Surgical Changes: traceability test, root-cause fix at the narrowest shared point, no piggyback edits",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## 3) Surgical Changes", "lines": "77-83" },
+      "sourceRef": {
+        "anchor": "## 3) Surgical Changes",
+        "lines": "77-83"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "cross-role coding behavior; QC seats verify surgical scope (frontmatter trigger contract)", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "cross-role coding behavior; QC seats verify surgical scope (frontmatter trigger contract)",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level; referenced by QC review scope.",
       "coverageRefs": [],
-      "caseIds": ["dev-dev-4-resume-repair", "close-dev-4-resume-interrupted-close"],
+      "caseIds": [
+        "dev-dev-4-resume-repair",
+        "close-dev-4-resume-interrupted-close"
+      ],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "Corpus anchors confined-write behavior; description names QC's surgical-scope check as a trigger."
     },
@@ -503,17 +709,27 @@
       "ruleId": "coding.debugging-core",
       "title": "Debugging discipline: read the whole error, reproduce before fixing, one change at a time, repro test red→green, say when stuck",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## 4) Debugging", "lines": "85-95" },
+      "sourceRef": {
+        "anchor": "## 4) Debugging",
+        "lines": "85-95"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "cross-role coding behavior", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "cross-role coding behavior",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level.",
       "coverageRefs": [],
-      "caseIds": ["dev-dev-1-smoke-readonly-closure-sentinel", "dev-dev-4-resume-repair"],
+      "caseIds": [
+        "dev-dev-1-smoke-readonly-closure-sentinel",
+        "dev-dev-4-resume-repair"
+      ],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "Root-cause-before-fix is anchored by the corpus checklist (report root cause before proposing fixes)."
     },
@@ -521,9 +737,16 @@
       "ruleId": "coding.debugging-dataflow",
       "title": "Dataflow-directed diagnosis block: map the data flow, four verifiable cross-checks, falsify the fix",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "**Dataflow-directed diagnosis", "lines": "97-100" },
+      "sourceRef": {
+        "anchor": "**Dataflow-directed diagnosis",
+        "lines": "97-100"
+      },
       "ac1Category": "model-native-generic-teaching",
-      "provenance": { "origin": "cross-role coding behavior", "commit": null, "userPolicy": null },
+      "provenance": {
+        "origin": "cross-role coding behavior",
+        "commit": null,
+        "userPolicy": null
+      },
       "disposition": "experiment",
       "removalBasis": "model-native-teaching-hypothesis",
       "enforcementClaim": "none",
@@ -531,25 +754,38 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "Restore the block verbatim on any regression or reviewer objection.",
-      "notes": "Generic debugging methodology strong models typically apply; bounded Task 2 experiment, one batch, paired evidence."
+      "notes": "Generic debugging methodology strong models typically apply; bounded Task 2 experiment, one batch, paired evidence.",
+      "removedFromSource": true
     },
     {
       "ruleId": "coding.goal-driven",
       "title": "Goal-Driven Execution: verifiable outcomes, Step→verify, durable roadmap, minimal runnable check, TDD-triple reporting",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## 5) Goal-Driven Execution", "lines": "102-117" },
+      "sourceRef": {
+        "anchor": "## 5) Goal-Driven Execution",
+        "lines": "102-117"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "cross-role coding behavior; TDD triple consumed by engine assertSddTddTriple", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "cross-role coding behavior; TDD triple consumed by engine assertSddTddTriple",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "explicit-check",
       "enforcementLimitations": "assertSddTddTriple checks SDD reports on lint runs only; the in-task discipline has no enforcement.",
-      "coverageRefs": ["skill-lint.authoring-default"],
-      "caseIds": ["audit-heldout-1-fabricated-evidence-trap", "pm-heldout-1-durable-roadmap-gate"],
+      "coverageRefs": [
+        "skill-lint.authoring-default"
+      ],
+      "caseIds": [
+        "audit-heldout-1-fabricated-evidence-trap",
+        "pm-heldout-1-durable-roadmap-gate"
+      ],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "Durable-roadmap and evidence-honesty semantics are corpus-anchored."
     },
@@ -557,17 +793,26 @@
       "ruleId": "coding.review-feedback",
       "title": "Review Feedback Handling: read all feedback first, verify before editing, push back with evidence, no performative agreement",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## 6) Review Feedback Handling", "lines": "119-132" },
+      "sourceRef": {
+        "anchor": "## 6) Review Feedback Handling",
+        "lines": "119-132"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "cross-role coding behavior", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "cross-role coding behavior",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level.",
       "coverageRefs": [],
-      "caseIds": ["qc-heldout-2-subtle-bug-no-rubber-stamp"],
+      "caseIds": [
+        "qc-heldout-2-subtle-bug-no-rubber-stamp"
+      ],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "Evidence-over-framing discipline is corpus-anchored (suggestive framing must not replace the checklist)."
     },
@@ -575,9 +820,16 @@
       "ruleId": "coding.communication",
       "title": "Communication: say what and why, flag concerns, precise uncertainty, match explanation to context, specific commit messages",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## 7) Communication", "lines": "134-140" },
+      "sourceRef": {
+        "anchor": "## 7) Communication",
+        "lines": "134-140"
+      },
       "ac1Category": "model-native-generic-teaching",
-      "provenance": { "origin": "cross-role coding behavior", "commit": null, "userPolicy": null },
+      "provenance": {
+        "origin": "cross-role coding behavior",
+        "commit": null,
+        "userPolicy": null
+      },
       "disposition": "experiment",
       "removalBasis": "model-native-teaching-hypothesis",
       "enforcementClaim": "none",
@@ -585,25 +837,37 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "Restore the section verbatim on any regression or reviewer objection.",
-      "notes": "Closest to model-native communication norms; bounded Task 2 experiment. Note the section heading also feeds the runtime five-question lint structure — a batch must re-run lint parity (SP4 classifier)."
+      "notes": "Closest to model-native communication norms; bounded Task 2 experiment. Note the section heading also feeds the runtime five-question lint structure — a batch must re-run lint parity (SP4 classifier).",
+      "removedFromSource": true
     },
     {
       "ruleId": "coding.engine-check-fallback",
       "title": "Engine-check blockquotes + Integration Notes: runtime checks when available; skill text authoritative when the runtime is absent",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## Integration Notes", "lines": "142-148" },
+      "sourceRef": {
+        "anchor": "## Integration Notes",
+        "lines": "142-148"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "conditional engine-check convention", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "conditional engine-check convention",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Coverage map row engine-absent.fallback-integrity: in engine-absent environments all such checks degrade to advisory-only skill text; honesty marker required.",
-      "coverageRefs": ["engine-absent.fallback-integrity"],
-      "caseIds": ["audit-dev-1-engine-absent-none-preset"],
+      "coverageRefs": [
+        "engine-absent.fallback-integrity"
+      ],
+      "caseIds": [
+        "audit-dev-1-engine-absent-none-preset"
+      ],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "AC3: engine-absent fallback text is preserved."
     },
@@ -611,9 +875,16 @@
       "ruleId": "coding.anti-bloat",
       "title": "Anti-Bloat Rule: principles centralized here; role prompts reference, not duplicate",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## Anti-Bloat Rule for Prompt Maintenance", "lines": "150-154" },
+      "sourceRef": {
+        "anchor": "## Anti-Bloat Rule for Prompt Maintenance",
+        "lines": "150-154"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "prompt-maintenance policy (AGENTS.md-aligned)", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "prompt-maintenance policy (AGENTS.md-aligned)",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -621,7 +892,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "This rule is the reason consolidation targets point HERE as owner rather than at role files."
     },
@@ -629,17 +900,27 @@
       "ruleId": "coding.runtime-lint-structure",
       "title": "Runtime lint structure: Workflow/Evidence/References tail headings consumed by the shared classifier (runtime five-question profile)",
       "owner": "skills/mstar-coding-behavior/SKILL.md",
-      "sourceRef": { "anchor": "## Workflow", "lines": "156-167" },
+      "sourceRef": {
+        "anchor": "## Workflow",
+        "lines": "156-167"
+      },
       "ac1Category": "mechanically-covered-contract",
-      "provenance": { "origin": "SP4 plan 20260907-skill-lint-parity verified parity: this skill passes the runtime profile via the shared classifier", "commit": null, "userPolicy": null },
+      "provenance": {
+        "origin": "SP4 plan 20260907-skill-lint-parity verified parity: this skill passes the runtime profile via the shared classifier",
+        "commit": null,
+        "userPolicy": null
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "explicit-check",
       "enforcementLimitations": "Five-question lint runs on explicit lint/write-gate paths; advisory elsewhere. Restructuring headings risks the SP4-verified parity (dsh/CLI/Guard5 alignment).",
-      "coverageRefs": ["skill-lint.authoring-default", "skill-lint.write-path-authoring-default"],
+      "coverageRefs": [
+        "skill-lint.authoring-default",
+        "skill-lint.write-path-authoring-default"
+      ],
       "caseIds": [],
       "beforeSha256": "1e1f9786bbbfa9998325b24648e080265f387598b60e766f173bf6f1c628c14c",
-      "afterSha256": null,
+      "afterSha256": "25bcf8622e5fe8ce65d5ed1428855f2e1e27e8db4a8e2db8231a0cf21a0ff652",
       "restore": "n/a (keep)",
       "notes": "Constraint recorded for every Task 2 batch touching this file: re-run lint parity after any heading/structure change."
     },
@@ -647,17 +928,26 @@
       "ruleId": "dispatch.load-order",
       "title": "dispatch-gates Load Order: core-first declaration + branch/worktree pointer",
       "owner": "skills/mstar-dispatch-gates/SKILL.md",
-      "sourceRef": { "anchor": "## Load order（必读顺序）", "lines": "6-8" },
+      "sourceRef": {
+        "anchor": "## Load order（必读顺序）",
+        "lines": "6-8"
+      },
       "ac1Category": "mechanically-covered-contract",
-      "provenance": { "origin": "topic skill load contract", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "topic skill load contract",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "explicit-check",
       "enforcementLimitations": "lintLoadOrder-checked declaration (lint runs only).",
-      "coverageRefs": ["skill-lint.authoring-default"],
+      "coverageRefs": [
+        "skill-lint.authoring-default"
+      ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": null,
+      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "n/a (keep)",
       "notes": "Machine-checked declaration; not a thinning candidate."
     },
@@ -665,17 +955,27 @@
       "ruleId": "dispatch.leaf-anti-recursion",
       "title": "Leaf-executor identity assertion + anti-recursion NEVER block + self-check (dispatch-gates copy of the shared red lines)",
       "owner": "skills/mstar-dispatch-gates/SKILL.md",
-      "sourceRef": { "anchor": "## 🚨 承接方：如果你是 leaf executor，先读本节！", "lines": "10-43" },
+      "sourceRef": {
+        "anchor": "## 🚨 承接方：如果你是 leaf executor，先读本节！",
+        "lines": "10-43"
+      },
       "ac1Category": "duplicated-rule",
-      "provenance": { "origin": "anti-recursion red lines (v3 era); caller-scope line added by #156; shared-shape owner in leaf-executor-core.md", "commit": "a9fe242bef0ea364fcfe68164c47d256bdaada7b", "userPolicy": "#156" },
+      "provenance": {
+        "origin": "anti-recursion red lines (v3 era); caller-scope line added by #156; shared-shape owner in leaf-executor-core.md",
+        "commit": "a9fe242bef0ea364fcfe68164c47d256bdaada7b",
+        "userPolicy": "#156"
+      },
       "disposition": "experiment",
       "removalBasis": "duplicated-rule-owner-exists",
       "enforcementClaim": "auto-blocking",
       "enforcementLimitations": "Coverage map rows dispatch-authorization.delegation-boundary / caller-identity: dsh pre-execute deny is auto-blocking ONLY under opt-in Enforcement: hard AND a Config-declared caller binding (fail-closed when required); caller identity is Config-declared, not observed (#156: no target==caller check restored); omp row is conservatively explicit-check; OpenCode has no refusal channel. The prompt-level red lines remain the always-applicable fallback on every host — enforcement coverage is recorded here as context and is NOT a removal justification.",
-      "coverageRefs": ["dispatch-authorization.delegation-boundary", "dispatch-authorization.caller-identity"],
+      "coverageRefs": [
+        "dispatch-authorization.delegation-boundary",
+        "dispatch-authorization.caller-identity"
+      ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": null,
+      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "Restore the full block verbatim on any regression or reviewer objection.",
       "notes": "Bounded consolidation hypothesis (Task 2): under the standard preset BOTH this block and the leaf-executor-core shared blocks are in context — substantial overlap. Candidate shape: keep dispatch-specific rows (same-subagent_type NEVER, Assignment-field DO NOTs, the 4-step self-check) and point to the shared owner for the rest. Constraints: leaf-executor-core.md shared blocks stay intact (none-reachability, SP2-pinned); #156 blockquote stays verbatim; no corpus case exercises delegation directly, so behavioral evidence is limited to structural checks — the batch must not claim causal effect."
     },
@@ -683,17 +983,26 @@
       "ruleId": "dispatch.caller-scope-156",
       "title": "Engine-scope blockquote: antiRecursionPrecheck compares CALLER role vs Execute-as target; dsh-only hard execution; no target==caller check restored",
       "owner": "skills/mstar-dispatch-gates/SKILL.md",
-      "sourceRef": { "anchor": "> **Engine 执行范围（caller-scoped，#156）**", "lines": "43" },
+      "sourceRef": {
+        "anchor": "> **Engine 执行范围（caller-scoped，#156）**",
+        "lines": "43"
+      },
       "ac1Category": "necessary-negative-constraint",
-      "provenance": { "origin": "#156 decision (with #157)", "commit": "a9fe242bef0ea364fcfe68164c47d256bdaada7b", "userPolicy": "#156" },
+      "provenance": {
+        "origin": "#156 decision (with #157)",
+        "commit": "a9fe242bef0ea364fcfe68164c47d256bdaada7b",
+        "userPolicy": "#156"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "auto-blocking",
       "enforcementLimitations": "True only on dsh under hard opt-in with a declared caller binding; the blockquote itself documents these limits — it prevents re-hardening misuse and is the #156 decision record.",
-      "coverageRefs": ["dispatch-authorization.caller-identity"],
+      "coverageRefs": [
+        "dispatch-authorization.caller-identity"
+      ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": null,
+      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "n/a (keep)",
       "notes": "AC2: #156 decision preserved verbatim; consolidation of dispatch.leaf-anti-recursion must not touch this line."
     },
@@ -701,17 +1010,26 @@
       "ruleId": "dispatch.pm-concurrency",
       "title": "PM concurrency completeness gate: same-message N invokes, role-binding fields mandatory, emit-zero-until-batch-ready, prep steps excluded from N",
       "owner": "skills/mstar-dispatch-gates/SKILL.md",
-      "sourceRef": { "anchor": "## 并发分派完整性门禁（PM 强制 · Evidence）", "lines": "54-69" },
+      "sourceRef": {
+        "anchor": "## 并发分派完整性门禁（PM 强制 · Evidence）",
+        "lines": "54-69"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "dispatch-incomplete findings (field omission = silent generic fallback)", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "dispatch-incomplete findings (field omission = silent generic fallback)",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Coverage map batchObservabilityGlobalNote: no surveyed host observes batch/multi-write dispatch as a unit; engine dispatch validate checks Assignment fields and default-branch gate, not same-message counts — the same-message gate has no enforcement home, so the text is the only protection.",
-      "coverageRefs": ["dispatch-authorization.delegation-boundary"],
+      "coverageRefs": [
+        "dispatch-authorization.delegation-boundary"
+      ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": null,
+      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "n/a (keep)",
       "notes": "Critical-authorization surface; count+field gates prevent dispatch-incomplete false passes."
     },
@@ -719,9 +1037,16 @@
       "ruleId": "dispatch.sdd-wave",
       "title": "SDD implement wave rules: serial implementers, fresh reviewer each, sticky session exception, file handoffs, review-package diffs, tri-review N=3",
       "owner": "skills/mstar-dispatch-gates/SKILL.md",
-      "sourceRef": { "anchor": "## SDD implement 波次（PM only）", "lines": "73-83" },
+      "sourceRef": {
+        "anchor": "## SDD implement 波次（PM only）",
+        "lines": "73-83"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "SDD dispatch policy", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "SDD dispatch policy",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -729,7 +1054,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": null,
+      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "n/a (keep)",
       "notes": "Active in this very plan's execution; no duplicate home."
     },
@@ -737,17 +1062,26 @@
       "ruleId": "dispatch.parallel-summary",
       "title": "Parallel-rules summary: tool concurrency vs same-repo write isolation (L1/L2), cross-plan lease gating, serial integration merge",
       "owner": "skills/mstar-dispatch-gates/SKILL.md",
-      "sourceRef": { "anchor": "## 并行规则（摘要）", "lines": "85-102" },
+      "sourceRef": {
+        "anchor": "## 并行规则（摘要）",
+        "lines": "85-102"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "L1/L2 worktree policy summary; owners mstar-branch-worktree / mstar-iteration", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "L1/L2 worktree policy summary; owners mstar-branch-worktree / mstar-iteration",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "explicit-check",
       "enforcementLimitations": "Engine l1/l2 worktree checks run in host hooks/CLI when available; the summary's judgment rows (waiver non-migration, serial-vs-parallel confusion) are prompt-level.",
       "coverageRefs": [],
-      "caseIds": ["dev-heldout-2-wrong-checkout-trap"],
+      "caseIds": [
+        "dev-heldout-2-wrong-checkout-trap"
+      ],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": null,
+      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "n/a (keep)",
       "notes": "Kept: wrong-checkout/wrong-waiver misdispatch is a critical failure class (AC4); owners carry protocols, this carries the in-skill decision summary."
     },
@@ -755,9 +1089,16 @@
       "ruleId": "dispatch.review-edit-chain",
       "title": "Specialist review-and-edit dispatch: direct edits not comment reports, 1 Assignment = 1 invoke, Phase-1 chain, no integration commit before chain completes",
       "owner": "skills/mstar-dispatch-gates/SKILL.md",
-      "sourceRef": { "anchor": "## Specialist review-and-edit dispatch", "lines": "104-113" },
+      "sourceRef": {
+        "anchor": "## Specialist review-and-edit dispatch",
+        "lines": "104-113"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "iteration Phase-1 chain policy (mstar-iteration §1.6 alignment)", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "iteration Phase-1 chain policy (mstar-iteration §1.6 alignment)",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -765,7 +1106,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": null,
+      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "n/a (keep)",
       "notes": "PM-orchestration policy with no duplicate."
     },
@@ -773,9 +1114,16 @@
       "ruleId": "dispatch.anti-patterns",
       "title": "Dispatch-specific anti-patterns: tri split across messages, parallel SDD implementers, paste-only, missing binding fields",
       "owner": "skills/mstar-dispatch-gates/SKILL.md",
-      "sourceRef": { "anchor": "## 反模式（派发）", "lines": "115-126" },
+      "sourceRef": {
+        "anchor": "## 反模式（派发）",
+        "lines": "115-126"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "dispatch mechanism findings; several rows exist only here (dispatch-incomplete field omission)", "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921", "userPolicy": "#109" },
+      "provenance": {
+        "origin": "dispatch mechanism findings; several rows exist only here (dispatch-incomplete field omission)",
+        "commit": "59081e2c22b8591e6615036c6865e0bcbb8a9921",
+        "userPolicy": "#109"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
@@ -783,7 +1131,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": null,
+      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "n/a (keep)",
       "notes": "Deliberately scoped to dispatch-specific rows (core.anti-pattern-index holds the cross-skill index); small and mostly unique content."
     },
@@ -791,17 +1139,26 @@
       "ruleId": "dispatch.workflow-references",
       "title": "Workflow ordering + references tail (leaf checklist pointer)",
       "owner": "skills/mstar-dispatch-gates/SKILL.md",
-      "sourceRef": { "anchor": "## Workflow", "lines": "128-134" },
+      "sourceRef": {
+        "anchor": "## Workflow",
+        "lines": "128-134"
+      },
       "ac1Category": "mechanically-covered-contract",
-      "provenance": { "origin": "runtime five-question lint structure; SP4 parity verified", "commit": null, "userPolicy": null },
+      "provenance": {
+        "origin": "runtime five-question lint structure; SP4 parity verified",
+        "commit": null,
+        "userPolicy": null
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "explicit-check",
       "enforcementLimitations": "Headings feed the runtime lint profile; advisory outside lint runs.",
-      "coverageRefs": ["skill-lint.authoring-default"],
+      "coverageRefs": [
+        "skill-lint.authoring-default"
+      ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": null,
+      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
       "restore": "n/a (keep)",
       "notes": "Structure constraint for Task 2 batches: re-run lint parity after structural edits."
     },
@@ -809,17 +1166,27 @@
       "ruleId": "leaf.completion-report",
       "title": "Shared Completion Report template for all leaf executors",
       "owner": "skills/mstar-roles/references/_shared/leaf-executor-core.md",
-      "sourceRef": { "anchor": "## Completion Report", "lines": "5-24" },
+      "sourceRef": {
+        "anchor": "## Completion Report",
+        "lines": "5-24"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "shared role blocks; load-bearing under none (AC3)", "commit": "5b897950479375213db9872cd6148cc16e96c381", "userPolicy": "#144" },
+      "provenance": {
+        "origin": "shared role blocks; load-bearing under none (AC3)",
+        "commit": "5b897950479375213db9872cd6148cc16e96c381",
+        "userPolicy": "#144"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level template; assertSddTddTriple checks reports only on lint runs.",
       "coverageRefs": [],
-      "caseIds": ["qc-dev-1-review-none-preset", "audit-dev-1-engine-absent-none-preset"],
+      "caseIds": [
+        "qc-dev-1-review-none-preset",
+        "audit-dev-1-engine-absent-none-preset"
+      ],
       "beforeSha256": "fb66e14e0f400e7feb485d291edf88318abe51f5878530252ee514d15985ee91",
-      "afterSha256": null,
+      "afterSha256": "a8e067d54ef392ac9cd7dc201fbd91c1afdafedee07d68915840147f7d5c517b",
       "restore": "n/a (keep)",
       "notes": "None-reachable load-bearing block (closure.test.ts anchor)."
     },
@@ -827,17 +1194,28 @@
       "ruleId": "leaf.git-never",
       "title": "Git NEVER (repo writes): per-task-ID commits on the authorized branch; no single closing commit without PM allow",
       "owner": "skills/mstar-roles/references/_shared/leaf-executor-core.md",
-      "sourceRef": { "anchor": "## Git NEVER (repo writes)", "lines": "26-31" },
+      "sourceRef": {
+        "anchor": "## Git NEVER (repo writes)",
+        "lines": "26-31"
+      },
       "ac1Category": "necessary-negative-constraint",
-      "provenance": { "origin": "shared role blocks; AC3 repo-write discipline under none", "commit": "5b897950479375213db9872cd6148cc16e96c381", "userPolicy": "#144" },
+      "provenance": {
+        "origin": "shared role blocks; AC3 repo-write discipline under none",
+        "commit": "5b897950479375213db9872cd6148cc16e96c381",
+        "userPolicy": "#144"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "No enforcement home for commit discipline; prompt-level.",
       "coverageRefs": [],
-      "caseIds": ["dev-dev-2-smoke-isolated-relative-write", "dev-heldout-2-wrong-checkout-trap", "close-dev-4-resume-interrupted-close"],
+      "caseIds": [
+        "dev-dev-2-smoke-isolated-relative-write",
+        "dev-heldout-2-wrong-checkout-trap",
+        "close-dev-4-resume-interrupted-close"
+      ],
       "beforeSha256": "fb66e14e0f400e7feb485d291edf88318abe51f5878530252ee514d15985ee91",
-      "afterSha256": null,
+      "afterSha256": "a8e067d54ef392ac9cd7dc201fbd91c1afdafedee07d68915840147f7d5c517b",
       "restore": "n/a (keep)",
       "notes": "Pinned anchor; negative constraint whose owner is here (write-discipline cases anchor the behavior family)."
     },
@@ -845,17 +1223,29 @@
       "ruleId": "leaf.plan-doc-rules",
       "title": "Plan & documentation rules: PLAN_DIR conventions, task-checkbox updates, Done only by PM/QA",
       "owner": "skills/mstar-roles/references/_shared/leaf-executor-core.md",
-      "sourceRef": { "anchor": "## Plan & Documentation Rules", "lines": "33-37" },
+      "sourceRef": {
+        "anchor": "## Plan & Documentation Rules",
+        "lines": "33-37"
+      },
       "ac1Category": "framework-judgment-policy",
-      "provenance": { "origin": "shared role blocks; AC3 plan/done boundaries under none", "commit": "5b897950479375213db9872cd6148cc16e96c381", "userPolicy": "#144" },
+      "provenance": {
+        "origin": "shared role blocks; AC3 plan/done boundaries under none",
+        "commit": "5b897950479375213db9872cd6148cc16e96c381",
+        "userPolicy": "#144"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "none",
       "enforcementLimitations": "Done-ownership has mode unavailable in the coverage map; this none-reachable restatement is part of the stop-condition reachability fix from SP2.",
-      "coverageRefs": ["done-ownership.authority"],
-      "caseIds": ["close-dev-2-refuse-done-without-qa", "pm-heldout-2-false-pass-done-claim"],
+      "coverageRefs": [
+        "done-ownership.authority"
+      ],
+      "caseIds": [
+        "close-dev-2-refuse-done-without-qa",
+        "pm-heldout-2-false-pass-done-claim"
+      ],
       "beforeSha256": "fb66e14e0f400e7feb485d291edf88318abe51f5878530252ee514d15985ee91",
-      "afterSha256": null,
+      "afterSha256": "a8e067d54ef392ac9cd7dc201fbd91c1afdafedee07d68915840147f7d5c517b",
       "restore": "n/a (keep)",
       "notes": "Pinned anchor; none-closure stop-condition carrier."
     },
@@ -863,17 +1253,27 @@
       "ruleId": "leaf.non-recursive-shared",
       "title": "Non-Recursive Dispatch Rule (shared shape): complete work in-session; no sibling dispatch without Delegation: allowed",
       "owner": "skills/mstar-roles/references/_shared/leaf-executor-core.md",
-      "sourceRef": { "anchor": "## Non-Recursive Dispatch Rule (shared shape)", "lines": "39-46" },
+      "sourceRef": {
+        "anchor": "## Non-Recursive Dispatch Rule (shared shape)",
+        "lines": "39-46"
+      },
       "ac1Category": "necessary-negative-constraint",
-      "provenance": { "origin": "shared anti-recursion blocks; none-reachable owner (AC3)", "commit": "5b897950479375213db9872cd6148cc16e96c381", "userPolicy": "#144" },
+      "provenance": {
+        "origin": "shared anti-recursion blocks; none-reachable owner (AC3)",
+        "commit": "5b897950479375213db9872cd6148cc16e96c381",
+        "userPolicy": "#144"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "auto-blocking",
       "enforcementLimitations": "dsh-only auto-blocking under hard opt-in with declared caller (see dispatch.leaf-anti-recursion limitations); on all other hosts prompt-level only. This file is the CONSOLIDATION OWNER for the dispatch-gates duplicate — it must remain intact for none-reachability regardless of what Task 2 does to dispatch-gates.",
-      "coverageRefs": ["dispatch-authorization.delegation-boundary", "dispatch-authorization.caller-identity"],
+      "coverageRefs": [
+        "dispatch-authorization.delegation-boundary",
+        "dispatch-authorization.caller-identity"
+      ],
       "caseIds": [],
       "beforeSha256": "fb66e14e0f400e7feb485d291edf88318abe51f5878530252ee514d15985ee91",
-      "afterSha256": null,
+      "afterSha256": "a8e067d54ef392ac9cd7dc201fbd91c1afdafedee07d68915840147f7d5c517b",
       "restore": "n/a (keep)",
       "notes": "Pinned anchor; consolidation owner — kept precisely so the duplicate elsewhere can shrink."
     },
@@ -881,17 +1281,26 @@
       "ruleId": "leaf.anti-recursion-never",
       "title": "Shared anti-recursion NEVER: doc-level parallelism ≠ N subagents; tool availability ≠ authorization; PM-only dispatch",
       "owner": "skills/mstar-roles/references/_shared/leaf-executor-core.md",
-      "sourceRef": { "anchor": "## Shared anti-recursion NEVER", "lines": "48-56" },
+      "sourceRef": {
+        "anchor": "## Shared anti-recursion NEVER",
+        "lines": "48-56"
+      },
       "ac1Category": "necessary-negative-constraint",
-      "provenance": { "origin": "shared anti-recursion blocks; none-reachable owner (AC3)", "commit": "5b897950479375213db9872cd6148cc16e96c381", "userPolicy": "#144" },
+      "provenance": {
+        "origin": "shared anti-recursion blocks; none-reachable owner (AC3)",
+        "commit": "5b897950479375213db9872cd6148cc16e96c381",
+        "userPolicy": "#144"
+      },
       "disposition": "keep",
       "removalBasis": null,
       "enforcementClaim": "auto-blocking",
       "enforcementLimitations": "Same dsh-only/hard-opt-in/declared-caller limits as leaf.non-recursive-shared; prompt-level fallback everywhere else.",
-      "coverageRefs": ["dispatch-authorization.delegation-boundary"],
+      "coverageRefs": [
+        "dispatch-authorization.delegation-boundary"
+      ],
       "caseIds": [],
       "beforeSha256": "fb66e14e0f400e7feb485d291edf88318abe51f5878530252ee514d15985ee91",
-      "afterSha256": null,
+      "afterSha256": "a8e067d54ef392ac9cd7dc201fbd91c1afdafedee07d68915840147f7d5c517b",
       "restore": "n/a (keep)",
       "notes": "Pinned anchor; example of a NEVER that is NOT a mandatory duplicate — it is the single authoritative none-reachable home."
     },
@@ -899,19 +1308,38 @@
       "ruleId": "leaf.audit-mode",
       "title": "Audit Mode (read-only review, shared): permission contract, process pointer, seat evidence, mode lock, posting three-states",
       "owner": "skills/mstar-roles/references/_shared/leaf-executor-core.md",
-      "sourceRef": { "anchor": "## Audit Mode (read-only review, shared)", "lines": "57-65" },
+      "sourceRef": {
+        "anchor": "## Audit Mode (read-only review, shared)",
+        "lines": "57-65"
+      },
       "ac1Category": "duplicated-rule",
-      "provenance": { "origin": "audit-mode shared block; process detail owned by mstar-audit skill references; none-reachability via code-reviewer.md Mode B identity boundary (SP2 gap closure)", "commit": null, "userPolicy": null },
+      "provenance": {
+        "origin": "audit-mode shared block; process detail owned by mstar-audit skill references; none-reachability via code-reviewer.md Mode B identity boundary (SP2 gap closure)",
+        "commit": null,
+        "userPolicy": null
+      },
       "disposition": "experiment",
       "removalBasis": "duplicated-rule-owner-exists",
       "enforcementClaim": "none",
       "enforcementLimitations": "Prompt-level; audit mode is advisory (read-only contract), not enforcement.",
       "coverageRefs": [],
-      "caseIds": ["audit-dev-1-engine-absent-none-preset", "audit-dev-2-refuse-fix-and-pr", "audit-dev-3-blocking-gate-artifact-only", "audit-heldout-1-fabricated-evidence-trap", "audit-heldout-2-register-ledger-discrepancy"],
+      "caseIds": [
+        "audit-dev-1-engine-absent-none-preset",
+        "audit-dev-2-refuse-fix-and-pr",
+        "audit-dev-3-blocking-gate-artifact-only",
+        "audit-heldout-1-fabricated-evidence-trap",
+        "audit-heldout-2-register-ledger-discrepancy"
+      ],
       "beforeSha256": "fb66e14e0f400e7feb485d291edf88318abe51f5878530252ee514d15985ee91",
-      "afterSha256": null,
+      "afterSha256": "a8e067d54ef392ac9cd7dc201fbd91c1afdafedee07d68915840147f7d5c517b",
       "restore": "Restore the section verbatim on any regression or reviewer objection.",
       "notes": "Bounded consolidation hypothesis (Task 2): process detail duplicates mstar-audit references; candidate shape keeps the read-only permission contract + mode lock reachable under none and points to the mstar-audit surface for seat/posting mechanics. Constraints: code-reviewer.md Mode B identity boundary stays (SP2-pinned); audit none-preset case anchors must remain satisfiable; this section is NOT one of the pinned load-bearing anchors, so shrinkage is possible — but only with paired evidence."
     }
-  ]
+  ],
+  "task2Refreeze": {
+    "baseSha": "c4e338a02744bc28453e13f6981bd635f1b2158a",
+    "branch": "feature/20260907-skill-hotpath-thinning",
+    "batches": "7 experiment + 1 consolidate applied as one reviewable batch set",
+    "note": "beforeSha256 = BASE-tree owner blob sha (git show c4e338a0:<owner>); afterSha256 = current owner bytes at the batch commit. Disposition outcomes are recorded only after the fixed dev-model paired runs (Task 2 gate)."
+  }
 }
