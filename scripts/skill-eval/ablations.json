@@ -949,7 +949,7 @@
       ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
+      "afterSha256": "e6419d4b678249f3504f9f8af0bd18168ef34ab57a5f975e12cdbdde616f3023",
       "restore": "n/a (keep)",
       "notes": "Machine-checked declaration; not a thinning candidate."
     },
@@ -977,7 +977,7 @@
       ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
+      "afterSha256": "e6419d4b678249f3504f9f8af0bd18168ef34ab57a5f975e12cdbdde616f3023",
       "restore": "Restore the full block verbatim on any regression or reviewer objection.",
       "notes": "Bounded consolidation hypothesis (Task 2): under the standard preset BOTH this block and the leaf-executor-core shared blocks are in context — substantial overlap. Candidate shape: keep dispatch-specific rows (same-subagent_type NEVER, Assignment-field DO NOTs, the 4-step self-check) and point to the shared owner for the rest. Constraints: leaf-executor-core.md shared blocks stay intact (none-reachability, SP2-pinned); #156 blockquote stays verbatim; no corpus case exercises delegation directly, so behavioral evidence is limited to structural checks — the batch must not claim causal effect. Task 2 outcome: adopted-keep at observed grade (paired dev run, zero new critical, no normal-success regression; see dispositionSemantics.adopted-keep for the evidence class)."
     },
@@ -1004,7 +1004,7 @@
       ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
+      "afterSha256": "e6419d4b678249f3504f9f8af0bd18168ef34ab57a5f975e12cdbdde616f3023",
       "restore": "n/a (keep)",
       "notes": "AC2: #156 decision preserved verbatim; consolidation of dispatch.leaf-anti-recursion must not touch this line."
     },
@@ -1031,7 +1031,7 @@
       ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
+      "afterSha256": "e6419d4b678249f3504f9f8af0bd18168ef34ab57a5f975e12cdbdde616f3023",
       "restore": "n/a (keep)",
       "notes": "Critical-authorization surface; count+field gates prevent dispatch-incomplete false passes."
     },
@@ -1056,7 +1056,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
+      "afterSha256": "e6419d4b678249f3504f9f8af0bd18168ef34ab57a5f975e12cdbdde616f3023",
       "restore": "n/a (keep)",
       "notes": "Active in this very plan's execution; no duplicate home."
     },
@@ -1083,7 +1083,7 @@
         "dev-heldout-2-wrong-checkout-trap"
       ],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
+      "afterSha256": "e6419d4b678249f3504f9f8af0bd18168ef34ab57a5f975e12cdbdde616f3023",
       "restore": "n/a (keep)",
       "notes": "Kept: wrong-checkout/wrong-waiver misdispatch is a critical failure class (AC4); owners carry protocols, this carries the in-skill decision summary."
     },
@@ -1108,7 +1108,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
+      "afterSha256": "e6419d4b678249f3504f9f8af0bd18168ef34ab57a5f975e12cdbdde616f3023",
       "restore": "n/a (keep)",
       "notes": "PM-orchestration policy with no duplicate."
     },
@@ -1133,7 +1133,7 @@
       "coverageRefs": [],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
+      "afterSha256": "e6419d4b678249f3504f9f8af0bd18168ef34ab57a5f975e12cdbdde616f3023",
       "restore": "n/a (keep)",
       "notes": "Deliberately scoped to dispatch-specific rows (core.anti-pattern-index holds the cross-skill index); small and mostly unique content."
     },
@@ -1160,7 +1160,7 @@
       ],
       "caseIds": [],
       "beforeSha256": "2eeea1e07b2e7b1c928ff2684df38b52f4e42d83872943becdd7ce4afd4966b7",
-      "afterSha256": "92f02be277e7b3cb993c9d62bee4096d7418f9b885d3712893ec81ba8a96a664",
+      "afterSha256": "e6419d4b678249f3504f9f8af0bd18168ef34ab57a5f975e12cdbdde616f3023",
       "restore": "n/a (keep)",
       "notes": "Structure constraint for Task 2 batches: re-run lint parity after structural edits."
     },

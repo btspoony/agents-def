@@ -103,12 +103,12 @@ When **`Execution mode: sdd`** (`mstar-sdd`):
 - **1 Assignment ⇒ 1 invoke**。
 - **Phase 1 Review & Edit chain**（`mstar-iteration` §1.6）：主产出 **`{SPECS_DIR}/`** + **`{ITERATION_DIR}/<iteration-id>/`** package；**禁止** start 链向 `{KNOWLEDGE_DIR}/` 新增。close 时 **`mstar-compound`** 提升 package → knowledge。
 - 其他彼此独立、无先后依赖的文档编辑任务：可并行（同条消息发满 N），见 **`parallel-dispatch.md`**。
-- PM 线程代做全部专业编辑 = **反模式**（`mstar-iteration` §1.6、`mstar-harness-core` 反模式索引）。
+- PM 线程代做全部专业编辑 = **反模式**（`mstar-iteration` §1.6、`mstar-roles/references/_shared/leaf-executor-core.md`「Shared anti-recursion NEVER」）。
 - PM merge / lock（如 compass `status: locked`）在链末 subagent 返回后于 PM 线程完成。**不得**在 review-and-edit 链完成前 commit integration 分支。
 
 ## 反模式（派发）
 
-完整反模式索引见 **`mstar-harness-core`**；lease / worktree / Phase 相关反模式见 **`mstar-branch-worktree`** 与 **`mstar-iteration`**。本节仅列派发机制专属：
+共享反递归红线全清单见 **`mstar-roles/references/_shared/leaf-executor-core.md`**「Shared anti-recursion NEVER」；lease / worktree / Phase 相关反模式见 **`mstar-branch-worktree`** 与 **`mstar-iteration`**。本节仅列派发机制专属：
 
 - QC 三审拆在多条消息（tri 模式）或单席却未附 review-package 路径。
 - 仅 1 次 invoke 却声称「tri-review 已并行启动」（tri 模式 N=3）。
