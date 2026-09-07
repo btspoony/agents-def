@@ -1446,6 +1446,31 @@ describe("bound task-brief / review-package — A3 artifact producers (plan Task
     }
   });
 
+  test("bound task-brief refuses a foreign plan file before any read or write; the matching plan file works", () => {
+    const root = tmpRoot("sdd-bound-brief-foreign-");
+    try {
+      const f = executionFixture(root);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      // Another plan's plan file passed with THIS plan's bound context: the
+      // extraction must refuse instead of writing foreign content into this
+      // plan's control SDD dir.
+      const foreignPlan = join(f.harnessDir, "plans", "other-plan.md");
+      writeFileSync(foreignPlan, "# Other plan\n\n## Task 1\n\n- foreign step\n");
+      const err = errOf(() => taskBrief(foreignPlan, 1, undefined, { context: resolved, cwd: f.primary }));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.plan-file-mismatch");
+      expect(existsSync(join(resolved.sddDir, "task-1-brief.md"))).toBe(false);
+      expect(readFileSync(foreignPlan, "utf8")).not.toContain("task-1-brief");
+
+      // The context's own plan file still extracts normally.
+      const out = taskBrief(f.planFile, 1, undefined, { context: resolved, cwd: f.primary });
+      expect(out).toBe(join(resolved.sddDir, "task-1-brief.md"));
+      expect(readFileSync(out, "utf8")).toContain("- implement");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("bound review-package probes git in the feature worktree and lands in the control sddDir (absolute path)", () => {
     const root = tmpRoot("sdd-bound-rp-");
     try {

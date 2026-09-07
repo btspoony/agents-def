@@ -323,7 +323,10 @@ export function sddWorkspace(planId: string, opts: SddWorkspaceOptions = {}): st
  *
  * Bound mode (`opts.context`, spec A3): the artifact destination is gated
  * with `checkSddAction` BEFORE any mkdir/write — a refused destination
- * writes nothing — and the returned path is absolute. Context-less calls
+ * writes nothing — and the returned path is absolute. The INPUT is bound
+ * too: the plan file must canonicalize to the context's `planFile`, and a
+ * mismatch is refused (exit 1) before any read or write — a foreign plan's
+ * content must never land in this plan's SDD dir. Context-less calls
  * keep the legacy unbound behavior (no protection claim).
  */
 export function taskBrief(planFile: string, taskN: number, outFile?: string, opts: TaskBriefOptions = {}): string {
@@ -332,6 +335,23 @@ export function taskBrief(planFile: string, taskN: number, outFile?: string, opt
   }
   const bound = opts.context;
   const observedCwd = opts.cwd ?? process.cwd();
+  if (bound) {
+    // Bound input binding: the plan file read must BE the context's plan
+    // file (canonical comparison — equivalent paths via symlinked ancestors
+    // pass). A foreign plan's content must never land in this plan's SDD
+    // dir, so the mismatch is refused before any read or write.
+    const inputPlan = canonicalizeNearestExisting(resolve(observedCwd, planFile));
+    if (inputPlan !== canonicalizeNearestExisting(bound.planFile)) {
+      throwGateFail([
+        contextViolation(
+          "high",
+          "sdd.context.plan-file-mismatch",
+          `plan file "${planFile}" does not match the bound context plan file "${bound.planFile}" — ` +
+            "bound mode extracts only the resolved context's plan; refused before any read or write",
+        ),
+      ]);
+    }
+  }
   let content: string;
   try {
     content = readFileSync(planFile, "utf8");
