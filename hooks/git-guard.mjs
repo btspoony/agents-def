@@ -96,8 +96,9 @@ function tokenizeSegment(segment) {
 }
 
 /** Per-segment analysis of every `git` invocation in a command line:
- * `{ sub, dirHint }` where `sub` is the git subcommand and `dirHint` is the
- * `-C`/`--work-tree` target when one is given. */
+ * `{ sub, dirHint, argv }` where `sub` is the git subcommand, `dirHint` is
+ * the `-C`/`--work-tree` target when one is given, and `argv` starts at the
+ * subcommand token (its flags and arguments follow). */
 function analyzeGitInvocations(command) {
   const invocations = [];
   for (const segment of command.split(/&&|\|\||[;|\n]/)) {
@@ -107,11 +108,13 @@ function analyzeGitInvocations(command) {
     if (!tokens[i] || !/(^|\/)git$/.test(tokens[i])) continue;
     i += 1;
     let sub = null;
+    let subIndex = -1;
     let dirHint;
     for (; i < tokens.length; i += 1) {
       const token = tokens[i];
       if (!token.startsWith("-")) {
         sub = token;
+        subIndex = i;
         break;
       }
       if ((token === "-C" || token === "--work-tree" || token === "--git-dir") && tokens[i + 1] && !tokens[i + 1].startsWith("-")) {
@@ -121,12 +124,22 @@ function analyzeGitInvocations(command) {
         i += 1;
       }
     }
-    if (sub) invocations.push({ sub, dirHint });
+    if (sub) invocations.push({ sub, dirHint, argv: tokens.slice(subIndex) });
   }
   return invocations;
 }
 
-const BARE_FORCE = /(^|\s)--force(\s|$)|(^|\s)-[a-z]*f[a-z]*(\s|$)/;
+// Force detection inspects only the tokens of a `git push` invocation: a
+// short-option bundle containing `f` (-f, -uf, …) or the literal --force.
+// Other long flags (--filter, --force-with-lease=…) are never bare force.
+function isBareForcePush(invocation) {
+  return invocation.argv.some((token) => {
+    if (token === "--force") return true;
+    if (token.startsWith("-")) return token !== "--force-with-lease" && /^-[^-]*f/.test(token);
+    return false;
+  });
+}
+
 const COMMIT_ESCAPE_IN_COMMAND = /MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1(\s|$)/;
 
 const input = await readStdinJson();
@@ -141,11 +154,15 @@ try {
 
   const invocations = analyzeGitInvocations(command);
   const isCommit = invocations.some((inv) => inv.sub === "commit");
-  const isPush = invocations.some((inv) => inv.sub === "push");
-  if (!isCommit && !isPush) process.exit(0);
+  const pushInvocations = invocations.filter((inv) => inv.sub === "push");
+  if (!isCommit && pushInvocations.length === 0) process.exit(0);
 
-  const dirHint = invocations.find((inv) => inv.sub === "commit" || inv.sub === "push")?.dirHint;
-  const workCwd = dirHint ? (path.isAbsolute(dirHint) ? dirHint : path.join(cwd, dirHint)) : cwd;
+  const gated = invocations.find((inv) => inv.sub === "commit" || inv.sub === "push");
+  const workCwd = gated.dirHint
+    ? path.isAbsolute(gated.dirHint)
+      ? gated.dirHint
+      : path.join(cwd, gated.dirHint)
+    : cwd;
 
   let root;
   try {
@@ -183,7 +200,7 @@ try {
     }
   }
 
-  if (isPush && BARE_FORCE.test(command) && !command.includes("--force-with-lease")) {
+  if (pushInvocations.some(isBareForcePush)) {
     deny(
       "Morning Star push gate (mstar-branch-worktree): bare `git push --force` is blocked — history rewrites on pushed branches " +
         "must publish with `--force-with-lease=<branch>:<observed-oid>` after fetching the remote OID first " +
