@@ -4,14 +4,19 @@
 //   1. No direct `git commit` on the default protected branch (origin/HEAD,
 //      falling back to main/master) without an explicit Assignment
 //      `Branch policy: direct on <branch>` — bypass per-session with
-//      MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1, or disable the whole hook with
-//      MSTAR_BRANCH_GUARD=off.
+//      MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1 (environment, or prefixed to the
+//      command itself), or disable the whole hook with MSTAR_BRANCH_GUARD=off.
 //   2. No bare `git push --force` / `-f` — history rewrites publish with
 //      `--force-with-lease=<branch>:<observed-oid>` only.
-// Silent pass (exit 0) for anything else, outside git repos, or on internal
-// errors — the hook gates, it never blocks the session by malfunctioning.
+// Invocation analysis is a gate heuristic, not a shell parser: shell segments
+// are split on separators, leading env assignments are skipped, the program
+// must be git, and global option tokens (with their separate values) are
+// stepped over before the subcommand. Silent pass (exit 0) for anything else,
+// outside git repos, or on internal errors — the hook gates, it never blocks
+// the session by malfunctioning.
 
 import fs from "node:fs";
+import path from "node:path";
 import { execFileSync } from "node:child_process";
 
 function readStdinJson() {
@@ -45,7 +50,51 @@ function deny(reason) {
   process.exit(0);
 }
 
+// Global options that take their value as a separate token.
+const VALUE_OPTS = new Set([
+  "-c",
+  "-C",
+  "--exec-path",
+  "--git-dir",
+  "--namespace",
+  "--super-prefix",
+  "--shallow-file",
+  "--work-tree",
+]);
+
+/** Per-segment analysis of every `git` invocation in a command line:
+ * `{ sub, dirHint }` where `sub` is the git subcommand and `dirHint` is the
+ * `-C`/`--work-tree` target when one is given. */
+function analyzeGitInvocations(command) {
+  const invocations = [];
+  for (const segment of command.split(/&&|\|\||[;|\n]/)) {
+    const tokens = segment.trim().split(/\s+/).filter(Boolean);
+    let i = 0;
+    while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i += 1; // env assignments
+    if (!tokens[i] || !/(^|\/)git$/.test(tokens[i])) continue;
+    i += 1;
+    let sub = null;
+    let dirHint;
+    for (; i < tokens.length; i += 1) {
+      const token = tokens[i];
+      if (!token.startsWith("-")) {
+        sub = token;
+        break;
+      }
+      if ((token === "-C" || token === "--work-tree" || token === "--git-dir") && tokens[i + 1] && !tokens[i + 1].startsWith("-")) {
+        dirHint = tokens[i + 1];
+        i += 1;
+      } else if (VALUE_OPTS.has(token)) {
+        i += 1;
+      }
+    }
+    if (sub) invocations.push({ sub, dirHint });
+  }
+  return invocations;
+}
+
 const BARE_FORCE = /(^|\s)--force(\s|$)|(^|\s)-f(\s|$)/;
+const COMMIT_ESCAPE_IN_COMMAND = /MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1(\s|$)/;
 
 const input = await readStdinJson();
 try {
@@ -57,28 +106,36 @@ try {
 
   const cwd = typeof input?.cwd === "string" && input.cwd ? input.cwd : process.cwd();
 
-  const isCommit = /\bgit\s+commit\b/.test(command);
-  const isPush = /\bgit\s+push\b/.test(command);
+  const invocations = analyzeGitInvocations(command);
+  const isCommit = invocations.some((inv) => inv.sub === "commit");
+  const isPush = invocations.some((inv) => inv.sub === "push");
   if (!isCommit && !isPush) process.exit(0);
+
+  const dirHint = invocations.find((inv) => inv.sub === "commit" || inv.sub === "push")?.dirHint;
+  const workCwd = dirHint ? (path.isAbsolute(dirHint) ? dirHint : path.join(cwd, dirHint)) : cwd;
 
   let root;
   try {
-    root = gitOut(["rev-parse", "--show-toplevel"], cwd);
+    root = gitOut(["rev-parse", "--show-toplevel"], workCwd);
   } catch {
     process.exit(0); // not a git repo
   }
 
-  if (isCommit) {
+  if (isCommit && process.env.MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT !== "1" && !COMMIT_ESCAPE_IN_COMMAND.test(command)) {
     let branch = "";
     try {
       branch = gitOut(["rev-parse", "--abbrev-ref", "HEAD"], root);
     } catch {
       process.exit(0);
     }
-    if (branch && branch !== "HEAD" && process.env.MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT !== "1") {
+    if (branch && branch !== "HEAD") {
+      // symbolic-ref prints the fully qualified ref (refs/remotes/origin/main)
       let defaultBranch = "";
       try {
-        defaultBranch = gitOut(["symbolic-ref", "refs/remotes/origin/HEAD"], root).replace(/^origin\//, "");
+        defaultBranch = gitOut(["symbolic-ref", "refs/remotes/origin/HEAD"], root).replace(
+          /^refs\/remotes\/origin\//,
+          "",
+        );
       } catch {
         defaultBranch = /^(main|master)$/.test(branch) ? branch : "";
       }

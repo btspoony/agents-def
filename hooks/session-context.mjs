@@ -63,12 +63,14 @@ function parseMstarcHarnessDir(root) {
 
 function resolveHarnessDir(root) {
   const declared = parseMstarcHarnessDir(root);
-  const candidates = [];
-  if (declared) candidates.push(declared);
-  candidates.push(".mstar", ".agents", ".plans", "plans");
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    const dir = path.isAbsolute(candidate) ? candidate : path.join(root, candidate);
+  // A declared harness_dir wins even when it does not exist yet — `.mstarc`
+  // directory keys are valid before first scaffold; report it as uninitialized
+  // rather than falling through to the default candidates.
+  if (declared) {
+    return path.isAbsolute(declared) ? declared : path.join(root, declared);
+  }
+  for (const candidate of [".mstar", ".agents", ".plans", "plans"]) {
+    const dir = path.join(root, candidate);
     try {
       if (fs.statSync(dir).isDirectory()) return dir;
     } catch {
@@ -93,8 +95,11 @@ function summarizeStatus(harnessDir) {
   const lines = [`status.json: v2, ${workflows.length} workflow(s)`];
   for (const wf of workflows.slice(0, 5)) {
     const id = wf && typeof wf.id === "string" ? wf.id : "(unnamed)";
-    const state = [wf?.status, wf?.mode, wf?.phase].filter((v) => typeof v === "string" && v).join("/");
-    lines.push(`  - ${id}${state ? `: ${state}` : ""}`);
+    // v2 root entries carry registry fields (id/type/started_at/dir); lifecycle
+    // status/phase live in each workflow's snapshot under workflows/<id>/.
+    const state = [wf?.type, wf?.status, wf?.phase].filter((v) => typeof v === "string" && v).join("/");
+    const started = typeof wf?.started_at === "string" ? wf.started_at.slice(0, 10) : "";
+    lines.push(`  - ${id}${state ? `: ${state}` : ""}${started ? ` (started ${started})` : ""}`);
   }
   if (workflows.length > 5) lines.push(`  - … ${workflows.length - 5} more`);
   return lines.join("\n");
