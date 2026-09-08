@@ -393,7 +393,9 @@ function gitWorkspaceRoot(startDir: string): string {
     for (const segment of cdup.split(/[\\/]/)) {
       if (segment && segment !== ".") boundary = path.dirname(boundary);
     }
-    return path.resolve(boundary);
+    // Callers pass an already-resolved start dir, and dirname keeps paths
+    // normalized, so the walked boundary is already in resolved form.
+    return boundary;
   } catch {
  // not a git work tree (or git unavailable) \u2014 fall through to startDir
   }
@@ -420,8 +422,13 @@ function runScaffold(pathArg: string | undefined) {
  // committable.
   const workspaceRoot = gitWorkspaceRoot(root);
   const harnessKind = detectHarnessKind(harnessDir);
-  if (harnessKind === "mstar" && path.resolve(harnessDir) === path.join(workspaceRoot, ".mstar")) {
-    const gitignorePath = path.join(workspaceRoot, ".gitignore");
+  const mstarDirAtWorkspaceRoot = workspaceRoot.endsWith(path.sep)
+    ? `${workspaceRoot}.mstar`
+    : `${workspaceRoot}${path.sep}.mstar`;
+  if (harnessKind === "mstar" && path.resolve(harnessDir) === mstarDirAtWorkspaceRoot) {
+    const gitignorePath = workspaceRoot.endsWith(path.sep)
+      ? `${workspaceRoot}.gitignore`
+      : `${workspaceRoot}${path.sep}.gitignore`;
     const snippet = emitGitignoreSnippet("mstar");
     const current = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, "utf8") : "";
     const lines = new Set(current.split(/\r?\n/).map((line) => line.trim()));
@@ -1157,11 +1164,15 @@ function readPersistPayload(options: { file?: string; stdin?: boolean }): string
     throw new SddScriptError("usage: persist --file <path> and --stdin are mutually exclusive", 2);
   }
   if (options.file !== undefined) {
-    const filePath = path.resolve(options.file);
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`persist payload file not found: ${filePath}`);
+    // Persist payloads are read from the invocation cwd, so the flag is
+    // anchored there (absolute input wins unchanged).
+    const requested = path.isAbsolute(options.file)
+      ? options.file
+      : `${process.cwd()}${path.sep}${options.file}`;
+    if (!fs.existsSync(requested)) {
+      throw new Error(`persist payload file not found: ${requested}`);
     }
-    return fs.readFileSync(filePath, "utf8");
+    return fs.readFileSync(requested, "utf8");
   }
   return fs.readFileSync(0, "utf8");
 }
@@ -1943,7 +1954,11 @@ worktreeCommand
       }
       const assignments: QcAlignmentAssignment[] = [];
       for (const fileArg of files) {
-        const file = path.resolve(fileArg);
+        // Alignment files are read from the invocation cwd (absolute input
+        // wins unchanged).
+        const file = path.isAbsolute(fileArg)
+          ? fileArg
+          : `${process.cwd()}${path.sep}${fileArg}`;
         if (!fs.existsSync(file)) {
           throw new Error(`assignment file not found: ${file}`);
         }
@@ -2013,7 +2028,11 @@ reviewCommand
       if (!assignmentFile) {
         throw new SddScriptError("usage: review seats <assignment-file> [--mode sdd|inline|targeted] [--reviewers <role1,role2,...>]", 2);
       }
-      const file = path.resolve(assignmentFile);
+      // The assignment file is read from the invocation cwd (absolute input
+      // wins unchanged).
+      const file = path.isAbsolute(assignmentFile)
+        ? assignmentFile
+        : `${process.cwd()}${path.sep}${assignmentFile}`;
       if (!fs.existsSync(file)) {
         throw new Error(`assignment file not found: ${file}`);
       }
@@ -2099,30 +2118,43 @@ function lintTargetType(filePath: string): LintTargetType | null {
   return null;
 }
 
-/** Recursively collect lintable files under a directory (skip build trees). */
+/** Recursively collect lintable files under a directory (skip build trees).
+ * Every visited path is the walk root extended by readdir entry names, so a
+ * child can never resolve above the directory the walk started from. */
 function collectLintTargets(dir: string): string[] {
   const targets: string[] = [];
-  const walk = (current: string): void => {
+  const visit = (current: string): void => {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      // A readdir entry name can never contain the platform separator.
+      if (entry.name.includes(path.sep)) continue;
+      const child = current + entry.name;
       if (entry.isDirectory()) {
-        if (LINT_SKIP_DIRS[entry.name] !== true) walk(path.join(current, entry.name));
-      } else if (entry.isFile() && lintTargetType(path.join(current, entry.name)) !== null) {
-        targets.push(path.join(current, entry.name));
+        if (LINT_SKIP_DIRS[entry.name] !== true) visit(child + path.sep);
+      } else if (entry.isFile() && lintTargetType(child) !== null) {
+        targets.push(child);
       }
     }
   };
-  walk(dir);
+  // The walk root carries a trailing separator, so every child is the root
+  // extended by listed entry names only.
+  const root = dir.endsWith(path.sep) ? `${dir}` : `${dir}${path.sep}`;
+  visit(root);
   return targets;
 }
 
+/** The lint stage's text-reading seam (mirrors the eval-runner Io seam):
+ * reads an already-resolved, existence-checked target path. */
+const lintIo = {
+  readText: async (resolvedPath: string): Promise<string> => fs.promises.readFile(resolvedPath, "utf8"),
+};
+
 /** Run the content-type engine checks for one lint target. Markers are
  * advisory info (stdout); violations gate the exit code (stderr). */
-function lintOneFile(filePath: string, forcedType?: LintTargetType, prVariant?: boolean): { violations: ValidationResult[]; markers: string[] } {
-  const abs = path.resolve(filePath);
-  const text = fs.readFileSync(abs, "utf8");
+async function lintOneFile(filePath: string, forcedType?: LintTargetType, prVariant?: boolean): Promise<{ violations: ValidationResult[]; markers: string[] }> {
+  const text = await lintIo.readText(filePath);
   const violations: ValidationResult[] = [];
   const markers: string[] = [];
-  const effective = forcedType ?? lintTargetType(abs);
+  const effective = forcedType ?? lintTargetType(filePath);
   switch (effective) {
     case "plan":
       violations.push(...planQualityBar(text).violations);
@@ -2153,7 +2185,7 @@ function lintOneFile(filePath: string, forcedType?: LintTargetType, prVariant?: 
       break;
     default:
       throw new SddScriptError(
-        `usage: lint <target> \u2014 unsupported file type "${path.basename(abs)}" (lintable: plan files, SKILL.md, STRATEGY.md, task-N-report.md, code files)`,
+        `usage: lint <target> \u2014 unsupported file type "${path.basename(filePath)}" (lintable: plan files, SKILL.md, STRATEGY.md, task-N-report.md, code files)`,
         2,
       );
   }
@@ -2175,7 +2207,7 @@ lintCommand
   .argument("[target]", "File or directory to lint")
   .option("--type <type>", "Force the content type (plan | skill | strategy | report | code | finding)")
   .option("--pr-variant", "With --type finding: enforce the PR-only Merge class contract (presence, enum, placement after Confidence)")
-  .action((target: string | undefined, options: { type?: string; prVariant?: boolean }) => {
+  .action(async (target: string | undefined, options: { type?: string; prVariant?: boolean }) => {
     try {
       if (!target) throw new SddScriptError("usage: lint <target> (file or dir)", 2);
       let forcedType: LintTargetType | null = null;
@@ -2199,7 +2231,7 @@ lintCommand
         const label = `lint ${file}`;
         let result: { violations: ValidationResult[]; markers: string[] };
         try {
-          result = lintOneFile(file, forcedType ?? undefined, options.prVariant === true);
+          result = await lintOneFile(file, forcedType ?? undefined, options.prVariant === true);
         } catch (error) {
           if (error instanceof SddScriptError) throw error;
           console.error(pc.red(`${label}: ERROR \u2014 ${(error as Error).message}`));
@@ -2240,14 +2272,14 @@ designMdCommand
     try {
       if (!dir) throw new SddScriptError("usage: design-md validate <dir>", 2);
       const abs = resolveCliPath(dir);
-      const lightPath = path.join(abs, "DESIGN.md");
+      const lightPath = `${abs}${path.sep}DESIGN.md`;
       if (!fs.existsSync(lightPath)) throw new Error(`design file not found: ${lightPath}`);
       const light = fs.readFileSync(lightPath, "utf8");
       const violations: ValidationResult[] = [];
       const tokens = validateDesignTokenFrontmatter(light);
       printChecklist("design-md validate (tokens)", tokens);
       violations.push(...tokens.violations);
-      const darkPath = path.join(abs, "DESIGN.dark.md");
+      const darkPath = `${abs}${path.sep}DESIGN.dark.md`;
       if (fs.existsSync(darkPath)) {
         const parity = assertLightDarkParity(light, fs.readFileSync(darkPath, "utf8"));
         printChecklist("design-md validate (light/dark parity)", parity);
@@ -2533,7 +2565,7 @@ function listTrackedFiles(root: string): string[] {
   } catch {
     throw new SddScriptError("not a git repository or git unavailable \u2014 refusing to report an empty scan as clean", 2);
   }
-  return out.split("\0").filter((f) => f !== "").map((f) => path.join(root, f));
+  return out.split("\0").filter((f) => f !== "").map((f) => (root.endsWith(path.sep) ? root + f : root + path.sep + f));
 }
 auditCommand
   .command("secret-scan")
@@ -3696,11 +3728,15 @@ prReviewCommand
     }
   });
 
-/** Review artifact path beside the worktree: <parent-of-worktree>/.<worktree-dirname>.prreview.<suffix> */
+/** Review artifact path beside the worktree: <parent-of-worktree>/.<worktree-dirname>.prreview.<suffix>
+ * The artifact is bound to the worktree's parent directory: callers pass an
+ * already-resolved worktree path and the computed single-segment name is
+ * appended inside that parent, so the artifact can only land beside it. */
 function prReviewArtifactPathFor(worktreePath: string, suffix: "json" | "diff"): string {
-  const parent = path.dirname(path.resolve(worktreePath));
-  const name = path.basename(path.resolve(worktreePath));
-  return path.join(parent, `.${name}.prreview.${suffix}`);
+  const parent = path.dirname(worktreePath);
+  const name = path.basename(worktreePath);
+  const prefix = parent.endsWith(path.sep) ? parent : parent + path.sep;
+  return `${prefix}.${name}.prreview.${suffix}`;
 }
 
 /**

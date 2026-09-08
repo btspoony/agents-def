@@ -8,18 +8,20 @@ that never reruns a model).
 
 ## Canonical CLI (Spec A1)
 
-```bash
-bun scripts/skill-eval/index.ts prepare --config <absolute-config.json> --out <absolute-run-dir> [--repo-root <dir>]
-bun scripts/skill-eval/index.ts run    --manifest <absolute-manifest.json> --split smoke|dev|heldout \
-                                       --variants baseline[,candidate[,minimal]] --repeats 1|3
-bun scripts/skill-eval/index.ts report --manifest <absolute-manifest.json>
+There is deliberately **no CLI**: the harness is fully automated and
+test-driven. Stages are invoked programmatically via their exported functions:
+
+```ts
+import { prepareManifest } from "./manifest.ts";   // stage 1: frozen manifest + fixtures
+import { executeManifest } from "./runner.ts";     // stage 2: argv-array subprocess execution (launchFn injected)
+import * as report from "./report.ts";             // stage 3: JSON + Markdown aggregation over recorded evidence
 ```
 
-`--out` must resolve strictly inside `<repoRoot>/.tmp/skill-eval/`. Unknown
-arguments are rejected. `$EVAL_MANIFEST` is the absolute prepared
-`manifest.json` path — never under HOME/CODEX_HOME.
+Paths passed to these functions must resolve strictly inside
+`<repoRoot>/.tmp/skill-eval/` for run-side writes; `$EVAL_MANIFEST` is the
+absolute prepared `manifest.json` path — never under HOME/CODEX_HOME.
 
-Exit codes (Spec A1):
+Stage `exit` conventions (Spec A1), returned in each stage result:
 
 | Stage | 0 | 1 | 2 |
 |---|---|---|---|
@@ -27,8 +29,8 @@ Exit codes (Spec A1):
 | `run` | all requested units verified passes | completed assertion failures only | infrastructure failure, unverified required evidence, or pending units |
 | `report` | same conventions as `run`, over recorded evidence only | | |
 
-Usage errors (bad args, sampling-lock violations, manifest/state mismatches)
-are exit 2 with zero spawns. `prepare` completes every validation (including
+Invalid input (bad args, sampling-lock violations, manifest/state mismatches)
+is `exit 2` with zero spawns. `prepare` completes every validation (including
 the symlink-ancestor realpath walk) **before** any `mkdir`, so a rejected
 prepare creates nothing — not even the gitignored disposable root.
 `run`/`report` enforce the same disposable-root write containment: a manifest
@@ -61,8 +63,8 @@ Exit codes (Spec A1): `0` = immutable manifest + fixtures written; `2` =
 invalid config/cases/target, nothing written anywhere (validation, including
 the containment realpath walk, completes before the first `mkdir`).
 
-Prepare is also reachable via the canonical dispatcher
-(`index.ts prepare ...`), which calls these exported functions unchanged.
+Prepare is the exported `prepareManifest` function; the runner and report
+stages call these exported functions unchanged.
 
 Example config (all fields required; no secret-shaped keys — secret-looking
 config keys are rejected because `configHash` covers runner-owned nonsecret

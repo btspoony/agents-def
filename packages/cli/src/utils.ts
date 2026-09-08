@@ -49,6 +49,28 @@ export function resolveProjectRoot() {
 }
 
 /**
+ * Lexical containment helper for paths derived from a boundary directory:
+ * resolve `segments` underneath `root` and refuse the result when it escapes
+ * `root` with `..` or an absolute replacement. Lexical only — symlinks are
+ * not resolved; the caller remains responsible for symlink-based escapes.
+ */
+export function joinWithinRoot(root: string, ...segments: string[]): string {
+  const base = path.resolve(root);
+  const resolved = path.resolve(base, ...segments);
+  const withinRoot =
+    resolved === base ||
+    resolved.startsWith(base + path.sep) ||
+    // A base at the filesystem root already ends with the separator
+    // ("/", "C:\"); the appended-separator prefix above would miss its
+    // own children.
+    (base.endsWith(path.sep) && resolved.startsWith(base));
+  if (!withinRoot) {
+    throw new Error(`path escapes ${base}: ${segments.join(path.sep)}`);
+  }
+  return resolved;
+}
+
+/**
  * Nearest ancestor of `startDir` whose `package.json` parses and matches
  * `predicate`, or null when no ancestor has a parseable manifest (up to the
  * filesystem root).
@@ -57,7 +79,8 @@ function findUpPackageRoot(startDir: string, predicate: (manifest: Record<string
   let dir = path.resolve(startDir);
   for (;;) {
     try {
-      const manifest = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")) as Record<string, unknown>;
+      // Each step reads only the direct package.json child of one ancestor.
+      const manifest = JSON.parse(fs.readFileSync(joinWithinRoot(dir, "package.json"), "utf8")) as Record<string, unknown>;
       if (predicate(manifest)) return dir;
     } catch {
       // no parseable package.json at this level — keep walking up
@@ -108,9 +131,12 @@ function resolveCliProjectRoot(): string {
  * root (see `resolveCliProjectRoot`), so documented dev-command path args
  * (e.g. `skill lint skills/mstar-audit`) work from any process cwd, not
  * only the repo root (audit-002 CLI project-root paths). Absolute paths are
- * returned unchanged.
+ * returned unchanged. Path arguments are operator-authoritative: the CLI
+ * runs with the invoking user's own privileges and scope, so resolution
+ * intentionally neither restricts absolute inputs nor relative `..` segments.
  */
 export function resolveCliPath(userPath: string) {
   if (path.isAbsolute(userPath)) return userPath;
-  return path.resolve(resolveCliProjectRoot(), userPath);
+  const root = resolveCliProjectRoot();
+  return root.endsWith(path.sep) ? root + userPath : root + path.sep + userPath;
 }
