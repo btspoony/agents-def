@@ -1,11 +1,10 @@
 /**
- * omp Gate-1 golden fixture-matrix parity (contract D1, plan
- * 20260908-hooks-cross-host).
+ * omp Gate-1 golden fixture-matrix parity (cross-host hooks contract D1).
  *
  * The GOLDEN map below is the literal record of the PRE-refactor omp gate
  * behavior (captured by running the pre-extraction
- * `src/hooks/pre/mstar-gates.ts` handler over this exact matrix, see the
- * task-1 report): matrix = 5 tmp-dir harness trees x {status, snapshot,
+ * `src/hooks/pre/mstar-gates.ts` handler over this exact matrix): matrix =
+ * 5 tmp-dir harness trees x {status, snapshot,
  * register} x {valid, invalid-json, oversized, missing}. Enforcement comes
  * from the tree (hard compass / soft compass / soft-by-absence at the
  * outer root of the double tree). The post-refactor gate — Gate 1 core now

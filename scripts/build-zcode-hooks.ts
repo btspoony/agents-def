@@ -1,6 +1,6 @@
 /**
  * scripts/build-zcode-hooks.ts — build the ZCode process-hook bundles
- * (root script `hooks:build`; plan 20260908-hooks-cross-host contract D2).
+ * (root script `hooks:build`; cross-host hooks contract D2).
  *
  * Bundles `hooks/src/mstar-write-gate.ts` with `bun build --target node`
  * (the hook runs via `"command": "node"` in hooks/hooks.json) into the

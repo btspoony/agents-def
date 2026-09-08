@@ -1,6 +1,6 @@
 /**
- * `gates` — host-neutral coordination-write gate core (contract D1,
- * plan 20260908-hooks-cross-host). Each test cites the moved behavior it
+ * `gates` — host-neutral coordination-write gate core (cross-host hooks
+ * contract D1). Each test cites the moved behavior it
  * pins (the omp glue this module was extracted from):
  * - `eventTargetPaths`: `input.path` + `input.paths[]`, non-string/blank
  *   entries dropped, non-object input -> `[]`.

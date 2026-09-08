@@ -1,6 +1,6 @@
 /**
- * hooks/src/mstar-write-gate.ts — synthetic stdin fixture matrix (plan
- * 20260908-hooks-cross-host contract D3/D4/D5). Each case spawns the hook
+ * hooks/src/mstar-write-gate.ts — synthetic stdin fixture matrix
+ * (contract D3/D4/D5). Each case spawns the hook
  * ENTRY SOURCE with a synthetic PreToolUse envelope and pins the process
  * contract: exit 0 + EMPTY STDOUT on every pass path; exit 2 + stderr-only
  * reason on a hard-mode block. tmp-dir harness fixtures follow

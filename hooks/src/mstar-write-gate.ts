@@ -3,8 +3,7 @@
 // three v3 harness coordination documents (root status.json, workflow
 // snapshots, project registers) through the SAME classification + validation
 // path the omp gate uses — the `gates` module of `@mstar-harness/engine`,
-// inlined into this file at build (see scripts/build-zcode-hooks.ts; plan
-// 20260908-hooks-cross-host contract D1/D3/D4/D5).
+// inlined into this file at build (see scripts/build-zcode-hooks.ts).
 //
 // Block dialect (contract D4): exit code 2 with the reason on STDERR — ZCode
 // parses hook stdout under a strict schema where any extra key silently
@@ -76,8 +75,10 @@ const input = readStdinJson();
 try {
   if (process.env.MSTAR_WRITE_GATE === "off") process.exit(0);
 
+  // `hook_event_name` is intentionally unkeyed: the hooks.json matcher
+  // already scopes the event to PreToolUse; this re-check is defense-in-depth.
   const toolName = typeof input.tool_name === "string" ? input.tool_name : "";
-  if (toolName !== "Write" && toolName !== "Edit") process.exit(0); // matcher is scope, this is defense-in-depth
+  if (toolName !== "Write" && toolName !== "Edit") process.exit(0);
 
   const toolInput = input.tool_input;
   if (typeof toolInput !== "object" || toolInput === null) process.exit(0);

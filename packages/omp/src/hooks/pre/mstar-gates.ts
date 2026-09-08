@@ -21,7 +21,7 @@
  *
  * Gate-1 core lives in the engine (`@mstar-harness/engine` `gates` module
  * — target classification, content/edit validation, reason formatting;
- * contract D1, plan 20260908-hooks-cross-host): omp imports the shared
+ * cross-host hooks contract D1): omp imports the shared
  * glue, and so does the ZCode write gate — one classification path, no
  * per-host hand copies. The engine is INLINED into this bundle at build
  * (no bare `@mstar-harness/engine` import survives; asserted by the

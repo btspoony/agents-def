@@ -2,8 +2,7 @@
  * Committed tools v2 smoke + hook Gate 1 regression. *
  * Covers the five rewired `tools/mstar_*` (module load + one execution per
  * tool against the rebuilt engine dist) AND the omp `hooks/pre/mstar-gates`
- * Gate 1 degrade/hard paths — replacing the one-time smoke script that only
- * existed in task-2-report.md. Fixture: a committed minimal v2
+ * Gate 1 degrade/hard paths. Fixture: a committed minimal v2
  * harness tree (`test/fixtures/tools-v2-smoke/`) copied into a temp git
  * repo with a real linked worktree, so `l1PreDispatchCheck`'s existence +
  * branch probes pass.
@@ -11,7 +10,7 @@
  * Regression anchors bundled here (fix wave 1):
  * - W-A: `mstar_worktree_check` workflowId traversal guard parity.
  * - W-B: hooks/tools lazy-load the P1-only engine exports — REMOVED for the
- *   omp hook (contract D1, plan 20260908-hooks-cross-host): the Gate-1 core
+ *   omp hook (cross-host hooks contract D1): the Gate-1 core
  *   moved into the engine `gates` module and the engine is inlined into the
  *   bundle at build, so a stale engine dist fails the omp build instead of
  *   degrading; the degrade-path seam tests were deleted with the seams and

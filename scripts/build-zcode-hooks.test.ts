@@ -1,6 +1,6 @@
 /**
- * scripts/build-zcode-hooks.ts — build + bundle smoke (plan
- * 20260908-hooks-cross-host contract D2, knowledge doc
+ * scripts/build-zcode-hooks.ts — build + bundle smoke (cross-host hooks
+ * contract D2, knowledge doc
  * bun-bundle-ascii-literals two-layer guard). Pins:
  * - the committed `hooks/mstar-write-gate.mjs` rebuilds BYTE-IDENTICALLY
  *   (the CI freshness gate diffs the working tree; determinism is

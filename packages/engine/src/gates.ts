@@ -2,7 +2,7 @@
  * `gates` — host-neutral coordination-write gate core (Gate 1).
  *
  * Extracted verbatim from the omp hook glue (`packages/omp/src/hooks/pre/
- * mstar-gates.ts`, contract D1 of plan 20260908-hooks-cross-host) so omp,
+ * mstar-gates.ts`, cross-host hooks contract D1) so omp,
  * ZCode, and any future host share ONE classification + validation path
  * instead of per-host hand copies (the opencode copy already drifted).
  * The engine was already the home of every rule check (validateStatus,
