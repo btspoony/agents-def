@@ -63,6 +63,7 @@ import {
 import type { AgentFlowPairing, TaskDoneSnapshot } from './gates/agent-flow.ts'
 import {
   ROLE_PERSONA_LOGGER,
+  probeRolePersonaSeam,
   registerRolePersonaChannel,
   setRolePersonaAgentsDir,
   setRolePersonaLogger,
@@ -788,6 +789,14 @@ export function apply(ctx: Context, config: Config): void {
   // listener is owned by this fiber (HMR-safe). Persona delivery is
   // fallbacks-independent and capability-gated — see `role-persona.ts`.
   registerRolePersonaChannel(ctx, config)
+  // Seam probe (observation only, ONCE per apply — see `probeRolePersonaSeam`):
+  // a cordis `internal/get` rename/removal would leave the channel registered
+  // but never dispatched (persona delivery silently gone). The probe performs
+  // ONE controlled proxied read through a transient canary and fails LOUD —
+  // ONE warn when the channel is not installed (`ok === false`); an
+  // unresolved subagents service and any probe-internal error stay `ok` with
+  // one debug (fail-open; apply and subagent starts are never affected).
+  probeRolePersonaSeam(ctx)
 
   // Adoption-advisory decision point — `subagent/start` emit (listener narrowed to the advisory only): the loader has settled by the first dispatch, so
   // an advisory skipped at apply (fallbacks row mounted after dsh) runs its
