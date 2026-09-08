@@ -365,32 +365,69 @@ export class FakeSessionPersistence extends Service {
 }
 
 /**
- * Minimal in-memory `settings` service for the REAL-fallbacks composition
- * (installed-deployment e2e): the
+ * In-memory `settings` service for the REAL-fallbacks compositions
+ * (installed-deployment e2e + the boot-order regression): the
  * upstream `dsh-llm-fallbacks` plugin writes its seed registry through the
- * `settings` service (`seedsIo.writeRoles` → `sctx.settings.update(...)`),
- * which the real dsh app always provides (`dsh-settings-file` row). Without
- * it the fallbacks `declareSeeds` rejects with
- * `seedsSettingsUnavailable` and no mstar seed can land. This fake
- * implements the ONE consumed contract — `update(namespace, data)` (+ a
- * `get` readback for the spec) — mounted as the `@deepseek-ai/dsh-settings-fake`
- * module row (`bootApp({ settingsService: 'fake' })`), the same
+ * `settings` service (`seedsIo.writeRoles` → `sctx.settings.update(...)`)
+ * and re-points its config source through `installSection`, both of which
+ * the real dsh app always provides (`dsh-settings-file` row). Without it
+ * the fallbacks `declareSeeds` rejects with `seedsSettingsUnavailable` and
+ * no mstar seed can land. This fake models the REAL service's consumed
+ * contract (`@deepseek-ai/dsh-settings`: `installSection` base-layer
+ * registration with a live source closure + synchronous/watch change
+ * notification, and patch-merge `update` with section notification) —
+ * mounted as the `@deepseek-ai/dsh-settings-fake` module row
+ * (`bootApp({ settingsService: 'fake' | 'fake-deferred' })`), the same
  * structural-fake philosophy as the loader/jobs/agents/sessions fakes.
  */
 export class FakeSettingsRegistry extends Service {
   private readonly store = new Map<string, unknown>()
+  /** Registered sections (`installSection`): namespace → the consumer's
+   * change hook (the base `entry` stays closed over in the live source). */
+  private readonly sections = new Map<string, { onChange(): void }>()
 
   constructor(ctx: Context) {
     super(ctx, 'settings')
   }
 
-  /** Persist one namespace payload (the fallbacks `update` contract). */
+  /**
+   * Attach one optional-settings consumer — the real `installSection`
+   * contract minus schema validation and the owner-detach fallback (neither
+   * is consumed by the seeds flow): registers `ns` with `entry` as the BASE
+   * layer, hands the consumer a LIVE source closure composing
+   * `{ ...entry, ...storedSection }` per read (so later `update` writes are
+   * visible through the provider's `source()`), and calls `onChange` once
+   * synchronously after registration (later `update` writes re-notify).
+   */
+  installSection(
+    owner: unknown,
+    namespace: string,
+    schema: unknown,
+    entry: unknown,
+    hooks: { setSource(current: unknown): void; onChange(): void },
+  ): void {
+    this.sections.set(namespace, { onChange: hooks.onChange })
+    hooks.setSource(() => {
+      const stored = this.store.get(namespace)
+      return typeof stored === 'object' && stored !== null
+        ? { ...(entry as Record<string, unknown>), ...(stored as Record<string, unknown>) }
+        : entry
+    })
+    hooks.onChange()
+  }
+
+  /** Merge one namespace patch over the stored user section (the real
+   * `update` patch-merge contract) and notify the namespace's registered
+   * section, if any. */
   update(namespace: string, data: unknown): Promise<void> {
-    this.store.set(namespace, data)
+    const stored = this.store.get(namespace)
+    const base = typeof stored === 'object' && stored !== null ? (stored as Record<string, unknown>) : {}
+    this.store.set(namespace, { ...base, ...(data as Record<string, unknown>) })
+    this.sections.get(namespace)?.onChange()
     return Promise.resolve()
   }
 
-  /** Read one namespace payload (spec readback). */
+  /** Read one namespace payload (spec readback — raw store, unchanged). */
   get(namespace: string): unknown {
     return this.store.get(namespace)
   }
@@ -573,11 +610,18 @@ export interface BootOptions {
    * `dsh-llm-fallbacks` plugin writes its seed registry through
    * `sctx.settings.update` (the real dsh app always composes the
    * `dsh-settings-file` row), so a fallbacks composition without a
-   * settings seam cannot persist seed declarations. Mounted BEFORE the
-   * fallbacks row so `writeRoles` binds at fallbacks apply. Absent by
-   * default — existing compositions are untouched.
+   * settings seam cannot persist seed declarations. Variants:
+   * - `'fake'` (default) — mounted BEFORE the plugin layers so `writeRoles`
+   *   binds at fallbacks apply (existing compositions are untouched).
+   * - `'fake-deferred'` — mounted AFTER the `dsh-llm-fallbacks` row so the
+   *   settings service becomes available to the provider only after its
+   *   apply window: the mstar declare fires on the service-provide tick with
+   *   `writeRoles` still the thrower (the live declare-vs-binding race) and
+   *   the provider's settings children settle one tick later. Requires
+   *   `fallbacksModule` (the deferred row models that race).
+   * Absent by default — existing compositions are untouched.
    */
-  settingsService?: 'fake'
+  settingsService?: 'fake' | 'fake-deferred'
 }
 
 /** A booted app: context, temp root, resolved harness dir, and disposal. */
@@ -739,6 +783,13 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
   if (options.subagents !== undefined && options.agentsService === undefined) {
     throw new Error('subagents: "real" requires agentsService: "fake" (the runtime injects agents)')
   }
+  // The deferred settings row models the settings arrival AFTER the
+  // fallbacks apply window (the declare-vs-binding race) — without a
+  // fallbacks row there is no race to model; fail fast instead of booting a
+  // composition whose ordering silently means nothing.
+  if (options.settingsService === 'fake-deferred' && options.fallbacksModule === undefined) {
+    throw new Error('settingsService: "fake-deferred" requires fallbacksModule (the deferred row models the settings arrival after the fallbacks apply window)')
+  }
 
   // The dsh skill registry row mounts first (real dsh app layout): the
   // `@mstar-harness/dsh` plugin mounts skill-filesystem as a child, which injects
@@ -785,12 +836,13 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
     // proceeds past its persistence precondition (the continuable
     // persona-channel tests).
     ...(options.sessionPersistence !== undefined ? [{ name: '@deepseek-ai/dsh-session-persistence-fake' }] : []),
-    // The fake settings service row (only when requested): mounted BEFORE
-    // the plugin layers
+    // The fake settings service row in the DEFAULT 'fake' variant: mounted
+    // BEFORE the plugin layers
     // so the real fallbacks plugin's `ctx.inject(['settings'])` child
     // binds `writeRoles` at its own apply (the real dsh app composes the
-    // `dsh-settings-file` row before the plugin layers).
-    ...(options.settingsService !== undefined ? [{ name: '@deepseek-ai/dsh-settings-fake' }] : []),
+    // `dsh-settings-file` row before the plugin layers). The 'fake-deferred'
+    // variant mounts AFTER the fallbacks row instead (see below).
+    ...(options.settingsService === 'fake' ? [{ name: '@deepseek-ai/dsh-settings-fake' }] : []),
     // The mstar plugin row (carries the boot-time Config below).
     { name: '@mstar-harness/dsh' },
     // The REAL fallbacks layer (only when requested): the real
@@ -799,6 +851,14 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
     // child arms at mstar apply and fires when the fallbacks service
     // appears — the same sequence the seeds wiring test pins.
     ...(options.fallbacksModule !== undefined ? [{ name: 'dsh-llm-fallbacks' }] : []),
+    // The DEFERRED fake settings row (settingsService: 'fake-deferred',
+    // boot-order regression only): mounted AFTER the `dsh-llm-fallbacks`
+    // row so the settings service becomes available to the provider only
+    // after its apply window — the mstar declare fires on the
+    // service-provide tick with `writeRoles` still the thrower (the live
+    // declare-vs-binding race) and the provider's settings children settle
+    // one tick later.
+    ...(options.settingsService === 'fake-deferred' ? [{ name: '@deepseek-ai/dsh-settings-fake' }] : []),
   ]
   let rows: ReadonlyArray<{ name: string; config?: Record<string, unknown> }> = inlineRows
   if (options.cordisYml !== undefined) {

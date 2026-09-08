@@ -8,8 +8,8 @@
  * the same tick as the provider's own `ctx.provide('llm-fallbacks', …)`.
  * The provider's seed write channel (`writeRoles`) starts as a thrower and
  * is only swapped by the provider's own `ctx.inject(['settings'], …)` child,
- * which settles one macrotask AFTER its apply. A first-boot declaration
- * therefore rejects with
+ * which settles one macrotask AFTER its apply. The declaration therefore
+ * LOSES that settings-binding race and rejects with
  * `llm-fallbacks: seeds: settings service is unavailable — seed roles
  * cannot be written`, and nothing retries it on a plain boot (no decision
  * point runs) — the 13 mstar role ids never reach the effective taxonomy
@@ -20,12 +20,31 @@
  * `subagent/start` decision point) BEFORE asserting — exactly the path the
  * plain single boot never gets. This spec pins the plain boot.
  *
+ * Harness fidelity (how the race is reproduced here): with the fake
+ * settings row mounted BEFORE the fallbacks row, the provider's binding
+ * child wins and the declare SUCCEEDS on attempt 1 — not the live failure.
+ * This composition opts into the realistic settings arrival instead
+ * (`settingsService: 'fake-deferred'`): the fake settings row mounts AFTER
+ * the `dsh-llm-fallbacks` row, so the mstar declare fires on the
+ * service-provide tick with `writeRoles` still the thrower, while the
+ * provider's settings children settle one tick later — the same observable
+ * ordering as the live deployment. The fake settings registry itself models
+ * the real `dsh-settings-file` service's consumed contract
+ * (`installSection` base-layer registration + live source closure +
+ * synchronous/watch change notification; patch-merge `update`), so the
+ * config loop the readback depends on CLOSES one tick after the declare
+ * window: the provider's preset self-declare lands through the same seam
+ * and the RED readback carries the 7 preset ids while the 13 mstar ids are
+ * missing — the exact live failure shape (never the fake-api-absence shape:
+ * a readback of `[]` plus an `installSection is not a function` provider
+ * TypeError).
+ *
  * Falsifiability: RED on the unfixed tree — the effective readback holds
- * only the 7 upstream preset ids, the settings namespace is untouched, and
- * the boot log carries one `mstar/fallbacks-seeds` ERROR record (the
- * contained declaration failure). GREEN after the bounded-retry fix: 20 ids
- * (13 mirror-derived mstar + 7 presets), every mstar row seeded with a
- * non-empty persona, the 13 rows persisted, and a clean boot log.
+ * only the 7 upstream preset ids, the settings namespace carries no mstar
+ * row, and the boot log carries one `mstar/fallbacks-seeds` ERROR record
+ * (the contained declaration failure). GREEN after the bounded-retry fix:
+ * 20 ids (13 mirror-derived mstar + 7 presets), every mstar row seeded with
+ * a non-empty persona, the 13 rows persisted, and a clean boot log.
  *
  * Boot-log capture: cordis's `LoggerService` registers a default buffer
  * exporter at construction — `ctx.logger.buffer` — but that buffer's level
@@ -148,7 +167,7 @@ afterEach(async () => {
 
 describe('fallbacks seeds boot-order — single REAL-package boot converges the mstar role seeds', () => {
   test.skipIf(skipReason !== undefined)(
-    'plain boot (mstar row first, real dsh-llm-fallbacks, fake settings): 20-id taxonomy, persisted mstar rows, clean boot log',
+    'plain boot (mstar row first, real dsh-llm-fallbacks, deferred fake settings): 20-id taxonomy, persisted mstar rows, clean boot log',
     async () => {
       // 1. Expected id set — MIRROR-DERIVED mstar ids (never hardcoded) ∪
       //    the installed upstream preset ids (runtime anchor, not a local
@@ -161,12 +180,14 @@ describe('fallbacks seeds boot-order — single REAL-package boot converges the 
       expect(expectedIds.size, 'mstar and preset id sets are disjoint (union = 20)').toBe(20)
 
       // 2. SINGLE boot — the real fallbacks devDependency, the real mstar
-      //    src plugin, the fake settings seam mounted before the plugin
-      //    layers, the real profile row order (mstar first). No dispose,
+      //    src plugin, the fake settings seam mounted AFTER the fallbacks
+      //    row ('fake-deferred' — the realistic settings arrival that
+      //    reproduces the live declare-vs-binding race; see the header
+      //    comment), the real profile row order (mstar first). No dispose,
       //    no re-apply, no decision-point emit: the plain boot a real
       //    deployment performs.
       const fallbacksModule = await import('dsh-llm-fallbacks')
-      booted = await bootApp({ fallbacksModule, settingsService: 'fake' })
+      booted = await bootApp({ fallbacksModule, settingsService: 'fake-deferred' })
       // Full-level capture from settle-onward (registered post-boot: the
       // ctx does not exist earlier; the default buffer covers the boot
       // window and the union below is the assertion surface).
