@@ -37,6 +37,19 @@ const SKILL_POINTER = "skill: mstar-artifacts/references/status-and-residuals.md
 const ENFORCEMENT_LINE =
   "Enforcement: hard \u2014 this repo opts in via .mstarc/compass; disable for this session with MSTAR_WRITE_GATE=off.";
 
+// Bounds (failure matrix row 7): per-target cost is bounded by local reads +
+// the 2 MB guards; the target COUNT is bounded here — a hostile envelope
+// carrying a huge paths[] skips the overflow silently (fail-open) instead of
+// accumulating fs probes toward the 10 s hook timeout.
+const MAX_GATED_TARGETS = 32;
+
+/** Display-safe path text: control characters (which the engine's `[^/]+`
+ * canonical-rel patterns admit) are hex-escaped so the stderr block header
+ * stays one line and cannot forge violation-looking lines. */
+function displaySafe(text: string): string {
+  return text.replace(/[\x00-\x1f\x7f]/g, (ch) => `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`);
+}
+
 function readStdinJson(): Record<string, unknown> {
   try {
     // Tolerant stdin read (house style, git-guard.mjs): empty or
@@ -56,7 +69,8 @@ function readStdinJson(): Record<string, unknown> {
  * Target paths from a ZCode Write/Edit `tool_input` (contract D3 union):
  * non-empty string `file_path`, non-empty string `path`, and each
  * non-empty string element of `paths[]`. Unknown extra keys are ignored and
- * never manufacture targets; nothing here can throw.
+ * never manufacture targets; nothing here can throw. The result is capped
+ * at MAX_GATED_TARGETS — overflow targets skip gating silently (fail-open).
  */
 function writeTargetPaths(toolInput: Record<string, unknown>): string[] {
   const paths: string[] = [];
@@ -68,7 +82,7 @@ function writeTargetPaths(toolInput: Record<string, unknown>): string[] {
   if (Array.isArray(toolInput.paths)) {
     for (const value of toolInput.paths) push(value);
   }
-  return paths;
+  return paths.slice(0, MAX_GATED_TARGETS);
 }
 
 const input = readStdinJson();
@@ -89,6 +103,12 @@ try {
   // not necessarily the workspace).
   const cwd = typeof input.cwd === "string" && input.cwd ? input.cwd : process.cwd();
 
+  // Known limitations (omp parity, fail-open — beyond the failure-matrix
+  // rows): classification is textual, so a symlink alias whose textual path
+  // sits outside the harness tree bypasses the gate (no target realpath);
+  // Edit events validate the PRE-edit on-disk state, so a corrupting edit
+  // surfaces on the next write, and repairing an already-invalid gated doc
+  // requires a full-content Write (which validates the new document).
   for (const rawPath of writeTargetPaths(tool)) {
     const targetPath = isAbsolute(rawPath) ? rawPath : join(cwd, rawPath);
     const target = harnessDocKindOfTarget(targetPath);
@@ -104,7 +124,7 @@ try {
     if (!enforcement.hard) continue; // soft mode — silent pass (omp Gate-1 parity)
 
     const rel = relative(target.harnessDir, targetPath);
-    const display = rel && !rel.startsWith("..") && !isAbsolute(rel) ? rel : targetPath;
+    const display = displaySafe(rel && !rel.startsWith("..") && !isAbsolute(rel) ? rel : targetPath);
     // writeSync on fd 2: the block reason MUST survive process.exit —
     // process.stderr.write buffers asynchronously on some platforms.
     writeSync(2, `[Morning Star write gate] blocked ${toolName} to ${display}\n`);

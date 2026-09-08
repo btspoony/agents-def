@@ -934,6 +934,10 @@ var CONFIDENCE_ENUM_RE = new RegExp(`^(${[...AUDIT_CONFIDENCES, "MEDIUM"].join("
 // hooks/src/mstar-write-gate.ts
 var SKILL_POINTER = "skill: mstar-artifacts/references/status-and-residuals.md";
 var ENFORCEMENT_LINE = "Enforcement: hard — this repo opts in via .mstarc/compass; disable for this session with MSTAR_WRITE_GATE=off.";
+var MAX_GATED_TARGETS = 32;
+function displaySafe(text) {
+  return text.replace(/[\x00-\x1f\x7f]/g, (ch) => `\\x${ch.charCodeAt(0).toString(16).padStart(2, "0")}`);
+}
 function readStdinJson() {
   try {
     const raw = readFileSync3(0, "utf8");
@@ -959,7 +963,7 @@ function writeTargetPaths(toolInput) {
     for (const value of toolInput.paths)
       push(value);
   }
-  return paths;
+  return paths.slice(0, MAX_GATED_TARGETS);
 }
 var input = readStdinJson();
 try {
@@ -985,7 +989,7 @@ try {
     if (!enforcement.hard)
       continue;
     const rel = relative3(target.harnessDir, targetPath);
-    const display = rel && !rel.startsWith("..") && !isAbsolute3(rel) ? rel : targetPath;
+    const display = displaySafe(rel && !rel.startsWith("..") && !isAbsolute3(rel) ? rel : targetPath);
     writeSync(2, `[Morning Star write gate] blocked ${toolName} to ${display}
 `);
     writeSync(2, `${formatStatusWriteBlockReason(violations, SKILL_POINTER)}
