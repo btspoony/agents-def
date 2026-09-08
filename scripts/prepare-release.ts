@@ -32,10 +32,13 @@
 import { existsSync, mkdirSync, readdirSync, renameSync } from "node:fs";
 import {
   CHANGELOGS,
+  DEFAULT_VERSION_PATH,
   RELEASE_VERSION_RE,
   VERSION_SURFACES,
   compareSemver,
   isPrereleaseVersion,
+  locateVersionSpan,
+  readVersionAt,
 } from "./release-surfaces.ts";
 
 type Fragment = {
@@ -198,14 +201,14 @@ function buildSectionBody(target: (typeof CHANGELOGS)[number], frags: Fragment[]
       lines.push(
         "### 版本对齐",
         "",
-        `- 提升 monorepo 根、\`@mstar-harness/opencode\`、\`@mstar-harness/cli\`、\`@mstar-harness/engine\`、\`@mstar-harness/dsh\`、Cursor/Codex/Kimi/ZCode/omp/Claude 插件清单及便携式 Agent Plugins 清单：**→ ${version}**。`,
+        `- 提升 monorepo 根、\`@mstar-harness/opencode\`、\`@mstar-harness/cli\`、\`@mstar-harness/engine\`、\`@mstar-harness/dsh\`、Cursor/Codex/Kimi/ZCode/omp/Claude 插件清单、便携式 Agent Plugins 清单及两份 marketplace 清单：**→ ${version}**。`,
         "",
       );
     } else {
       lines.push(
         "### Version alignment",
         "",
-        `- Bump monorepo root, \`@mstar-harness/opencode\`, \`@mstar-harness/cli\`, \`@mstar-harness/engine\`, \`@mstar-harness/dsh\`, Cursor/Codex/Kimi/ZCode/omp/Claude plugin manifests, and the portable Agent Plugins manifest: **→ ${version}**.`,
+        `- Bump monorepo root, \`@mstar-harness/opencode\`, \`@mstar-harness/cli\`, \`@mstar-harness/engine\`, \`@mstar-harness/dsh\`, Cursor/Codex/Kimi/ZCode/omp/Claude plugin manifests, the portable Agent Plugins manifest, and both marketplace manifests: **→ ${version}**.`,
         "",
       );
     }
@@ -236,11 +239,29 @@ function insertSection(changelog: string, version: string, date: string, body: s
   return `${changelog.slice(0, afterLine)}\n${header}\n\n${body}\n\n${tail}`;
 }
 
-async function bumpJsonVersion(path: string, oldV: string, newV: string): Promise<void> {
+/**
+ * Bump one surface's version, honoring its locator path. The parsed-value
+ * check confirms the version lives at the declared `versionPath`; the
+ * replacement is then spliced at the exact located span in the raw text
+ * (`locateVersionSpan` — structural walk), so a coincidental earlier
+ * version-looking string can never be rewritten. Unresolvable locators and
+ * value drift fail loud naming the path; `release:validate` re-reads the
+ * same locator, closing the bump/read loop. Exported for tests.
+ */
+export async function bumpJsonVersion(
+  path: string,
+  oldV: string,
+  newV: string,
+  versionPath: string = DEFAULT_VERSION_PATH,
+): Promise<void> {
   const text = await Bun.file(path).text();
-  const re = new RegExp(`("version"\\s*:\\s*")${oldV.replace(/\./g, "\\.")}(")`);
-  if (!re.test(text)) throw new Error(`${path}: could not find version field "${oldV}"`);
-  await Bun.write(path, text.replace(re, `$1${newV}$2`));
+  const located = readVersionAt(JSON.parse(text), versionPath);
+  if (located !== oldV) {
+    throw new Error(`${path}: version at "${versionPath}" is ${located ?? "<missing>"}, expected "${oldV}"`);
+  }
+  const span = locateVersionSpan(text, versionPath);
+  if (!span) throw new Error(`${path}: could not locate "${versionPath}" in file text`);
+  await Bun.write(path, text.slice(0, span[0]) + JSON.stringify(newV) + text.slice(span[1]));
 }
 
 /**
@@ -302,8 +323,8 @@ async function main(): Promise<void> {
   }
 
   for (const s of VERSION_SURFACES) {
-    await bumpJsonVersion(s.path, current, version);
-    console.log(`bump: ${s.path}`);
+    await bumpJsonVersion(s.path, current, version, s.versionPath);
+    console.log(`bump: ${s.path}${s.versionPath ? ` @ "${s.versionPath}"` : ""}`);
   }
 
   // Internal packages (cli/opencode/dsh) bundle the engine at build time; their

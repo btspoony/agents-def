@@ -41,6 +41,7 @@ type GithubSource = { source: "github"; repo: string; ref?: string };
 
 type MarketplacePluginEntry = {
   name: string;
+  version: string;
   source: GithubSource;
   displayName: string;
   icon: string;
@@ -64,9 +65,19 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function marketplacePluginEntry(): MarketplacePluginEntry {
+/**
+ * Bootstrap snapshot for ZCode's marketplace.json. The seeded `version` is
+ * the CLI release version — the exact value `validateMarketplaceJson` (doctor)
+ * compares against, so a current-CLI install always passes doctor even when
+ * the shared `~/.mstar/harness` checkout is stale. ZCode's marketplace
+ * refresh overwrites this seed with the repo-shipped manifest
+ * (`.claude-plugin/marketplace.json`), which pins the release version too.
+ * Exported for tests.
+ */
+export function marketplacePluginEntry(): MarketplacePluginEntry {
   return {
     name: PLUGIN_NAME,
+    version: readHarnessVersion(),
     source: { ...GITHUB_SOURCE },
     displayName: PLUGIN_DISPLAY_NAME,
     icon: PLUGIN_ICON_URL,
@@ -161,13 +172,13 @@ function validateMarketplaceJson() {
   if (source.repo !== expected.source.repo) {
     errors.push(`ZCode marketplace plugin source.repo must be ${expected.source.repo}.`);
   }
-  const expectedVersion = readHarnessVersion();
-  // After a successful marketplace refresh, ZCode overwrites this snapshot with the
-  // repo-shipped manifest (`.claude-plugin/marketplace.json`), which pins no version —
-  // install-time versions come from `.zcode-plugin/plugin.json`.
-  if (entry.version !== undefined && entry.version !== expectedVersion) {
-    errors.push(`ZCode marketplace plugin version must be ${expectedVersion}.`);
-  }
+  // Version skew is deliberately NOT gated here: after a marketplace refresh
+  // the snapshot carries the repo-shipped release version, which may be newer
+  // or older than this CLI's own version. That skew is the update signal the
+  // pinned version exists to expose, not an unhealthy marketplace (gating it
+  // would flag the normal pre-update state and nudge a re-init that could
+  // regress a newer refreshed snapshot). Directional CLI↔plugin update
+  // prompting is tracked separately.
   return errors;
 }
 
