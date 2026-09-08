@@ -10,6 +10,7 @@ secrets.env
 # ZCode client workspace state
 .zcode/
 .mimosa/
+.video_agent/
 
 # npm pack output (release sanity check)
 *.tgz
