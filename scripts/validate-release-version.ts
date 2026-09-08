@@ -11,13 +11,13 @@
  * failed to bump.
  *
  * Pre-bump timing (D7: no intermediate releases): during an iteration,
- * `release:validate -- v2.0.0` intentionally exits 1 with all 12 entries
+ * `release:validate -- v2.0.0` intentionally exits 1 with all listed surfaces
  * compared (0 MISSING) — every surface still carries the previous version.
  * The bump happens at release-prep AFTER the iteration, so exit 1 with
  * 0 MISSING / all-MISMATCH is the expected pre-release state, not a gate
  * failure.
  */
-import { RELEASE_VERSION_RE, VERSION_SURFACES } from "./release-surfaces.ts";
+import { DEFAULT_VERSION_PATH, RELEASE_VERSION_RE, VERSION_SURFACES, readVersionAt } from "./release-surfaces.ts";
 
 const tag = process.argv[2] ?? process.env.GITHUB_REF_NAME;
 
@@ -36,21 +36,22 @@ if (!RELEASE_VERSION_RE.test(version)) {
 
 let failed = false;
 
-for (const { label, path } of VERSION_SURFACES) {
+for (const { label, path, versionPath } of VERSION_SURFACES) {
+  const vp = versionPath ?? DEFAULT_VERSION_PATH;
   const file = Bun.file(path);
   if (!(await file.exists())) {
     console.error(`MISSING ${path}`);
     failed = true;
     continue;
   }
-  const json = (await file.json()) as { version?: string };
-  if (json.version !== version) {
+  const actual = readVersionAt(await file.json(), vp);
+  if (actual !== version) {
     console.error(
-      `MISMATCH ${label} (${path}): tag ${tag} => ${version}, file has ${json.version ?? "<missing>"}`,
+      `MISMATCH ${label} (${path} @ "${vp}"): tag ${tag} => ${version}, file has ${actual ?? "<missing>"}`,
     );
     failed = true;
   } else {
-    console.log(`OK ${label}: ${json.version}`);
+    console.log(`OK ${label}: ${actual}`);
   }
 }
 

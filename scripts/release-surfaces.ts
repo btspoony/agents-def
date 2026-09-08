@@ -6,7 +6,34 @@
  * from ONE list so a release can never validate a surface it failed to bump.
  */
 
-export type VersionSurface = { label: string; path: string };
+export type VersionSurface = {
+  label: string;
+  path: string;
+  /**
+   * Dotted locator to the version field inside the JSON document
+   * (array indices as numeric segments, e.g. `"plugins.0.version"`).
+   * Defaults to `"version"` (root-level) when omitted.
+   */
+  versionPath?: string;
+};
+
+/** Default version locator when a surface omits `versionPath`. */
+export const DEFAULT_VERSION_PATH = "version";
+
+/**
+ * Read the version at a dotted locator path (`"a.b.0.c"`; array indices are
+ * numeric segments). Returns `undefined` when any segment is missing or the
+ * leaf is not a non-empty string. Single definition site shared by the
+ * prepare bump and the validate gate.
+ */
+export function readVersionAt(json: unknown, versionPath: string): string | undefined {
+  let node: unknown = json;
+  for (const seg of versionPath.split(".")) {
+    if (node === null || typeof node !== "object") return undefined;
+    node = (node as Record<string, unknown>)[seg];
+  }
+  return typeof node === "string" && node !== "" ? node : undefined;
+}
 
 /** Every manifest/package.json that must carry the harness release version. */
 export const VERSION_SURFACES: readonly VersionSurface[] = [
@@ -23,6 +50,8 @@ export const VERSION_SURFACES: readonly VersionSurface[] = [
   { label: "omp plugin", path: ".omp-plugin/plugin.json" },
   { label: "Claude plugin", path: ".claude-plugin/plugin.json" },
   { label: "Agent Plugins manifest", path: "plugin.json" },
+  { label: "Claude marketplace manifest", path: ".claude-plugin/marketplace.json", versionPath: "plugins.0.version" },
+  { label: "ZCode marketplace manifest", path: "marketplace.json", versionPath: "plugins.0.version" },
 ] as const;
 
 /**
