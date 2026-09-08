@@ -289,6 +289,29 @@ describe('lintSkillDoc — classified profile, canonical fixture corpus (spec A4
     }
   })
 
+  it('fence-quoted heading parity: a fenced five-question heading never covers, same decision as mstar skill lint', () => {
+    // Focused regression pin for the roadmap parity observation, in two
+    // halves (both rows are materialized and asserted per-decision by the
+    // CLI suite, packages/cli/test/skill-lint-cli.test.ts, through the real
+    // `mstar skill lint` — the fixture table is the parity pivot):
+    // 1. fence row — the code-fenced `# Workflow` heading does not satisfy
+    //    coverage and the classified runtime profile does not rescue it:
+    //    FAIL with exactly the workflow code (CLI parity, same doc + id).
+    // 2. alias row — under the same classified runtime profile, alias
+    //    headings DO cover: PASS with zero codes. This half is what fails
+    //    if the gate stops applying the classified runtime mode for
+    //    `mstar-*` ids (the parity regression this pin guards).
+    const fence = FIXTURES.rows.find((r) => r.id === 'fence-only-headings-fail')!
+    const fenceGate = lintSkillDoc(fence.doc, { skillId: fence.skillId! })
+    expect(fenceGate.ok).toBe(false)
+    expect(fiveQ(fenceGate)).toEqual(['skill-authoring.five-question.workflow'])
+
+    const alias = FIXTURES.rows.find((r) => r.id === 'runtime-alias-pass')!
+    const aliasGate = lintSkillDoc(alias.doc, { skillId: alias.skillId! })
+    expect(aliasGate.ok).toBe(true)
+    expect(fiveQ(aliasGate)).toEqual([])
+  })
+
   it('core row skip is the exemption at work: the same body fails under a non-mstar identity (contrast)', () => {
     const core = FIXTURES.rows.find((r) => r.id === 'core-exempt-frontmatter-stays')!
     const contrast = lintSkillDoc(core.doc, { skillId: 'third-party-contrast' })

@@ -75,21 +75,36 @@ const ASSIGNMENT_PROMPT = [
 /** A non-Assignment task prompt (no header fields). */
 const PLAIN_PROMPT = 'Summarize the attached file.'
 
-/** The mirror default persona for `fullstack-dev` (multiline `|-` description). */
-const MIRROR_DEFAULT = 'Line one of the mirror default.\nLine two of the mirror default.'
-
-/** A fixture mirror shell whose default differs from the config PERSONA. */
-const MIRROR_SHELL = [
+/** One fixture mirror shell: frontmatter `name` + block-scalar `description` (`mode: subagent`). */
+const mirrorShell = (name: string, description: string): string => [
   '---',
-  `name: ${EXECUTE_AS}`,
+  `name: ${name}`,
   'description: |-',
-  '  Line one of the mirror default.',
-  '  Line two of the mirror default.',
+  ...description.split('\n').map((line) => `  ${line}`),
   'mode: subagent',
   '---',
   '',
   '## Morning Star Role Binding',
 ].join('\n')
+
+/** The mirror default persona for `fullstack-dev` (multiline `|-` description). */
+const MIRROR_DEFAULT = 'Line one of the mirror default.\nLine two of the mirror default.'
+
+/** A fixture mirror shell whose default differs from the config PERSONA. */
+const MIRROR_SHELL = mirrorShell(EXECUTE_AS, MIRROR_DEFAULT)
+
+/** A second mirror default (distinct text — the sink re-bind pin target). */
+const MIRROR_DEFAULT_ALT = 'Alternate mirror default persona.'
+
+/** A second fixture mirror shell whose default differs from MIRROR_DEFAULT. */
+const MIRROR_SHELL_ALT = mirrorShell(EXECUTE_AS, MIRROR_DEFAULT_ALT)
+
+/** A mirror-only probe role (configured NOWHERE) — the sink re-bind pin reads its persona. */
+const PROBE_ROLE = 'probe-dev'
+
+/** The probe-role shells (stems match PROBE_ROLE; the default differs per fixture root). */
+const PROBE_SHELL = mirrorShell(PROBE_ROLE, MIRROR_DEFAULT)
+const PROBE_SHELL_ALT = mirrorShell(PROBE_ROLE, MIRROR_DEFAULT_ALT)
 
 /** A fixture mirror shell whose description carries the interpolation hazard. */
 const HAZARD_SHELL = [
@@ -495,6 +510,67 @@ describe('native persona channel — SubagentStartRequest.persona merge', () => 
       setRolePersonaAgentsDir(prior)
       await fixture.cleanup()
       await rm(trap, { force: true })
+    }
+  })
+
+  it('(s) a second setRolePersonaAgentsDir call re-binds the root, returns the prior binding, and re-arms the S-002 latch', async () => {
+    // Sink lifetime pin (module-level `rolePersonaAgentsDir`): the
+    // per-apply setter IS the re-bind — a second call swaps the root the
+    // per-start read observes, returns the PRIOR binding for restore, and
+    // re-arms the mirror-absent latch (once-per-apply debug). Config stays
+    // present (the perf guard needs it for the absent-latch path); the
+    // PROBE_ROLE Assignment is configured NOWHERE, so its persona text
+    // names the bound mirror root unambiguously.
+    const { app, provider } = await bootWithProvider('fake-spawn', { personaCapability: true })
+    const fixtureA = await fixtureMirror([[`${PROBE_ROLE}.md`, PROBE_SHELL]])
+    const fixtureB = await fixtureMirror([[`${PROBE_ROLE}.md`, PROBE_SHELL_ALT]])
+    const original = setRolePersonaAgentsDir(fixtureA.dir)
+    try {
+      const { captured, restore } = captureLogs()
+      try {
+        // Binding A: the probe role's mirror default comes from A's shell.
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, PROBE_ROLE)))
+        expect(provider.starts[0]!.request.persona).toBe(MIRROR_DEFAULT)
+        expect(captured[0]![0]).toBe('debug')
+        expect(captured[0]![1]).toContain('harness-agents default')
+
+        // The second set returns the PRIOR binding (A)...
+        expect(setRolePersonaAgentsDir(fixtureB.dir)).toBe(fixtureA.dir)
+        // ...and the mirror lookup follows the NEW root on the same
+        // wrapper: the per-start read re-resolves the module binding (no
+        // stale closure over A).
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, PROBE_ROLE)))
+        expect(provider.starts[1]!.request.persona).toBe(MIRROR_DEFAULT_ALT)
+
+        // Re-bind to ABSENT (returns B): a config-miss lookup now takes the
+        // mirror-absent path and the re-set re-armed the latch, so the
+        // debug fires once for THIS binding.
+        expect(setRolePersonaAgentsDir(undefined)).toBe(fixtureB.dir)
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, 'scout')))
+        expect(provider.starts[2]!.request.persona).toBeUndefined()
+        // The latch holds on the SAME binding: a further miss stays silent.
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, 'code-reviewer')))
+        expect(provider.starts[3]!.request.persona).toBeUndefined()
+
+        // Re-setting the SAME binding (value unchanged) re-arms the latch
+        // — the CALL is the reset, not the value transition.
+        expect(setRolePersonaAgentsDir(undefined)).toBeUndefined()
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, 'ops-engineer')))
+        expect(provider.starts[4]!.request.persona).toBeUndefined()
+
+        // Exact log timeline: A delivery, B delivery, absent (fires),
+        // absent (latch holds), absent (fires again after the re-set).
+        expect(captured).toHaveLength(4)
+        expect(captured[1]![1]).toContain('harness-agents default')
+        expect(captured[2]![1]).toContain('mirror absent')
+        expect(captured[3]![1]).toContain('mirror absent')
+      } finally {
+        restore()
+      }
+    } finally {
+      setRolePersonaAgentsDir(original)
+      await fixtureA.cleanup()
+      await fixtureB.cleanup()
     }
   })
 
