@@ -222,7 +222,7 @@ export {
   validateProjectRegister,
   validateRoadmap,
 } from "./project.js";
-export type { HarnessDocKind } from "./gates.js";
+export type { HarnessDocKind, ValidateStatusWriteDocOptions } from "./gates.js";
 export {
   MAX_STATUS_CONTENT_LENGTH,
   eventTargetPaths,

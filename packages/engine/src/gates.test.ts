@@ -286,6 +286,44 @@ describe("gates.validateStatusWriteDoc", () => {
     expect(validateStatusWriteDoc("x".repeat(MAX_STATUS_CONTENT_LENGTH + 1), tree.status, "status")).toEqual([]);
   });
 
+  test("default options keep BOTH oversized paths a silent pass (omp-parity regression)", () => {
+    const { tree } = trees[0]!;
+    const big = "x".repeat(MAX_STATUS_CONTENT_LENGTH + 1);
+    expect(validateStatusWriteDoc(big, tree.status, "status", { oversized: "pass" })).toEqual([]);
+    const onDisk = join(tree.harness, "workflows", "wf-big-pass", "snapshot.json");
+    mkdirSync(join(onDisk, ".."), { recursive: true });
+    writeFileSync(onDisk, big);
+    try {
+      expect(validateStatusWriteDoc(undefined, onDisk, "snapshot", { oversized: "pass" })).toEqual([]);
+      expect(validateStatusWriteDoc(undefined, onDisk, "snapshot")).toEqual([]);
+    } finally {
+      rmSync(join(onDisk, ".."), { recursive: true, force: true });
+    }
+  });
+
+  test("oversized: 'violate' yields status.oversized on both paths, O(1) before any parse", () => {
+    const { tree } = trees[0]!;
+    const big = "x".repeat(MAX_STATUS_CONTENT_LENGTH + 1);
+    const contentViolations = validateStatusWriteDoc(big, tree.status, "status", { oversized: "violate" });
+    expect(contentViolations).toHaveLength(1);
+    expect(contentViolations[0]!.ok).toBe(false);
+    expect(contentViolations[0]!.severity).toBe("high");
+    expect(contentViolations[0]!.code).toBe("status.oversized");
+    expect(contentViolations[0]!.message).toContain(String(MAX_STATUS_CONTENT_LENGTH));
+    expect(contentViolations[0]!.message).toContain("MSTAR_WRITE_GATE=off");
+    const onDisk = join(tree.harness, "workflows", "wf-big-violate", "snapshot.json");
+    mkdirSync(join(onDisk, ".."), { recursive: true });
+    writeFileSync(onDisk, big);
+    try {
+      const editViolations = validateStatusWriteDoc(undefined, onDisk, "snapshot", { oversized: "violate" });
+      expect(editViolations).toHaveLength(1);
+      expect(editViolations[0]!.code).toBe("status.oversized");
+      expect(editViolations[0]!.message).toContain("MSTAR_WRITE_GATE=off");
+    } finally {
+      rmSync(join(onDisk, ".."), { recursive: true, force: true });
+    }
+  });
+
   test("edit path: valid on-disk doc -> no violations; nonexistent target -> fresh-scaffold pass", () => {
     const { tree } = trees[0]!;
     expect(validateStatusWriteDoc(undefined, tree.status, "status")).toEqual([]);

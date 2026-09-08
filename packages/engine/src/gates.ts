@@ -181,6 +181,32 @@ export function violationLine(violation: ValidationResult): string {
 export const MAX_STATUS_CONTENT_LENGTH = 2 * 1024 * 1024;
 
 /**
+ * Options for {@link validateStatusWriteDoc}.
+ */
+export interface ValidateStatusWriteDocOptions {
+  /**
+   * Behavior when the content (string form) or the on-disk gated document
+   * (edit form) exceeds `MAX_STATUS_CONTENT_LENGTH`. `"pass"` (default)
+   * keeps the documented silent-pass degradation; `"violate"` reports a
+   * `status.oversized` violation instead — for hosts whose block dialect
+   * makes the oversized write an enforceable refusal rather than a
+   * permission (the size check stays O(1), before any parse).
+   */
+  oversized?: "pass" | "violate";
+}
+
+/** The `status.oversized` violation: names the 2 MiB budget + the session
+ * escape hatch of the enforcing host. */
+function oversizedViolation(filePath: string): ValidationResult {
+  return {
+    ok: false,
+    severity: "high",
+    code: "status.oversized",
+    message: `${basename(filePath)} exceeds the ${MAX_STATUS_CONTENT_LENGTH}-byte (2 MiB) coordination-document validation budget \u2014 repair out of band or disable for this session with MSTAR_WRITE_GATE=off`,
+  };
+}
+
+/**
  * Validate the document being written to a gated harness coordination
  * document. `content` as a string is the new document: JSON.parse it
  * and run the matching engine validator on the parsed doc — a parse failure
@@ -197,9 +223,13 @@ export function validateStatusWriteDoc(
   content: unknown,
   filePath: string,
   kind: HarnessDocKind,
+  options: ValidateStatusWriteDocOptions = {},
 ): ValidationResult[] {
+  const oversized = options.oversized ?? "pass";
   if (typeof content === "string") {
-    if (content.length > MAX_STATUS_CONTENT_LENGTH) return []; // size guard — silent pass
+    if (content.length > MAX_STATUS_CONTENT_LENGTH) {
+      return oversized === "violate" ? [oversizedViolation(filePath)] : []; // size guard — silent pass by default
+    }
     let doc: unknown;
     try {
       doc = JSON.parse(content);
@@ -230,9 +260,11 @@ export function validateStatusWriteDoc(
   // string, so the guard above never ran — stat the target and apply the
   // same 2MB skip before read+parse+validate (a pathologically large gated
   // doc must not approach the host handler timeout; oversized edits pass
-  // silently, same documented degradation).
+  // silently by default, or violate under the `oversized: "violate"` opt-in).
   try {
-    if (statSync(filePath).size > MAX_STATUS_CONTENT_LENGTH) return [];
+    if (statSync(filePath).size > MAX_STATUS_CONTENT_LENGTH) {
+      return oversized === "violate" ? [oversizedViolation(filePath)] : [];
+    }
   } catch {
     return []; // unreadable target — silent pass (degrade path must never throw)
   }
