@@ -245,13 +245,147 @@ describe("write gate - silent passes (exit 0, no output)", () => {
     expect(run.stdout).toBe("");
     expect(run.stderr).toBe("");
   });
+});
 
-  test("oversized content string is skipped (size guard, silent pass)", () => {
-    const { root } = hardRepo();
-    const run = runGate(writeEvent({ file_path: join(root, ".mstar", "status.json"), content: "x".repeat(2 * 1024 * 1024 + 1) }));
+describe("write gate - deterministic edit reconstruction (post-edit validation)", () => {
+  test("deterministic edit validates the RECONSTRUCTED result (pre-edit invalid -> pass)", () => {
+    const { root, harness } = hardRepo();
+    writeFileSync(join(harness, "status.json"), "not json at all"); // pre-edit invalid
+    const run = runGate({
+      tool_name: "Edit",
+      tool_input: {
+        file_path: join(root, ".mstar", "status.json"),
+        old_string: "not json at all",
+        new_string: VALID_STATUS, // unique match; reconstruction is valid
+      },
+    });
+    expect(run.exitCode).toBe(0); // pass PROVES post-edit validation (pre-edit fallback would block)
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toBe("");
+  });
+
+  test("replace_all reconstruction validates the joined result (pre-edit invalid -> pass)", () => {
+    const { root, harness } = hardRepo();
+    writeFileSync(join(harness, "status.json"), `//${VALID_STATUS}//`); // pre-edit invalid; `//` occurs twice
+    const run = runGate({
+      tool_name: "Edit",
+      tool_input: {
+        file_path: join(root, ".mstar", "status.json"),
+        old_string: "//",
+        new_string: " ", // whitespace-padded JSON parses fine
+        replace_all: true,
+      },
+    });
     expect(run.exitCode).toBe(0);
     expect(run.stdout).toBe("");
     expect(run.stderr).toBe("");
+  });
+
+  test("deterministic-but-invalid reconstruction blocks under hard (exit 2)", () => {
+    const { root } = hardRepo();
+    const run = runGate({
+      tool_name: "Edit",
+      tool_input: {
+        file_path: join(root, ".mstar", "status.json"),
+        old_string: '"workflows":[]', // unique match in the valid on-disk doc
+        new_string: '"workflows"', // reconstruction is broken JSON
+      },
+    });
+    expect(run.exitCode).toBe(2);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toContain("[high] status.invalid-json:");
+  });
+
+  test("ambiguous match without replace_all falls back to the PRE-edit state (valid -> pass)", () => {
+    const { root } = hardRepo();
+    // `"` occurs 8 times in the valid doc; a (wrongly) validated
+    // reconstruction would be broken JSON and block — the pass proves the
+    // pre-edit fallback ran.
+    const run = runGate({
+      tool_name: "Edit",
+      tool_input: { file_path: join(root, ".mstar", "status.json"), old_string: '"', new_string: "x" },
+    });
+    expect(run.exitCode).toBe(0);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toBe("");
+  });
+
+  test("ambiguous match on an already-invalid doc blocks via the pre-edit fallback", () => {
+    const { root, harness } = hardRepo();
+    writeFileSync(join(harness, "status.json"), "{ not json"); // pre-edit invalid
+    const run = runGate({
+      tool_name: "Edit",
+      tool_input: { file_path: join(root, ".mstar", "status.json"), old_string: "not", new_string: "fixed" },
+    });
+    expect(run.exitCode).toBe(2);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toContain("[high] status.invalid-json:");
+  });
+
+  test("reconstruction error (nonexistent target) falls back to the fresh-scaffold pass", () => {
+    const { root } = hardRepo();
+    const run = runGate({
+      tool_name: "Edit",
+      tool_input: {
+        file_path: join(root, ".mstar", "status.json"),
+        old_string: "anything",
+        new_string: "else",
+      },
+    });
+    expect(run.exitCode).toBe(0);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toBe("");
+  });
+});
+
+describe("write gate - oversized violation (ZCode-host divergence, Amendment B)", () => {
+  const OVERSIZED = "x".repeat(2 * 1024 * 1024 + 1);
+
+  test("oversized content in a hard repo blocks with status.oversized naming the escape hatch", () => {
+    const { root } = hardRepo();
+    const run = runGate(writeEvent({ file_path: join(root, ".mstar", "status.json"), content: OVERSIZED }));
+    expect(run.exitCode).toBe(2);
+    expect(run.stdout).toBe("");
+    const lines = run.stderr.trimEnd().split("\n");
+    expect(lines).toHaveLength(3);
+    expect(lines[1]!.startsWith("[high] status.oversized: ")).toBe(true);
+    expect(lines[1]).toContain("MSTAR_WRITE_GATE=off");
+    expect(lines[2]).toBe(ENFORCEMENT_LINE);
+  });
+
+  test("oversized content in a soft repo stays a silent pass", () => {
+    const { root } = softRepo();
+    const run = runGate(writeEvent({ file_path: join(root, ".mstar", "status.json"), content: OVERSIZED }));
+    expect(run.exitCode).toBe(0);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toBe("");
+  });
+
+  test("oversized on-disk gated target (edit path) violates", () => {
+    const { root, harness } = hardRepo();
+    writeFileSync(join(harness, "status.json"), OVERSIZED);
+    const run = runGate({ tool_name: "Edit", tool_input: { path: join(root, ".mstar", "status.json") } });
+    expect(run.exitCode).toBe(2);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toContain("[high] status.oversized:");
+    expect(run.stderr).toContain("MSTAR_WRITE_GATE=off");
+  });
+
+  test("oversized on-disk target skips reconstruction (bounded fallback) and still violates", () => {
+    const { root, harness } = hardRepo();
+    writeFileSync(join(harness, "status.json"), OVERSIZED);
+    const run = runGate({
+      tool_name: "Edit",
+      tool_input: {
+        file_path: join(root, ".mstar", "status.json"),
+        old_string: "xxx",
+        new_string: "yyy",
+        replace_all: true, // deterministic shape, but the stat guard bounds the read first
+      },
+    });
+    expect(run.exitCode).toBe(2);
+    expect(run.stdout).toBe("");
+    expect(run.stderr).toContain("[high] status.oversized:");
   });
 });
 

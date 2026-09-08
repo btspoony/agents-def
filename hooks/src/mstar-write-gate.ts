@@ -24,9 +24,10 @@
 // \uXXXX string escapes to raw UTF-8 in the bundle, and the hook executes
 // under node, which decodes them correctly (bundle smoke renders the case).
 
-import { readFileSync, writeSync } from "node:fs";
+import { readFileSync, statSync, writeSync } from "node:fs";
 import { isAbsolute, join, relative } from "node:path";
 import {
+  MAX_STATUS_CONTENT_LENGTH,
   formatStatusWriteBlockReason,
   harnessDocKindOfTarget,
   resolveRepoEnforcement,
@@ -85,6 +86,38 @@ function writeTargetPaths(toolInput: Record<string, unknown>): string[] {
   return paths.slice(0, MAX_GATED_TARGETS);
 }
 
+/**
+ * Deterministic post-edit reconstruction: an Edit payload with non-empty
+ * `old_string` + `new_string` (and no `content`) is validated against the
+ * RECONSTRUCTED result instead of the pre-edit on-disk state — a corrupting
+ * deterministic edit can no longer pass hard enforcement. Deterministic =
+ * `old_string` occurs exactly once (replace that occurrence), or
+ * `replace_all: true` with >= 1 occurrence (replace all). Anything else —
+ * missing/empty pieces, 0 matches, >1 match without `replace_all`, an
+ * oversized target (fallback keeps the read budget bounded), read/replace
+ * errors — returns undefined and the gate falls back to the pre-edit
+ * validation. Best-effort by contract: never throws, never widens the gate.
+ */
+function reconstructEditContent(tool: Record<string, unknown>, targetPath: string): string | undefined {
+  try {
+    if (tool.content !== undefined) return undefined; // content-bearing payloads take the content path upstream
+    const oldString = tool.old_string;
+    const newString = tool.new_string;
+    if (typeof oldString !== "string" || oldString === "") return undefined;
+    if (typeof newString !== "string" || newString === "") return undefined;
+    if (statSync(targetPath).size > MAX_STATUS_CONTENT_LENGTH) return undefined; // oversized: bounded fallback (violates there when opted in)
+    const current = readFileSync(targetPath, "utf8");
+    const first = current.indexOf(oldString);
+    if (first === -1) return undefined; // 0 matches — not deterministic
+    const replaceAll = tool.replace_all === true;
+    if (!replaceAll && current.indexOf(oldString, first + 1) !== -1) return undefined; // ambiguous
+    if (replaceAll) return current.split(oldString).join(newString);
+    return current.slice(0, first) + newString + current.slice(first + oldString.length);
+  } catch {
+    return undefined; // any error — pre-edit fallback path (fail-open)
+  }
+}
+
 const input = readStdinJson();
 try {
   if (process.env.MSTAR_WRITE_GATE === "off") process.exit(0);
@@ -103,12 +136,16 @@ try {
   // not necessarily the workspace).
   const cwd = typeof input.cwd === "string" && input.cwd ? input.cwd : process.cwd();
 
-  // Known limitations (omp parity, fail-open — beyond the failure-matrix
-  // rows): classification is textual, so a symlink alias whose textual path
-  // sits outside the harness tree bypasses the gate (no target realpath);
-  // Edit events validate the PRE-edit on-disk state, so a corrupting edit
-  // surfaces on the next write, and repairing an already-invalid gated doc
-  // requires a full-content Write (which validates the new document).
+  // Known limitations (beyond the failure-matrix rows): classification is
+  // textual — a symlink alias whose textual path sits outside the harness
+  // tree bypasses the gate (no target realpath; omp parity). Edits validate
+  // the reconstructed post-edit content when the payload is deterministic
+  // (unique old_string match, or replace_all), otherwise the PRE-edit
+  // on-disk state — a non-deterministic corrupting edit surfaces on the
+  // next write, and repairing an already-invalid gated doc requires a
+  // deterministic edit or a full-content Write. Oversized gated docs (past
+  // the 2 MiB budget) violate on this host — repair out of band or for
+  // this session with MSTAR_WRITE_GATE=off.
   for (const rawPath of writeTargetPaths(tool)) {
     const targetPath = isAbsolute(rawPath) ? rawPath : join(cwd, rawPath);
     const target = harnessDocKindOfTarget(targetPath);
@@ -117,7 +154,14 @@ try {
     // `content` as a string is the new document; anything else (including
     // new_string/old_string edits and ApplyPatch shapes) validates the
     // on-disk file — a nonexistent target passes (fresh-scaffold parity).
-    const violations = validateStatusWriteDoc(tool.content, targetPath, target.kind);
+    // Deterministic edits (unique old_string match, or replace_all) validate
+    // the RECONSTRUCTED post-edit content; ambiguous or erroring
+    // reconstruction falls back to the pre-edit on-disk state.
+    const content = typeof tool.content === "string" ? tool.content : reconstructEditContent(tool, targetPath) ?? tool.content;
+    // Oversized writes are a violation on this host (exit-2 under hard,
+    // silent under soft) instead of a permission — omp keeps the default
+    // silent pass.
+    const violations = validateStatusWriteDoc(content, targetPath, target.kind, { oversized: "violate" });
     if (violations.length === 0) continue;
 
     const enforcement = resolveRepoEnforcement(target.harnessDir);
