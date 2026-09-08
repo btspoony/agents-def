@@ -74,6 +74,21 @@
  * per apply (S-002 latch); a throwing merge aborts the merge only — the
  * ORIGINAL request reaches the service and the start is never affected.
  *
+ * Seam probe (apply-time, observation only): a future cordis rename/removal
+ * of `internal/get` would stop the listener from ever firing — persona
+ * delivery would silently degrade to the raw service with no runtime
+ * signal. {@link probeRolePersonaSeam} runs ONCE per apply right after
+ * {@link registerRolePersonaChannel}: a temporary canary listener + ONE
+ * controlled proxied read (`ctx.subagents` — NEVER `ctx.get`, whose accessor
+ * bypasses the waterfall and would false-warn every healthy boot) assert
+ * that the seam dispatched AND the returned value carries the wrapper brand.
+ * A broken seam warns ONCE per apply (fail-loud); an unresolved service is
+ * `service-absent` (`ok`, debug only — reads are intercepted per read, so a
+ * later-mounted service still gets wrapped); any probe-internal error fails
+ * OPEN (`ok` + one debug) — the probe never throws and never blocks a
+ * dispatch. The decision core is the pure {@link evaluateSeamProbe}, so the
+ * whole outcome table is unit-pinnable without cordis internals.
+ *
  * Persona text is rendered by dsh system-prompt's STRICT `{{...}}`
  * interpolation (the native persona has the same template semantics as the
  * deployment persona), so persona values MUST NOT contain `{{` paired with
@@ -97,6 +112,25 @@ export const ROLE_PERSONA_LOGGER = 'mstar/role-persona'
 
 /** The cordis service name the channel intercepts (`ctx.subagents`). */
 const SUBAGENTS_SERVICE = 'subagents'
+
+/**
+ * The interception seam: the cordis service-read waterfall event the channel
+ * listener registers on. The registration and the apply-time seam probe both
+ * reference THIS constant — a future cordis rename of `internal/get` becomes
+ * a one-line, probe-family-caught edit here instead of a silent delivery
+ * stop (the probe family pins the literal; see `probeRolePersonaSeam`).
+ */
+export const PERSONA_SEAM_EVENT = 'internal/get'
+
+/**
+ * Wrapper brand — the non-enumerable symbol own property every persona
+ * wrapper carries (`wrapSubagentsService` stamps it at creation). The apply-
+ * time seam probe reads it to assert the wrapper was actually installed on
+ * the controlled read. Non-enumerable + symbol keeps the wrapper's
+ * key/spread/JSON surface identical to the wrapped service's (behavior-
+ * neutral by construction).
+ */
+export const ROLE_PERSONA_WRAPPER_BRAND: symbol = Symbol('mstar.role-persona.wrapper')
 
 /** One consumed prompt content block (`@deepseek-ai/dsh-llm` `ContentBlock` text members). */
 interface PromptBlockView {
@@ -272,7 +306,7 @@ export function registerRolePersonaChannel(ctx: Context, config: Config): void {
   // the value readers receive. Dispatch carries no `this`, so no context
   // filter applies: the hook sees service reads from every fiber, exactly
   // the reachability the tool-subagent's per-call reads need.
-  ctx.on('internal/get', (_readCtx, name, _error, next) => {
+  ctx.on(PERSONA_SEAM_EVENT, (_readCtx, name, _error, next) => {
     const value: unknown = next()
     if (name !== SUBAGENTS_SERVICE) return value
     try {
@@ -284,6 +318,110 @@ export function registerRolePersonaChannel(ctx: Context, config: Config): void {
       return value
     }
   })
+}
+
+/** The fail-loud warn (ONE per apply, `ok === false`) — the reason is appended. */
+const SEAM_WARN = `role persona channel not installed — cordis '${PERSONA_SEAM_EVENT}' seam missing or unrecognized (rolePersonas will not be merged into subagent starts)`
+
+/** Outcome of one apply-time seam probe ({@link probeRolePersonaSeam}). */
+export interface PersonaSeamProbeResult {
+  /** `true` = the channel is healthy OR the probe failed open (never block apply). */
+  ok: boolean
+  /** Set only when `ok === false`: why the channel is not installed. */
+  reason?: 'seam-absent' | 'wrap-skipped' | 'service-absent'
+}
+
+/** One probe observation — the inputs of the pure decision core. */
+export interface SeamProbeInputs {
+  /** Whether the temporary canary listener fired during the controlled read. */
+  dispatched: boolean
+  /** The value the controlled read threw (`undefined` = the read resolved). */
+  readError: unknown
+  /** The controlled read's resolved value (`undefined` when the read threw). */
+  value: unknown
+}
+
+/**
+ * Pure decision core of the seam probe — the ENTIRE outcome table, unit-
+ * pinnable without cordis internals:
+ *
+ * - canary silent → `{ ok: false, reason: 'seam-absent' }` — cordis no
+ *   longer dispatches the seam; our listener can never run. Dominates the
+ *   other inputs (a silent canary means the delivery channel is gone).
+ * - canary fired + read threw → `{ ok: true, reason: 'service-absent' }` —
+ *   the seam works but the `subagents` service is unresolved (nothing to
+ *   wrap; a later-mounted service still gets wrapped per read). Never a warn.
+ * - canary fired + branded value → `{ ok: true }` — healthy.
+ * - canary fired + any other resolved value (unbranded object, primitive,
+ *   undefined) → `{ ok: false, reason: 'wrap-skipped' }` — the listener ran
+ *   but the shape was unrecognized (the `wrapSubagentsService` pass-through).
+ */
+export function evaluateSeamProbe({ dispatched, readError, value }: SeamProbeInputs): PersonaSeamProbeResult {
+  if (!dispatched) return { ok: false, reason: 'seam-absent' }
+  if (readError !== undefined) return { ok: true, reason: 'service-absent' }
+  if (typeof value === 'object' && value !== null && (value as Record<symbol, unknown>)[ROLE_PERSONA_WRAPPER_BRAND] === true) {
+    return { ok: true }
+  }
+  return { ok: false, reason: 'wrap-skipped' }
+}
+
+/**
+ * Apply-time seam probe — runs EXACTLY ONCE per apply, immediately after
+ * {@link registerRolePersonaChannel} (entry wiring), and classifies the
+ * channel's install state per {@link evaluateSeamProbe} (observation only —
+ * it never changes delivery semantics):
+ *
+ * 1. register a TEMPORARY {@link PERSONA_SEAM_EVENT} canary listener
+ *    (`(ctx, name, error, next) => { dispatched = true; return next() }`),
+ *    keeping the disposer `ctx.on` returns;
+ * 2. perform ONE controlled proxied read `ctx.subagents` inside try/catch —
+ *    the exact read path the per-call `ctx.subagents.start(...)` dispatch
+ *    takes. NEVER `ctx.get('subagents')`: the accessor reads the service
+ *    store directly and bypasses the waterfall, which would false-warn
+ *    `seam-absent` on every healthy boot;
+ * 3. dispose the canary SYNCHRONOUSLY (`finally` — also on the throwing
+ *    read path);
+ * 4. classify via {@link evaluateSeamProbe} and log: `ok === false` → ONE
+ *    warn ({@link SEAM_WARN} + reason); `service-absent` → one debug; a
+ *    healthy probe stays silent.
+ *
+ * Contained failure: the body is fully try/catch-wrapped — any probe-
+ * internal error (e.g. a rejected listener registration) fails OPEN with
+ * `{ ok: true }` plus ONE debug naming the error. Never throws out of
+ * `apply`; never affects a subagent start.
+ *
+ * @param ctx - the plugin's registrant context (a runtime-bearing context —
+ *   proxied property reads on it dispatch the seam waterfall).
+ */
+export function probeRolePersonaSeam(ctx: Context): PersonaSeamProbeResult {
+  try {
+    let dispatched = false
+    let readError: unknown
+    let value: unknown
+    const disposeCanary = ctx.on(PERSONA_SEAM_EVENT, (_readCtx, _name, _error, next) => {
+      dispatched = true
+      return next()
+    })
+    try {
+      value = (ctx as unknown as { subagents?: unknown }).subagents
+    } catch (error) {
+      readError = error
+    } finally {
+      disposeCanary()
+    }
+    const result = evaluateSeamProbe({ dispatched, readError, value })
+    if (!result.ok) {
+      log('warn', `${SEAM_WARN} (reason: ${result.reason})`)
+    } else if (result.reason === 'service-absent') {
+      log('debug', `role persona seam probe: 'subagents' service unresolved at apply — nothing to wrap yet (a later-mounted service still gets wrapped per read)`)
+    }
+    return result
+  } catch (error) {
+    // Contained fail-open: a broken probe must never fail apply — report
+    // once at debug and treat the channel as healthy (observation only).
+    log('debug', `role persona seam probe failed internally — fail-open (observation only): ${errorMessage(error)}`)
+    return { ok: true }
+  }
 }
 
 /**
@@ -304,6 +442,10 @@ function wrapSubagentsService(value: unknown, rolePersonas: Config['rolePersonas
   const cached = wrapperCache.get(value)
   if (cached !== undefined && cached.rolePersonas === rolePersonas) return cached.wrapper
   const wrapper: SubagentsServiceView = Object.create(value)
+  // Wrapper brand (seam-probe assertion target): a NON-enumerable symbol own
+  // property — invisible to Object.keys/spread/JSON, so the wrapper's key
+  // and spread surface stays identical to the service's (no behavior change).
+  Object.defineProperty(wrapper, ROLE_PERSONA_WRAPPER_BRAND, { value: true, enumerable: false })
   wrapper.start = (name: string, request: SubagentStartRequestView) => {
     let merged = request
     try {

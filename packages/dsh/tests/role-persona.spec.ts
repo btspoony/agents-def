@@ -45,6 +45,9 @@ import {
 import { fallbacksMounted } from '../src/gates/fallbacks-probe.ts'
 import {
   ROLE_PERSONA_LOGGER,
+  ROLE_PERSONA_WRAPPER_BRAND,
+  evaluateSeamProbe,
+  probeRolePersonaSeam,
   setRolePersonaAgentsDir,
   setRolePersonaLogger,
   type RolePersonaLogLevel,
@@ -638,5 +641,91 @@ describe('native persona channel — SubagentStartRequest.persona merge', () => 
       await ctx.fiber.dispose().catch(() => {})
       await rm(root, { recursive: true, force: true })
     }
+  })
+})
+
+/** A stand-in branded wrapper built exactly like the channel stamps them (decision-table input). */
+function brandedWrapper(proto: object = {}): object {
+  const wrapper = Object.create(proto)
+  Object.defineProperty(wrapper, ROLE_PERSONA_WRAPPER_BRAND, { value: true, enumerable: false })
+  return wrapper
+}
+
+describe('role persona seam probe — decision table (pure evaluateSeamProbe)', () => {
+  it('(p1) canary fired + branded wrapper → ok, no reason (healthy, silent)', () => {
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: brandedWrapper() })).toEqual({ ok: true })
+  })
+
+  it('(p2) canary fired + read threw → ok:true, service-absent — never a warn', () => {
+    const result = evaluateSeamProbe({ dispatched: true, readError: new Error('cannot get property "subagents" without inject'), value: undefined })
+    expect(result).toEqual({ ok: true, reason: 'service-absent' })
+  })
+
+  it('(p3) canary fired + unbranded object → ok:false, wrap-skipped', () => {
+    const result = evaluateSeamProbe({ dispatched: true, readError: undefined, value: Object.create(null) })
+    expect(result).toEqual({ ok: false, reason: 'wrap-skipped' })
+  })
+
+  it('(p4) canary silent → ok:false, seam-absent — dominates value and error', () => {
+    // A silent canary means the delivery channel is gone; no other input can rehabilitate it.
+    expect(evaluateSeamProbe({ dispatched: false, readError: undefined, value: brandedWrapper() })).toEqual({ ok: false, reason: 'seam-absent' })
+    expect(evaluateSeamProbe({ dispatched: false, readError: new Error('renamed seam'), value: undefined })).toEqual({ ok: false, reason: 'seam-absent' })
+  })
+
+  it('(p5) canary fired + non-object resolved values (undefined / null / primitive) → wrap-skipped', () => {
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: undefined })).toEqual({ ok: false, reason: 'wrap-skipped' })
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: null })).toEqual({ ok: false, reason: 'wrap-skipped' })
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: 'subagents' })).toEqual({ ok: false, reason: 'wrap-skipped' })
+  })
+
+  it('(p6) brand lookalikes → wrap-skipped (the brand must be exactly `true`)', () => {
+    const wrongValue = Object.create(null)
+    Object.defineProperty(wrongValue, ROLE_PERSONA_WRAPPER_BRAND, { value: false, enumerable: false })
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: wrongValue })).toEqual({ ok: false, reason: 'wrap-skipped' })
+    const wrongType = Object.create(null)
+    Object.defineProperty(wrongType, ROLE_PERSONA_WRAPPER_BRAND, { value: 'yes', enumerable: false })
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: wrongType })).toEqual({ ok: false, reason: 'wrap-skipped' })
+  })
+})
+
+describe('role persona seam probe — probeRolePersonaSeam', () => {
+  it('(p7) a probe-internal error fails open — ok:true, exactly one debug, never throws', () => {
+    const { captured, restore } = captureLogs()
+    try {
+      const hostile = { on: () => { throw new Error('registration exploded') } } as unknown as Context
+      expect(probeRolePersonaSeam(hostile)).toEqual({ ok: true })
+      expect(captured).toHaveLength(1)
+      expect(captured[0]![0]).toBe('debug')
+      expect(captured[0]![1]).toContain('fail-open')
+      expect(captured[0]![1]).toContain('registration exploded')
+    } finally {
+      restore()
+    }
+  })
+
+  it('(p8) the real wrapper carries the non-enumerable brand and the channel still wraps after the apply-time probe ran', async () => {
+    // The probe runs inside bootApp's apply (single call site after
+    // registerRolePersonaChannel). Post-boot this composition must still show
+    // the channel fully alive: reads are branded, the wrapper surface is
+    // unchanged (non-enumerable symbol), and delivery still merges.
+    booted = await bootApp({ agentsService: 'fake', subagents: 'real', rolePersonas: { [EXECUTE_AS]: PERSONA } })
+    const provider = new FakeSubagentProvider('fake-spawn', { personaCapability: true })
+    ;(booted.ctx.subagents as unknown as SubagentRuntime).registerProvider(provider as never)
+
+    const { promise, resolve } = Promise.withResolvers<unknown>()
+    void booted.ctx.inject(['subagents'], (sctx) => resolve((sctx as unknown as { subagents: unknown }).subagents))
+    const wrapper = (await promise) as object
+    expect(Object.getOwnPropertySymbols(wrapper)).toEqual([ROLE_PERSONA_WRAPPER_BRAND])
+    expect((wrapper as Record<symbol, unknown>)[ROLE_PERSONA_WRAPPER_BRAND]).toBe(true)
+    // Non-enumerable: the wrapper's key/spread surface stays service-shaped.
+    expect(Object.keys(wrapper).sort()).toEqual(['start', 'startContinuable'])
+    const descriptor = Object.getOwnPropertyDescriptor(wrapper, ROLE_PERSONA_WRAPPER_BRAND)
+    expect(descriptor?.enumerable).toBe(false)
+
+    // Delivery unchanged through the probed channel (no behavior change).
+    await startViaNativeChannel(booted, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT))
+    expect(provider.starts[0]!.request.persona).toBe(PERSONA)
+    // The apply-bound channel label is still pinned.
+    expect(ROLE_PERSONA_LOGGER).toBe('mstar/role-persona')
   })
 })
