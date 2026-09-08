@@ -98,12 +98,13 @@ export interface Config {
   roleMap?: Record<string, string>
   /**
    * mstar role id → persona text — the native persona channel's only
-   * payload source . A role-matched
-   * one-shot start merges the persona into the request's native `persona`
-   * slot — dsh composes it as the scoped shadowing `deployment:persona`
-   * section on the child, persists it in the child descriptor, and reapplies
-   * it on resume. Lookup is DIRECT — never gated on `roleMap` or on the
-   * fallbacks mounted state (persona delivery is fallbacks-independent).
+   * payload source. A role-matched start (one-shot `start` or the opt-in
+   * continuable `startContinuable`) merges the persona into the request's
+   * native `persona` slot — dsh composes it as the scoped shadowing
+   * `deployment:persona` section on the child, persists it in the child
+   * descriptor, and reapplies it on resume. Lookup is DIRECT — never gated
+   * on `roleMap` or on the fallbacks mounted state (persona delivery is
+   * fallbacks-independent).
    *
    * MERGE ORDER (doc-only statement of the decision chain in
    * `role-persona.ts` / `agent-personas.ts` — no behavior change): the
