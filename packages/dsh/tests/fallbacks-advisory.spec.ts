@@ -28,6 +28,7 @@ import { FALLBACKS_ENTRY_NAME, type LoaderEntryView } from '../src/gates/fallbac
 import { packagedAgentsDir } from '../src/gates/_shared.ts'
 import {
   ADVISORY_LOGGER,
+  resetAdvisoryAbortWarn,
   runFallbacksAdvisory,
   setAdvisoryLogger,
   type AdvisoryLogLevel,
@@ -38,6 +39,9 @@ let booted: BootResult | undefined
 afterEach(async () => {
   await booted?.dispose()
   booted = undefined
+  // Hermeticity: the degraded-abort warn dedup is module-level state — a
+  // test that aborted a pass must not silence the next test's abort warn.
+  resetAdvisoryAbortWarn()
 })
 
 /** The mirror-derived mstar role-id set the fixture shells declare. */
@@ -168,6 +172,46 @@ function ctxWithService(service: FakeAdvisoryService, cfg: Record<string, unknow
   return ctx
 }
 
+/**
+ * Bounded poll until `predicate` holds (10 ms cadence, 3 s default budget) —
+ * the wiring cases' shared wait primitive (hoisted; the label names the
+ * awaited condition in the timeout error).
+ */
+async function waitFor(label: string, predicate: () => boolean, timeoutMs = 3000): Promise<void> {
+  const start = Date.now()
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) throw new Error(`waitFor[${label}] timed out`)
+    const { promise, resolve } = Promise.withResolvers<void>()
+    setTimeout(resolve, 10)
+    await promise
+  }
+}
+
+/** One fixed settle window (the wiring cases' shared pause primitive). */
+const settle = (ms: number): Promise<void> => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A fake fallbacks provider whose fiber can be disposed — the cordis service
+ * appears/disappears with the plugin apply (the HMR/fiber-swap driver the
+ * wiring cases mount through `ctx.plugin`).
+ */
+function fakeFallbacksProvider(fake: FakeAdvisoryService): { name: string; apply(ctx: Context): void } {
+  return {
+    name: 'fake-fallbacks-provider',
+    apply(ctx: Context) {
+      ctx.provide('llm-fallbacks', fake as unknown as FallbacksService)
+    },
+  }
+}
+
+/**
+ * Print-always skip notice (the boot-order spec's honesty pattern): the
+ * wiring cases drive the packaged `harness-agents/` mirror (a bundle-assets
+ * sync product, gitignored) — when it is absent the skip is PRINTED, never a
+ * silent green in the suite count.
+ */
+const MIRROR_SKIP_NOTICE = 'fallbacks-advisory wiring: SKIPPED — harness-agents mirror not synced (run `bun run bundle-assets` in packages/dsh)'
+
 describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
   it('(a) roles.list covers all mirror role ids with non-empty personas → pass, no logs, config unmutated', async () => {
     const mirror = await fixtureMirror()
@@ -177,7 +221,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithLoader([liveEntry(cfg)])
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         // Clean taxonomy → no warn, no debug.
         expect(captured).toEqual([])
         // The advisory is read-only over the deployment's config layer.
@@ -197,7 +241,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithLoader([liveEntry(cfg)])
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         expect(warns[0]![1]).toContain('scout')
@@ -217,7 +261,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithLoader([liveEntry(cfg)])
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         expect(warns[0]![1]).toContain('scout')
@@ -237,7 +281,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithLoader([liveEntry(cfg)])
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         // The malformed entries are skipped; the well-formed entries still
         // drive the taxonomy checks — scout is still missing → ONE warn.
         const warns = captured.filter(([level]) => level === 'warn')
@@ -270,7 +314,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithLoader([liveEntry(cfg)])
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         const message = warns[0]![1]
@@ -300,7 +344,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithService(fake, cfg)
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         expect(warns[0]![1]).toContain('detectLegacyKeys')
@@ -321,7 +365,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithLoader([liveEntry()])
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         expect(captured.filter(([level]) => level === 'debug')).toHaveLength(1)
         expect(captured[0]![0]).toBe('debug')
         expect(captured[0]![1]).toContain('unreadable')
@@ -340,7 +384,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithLoader([liveEntry('not-an-object')])
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         expect(captured.filter(([level]) => level === 'debug')).toHaveLength(1)
         expect(captured[0]![1]).toContain('unreadable')
         expect(captured.filter(([level]) => level === 'warn')).toEqual([])
@@ -359,7 +403,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithLoader([liveEntry(cfg)])
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         expect(captured.filter(([level]) => level === 'debug')).toHaveLength(1)
         expect(captured[0]![1]).toContain('roles')
         expect(captured.filter(([level]) => level === 'warn')).toEqual([])
@@ -377,7 +421,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = new Context()
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(false)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: false, converged: false })
         expect(captured).toEqual([])
       } finally {
         restore()
@@ -393,7 +437,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       const ctx = ctxWithLoader([{ options: { name: FALLBACKS_ENTRY_NAME, config: rowConfig([]) }, disabled: true, fiber: {} }])
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(false)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: false, converged: false })
         expect(captured).toEqual([])
       } finally {
         restore()
@@ -456,31 +500,14 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
     if (mirror === undefined) return // bundle-assets not run — the live mirror is a precondition
     booted = await bootApp()
     ;(booted.ctx.get('loader') as FakeLoaderRegistry).entriesList = [liveEntry(rowConfig([]))]
-    // A fake fallbacks provider whose fiber can be disposed — the cordis
-    // service appears/disappears with the plugin apply (HMR/fiber swap).
-    const provider = (fake: FakeAdvisoryService): { name: string; apply(ctx: Context): void } => ({
-      name: 'fake-fallbacks-provider',
-      apply(ctx: Context) {
-        ctx.provide('llm-fallbacks', fake as unknown as FallbacksService)
-      },
-    })
-    const waitFor = async (predicate: () => boolean, timeoutMs = 3000): Promise<void> => {
-      const start = Date.now()
-      while (!predicate()) {
-        if (Date.now() - start > timeoutMs) throw new Error('waitFor timed out')
-        const { promise, resolve } = Promise.withResolvers<void>()
-        setTimeout(resolve, 10)
-        await promise
-      }
-    }
     const { captured, restore } = captureLogs()
     try {
       // First service instance — the first decision point runs ONE pass
       // (the service-present path is async: re-declare → readback → report).
       const first = new FakeAdvisoryService({ roles: [] })
-      const fiber1 = await booted.ctx.plugin(provider(first))
+      const fiber1 = await booted.ctx.plugin(fakeFallbacksProvider(first))
       booted.ctx.events.emit('subagent/start', startInfo('agent-1'))
-      await waitFor(() => captured.some(([, message]) => message.includes('mstar seeds declared')))
+      await waitFor('first-declared', () => captured.some(([, message]) => message.includes('mstar seeds declared')))
       // Latch armed: a second decision point emits nothing new.
       const afterFirst = captured.length
       booted.ctx.events.emit('subagent/start', startInfo('agent-2'))
@@ -493,10 +520,10 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       // Service re-appears (fallbacks re-applied / HMR) → the NEXT decision
       // point re-runs the pass (the mstar side re-converges).
       const second = new FakeAdvisoryService({ roles: [] })
-      const fiber2 = await booted.ctx.plugin(provider(second))
+      const fiber2 = await booted.ctx.plugin(fakeFallbacksProvider(second))
       const beforeReconverge = captured.length
       booted.ctx.events.emit('subagent/start', startInfo('agent-3'))
-      await waitFor(() => captured.slice(beforeReconverge).some(([, message]) => message.includes('mstar seeds declared')))
+      await waitFor('reconverge', () => captured.slice(beforeReconverge).some(([, message]) => message.includes('mstar seeds declared')))
       await fiber2.dispose()
     } finally {
       restore()
@@ -508,29 +535,12 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
     if (mirror === undefined) return // bundle-assets not run — the live mirror is a precondition
     booted = await bootApp()
     ;(booted.ctx.get('loader') as FakeLoaderRegistry).entriesList = [liveEntry(rowConfig([]))]
-    // A fake fallbacks provider whose fiber can be disposed — the cordis
-    // service appears/disappears with the plugin apply (HMR/fiber swap).
-    const provider = (fake: FakeAdvisoryService): { name: string; apply(ctx: Context): void } => ({
-      name: 'fake-fallbacks-provider',
-      apply(ctx: Context) {
-        ctx.provide('llm-fallbacks', fake as unknown as FallbacksService)
-      },
-    })
     const { captured, restore } = captureLogs()
     try {
       // Service #1 with a CONTROLLED declareSeeds: the pass's await on the
       // idempotent re-declare stays in flight until the test releases it —
       // the deterministic in-flight window for the race.
       const first = new FakeAdvisoryService({ roles: [] })
-      const waitFor = async (label: string, predicate: () => boolean, timeoutMs = 3000): Promise<void> => {
-        const start = Date.now()
-        while (!predicate()) {
-          if (Date.now() - start > timeoutMs) throw new Error(`waitFor[${label}] timed out`)
-          const { promise, resolve } = Promise.withResolvers<void>()
-          setTimeout(resolve, 10)
-          await promise
-        }
-      }
       let releaseDeclare!: () => void
       let heldDeclares = 0
       const declareGate = new Promise<void>((resolve) => { releaseDeclare = resolve })
@@ -543,7 +553,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
         await declareGate
         return { applied: seeds.map((s) => s.id), skipped: [], conflicts: [] }
       }
-      const fiber1 = await booted.ctx.plugin(provider(first))
+      const fiber1 = await booted.ctx.plugin(fakeFallbacksProvider(first))
       // First decision point: the service-present pass reaches the held
       // declare and suspends (the entry inject child AND the advisory pass
       // both await the same gate).
@@ -562,11 +572,122 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       // point MUST re-run the pass (the stale completion must not have
       // armed the latch).
       const second = new FakeAdvisoryService({ roles: [] })
-      const fiber2 = await booted.ctx.plugin(provider(second))
+      const fiber2 = await booted.ctx.plugin(fakeFallbacksProvider(second))
       const beforeReconverge = captured.length
       booted.ctx.events.emit('subagent/start', startInfo('agent-2'))
       await waitFor('reconverge', () => captured.slice(beforeReconverge).some(([, message]) => message.includes('mstar seeds declared')))
       await fiber2.dispose()
+    } finally {
+      restore()
+    }
+  })
+
+  it('wiring — an aborted pass never arms the latch: the next decision point re-runs it and converges (honest latch)', async () => {
+    const mirror = packagedAgentsDir()
+    if (mirror === undefined) {
+      // Print-always skip (the boot-order spec pattern) — a skipped run must
+      // be visible in the output, never read as a silent green.
+      console.log(MIRROR_SKIP_NOTICE)
+      return
+    }
+    booted = await bootApp()
+    ;(booted.ctx.get('loader') as FakeLoaderRegistry).entriesList = [liveEntry(rowConfig([]))]
+    // A stub whose declareSeeds rejects the boot-window calls (the live
+    // apply-window race shape, verbatim upstream string) and resolves after.
+    let rejectDeclares = true
+    let stubDeclares = 0
+    const fake = new FakeAdvisoryService({ roles: [] })
+    fake.declareSeeds = async (seeds) => {
+      stubDeclares += 1
+      if (rejectDeclares) throw new Error('llm-fallbacks: seeds: settings service is unavailable — seed roles cannot be written')
+      return { applied: seeds.map((s) => s.id), skipped: [], conflicts: [] }
+    }
+    const { captured, restore } = captureLogs()
+    try {
+      await booted.ctx.plugin(fakeFallbacksProvider(fake))
+      // First decision point while the stub still rejects: the pass runs the
+      // seeds-aware path, the re-declare REJECTS → ONE degraded warn — and
+      // the latch must NOT arm (the R2 fix under test).
+      booted.ctx.events.emit('subagent/start', startInfo('latch-abort'))
+      await waitFor('degraded-warn', () => captured.some(([, message]) => message.includes('aborted (degraded')))
+      // Settle the aborted pass (its .finally releases the in-flight guard)
+      // and the entry inject child's bounded retry — its three rejecting
+      // attempts burn out terminally on the seeds logger (child attempts 1-3
+      // + this pass = 4 calls; order-independent count proves the loop is
+      // done scheduling).
+      await waitFor('retry-terminal', () => stubDeclares >= 4)
+      await settle(20)
+      // The stub now resolves: the NEXT decision point re-runs the pass
+      // (an aborted pass left the latch open) and converges.
+      rejectDeclares = false
+      const declaresBeforeRetry = stubDeclares
+      booted.ctx.events.emit('subagent/start', startInfo('latch-retry'))
+      // The convergence debug can only come from an advisory pass (the
+      // entry's own declare logs on the seeds logger, not this sink) — and
+      // the missing-taxonomy warn is the pass's LAST emission.
+      await waitFor('reconverge', () => captured.some(([, message]) => message.includes('fallbacks taxonomy is missing mstar roles')))
+      await settle(20)
+      // (a) The re-declare was called again by the decision-point pass.
+      expect(stubDeclares).toBeGreaterThan(declaresBeforeRetry)
+      // (b) The latch armed ONLY on the converged pass: a further decision
+      // point re-runs nothing (no new declares, no new logs).
+      const afterConverge = captured.length
+      const declaresAfterConverge = stubDeclares
+      booted.ctx.events.emit('subagent/start', startInfo('latch-armed'))
+      await settle(20)
+      expect(captured.slice(afterConverge)).toEqual([])
+      expect(stubDeclares).toBe(declaresAfterConverge)
+      // The abort warned exactly once; the converged retry added no degraded
+      // warn (healthy convergence is warn-free on the abort channel).
+      expect(captured.filter(([, message]) => message.includes('aborted (degraded'))).toHaveLength(1)
+    } finally {
+      restore()
+    }
+  })
+
+  it('wiring — two consecutive aborted passes warn ONCE per apply (degraded-abort dedup); resetAdvisoryAbortWarn reopens the budget', async () => {
+    const mirror = packagedAgentsDir()
+    if (mirror === undefined) {
+      // Print-always skip (the boot-order spec pattern) — a skipped run must
+      // be visible in the output, never read as a silent green.
+      console.log(MIRROR_SKIP_NOTICE)
+      return
+    }
+    booted = await bootApp()
+    ;(booted.ctx.get('loader') as FakeLoaderRegistry).entriesList = [liveEntry(rowConfig([]))]
+    const fake = new FakeAdvisoryService({ roles: [] })
+    let stubDeclares = 0
+    fake.declareSeeds = async () => {
+      stubDeclares += 1
+      throw new Error('settings write failed')
+    }
+    const { captured, restore } = captureLogs()
+    try {
+      await booted.ctx.plugin(fakeFallbacksProvider(fake))
+      const degradedWarns = (): number => captured.filter(([, message]) => message.includes('aborted (degraded')).length
+      // Aborted pass #1: ONE degraded warn.
+      booted.ctx.events.emit('subagent/start', startInfo('dedup-1'))
+      await waitFor('warn-1', () => degradedWarns() === 1)
+      await settle(20) // release the in-flight guard before the next emit
+      // Aborted pass #2 (the latch stayed open on the abort): the pass must
+      // RE-RUN (the declare count grows) but stay SILENT — at most ONE
+      // degraded warn per apply.
+      const declaresBeforeSecond = stubDeclares
+      booted.ctx.events.emit('subagent/start', startInfo('dedup-2'))
+      await waitFor('pass-2-declared', () => stubDeclares > declaresBeforeSecond)
+      // Settle pass 2's abort microtasks and the entry inject child's
+      // bounded-retry burnout (~300 ms) before judging the warn count.
+      await settle(350)
+      expect(degradedWarns()).toBe(1)
+      // The entry re-opens the budget at apply and on inject teardown; the
+      // exported reset models that here — the NEXT abort warns again.
+      resetAdvisoryAbortWarn()
+      const declaresBeforeThird = stubDeclares
+      booted.ctx.events.emit('subagent/start', startInfo('dedup-3'))
+      await waitFor('warn-2', () => degradedWarns() === 2)
+      expect(stubDeclares).toBeGreaterThan(declaresBeforeThird)
+      await settle(20)
+      expect(degradedWarns()).toBe(2)
     } finally {
       restore()
     }
@@ -588,7 +709,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         expect(captured.filter(([level]) => level === 'warn')).toEqual([])
         // Seeded state is silent-by-default: one debug confirms convergence.
         const seededDebug = captured.find(([, message]) => message.includes('seeded at their defaults'))
@@ -617,7 +738,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         expect(warns[0]![1]).toContain('scout')
@@ -645,7 +766,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         expect(warns[0]![1]).toContain('scout')
@@ -676,7 +797,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         expect(warns[0]![1]).toContain('designer')
@@ -702,7 +823,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         expect(captured.filter(([level]) => level === 'warn')).toEqual([])
       } finally {
         restore()
@@ -719,7 +840,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         // `declareMstarSeeds` reads back first (merge-preserve), then
         // declares; the advisory's own readback comes strictly after the
         // declare — the boot dual-inject-child race window is closed.
@@ -747,7 +868,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         expect(warns[0]![1]).toContain('invalid-id')
@@ -777,7 +898,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(2)
         expect(warns.some(([, message]) => message.includes('overrides the seed persona') && message.includes('fallbacks/revert-seed'))).toBe(true)
@@ -790,7 +911,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
     }
   })
 
-  it('(s8) a REJECTING re-declare is contained: the pass returns true, ONE degraded warn, never throws', async () => {
+  it('(s8) a REJECTING re-declare is contained and reports honestly: { ran: true, converged: false }, ONE degraded warn, never throws', async () => {
     const mirror = await fixtureMirror()
     try {
       const fake = new FakeAdvisoryService(seededReadback())
@@ -798,7 +919,10 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        // Honest latch: the aborted pass ran but did NOT converge — the
+        // caller must keep the latch open so the decision-point retry can
+        // run (the old pin expected `true`, the R2 defect).
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: false })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         expect(warns[0]![1]).toContain('aborted (degraded')
@@ -811,7 +935,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
     }
   })
 
-  it('(s9) a throwing effective readback is contained: pass returns true, never throws (probe semantics)', async () => {
+  it('(s9) a throwing effective readback is contained: pass stays converged (the re-declare resolved), never throws (probe semantics)', async () => {
     const mirror = await fixtureMirror()
     try {
       const fake = new FakeAdvisoryService(seededReadback())
@@ -823,7 +947,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         // The seed-declare readback AND the advisory readback both degrade —
         // contained, no crash, no taxonomy guess.
         expect(captured.some(([, message]) => message.includes('effective-state readback failed'))).toBe(true)
@@ -846,7 +970,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         // Declaration/skip category: ONE consolidated warn — the per-id
         // diagnostics must NOT surface as extra warns (plan global
         // constraint: ≤1 warn per category).
@@ -887,7 +1011,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         // First-wins: scout reads seeded-at-default → NO overridden warn.
         expect(captured.filter(([level]) => level === 'warn')).toEqual([])
         // The duplicate is surfaced on debug (operator-visible, not silent).
@@ -911,7 +1035,7 @@ describe('fallbacks adoption advisory — seeds-aware effective state (service p
       const ctx = ctxWithService(fake, rowConfig([]))
       const { captured, restore } = captureLogs()
       try {
-        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toBe(true)
+        expect(await runFallbacksAdvisory(ctx, mirror.dir)).toEqual({ ran: true, converged: true })
         const warns = captured.filter(([level]) => level === 'warn')
         expect(warns).toHaveLength(1)
         const message = warns[0]![1]

@@ -84,6 +84,7 @@ import {
 } from './gates/plan-mode-bridge.ts'
 import {
   ADVISORY_LOGGER,
+  resetAdvisoryAbortWarn,
   runFallbacksAdvisory,
   setAdvisoryLogger,
 } from './gates/fallbacks-advisory.ts'
@@ -145,7 +146,7 @@ export {
 } from './gates/role-persona.ts'
 export type { RolePersonaLogLevel, RolePersonaLogSink, SubagentStartRequestView, SubagentsServiceView } from './gates/role-persona.ts'
 export { ADVISORY_LOGGER, runFallbacksAdvisory, setAdvisoryLogger } from './gates/fallbacks-advisory.ts'
-export type { AdvisoryLogLevel, AdvisoryLogSink } from './gates/fallbacks-advisory.ts'
+export type { AdvisoryLogLevel, AdvisoryLogSink, AdvisoryPassReport } from './gates/fallbacks-advisory.ts'
 export { DshHostAdapter } from './gates/adapter.ts'
 export type { DshHostAdapterOptions } from './gates/adapter.ts'
 
@@ -447,13 +448,30 @@ export function apply(ctx: Context, config: Config): void {
   // effective readback; the structural roles.list read on the loader-
   // fallback path). Never writes the fallbacks config; unreadable config →
   // skip + one debug. With the service present the pass is ASYNC — it awaits
-  // the idempotent re-declare before the readback, so the latch arms when
-  // the pass reports it ran (mounted).
+  // the idempotent re-declare before the readback; the latch arms ONLY when
+  // the pass reports it ran AND converged (`AdvisoryPassReport`) — an
+  // aborted pass (e.g. a rejected re-declare) must never suppress the
+  // `subagent/start` decision-point retry.
   setAdvisoryLogger((level, message) => {
     const logger = ctx.logger(ADVISORY_LOGGER)
     if (level === 'debug') logger.debug(message)
     else logger.warn(message)
   })
+  // Degraded-abort warn budget: at most ONE advisory abort warn per apply
+  // (module-level dedup in the advisory) — this apply opens the budget; the
+  // seeds inject child's teardown below re-opens it on a fiber swap.
+  // Accepted dispositions (plan QC wave 1):
+  // - The dedup flag is PROCESS-WIDE module state (the same module-sink
+  //   pattern as `setAdvisoryLogger`), not per-context: concurrently
+  //   composed contexts in one process share the one-warn budget, so the
+  //   worst case is one suppressed diagnostic warn under concurrent
+  //   multi-context composition (production composes a single app).
+  // - A decision point landing inside the boot-retry window below (~300 ms)
+  //   can consume the budget on an ULTIMATELY-HEALTHY boot: its pass awaits
+  //   the re-declare, the transient reject aborts it, one degraded warn
+  //   fires — bounded (≤1/apply) and self-healing (the next decision point
+  //   re-runs the pass and converges).
+  resetAdvisoryAbortWarn()
   // One-shot latch: the pass is attempted at apply (profiles that declare
   // the fallbacks row before dsh) and — when unmounted at boot — at the
   // first `subagent/start` decision point (the loader mounts entries
@@ -480,8 +498,13 @@ export function apply(ctx: Context, config: Config): void {
     advisoryPassInFlight = true
     const generation = advisoryGeneration
     void runFallbacksAdvisory(ctx, packagedAgentsDir())
-      .then((ran) => {
-        if (ran && generation === advisoryGeneration) advisoryPassed = true
+      .then((report) => {
+        // Honest latch: arm only on a pass that RAN and CONVERGED. An
+        // aborted pass (e.g. a rejected re-declare) reports
+        // `{ ran: true, converged: false }` and must leave the latch open —
+        // the next decision point re-runs the pass (R2: the old boolean
+        // contract reported a rejected re-declare as ran → armed).
+        if (report.ran && report.converged && generation === advisoryGeneration) advisoryPassed = true
       })
       .finally(() => {
         advisoryPassInFlight = false
@@ -498,29 +521,65 @@ export function apply(ctx: Context, config: Config): void {
   // child (`ctx.inject(['llm-fallbacks'])`) fires when the service appears
   // and RE-FIRES on every re-apply (HMR / fiber swap): no one-shot latch.
   // Unmounted at apply → the child stays inactive and fires on a later
-  // fallbacks apply; one debug log documents the armed state. Fire-and-
-  // forget with a terminal `.catch` (the upstream preset self-declare
-  // pattern) — declare never throws out of apply.
+  // fallbacks apply; one debug log documents the armed state. The declare
+  // is fire-and-forget with a BOUNDED retry: the provider swaps its seed
+  // write channel in one macrotask after its apply, so the immediate
+  // declare can lose that settings-binding race and reject with the
+  // upstream "settings service is unavailable" string. Attempt 1 fires
+  // immediately; a rejected attempt schedules the next one at +50 ms /
+  // +250 ms (3 attempts total, fixed delays, no jitter); a resolved attempt
+  // stops the loop. The timers are plain `setTimeout` handles owned by this
+  // child closure (`fallbacks-seeds.ts` stays timer-free) and cleared by
+  // the teardown disposer below; a stale attempt firing after teardown is
+  // a silent no-op. Intermediate failures log one debug each; when every
+  // attempt failed, the terminal `.catch` (the upstream preset self-declare
+  // pattern) logs ONE error — declare never throws out of apply.
   if (!fallbacksMounted(ctx)) {
     ctx.logger(SEEDS_LOGGER).debug('fallbacks not mounted at apply — mstar seeds inject child armed; declare fires when the llm-fallbacks service appears (apply/HMR)')
   }
   ctx.inject(['llm-fallbacks'], (serviceCtx) => {
     const service = fallbacksService(serviceCtx)
     if (service === undefined) return
-    declareMstarSeeds(service, {
-      agentsDir: packagedAgentsDir(),
-      log: (level, message) => {
-        const logger = ctx.logger(SEEDS_LOGGER)
-        if (level === 'warn') logger.warn(message)
-        else if (level === 'error') logger.error(message)
-        else logger.debug(message)
-      },
-    }).catch((error) => {
-      // Non-Error rejections (string/plain object — plausible from a
-      // settings seam) must not log `undefined`; align with the upstream
-      // preset child's `error?.message ?? String(error)`.
-      ctx.logger(SEEDS_LOGGER).error(`mstar seeds declaration failed (contained — fallbacks taxonomy unchanged): ${error instanceof Error ? error.message : String(error)}`)
-    })
+    // Bounded retry state — owned by THIS child closure (module purity:
+    // `fallbacks-seeds.ts` never sees a timer). The teardown disposer below
+    // sets `disposed` and clears every pending handle; a late-firing
+    // attempt after that is a silent no-op (never a post-dispose declare
+    // or log).
+    // Per-attempt diagnostics are intentional (accepted disposition, plan QC
+    // wave 1): every retry re-runs the full batch assembly, so
+    // `declareMstarSeeds`'s internal warn lines (a failing readback,
+    // interpolation-hazard skips) may re-emit up to once per attempt in the
+    // failure window. Dedupe is deliberately REJECTED — per-attempt
+    // observability is what keeps the transient-failure window legible; the
+    // exactly-once bound covers only the terminal ERROR below.
+    let disposed = false
+    const retryTimers: ReturnType<typeof setTimeout>[] = []
+    const declareAttempt = (attempt: number): void => {
+      declareMstarSeeds(service, {
+        agentsDir: packagedAgentsDir(),
+        log: (level, message) => {
+          const logger = ctx.logger(SEEDS_LOGGER)
+          if (level === 'warn') logger.warn(message)
+          else if (level === 'error') logger.error(message)
+          else logger.debug(message)
+        },
+      }).catch((error) => {
+        if (disposed) return
+        // Non-Error rejections (string/plain object — plausible from a
+        // settings seam) must not log `undefined`; align with the upstream
+        // preset child's `error?.message ?? String(error)`.
+        const message = error instanceof Error ? error.message : String(error)
+        if (attempt >= 3) {
+          ctx.logger(SEEDS_LOGGER).error(`mstar seeds declaration failed (contained — fallbacks taxonomy unchanged): ${message}`)
+          return
+        }
+        ctx.logger(SEEDS_LOGGER).debug(`seeds declare attempt ${attempt}/3 failed: ${message}`)
+        retryTimers.push(setTimeout(() => {
+          if (!disposed) declareAttempt(attempt + 1)
+        }, attempt === 1 ? 50 : 250))
+      })
+    }
+    declareAttempt(1)
     // HMR/fiber-swap re-arm : when
     // the fallbacks service disappears, reset the advisory one-shot latch so
     // the NEXT decision point re-converges the seeds state. The seed registry
@@ -530,8 +589,13 @@ export function apply(ctx: Context, config: Config): void {
     // invalidates any pass still in flight from BEFORE the swap — its stale
     // completion must not re-arm the latch (see `runAdvisoryPass`).
     return () => {
+      disposed = true
+      for (const timer of retryTimers) clearTimeout(timer)
       advisoryPassed = false
       advisoryGeneration += 1
+      // A fiber swap re-opens the advisory's degraded-abort warn budget (the
+      // re-applied fiber is a fresh apply) alongside the latch reset above.
+      resetAdvisoryAbortWarn()
     }
   })
   registerSettleListener(ctx, config, pairing)

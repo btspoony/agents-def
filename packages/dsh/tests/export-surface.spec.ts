@@ -15,7 +15,7 @@
  *   tests/tsconfig.json`): the exact VALUE export namespace (`keyof typeof
  *   entry` vs the frozen 31-name value union — type-only names never appear
  *   on the module namespace object, so a `keyof` union cannot carry them),
- *   the 25 type-only names pinned individually (`EntryTypes.X` probes — each
+ *   the 26 type-only names pinned individually (`EntryTypes.X` probes — each
  *   reference fails typecheck if the export disappears), plus the cordis
  *   `Context` / `Events` augmentation probes.
  *
@@ -33,6 +33,12 @@
  * `workflow-verdict` vocabulary types) joined the entry surface — the
  * ledger plan's record path, matching the `recordDispatch` / `recordSettle`
  * precedent.
+ *
+ * Extended for the plan-QC wave-1 fix: `AdvisoryPassReport`
+ * joined the pinned type-only surface — the pinned public export
+ * `runFallbacksAdvisory` returns `Promise<AdvisoryPassReport>` (the honest
+ * latch), so the returned type is nameable from the package root like its
+ * two sibling advisory types.
  */
 import { describe, expect, it } from 'bun:test'
 import type { Context, Events } from '@deepseek-ai/cordis'
@@ -96,6 +102,11 @@ const FROZEN_VALUE_EXPORTS = [
 const FROZEN_TYPE_ONLY_EXPORTS = [
   'AdvisoryLogLevel',
   'AdvisoryLogSink',
+  // Deliberate addition for
+  // the honest-latch contract type: the pinned public export
+  // `runFallbacksAdvisory` returns `Promise<AdvisoryPassReport>`, so a root
+  // consumer can name the returned type (plan QC wave-1 fix W-1).
+  'AdvisoryPassReport',
   'AgentFlowEvent',
   'AgentFlowEventView',
   'AgentFlowSummaryRow',
@@ -135,7 +146,7 @@ type Assert<T extends true> = T
  * runtime-visible (value) exports — type-only exports never appear on the
  * module namespace object, so they cannot join a `keyof` union. The exact-set
  * check therefore runs against the frozen VALUE names (31, `Config` once),
- * and the 25 type-only names are pinned individually by the `EntryTypes.X`
+ * and the 26 type-only names are pinned individually by the `EntryTypes.X`
  * probes below (each reference fails typecheck if the export disappears).
  * Fails typecheck on ANY value-export drift — removal, rename, or addition.
  */
@@ -166,6 +177,7 @@ describe('src/index.ts export surface (frozen)', () => {
     const typeProbe = {
       AdvisoryLogLevel: null as unknown as EntryTypes.AdvisoryLogLevel,
       AdvisoryLogSink: null as unknown as EntryTypes.AdvisoryLogSink,
+      AdvisoryPassReport: null as unknown as EntryTypes.AdvisoryPassReport,
       AgentFlowEvent: null as unknown as EntryTypes.AgentFlowEvent,
       AgentFlowEventView: null as unknown as EntryTypes.AgentFlowEventView,
       AgentFlowSummaryRow: null as unknown as EntryTypes.AgentFlowSummaryRow,
