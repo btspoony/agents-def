@@ -6,7 +6,7 @@ import { resolveProjectRoot } from "./utils";
 import { compareSemver } from "./version-compare";
 import { PLUGIN_NAME } from "./adapters/shared-install";
 import { detectCodexPluginVersion } from "./adapters/codex";
-import { DSH_HOME_ENV, DSH_HOME_SUBDIR, DSH_PROFILES_DIR } from "./adapters/dsh";
+import { DSH_HOME_ENV, DSH_HOME_SUBDIR, DSH_PROFILE, DSH_PROFILES_DIR } from "./adapters/dsh";
 import { globalInstallPath as cursorGlobalInstallPath, projectInstallPath as cursorProjectInstallPath } from "./adapters/cursor";
 import { findInstalledPlugin, listInstalledPlugins } from "./adapters/omp";
 
@@ -38,10 +38,9 @@ import { findInstalledPlugin, listInstalledPlugins } from "./adapters/omp";
  *   - omp: `omp plugin list --json` via the omp adapter's
  *     `listInstalledPlugins`/`findInstalledPlugin`; version = entry
  *     `version` → `manifest.version` → package.json at the entry path;
- *   - dsh: filesystem scan of every dsh profile's
- *     `<home>/profiles/<profile>/node_modules/@mstar-harness/dsh/package.json`
- *     (highest wins; link installs resolve naturally by reading through the
- *     symlinked dir);
+ *   - dsh: package.json read in the ONE profile the dsh adapter operates on
+ *     (fixed default profile `web` under `$DSH_HOME`/`~/.dsh`; link installs
+ *     resolve naturally by reading through the symlinked dir);
  *   - kimi: `$KIMI_CODE_HOME/plugins/managed/**` (default `~/.kimi-code`)
  *     scanned to depth 3 for a `morning-star-harness` plugin root; tolerant
  *     manifest read (`.kimi-plugin/plugin.json` → `plugin.json` →
@@ -209,24 +208,17 @@ function defaultDshHome(): string {
   return process.env[DSH_HOME_ENV] ?? path.join(os.homedir(), DSH_HOME_SUBDIR);
 }
 
-/** Highest installed `@mstar-harness/dsh` version across ALL dsh profiles
- * (`<dshHome>/profiles/<profile>/node_modules/@mstar-harness/dsh/package.json`).
- * Link installs resolve naturally: reading through the symlinked dir lands
- * on the target package manifest. */
+/** Installed `@mstar-harness/dsh` version in the dsh profile the adapter
+ * actually operates on — the fixed default profile `web` under `$DSH_HOME`,
+ * else `~/.dsh`. Deliberately scoped to ONE profile (Greptile P1): the doctor
+ * compares the CLI against what `mstar-harness init --target dsh` installs
+ * and its update hint re-adds, so a version in an unrelated profile (e.g.
+ * `headless`) must not win. Link installs resolve naturally: reading through
+ * the symlinked dir lands on the target package manifest. */
 export function detectDshPluginVersion(dshHome: string = defaultDshHome()): string | null {
-  let profiles: fs.Dirent[];
-  try {
-    profiles = fs.readdirSync(path.join(dshHome, DSH_PROFILES_DIR), { withFileTypes: true });
-  } catch {
-    return null;
-  }
-  let highest: string | null = null;
-  for (const profile of profiles) {
-    if (!profile.isDirectory()) continue;
-    const pkgJson = path.join(dshHome, DSH_PROFILES_DIR, profile.name, "node_modules", "@mstar-harness", "dsh", "package.json");
-    highest = highestVersion(highest, versionFromJsonFile(pkgJson));
-  }
-  return highest;
+  return versionFromJsonFile(
+    path.join(dshHome, DSH_PROFILES_DIR, DSH_PROFILE, "node_modules", "@mstar-harness", "dsh", "package.json"),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -339,6 +331,12 @@ export function detectInstalledPluginVersion(target: Target, scope: Scope = "pro
       break;
     case "kimi":
       discovered = detectKimiPluginVersion();
+      break;
+    default:
+      // No-throw contract (QC F-007): an out-of-contract target must not
+      // surface as a TypeError from doctor — it degrades to `null`, so the
+      // caller prints the target's standard not-installed line.
+      discovered = null;
       break;
   }
   if (discovered === null) return null;

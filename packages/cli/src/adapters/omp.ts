@@ -39,6 +39,15 @@ function runOmp(args: string[], dryRun: boolean): void {
 }
 
 /**
+ * Bound for the `omp plugin list --json` probe (ms). Mirrors the codex
+ * adapter's local-probe ceiling (10s): the doctor's centralized version
+ * alignment check runs BEFORE the omp adapter's own checks, so a stalled omp
+ * binary must surface as a caught throw (→ empty listing → standard
+ * not-installed note) instead of blocking doctor indefinitely.
+ */
+export const OMP_LIST_TIMEOUT_MS = 10_000;
+
+/**
  * Parse `omp plugin list --json` output into flat entry records (npm +
  * marketplace groups flattened; pure — no subprocess). Exported so the
  * JSON-parsing layer is testable without spawning omp.
@@ -72,12 +81,16 @@ export function parseOmpPluginList(raw: string): Array<Record<string, unknown>> 
 
 /** Exported for `../plugin-version-alignment`: the doctor alignment note
  * reads the installed plugin version from the same listing the doctor's
- * installed-state check uses (single JSON surface, no duplicate parsing). */
-export function listInstalledPlugins(): Array<Record<string, unknown>> {
+ * installed-state check uses (single JSON surface, no duplicate parsing).
+ * `timeoutMs` bounds the subprocess (default `OMP_LIST_TIMEOUT_MS`) — a
+ * timeout throw lands in the same catch as any other probe failure and
+ * degrades to an empty listing (never blocks doctor). */
+export function listInstalledPlugins(timeoutMs: number = OMP_LIST_TIMEOUT_MS): Array<Record<string, unknown>> {
   try {
     const raw = execFileSync("omp", ["plugin", "list", "--json"], {
       stdio: "pipe",
       encoding: "utf8",
+      timeoutMs,
     });
     return parseOmpPluginList(raw);
   } catch {

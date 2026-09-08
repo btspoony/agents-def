@@ -17,6 +17,7 @@ import {
   detectCursorPluginVersion,
   detectCursorPluginVersionForScope,
   detectDshPluginVersion,
+  detectInstalledPluginVersion,
   detectKimiPluginVersion,
   detectOpencodePluginVersion,
   detectZcodePluginVersion,
@@ -25,7 +26,7 @@ import {
 } from "../src/plugin-version-alignment";
 import type { Target } from "../src/types";
 import { parseCodexInstalledEntries } from "../src/adapters/codex";
-import { findInstalledPlugin, parseOmpPluginList } from "../src/adapters/omp";
+import { OMP_LIST_TIMEOUT_MS, findInstalledPlugin, parseOmpPluginList } from "../src/adapters/omp";
 
 const PLUGIN_DIR_NAME = "morning-star-harness";
 
@@ -241,7 +242,7 @@ describe("detectCursorPluginVersionForScope", () => {
 });
 
 // ---------------------------------------------------------------------------
-// dsh discovery (all-profile scan, link installs resolve)
+// dsh discovery (default web profile only — the profile init/add operates on)
 // ---------------------------------------------------------------------------
 
 describe("detectDshPluginVersion", () => {
@@ -249,11 +250,18 @@ describe("detectDshPluginVersion", () => {
     expect(detectDshPluginVersion(join(tmpdir(), "dsh-home-does-not-exist"))).toBeNull();
   });
 
-  test("reads the version across ALL profiles (highest wins)", () => {
+  test("reads the version from the default web profile", () => {
     withDir((home) => {
       writeJsonAt(join(home, "profiles", "web", "node_modules", "@mstar-harness", "dsh", "package.json"), { version: "3.7.0" });
-      writeJsonAt(join(home, "profiles", "headless", "node_modules", "@mstar-harness", "dsh", "package.json"), { version: "3.6.0" });
       expect(detectDshPluginVersion(home)).toBe("3.7.0");
+    });
+  });
+
+  test("a newer version in a NON-default profile does NOT win (Greptile P1)", () => {
+    withDir((home) => {
+      writeJsonAt(join(home, "profiles", "web", "node_modules", "@mstar-harness", "dsh", "package.json"), { version: "3.6.0" });
+      writeJsonAt(join(home, "profiles", "headless", "node_modules", "@mstar-harness", "dsh", "package.json"), { version: "9.9.9" });
+      expect(detectDshPluginVersion(home)).toBe("3.6.0");
     });
   });
 
@@ -269,9 +277,9 @@ describe("detectDshPluginVersion", () => {
     });
   });
 
-  test("profile without the mstar plugin contributes nothing", () => {
+  test("dsh home without the web profile plugin reports null", () => {
     withDir((home) => {
-      mkdirSync(join(home, "profiles", "empty"), { recursive: true });
+      mkdirSync(join(home, "profiles", "headless", "node_modules", "@mstar-harness", "dsh"), { recursive: true });
       expect(detectDshPluginVersion(home)).toBeNull();
     });
   });
@@ -433,6 +441,13 @@ describe("findInstalledPlugin + ompEntryVersion", () => {
     expect(ompEntryVersion({})).toBeNull();
     expect(ompEntryVersion({ path: join(tmpdir(), "pva-omp-path-absent") })).toBeNull();
   });
+
+  test("the omp probe stays bounded: OMP_LIST_TIMEOUT_MS is the codex-parity 10s ceiling", () => {
+    // Drift guard for the Greptile P1 fix: the execFileSync timeout option in
+    // listInstalledPlugins must keep this constant wired (a stalled omp must
+    // degrade to the catch's empty listing, never block doctor).
+    expect(OMP_LIST_TIMEOUT_MS).toBe(10_000);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -489,12 +504,30 @@ describe("formatPluginVersionDoctorNote", () => {
     expect(formatPluginVersionDoctorNote("zcode", "3.7.0", null)).toBe(
       "No installed Morning Star plugin found under ~/.zcode/cli/plugins/cache/ (install from the mstar-local marketplace).",
     );
+    expect(formatPluginVersionDoctorNote("opencode", "3.7.0", null)).toBe(
+      "No installed Morning Star plugin found under ~/.cache/opencode/packages/ (run mstar-harness init --target opencode to add @mstar-harness/opencode).",
+    );
+    expect(formatPluginVersionDoctorNote("cursor", "3.7.0", null)).toBe(
+      "No installed Morning Star plugin found under ~/.cursor/plugins/ (run mstar-harness init --target cursor).",
+    );
     expect(formatPluginVersionDoctorNote("codex", "3.7.0", null)).toBe(
       "No installed Morning Star plugin found in `codex plugin list` (install: codex plugin add morning-star-harness@mstar-repo).",
+    );
+    expect(formatPluginVersionDoctorNote("omp", "3.7.0", null)).toBe(
+      "No installed Morning Star plugin found in `omp plugin list` (install: omp plugin install @mstar-harness/omp).",
+    );
+    expect(formatPluginVersionDoctorNote("dsh", "3.7.0", null)).toBe(
+      "No installed Morning Star plugin found under ~/.dsh/profiles/ (run mstar-harness init --target dsh to add @mstar-harness/dsh).",
     );
     expect(formatPluginVersionDoctorNote("kimi", "3.7.0", null)).toBe(
       "No installed Morning Star plugin found under $KIMI_CODE_HOME/plugins/managed (install via the Kimi TUI: /plugins install).",
     );
+  });
+
+  test("dispatcher honors the no-throw contract on an out-of-contract target (QC F-007)", () => {
+    // An invalid runtime target degrades to null — the caller then prints
+    // that target's standard not-installed line; doctor never sees a TypeError.
+    expect(detectInstalledPluginVersion("not-a-host" as Target, "project")).toBeNull();
   });
 
   test("prerelease-aware: a prerelease CLI is older than its release plugin", () => {
