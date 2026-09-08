@@ -10,8 +10,8 @@
 import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { resolveCliPath } from "../src/utils";
+import { join, resolve } from "node:path";
+import { joinWithinRoot, resolveCliPath } from "../src/utils";
 
 const prevRoot = process.env.MSTAR_CLI_PROJECT_ROOT;
 
@@ -128,6 +128,24 @@ describe("resolveCliPath", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("joinWithinRoot containment", () => {
+  const fsRoot = resolve("/"); // "/" on POSIX, "<drive>:\" on Windows
+  const rootedDir = resolve("/a");
+
+  test("joins segments beneath the root and returns the resolved path", () => {
+    expect(joinWithinRoot(rootedDir, "b", "c.json")).toBe(resolve(rootedDir, "b", "c.json"));
+  });
+
+  test("accepts the root itself and children of a filesystem-root base", () => {
+    expect(joinWithinRoot(rootedDir, rootedDir)).toBe(rootedDir);
+    expect(joinWithinRoot(fsRoot, "package.json")).toBe(join(fsRoot, "package.json"));
+  });
+
+  test("refuses escapes outside the root", () => {
+    expect(() => joinWithinRoot(rootedDir, "../escapes")).toThrow(/escapes/);
   });
 });
 

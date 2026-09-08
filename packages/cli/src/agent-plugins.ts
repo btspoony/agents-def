@@ -449,8 +449,13 @@ function validateSkills(root: string, errors: string[], warnings: string[]) {
         continue;
       }
       // Containment on normalized absolute paths: the real skill dir must be
-      // the real root itself or stay underneath it.
-      const insideRoot = realSkillPath === realRoot || realSkillPath.startsWith(realRoot + path.sep);
+      // the real root itself or stay underneath it. realpathSync yields a
+      // trailing separator only at a filesystem root ("/", "C:\"), where the
+      // appended-separator prefix would miss the root's own children.
+      const insideRoot =
+        realSkillPath === realRoot ||
+        realSkillPath.startsWith(realRoot + path.sep) ||
+        (realRoot.endsWith(path.sep) && realSkillPath.startsWith(realRoot));
       if (!insideRoot) {
         warnings.push(
           `skills: ${skillDir}/ resolves outside the plugin root (${realSkillPath}; skill skipped)`,
@@ -476,7 +481,10 @@ function validateSkills(root: string, errors: string[], warnings: string[]) {
         );
         continue;
       }
-      if (!realSkillMdPath.startsWith(realRoot + path.sep)) {
+      const skillMdInsideRoot =
+        realSkillMdPath.startsWith(realRoot + path.sep) ||
+        (realRoot.endsWith(path.sep) && realSkillMdPath.startsWith(realRoot));
+      if (!skillMdInsideRoot) {
         warnings.push(
           `skills: ${skillDir}/SKILL.md resolves outside the plugin root (${realSkillMdPath}; skill skipped)`,
         );

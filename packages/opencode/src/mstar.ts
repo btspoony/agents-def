@@ -168,11 +168,18 @@ ${content}
 };
 
 /** Join a readdir-derived entry name under the bundled directory it was
- * listed from; refuses a result that resolves outside that directory. */
+ * listed from; refuses a result that resolves outside that directory. A base
+ * at a filesystem root ("/", "C:\") already ends with the separator, so the
+ * appended-separator prefix would miss its own children — accept the bare
+ * base prefix in that case. */
 const joinBundledEntry = (dir: string, name: string): string => {
   const base = path.resolve(dir);
   const resolved = path.resolve(base, name);
-  if (resolved !== base && !resolved.startsWith(base + path.sep)) {
+  const withinEntry =
+    resolved === base ||
+    resolved.startsWith(base + path.sep) ||
+    (base.endsWith(path.sep) && resolved.startsWith(base));
+  if (!withinEntry) {
     throw new Error(`bundled entry escapes ${base}: ${name}`);
   }
   return resolved;

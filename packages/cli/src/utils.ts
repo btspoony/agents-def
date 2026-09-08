@@ -57,7 +57,14 @@ export function resolveProjectRoot() {
 export function joinWithinRoot(root: string, ...segments: string[]): string {
   const base = path.resolve(root);
   const resolved = path.resolve(base, ...segments);
-  if (resolved !== base && !resolved.startsWith(base + path.sep)) {
+  const withinRoot =
+    resolved === base ||
+    resolved.startsWith(base + path.sep) ||
+    // A base at the filesystem root already ends with the separator
+    // ("/", "C:\"); the appended-separator prefix above would miss its
+    // own children.
+    (base.endsWith(path.sep) && resolved.startsWith(base));
+  if (!withinRoot) {
     throw new Error(`path escapes ${base}: ${segments.join(path.sep)}`);
   }
   return resolved;
