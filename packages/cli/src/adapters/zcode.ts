@@ -66,28 +66,18 @@ function nowIso() {
 }
 
 /**
- * Version for the bootstrap marketplace entry: prefer the local harness
- * checkout's `.zcode-plugin/plugin.json` (matches what ZCode installs);
- * fall back to the CLI package version when the marker is unreadable.
+ * Bootstrap snapshot for ZCode's marketplace.json. The seeded `version` is
+ * the CLI release version — the exact value `validateMarketplaceJson` (doctor)
+ * compares against, so a current-CLI install always passes doctor even when
+ * the shared `~/.mstar/harness` checkout is stale. ZCode's marketplace
+ * refresh overwrites this seed with the repo-shipped manifest
+ * (`.claude-plugin/marketplace.json`), which pins the release version too.
  * Exported for tests.
  */
-export function resolveMarketplaceEntryVersion(markerPath: string, fallback: string): string {
-  try {
-    const raw = JSON.parse(fs.readFileSync(markerPath, "utf8")) as { version?: unknown };
-    if (typeof raw.version === "string" && raw.version !== "") return raw.version;
-  } catch {
-    // marker unreadable (missing checkout / unparseable manifest) — fall through
-  }
-  return fallback;
-}
-
-function marketplacePluginEntry(): MarketplacePluginEntry {
+export function marketplacePluginEntry(): MarketplacePluginEntry {
   return {
     name: PLUGIN_NAME,
-    version: resolveMarketplaceEntryVersion(
-      path.join(HARNESS_REPO_PATH, ZCODE_PLUGIN_MARKER),
-      readHarnessVersion(),
-    ),
+    version: readHarnessVersion(),
     source: { ...GITHUB_SOURCE },
     displayName: PLUGIN_DISPLAY_NAME,
     icon: PLUGIN_ICON_URL,

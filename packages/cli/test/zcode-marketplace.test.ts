@@ -1,57 +1,28 @@
 /**
- * zcode adapter — bootstrap marketplace entry version resolution.
+ * zcode adapter — bootstrap marketplace entry seeding.
  *
- * The bootstrap `marketplace.json` seed must carry the plugin `version`
- * (from the local harness checkout's `.zcode-plugin/plugin.json`), so ZCode
- * can compare it against the versioned repo manifest after a marketplace
- * refresh. Falls back to the CLI package version when the marker is
- * unreadable.
+ * The bootstrap `marketplace.json` seed carries the CLI release version —
+ * the exact value doctor's `validateMarketplaceJson` compares against — so a
+ * current-CLI install always passes doctor. ZCode's marketplace refresh
+ * overwrites the seed with the repo-shipped manifest, which pins the same
+ * release version.
  */
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { resolveMarketplaceEntryVersion } from "../src/adapters/zcode";
+import { marketplacePluginEntry } from "../src/adapters/zcode";
+import { readHarnessVersion } from "../src/utils";
 
-function withTempMarker(content: string | null, fn: (markerPath: string) => void): void {
-  const dir = mkdtempSync(join(tmpdir(), "mstar-zcode-marker-"));
-  try {
-    const markerPath = join(dir, ".zcode-plugin", "plugin.json");
-    if (content !== null) {
-      mkdirSync(join(dir, ".zcode-plugin"), { recursive: true });
-      writeFileSync(markerPath, content);
-    }
-    fn(markerPath);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
-
-describe("resolveMarketplaceEntryVersion (zcode bootstrap entry)", () => {
-  test("reads the version from the local checkout's .zcode-plugin/plugin.json", () => {
-    withTempMarker(JSON.stringify({ name: "morning-star-harness", version: "3.7.0" }), (markerPath) => {
-      expect(resolveMarketplaceEntryVersion(markerPath, "0.0.0-fallback")).toBe("3.7.0");
-    });
+describe("marketplacePluginEntry (zcode bootstrap snapshot)", () => {
+  test("seeds version from the CLI release version (the value doctor validates against)", () => {
+    expect(marketplacePluginEntry().version).toBe(readHarnessVersion());
   });
 
-  test("falls back to the CLI package version when the marker is missing", () => {
-    withTempMarker(null, (markerPath) => {
-      expect(resolveMarketplaceEntryVersion(markerPath, "1.2.3")).toBe("1.2.3");
-    });
-  });
-
-  test("falls back when the marker is unparseable or versionless", () => {
-    withTempMarker("not json {", (markerPath) => {
-      expect(resolveMarketplaceEntryVersion(markerPath, "1.2.3")).toBe("1.2.3");
-    });
-    withTempMarker(JSON.stringify({ name: "morning-star-harness" }), (markerPath) => {
-      expect(resolveMarketplaceEntryVersion(markerPath, "1.2.3")).toBe("1.2.3");
-    });
-    withTempMarker(JSON.stringify({ version: 42 }), (markerPath) => {
-      expect(resolveMarketplaceEntryVersion(markerPath, "1.2.3")).toBe("1.2.3");
-    });
-    withTempMarker(JSON.stringify({ version: "" }), (markerPath) => {
-      expect(resolveMarketplaceEntryVersion(markerPath, "1.2.3")).toBe("1.2.3");
-    });
+  test("entry shape stays in sync with the repo-shipped marketplace manifests", () => {
+    const entry = marketplacePluginEntry();
+    expect(entry.name).toBe("morning-star-harness");
+    expect(entry.source).toEqual({ source: "github", repo: "btspoony/mstar-harness", ref: "main" });
+    expect(entry.displayName).toBe("Morning Star Harness");
+    expect(entry.category).toBe("Productivity");
+    expect(entry.description).toContain("Multi-agent code harness");
+    expect(entry.icon).toContain("assets/icon.png");
   });
 });
