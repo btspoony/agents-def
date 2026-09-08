@@ -122,6 +122,13 @@ npx @mstar-harness/cli doctor --target zcode --scope project
 
 The repo itself ships the marketplace catalog ZCode looks for when refreshing a `github` source: `.claude-plugin/marketplace.json` (probed first), with root `marketplace.json` as fallback. The CLI-written local snapshot is a bootstrap so **Discover** works before the first refresh; after a successful refresh ZCode replaces it with the repo manifest.
 
+The marketplace entry carries `icon` + `displayName`, so the plugin card shows the Morning Star icon after a marketplace refresh or reinstall.
+
+**ZCode hooks (bundled):** the plugin ships `hooks/hooks.json` with two always-on gates:
+
+- **SessionStart** — in a harness-managed workspace (`.mstar/` discovered per `mstar-conventions`), injects a one-line context: harness dir, `status.json` summary, and the `mstar-harness-core` load pointer. Silent no-op outside harness workspaces.
+- **PreToolUse (Bash)** — deterministic backstop for `mstar-branch-worktree`: blocks `git commit` on the default protected branch (override per command with `MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1`, or per SessionStart note) and bare `git push --force` (use `--force-with-lease=<branch>:<oid>`). Disable everything with `MSTAR_BRANCH_GUARD=off`.
+
 ### Kimi
 
 Install the plugin in Kimi TUI (user-scoped — all projects):
@@ -303,6 +310,8 @@ To register it by hand (without the CLI) instead, create `~/.zcode/cli/plugins/m
     {
       "name": "morning-star-harness",
       "source": { "source": "github", "repo": "btspoony/mstar-harness", "ref": "main" },
+      "displayName": "Morning Star Harness",
+      "icon": "https://raw.githubusercontent.com/btspoony/mstar-harness/main/assets/icon.png",
       "description": "Multi-agent code harness framework with unified skills for OpenCode, Cursor, Codex, Kimi Code, and ZCode.",
       "category": "Productivity"
     }
@@ -332,6 +341,7 @@ ZCode plugin source in this repository:
 - Runtime skills: `skills/`
 - Plugin commands: `commands/`
 - Plugin agents: `agents/`
+- Plugin hooks: `hooks/` (`hooks.json` + `session-context.mjs` + `git-guard.mjs`; see [ZCode](#zcode) install section)
 - Host adapter: **`mstar-host`** → `references/zcode.md`
 
 

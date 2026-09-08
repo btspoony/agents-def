@@ -22,6 +22,10 @@ const MARKETPLACE_DESCRIPTION = "Morning Star harness marketplace (GitHub source
 const PLUGIN_DESCRIPTION =
   "Multi-agent code harness framework with unified skills for OpenCode, Cursor, Codex, Kimi Code, and ZCode.";
 const PLUGIN_CATEGORY = "Productivity";
+// Keep in sync with the repo-shipped marketplace manifests (`.claude-plugin/marketplace.json`,
+// root `marketplace.json`) — ZCode replaces the bootstrap snapshot with the repo manifest on refresh.
+const PLUGIN_DISPLAY_NAME = "Morning Star Harness";
+const PLUGIN_ICON_URL = "https://raw.githubusercontent.com/btspoony/mstar-harness/main/assets/icon.png";
 const GITHUB_REPO = "btspoony/mstar-harness";
 const GITHUB_REF = "main";
 const ZCODE_PLUGIN_MARKER = ".zcode-plugin/plugin.json";
@@ -38,6 +42,8 @@ type GithubSource = { source: "github"; repo: string; ref?: string };
 type MarketplacePluginEntry = {
   name: string;
   source: GithubSource;
+  displayName: string;
+  icon: string;
   description: string;
   category: string;
 };
@@ -62,6 +68,8 @@ function marketplacePluginEntry(): MarketplacePluginEntry {
   return {
     name: PLUGIN_NAME,
     source: { ...GITHUB_SOURCE },
+    displayName: PLUGIN_DISPLAY_NAME,
+    icon: PLUGIN_ICON_URL,
     description: PLUGIN_DESCRIPTION,
     category: PLUGIN_CATEGORY,
   };
