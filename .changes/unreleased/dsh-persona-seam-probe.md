@@ -1,0 +1,8 @@
+---
+packages: dsh
+---
+
+- **Persona seam probe with fail-loud warn.** The native persona channel's cordis `internal/get` seam is probed once per apply (temporary canary listener + one controlled proxied `ctx.subagents` read, never `ctx.get`; fully try/catch-wrapped): a missing or unrecognized seam logs ONE warn (`role persona channel not installed — cordis 'internal/get' seam missing or unrecognized (rolePersonas will not be merged into subagent starts)` + reason) instead of failing silently; a healthy boot stays silent (an unresolved `subagents` service is a sanctioned no-warn `service-absent` debug — a later-mounted service is still wrapped per read; probe-internal errors degrade fail-open); merge/delegation semantics unchanged. A dedicated probe family (`tests/persona-seam-probe.spec.ts`, 10 cases) pins the seam name (via the exported `PERSONA_SEAM_EVENT` constant), the outcome table, and the warn text verbatim; the installed-artifact assertion arms once the release carrying the probe publishes (surface-vintage guard in `tests/install-e2e.spec.ts`).
+
+<!-- CN -->
+- **persona seam 探针 + fail-loud 告警。** 原生 persona 通道每次 apply 对 cordis `internal/get` seam 探测一次（临时 canary 监听器 + 一次受控代理式 `ctx.subagents` 读取，绝不 `ctx.get`；整体 try/catch 包裹）：seam 缺失或未被识别时记录恰一条 warn（`role persona channel not installed — cordis 'internal/get' seam missing or unrecognized (rolePersonas will not be merged into subagent starts)` + reason）而非静默失败；健康 boot 保持静默（未解析的 `subagents` 服务是无 warn 的 `service-absent` debug——后挂载的服务仍会在读取时被包装；探针内部错误按 fail-open 降级）；合并/委派语义不变。专用探针家族（`tests/persona-seam-probe.spec.ts`，10 例）钉死 seam 名（经导出的 `PERSONA_SEAM_EVENT` 常量）、判定表与 warn 文本；安装产物断言在携带探针的版本发布后自动启用（`tests/install-e2e.spec.ts` 的 surface-vintage guard）。
