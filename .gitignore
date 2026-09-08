@@ -9,6 +9,7 @@ secrets.env
 
 # ZCode client workspace state
 .zcode/
+.mimosa/
 
 # npm pack output (release sanity check)
 *.tgz
