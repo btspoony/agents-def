@@ -206,10 +206,15 @@ for (const file of collectMarkdown("skills")) {
       failures.push(`${rel}:${i + 1} engine reference in a blockquote that is not an "Engine check" callout`);
       continue;
     }
-    // The only allowed prose mention of the CLI package is its documented
-    // install command (`npx @mstar-harness/cli init ...`) — an opt-in install
-    // path, not a skill load-order dependency.
-    if (line.includes("@mstar-harness/cli") && line.includes("npx @mstar-harness/cli")) continue;
+    // The only allowed prose mentions of the CLI package are its documented
+    // user-action commands — install (`npx @mstar-harness/cli init ...`) and
+    // global update (`npm i -g @mstar-harness/cli@...`) — each an opt-in
+    // user-action path, not a skill load-order dependency.
+    if (
+      line.includes("@mstar-harness/cli") &&
+      (line.includes("npx @mstar-harness/cli") || line.includes("npm i -g @mstar-harness/cli"))
+    )
+      continue;
     failures.push(`${rel}:${i + 1} engine reference in prose/load order — engine must be absent from skill load instructions`);
   }
 }
