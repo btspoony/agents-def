@@ -6,6 +6,25 @@ The monorepo root [CHANGELOG.md](../../CHANGELOG.md) summarizes cross-surface re
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-09-08
+
+### Changed
+
+- Hardened CLI path handling after a deep static-security scan: relative `--output` values containing `..` segments are now rejected instead of escaping the project root; agent-plugin install validation requires the plugin root to be a real directory and builds manifest/MCP/skill component paths by literal joins; lint target collection and tracked-file listing build child paths from guarded readdir entry names; owned PR-review artifact paths are constructed as single-segment names beside the worktree.
+- skill-eval is now fully automated / test-driven: the argv CLI dispatchers (`scripts/skill-eval/index.ts`, the `manifest.ts` stage entry) were removed and the harness is invoked programmatically through its exported stage functions (`prepareManifest`, `executeManifest`, report builders); process spawn stays isolated in the `node-launch.ts` adapter with `manifest.cli.path` validated (absolute local path, no URL scheme or control characters) and realpath-normalized before launch; `canonicalJson` key ordering no longer relies on array `sort()` and is pinned by byte-stability equivalence tests.
+- SDD handoffs now carry an absolute destination contract: fresh/resume/reviewer prompts cite the absolute control harness root, feature worktree/cwd, plan, brief/report and context file; native hosted subagents observe pwd/branch before writing, and the handoff states explicitly that a later deliberate `chdir`, absolute-path write, or host-native edit tool (`apply_patch`) is not blocked.
+- New bound SDD execution surface (spec A3): `mstar sdd exec --context <context.json> -- <argv>` launches CLI children with cwd bound to the feature worktree (no shell, exit 1 gate / 2 usage / 127 not-found / 128+n signals); `mstar sdd check-context` gates `source|artifact|launch` seams; `task-brief`/`review-package` accept `--context` to validate destinations before mkdir/write and emit absolute paths. A causal replay suite reruns the historical relative-source write raw (wrong-primary reproduced) vs bound (feature-only) on disposable fixtures.
+- Engine exports: `resolveSddExecutionContext`, `checkSddAction`, `runInSddContext` — bounded action checks reusing the existing lease/branch/path machinery; no new global hardening and no sandbox claim.
+- **One skill-lint classification policy across hosts**: CLI `mstar skill lint`, dsh skill-lint gate and drift Guard 5 now consume the shared Engine classifier `classifySkillLint` (exact `mstar-harness-core` → five-question exempt, `mstar-skill-authoring` → strict authoring, other `mstar-*` → runtime aliases, everything else → strict authoring). Identity is the resolved skill-directory basename — never the YAML `name` — so shipped runtime skills no longer receive conflicting dsh/CLI judgments; frontmatter and ephemeral-citation checks stay active in every profile and dsh content-blind repair behavior is unchanged.
+- **Real-corpus parity + drift sensitivity evidence**: before/after lint decisions recorded on the shipped corpus (pre-fix dsh failed 15/20 `mstar-*` skills in authoring mode; candidate dsh, CLI and Guard 5 all pass the 18 runtime skills with 0 violations), plus red probes proving an intentionally mismatched classification or a removed real heading fails the corpus guard.
+- ZCode plugin cards now show the Morning Star **icon and display name**: the repo-shipped marketplace manifests (`.claude-plugin/marketplace.json`, root `marketplace.json`) and the CLI `zcode` bootstrap snapshot carry `icon` + `displayName` for the `morning-star-harness` entry.
+- Bundled **ZCode plugin hooks** (`hooks/hooks.json`): **SessionStart** injects a compact harness-workspace context ({HARNESS_DIR} + `status.json` summary + `mstar-harness-core` load pointer; silent no-op outside harness workspaces), and **PreToolUse (Bash)** adds a deterministic git gate backing `mstar-branch-worktree` — blocks direct commits on the default protected branch (`MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1` escape) and bare `git push --force` (`--force-with-lease` required; `MSTAR_BRANCH_GUARD=off` disables the hook).
+- Documented the icon + hooks behavior in `INSTALL.md` (ZCode sections) and `mstar-host` → `references/zcode.md`.
+
+- Version alignment with harness **3.7.0**.
+
+See root [CHANGELOG.md](../../CHANGELOG.md) **3.7.0**.
+
 ## [3.6.3] - 2026-09-06
 
 ### Changed
