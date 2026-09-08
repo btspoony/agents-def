@@ -172,13 +172,13 @@ function validateMarketplaceJson() {
   if (source.repo !== expected.source.repo) {
     errors.push(`ZCode marketplace plugin source.repo must be ${expected.source.repo}.`);
   }
-  const expectedVersion = readHarnessVersion();
-  // After a successful marketplace refresh, ZCode overwrites this snapshot with the
-  // repo-shipped manifest (`.claude-plugin/marketplace.json`), which pins the release
-  // version at the plugin entry; snapshots seeded by older CLIs may still be versionless.
-  if (entry.version !== undefined && entry.version !== expectedVersion) {
-    errors.push(`ZCode marketplace plugin version must be ${expectedVersion}.`);
-  }
+  // Version skew is deliberately NOT gated here: after a marketplace refresh
+  // the snapshot carries the repo-shipped release version, which may be newer
+  // or older than this CLI's own version. That skew is the update signal the
+  // pinned version exists to expose, not an unhealthy marketplace (gating it
+  // would flag the normal pre-update state and nudge a re-init that could
+  // regress a newer refreshed snapshot). Directional CLI↔plugin update
+  // prompting is tracked separately.
   return errors;
 }
 

@@ -1,18 +1,18 @@
 /**
  * zcode adapter — bootstrap marketplace entry seeding.
  *
- * The bootstrap `marketplace.json` seed carries the CLI release version —
- * the exact value doctor's `validateMarketplaceJson` compares against — so a
- * current-CLI install always passes doctor. ZCode's marketplace refresh
- * overwrites the seed with the repo-shipped manifest, which pins the same
- * release version.
+ * The bootstrap `marketplace.json` seed carries the CLI release version so a
+ * current-CLI install seeds a coherent snapshot. ZCode's marketplace refresh
+ * overwrites the seed with the repo-shipped manifest, after which the snapshot
+ * version may be newer or older than this CLI — that skew is the update
+ * signal, which is why doctor deliberately does not gate on it.
  */
 import { describe, expect, test } from "bun:test";
 import { marketplacePluginEntry } from "../src/adapters/zcode";
 import { readHarnessVersion } from "../src/utils";
 
 describe("marketplacePluginEntry (zcode bootstrap snapshot)", () => {
-  test("seeds version from the CLI release version (the value doctor validates against)", () => {
+  test("seeds version from the CLI release version", () => {
     expect(marketplacePluginEntry().version).toBe(readHarnessVersion());
   });
 
