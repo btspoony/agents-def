@@ -84,13 +84,15 @@ export function parseOmpPluginList(raw: string): Array<Record<string, unknown>> 
  * installed-state check uses (single JSON surface, no duplicate parsing).
  * `timeoutMs` bounds the subprocess (default `OMP_LIST_TIMEOUT_MS`) — a
  * timeout throw lands in the same catch as any other probe failure and
- * degrades to an empty listing (never blocks doctor). */
+ * degrades to an empty listing (never blocks doctor). The stdlib option name
+ * is `timeout` (ms): `exec.ts` maps its own `timeoutMs` spelling onto it, and
+ * raw `execFileSync` silently ignores an unknown `timeoutMs` key. */
 export function listInstalledPlugins(timeoutMs: number = OMP_LIST_TIMEOUT_MS): Array<Record<string, unknown>> {
   try {
     const raw = execFileSync("omp", ["plugin", "list", "--json"], {
       stdio: "pipe",
       encoding: "utf8",
-      timeoutMs,
+      timeout: timeoutMs,
     });
     return parseOmpPluginList(raw);
   } catch {
