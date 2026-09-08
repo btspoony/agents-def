@@ -104,7 +104,17 @@ export interface Config {
    * section on the child, persists it in the child descriptor, and reapplies
    * it on resume. Lookup is DIRECT — never gated on `roleMap` or on the
    * fallbacks mounted state (persona delivery is fallbacks-independent).
-   * Absent → no merge.
+   *
+   * MERGE ORDER (doc-only statement of the decision chain in
+   * `role-persona.ts` / `agent-personas.ts` — no behavior change): the
+   * request's own `persona` wins AS-IS — a start that already carries one
+   * is returned untouched, with no role merge at all (caller intent is
+   * never overridden). Otherwise the per-role lookup is config over mirror:
+   * a non-empty `rolePersonas[roleId]` beats the bundled `harness-agents/`
+   * mirror default; an EMPTY-STRING value is treated as unset and falls
+   * through to the mirror default (parity with the pre-channel decoration's
+   * config check); an absent entry uses the mirror default; a lookup miss
+   * (no config value and no mirror default) → no merge.
    *
    * INTERPOLATION CONSTRAINT: dsh renders persona text with STRICT
    * `{{variable}}` interpolation (the native persona has the same template
