@@ -498,29 +498,58 @@ export function apply(ctx: Context, config: Config): void {
   // child (`ctx.inject(['llm-fallbacks'])`) fires when the service appears
   // and RE-FIRES on every re-apply (HMR / fiber swap): no one-shot latch.
   // Unmounted at apply → the child stays inactive and fires on a later
-  // fallbacks apply; one debug log documents the armed state. Fire-and-
-  // forget with a terminal `.catch` (the upstream preset self-declare
-  // pattern) — declare never throws out of apply.
+  // fallbacks apply; one debug log documents the armed state. The declare
+  // is fire-and-forget with a BOUNDED retry: the provider swaps its seed
+  // write channel in one macrotask after its apply, so the immediate
+  // declare can lose that settings-binding race and reject with the
+  // upstream "settings service is unavailable" string. Attempt 1 fires
+  // immediately; a rejected attempt schedules the next one at +50 ms /
+  // +250 ms (3 attempts total, fixed delays, no jitter); a resolved attempt
+  // stops the loop. The timers are plain `setTimeout` handles owned by this
+  // child closure (`fallbacks-seeds.ts` stays timer-free) and cleared by
+  // the teardown disposer below; a stale attempt firing after teardown is
+  // a silent no-op. Intermediate failures log one debug each; when every
+  // attempt failed, the terminal `.catch` (the upstream preset self-declare
+  // pattern) logs ONE error — declare never throws out of apply.
   if (!fallbacksMounted(ctx)) {
     ctx.logger(SEEDS_LOGGER).debug('fallbacks not mounted at apply — mstar seeds inject child armed; declare fires when the llm-fallbacks service appears (apply/HMR)')
   }
   ctx.inject(['llm-fallbacks'], (serviceCtx) => {
     const service = fallbacksService(serviceCtx)
     if (service === undefined) return
-    declareMstarSeeds(service, {
-      agentsDir: packagedAgentsDir(),
-      log: (level, message) => {
-        const logger = ctx.logger(SEEDS_LOGGER)
-        if (level === 'warn') logger.warn(message)
-        else if (level === 'error') logger.error(message)
-        else logger.debug(message)
-      },
-    }).catch((error) => {
-      // Non-Error rejections (string/plain object — plausible from a
-      // settings seam) must not log `undefined`; align with the upstream
-      // preset child's `error?.message ?? String(error)`.
-      ctx.logger(SEEDS_LOGGER).error(`mstar seeds declaration failed (contained — fallbacks taxonomy unchanged): ${error instanceof Error ? error.message : String(error)}`)
-    })
+    // Bounded retry state — owned by THIS child closure (module purity:
+    // `fallbacks-seeds.ts` never sees a timer). The teardown disposer below
+    // sets `disposed` and clears every pending handle; a late-firing
+    // attempt after that is a silent no-op (never a post-dispose declare
+    // or log).
+    let disposed = false
+    const retryTimers: ReturnType<typeof setTimeout>[] = []
+    const declareAttempt = (attempt: number): void => {
+      declareMstarSeeds(service, {
+        agentsDir: packagedAgentsDir(),
+        log: (level, message) => {
+          const logger = ctx.logger(SEEDS_LOGGER)
+          if (level === 'warn') logger.warn(message)
+          else if (level === 'error') logger.error(message)
+          else logger.debug(message)
+        },
+      }).catch((error) => {
+        if (disposed) return
+        // Non-Error rejections (string/plain object — plausible from a
+        // settings seam) must not log `undefined`; align with the upstream
+        // preset child's `error?.message ?? String(error)`.
+        const message = error instanceof Error ? error.message : String(error)
+        if (attempt >= 3) {
+          ctx.logger(SEEDS_LOGGER).error(`mstar seeds declaration failed (contained — fallbacks taxonomy unchanged): ${message}`)
+          return
+        }
+        ctx.logger(SEEDS_LOGGER).debug(`seeds declare attempt ${attempt}/3 failed: ${message}`)
+        retryTimers.push(setTimeout(() => {
+          if (!disposed) declareAttempt(attempt + 1)
+        }, attempt === 1 ? 50 : 250))
+      })
+    }
+    declareAttempt(1)
     // HMR/fiber-swap re-arm : when
     // the fallbacks service disappears, reset the advisory one-shot latch so
     // the NEXT decision point re-converges the seeds state. The seed registry
@@ -530,6 +559,8 @@ export function apply(ctx: Context, config: Config): void {
     // invalidates any pass still in flight from BEFORE the swap — its stale
     // completion must not re-arm the latch (see `runAdvisoryPass`).
     return () => {
+      disposed = true
+      for (const timer of retryTimers) clearTimeout(timer)
       advisoryPassed = false
       advisoryGeneration += 1
     }

@@ -76,6 +76,39 @@ class ThrowingReadbackService extends FakeSeedsService {
   }
 }
 
+/**
+ * Wiring fake of the upstream provider payload (the synchronous
+ * `ctx.provide('llm-fallbacks', …)` shape: name + version + the seed
+ * surface): the FIRST `declareSeeds` rejects with a caller-supplied message
+ * (the live apply-window rejection), later calls resolve and the successful
+ * batch becomes the readback (the real registry's replacement semantics —
+ * `getEffectiveRoles` mirrors the last successful declare).
+ */
+class FlakyFirstDeclareService implements SeedsServiceView {
+  readonly name = 'llm-fallbacks'
+  readonly version = 'test'
+  declareCalls: SeedDeclaration[][] = []
+  private declaredBatch: readonly SeedDeclaration[] | undefined
+  constructor(private readonly firstFailure: string) {}
+  getEffectiveRoles(): EffectiveRolesReadback {
+    return {
+      roles: (this.declaredBatch ?? []).map((d) => ({
+        id: d.id,
+        persona: d.persona,
+        seeded: true,
+        personaOverridden: false,
+        seedPersona: d.persona,
+      })),
+    }
+  }
+  async declareSeeds(seeds: readonly SeedDeclaration[]): Promise<SeedDeclareOutcome> {
+    this.declareCalls.push([...seeds])
+    if (this.declareCalls.length === 1) throw new Error(this.firstFailure)
+    this.declaredBatch = [...seeds]
+    return { applied: seeds.map((d) => d.id), skipped: [], conflicts: [] }
+  }
+}
+
 /** One fixture shell markdown: constrained repo-owned frontmatter + a stub body. */
 function shell(frontmatter: string[]): string {
   return ['---', ...frontmatter, '---', '', '## Morning Star Role Binding', '', 'You are the role shell.'].join('\n')
@@ -328,5 +361,38 @@ describe('entry wiring — ctx.inject([\'llm-fallbacks\']) conditional child re-
     await promise
     expect(fallbacksService(app.ctx)).toBeDefined()
     await fiber.dispose()
+  })
+
+  test.skipIf(!existsSync(REAL_MIRROR))('(l) bounded retry: a rejecting first declare converges on attempt 2 (exactly two calls; readback reflects the second batch)', async () => {
+    // The live apply-window rejection, verbatim (the upstream
+    // write-channel race the boot-order regression pins end to end).
+    const flaky = new FlakyFirstDeclareService('llm-fallbacks: seeds: settings service is unavailable — seed roles cannot be written')
+    // Synchronous provider stub — the same provide shape as the real
+    // fallbacks plugin (service object applied in the plugin's apply).
+    const stub = {
+      name: 'fake-fallbacks-provider',
+      apply(ctx: Context) {
+        ctx.provide('llm-fallbacks', flaky)
+      },
+    }
+    booted = await bootApp({ fallbacksModule: stub, settingsService: 'fake' })
+    const service = fallbacksService(booted.ctx)
+    expect(service, 'the stub-provided llm-fallbacks service is applied').toBeDefined()
+    // Attempt 1 rejects; the bounded retry lands at +50 ms and resolves.
+    await waitFor(() => flaky.declareCalls.length === 2)
+    expect(flaky.declareCalls, 'exactly two declare attempts (a resolved attempt stops the loop)').toHaveLength(2)
+    const expectedIds = subagentRoleIds(REAL_MIRROR)
+    // Both attempts declared the mirror-derived mstar batch.
+    expect(flaky.declareCalls[0]!.map((d) => d.id).sort()).toEqual([...expectedIds].sort())
+    expect(flaky.declareCalls[1]!.map((d) => d.id).sort()).toEqual([...expectedIds].sort())
+    // The readback reflects the SECOND (successful) call's batch.
+    const readback = service!.getEffectiveRoles()
+    expect(readback.roles.map((r) => r.id).sort()).toEqual([...expectedIds].sort())
+    expect(readback.roles.every((r) => r.seeded)).toBe(true)
+    // Settle past any further scheduling — no third attempt ever fires.
+    const { promise, resolve } = Promise.withResolvers<void>()
+    setTimeout(resolve, 120)
+    await promise
+    expect(flaky.declareCalls, 'no attempt after the resolved retry').toHaveLength(2)
   })
 })
