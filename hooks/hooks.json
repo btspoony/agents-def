@@ -26,6 +26,18 @@
             "statusMessage": "Morning Star: git branch gate…"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "process",
+            "command": "node",
+            "args": ["${ZCODE_PLUGIN_ROOT}/hooks/mstar-write-gate.mjs"],
+            "timeoutMs": 10000,
+            "statusMessage": "Morning Star: coordination-write gate…"
+          }
+        ]
       }
     ]
   }

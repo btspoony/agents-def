@@ -1,7 +1,8 @@
 /**
  * ASCII literal lint — `bun run lint:ascii-literals`.
  *
- * Scans `packages/engine/src` + `packages/cli/src` TypeScript for non-ASCII
+ * Scans `packages/engine/src` + `packages/cli/src` + `hooks/src` TypeScript
+ * for non-ASCII
  * characters in CODE (comments are stripped first). The check exists because
  * bun 1.2.17 misdecodes raw multi-byte UTF-8 in regex/string literals when
  * executing the 366KB `// @bun` CLI bundle (iteration spec §7): node on the
@@ -23,7 +24,7 @@ import { join, resolve } from "node:path";
 import { commentMask } from "./ascii-literal-utils.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
-const SCAN_DIRS = ["packages/engine/src", "packages/cli/src"];
+const SCAN_DIRS = ["packages/engine/src", "packages/cli/src", "hooks/src"];
 
 function collectTsFiles(dir: string, out: string[]): void {
   for (const entry of readdirSync(dir)) {
