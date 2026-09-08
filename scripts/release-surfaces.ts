@@ -35,6 +35,125 @@ export function readVersionAt(json: unknown, versionPath: string): string | unde
   return typeof node === "string" && node !== "" ? node : undefined;
 }
 
+// --- raw-text locator (bump side of readVersionAt) -------------------------
+// These helpers walk raw JSON text that callers have already JSON.parse-
+// validated, so structural malformation is impossible by contract; only the
+// locator resolution itself can fail (returning -1 / undefined).
+
+function skipWs(text: string, i: number): number {
+  while (i < text.length && /\s/.test(text[i])) i++;
+  return i;
+}
+
+/** Index just past the JSON string literal opening at `i` (`"` required); -1 when unterminated. */
+function skipString(text: string, i: number): number {
+  i++;
+  while (i < text.length) {
+    const c = text[i];
+    if (c === "\\") {
+      i += 2;
+      continue;
+    }
+    if (c === '"') return i + 1;
+    i++;
+  }
+  return -1;
+}
+
+/** Index just past the complete JSON value opening at `i`; -1 when malformed. */
+function skipValue(text: string, i: number): number {
+  const c = text[i];
+  if (c === '"') return skipString(text, i);
+  if (c !== "{" && c !== "[") {
+    const m = /^[^,}\]\s]+/.exec(text.slice(i));
+    return m ? i + m[0].length : -1;
+  }
+  let depth = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === '"') {
+      const end = skipString(text, i);
+      if (end === -1) return -1;
+      i = end;
+      continue;
+    }
+    if (ch === "{" || ch === "[") depth++;
+    else if (ch === "}" || ch === "]") {
+      depth--;
+      i++;
+      if (depth === 0) return i;
+      continue;
+    }
+    i++;
+  }
+  return -1;
+}
+
+/**
+ * Locate the exact string-literal span (`[start, end)`, quotes included) of
+ * `versionPath` in raw JSON text — the bump-side counterpart of
+ * `readVersionAt`. Structural walk (string- and escape-aware), so a
+ * coincidental `"version": "<oldV>"` inside a string value or under an
+ * earlier key can never match. Returns `undefined` when any segment is
+ * missing, out of range, or the leaf is not a JSON string; callers fail loud.
+ */
+export function locateVersionSpan(text: string, versionPath: string): [number, number] | undefined {
+  let i = skipWs(text, 0);
+  const segs = versionPath.split(".");
+  for (let s = 0; s < segs.length; s++) {
+    const last = s === segs.length - 1;
+    if (/^\d+$/.test(segs[s])) {
+      // array index segment
+      if (text[i] !== "[") return undefined;
+      i = skipWs(text, i + 1);
+      const want = parseInt(segs[s], 10);
+      for (let k = 0; k < want; k++) {
+        if (text[i] === "]") return undefined; // fewer elements than the index
+        const after = skipValue(text, i);
+        if (after === -1) return undefined;
+        i = skipWs(text, after);
+        if (text[i] !== ",") return undefined;
+        i = skipWs(text, i + 1);
+      }
+      if (text[i] === "]") return undefined; // index out of range
+    } else {
+      // object key segment
+      if (text[i] !== "{") return undefined;
+      i = skipWs(text, i + 1);
+      for (;;) {
+        if (text[i] === "}") return undefined; // key absent
+        if (text[i] !== '"') return undefined;
+        const keyEnd = skipString(text, i);
+        if (keyEnd === -1) return undefined;
+        let key: unknown;
+        try {
+          key = JSON.parse(text.slice(i, keyEnd));
+        } catch {
+          return undefined;
+        }
+        i = skipWs(text, keyEnd);
+        if (text[i] !== ":") return undefined;
+        i = skipWs(text, i + 1);
+        if (key === segs[s]) break;
+        const after = skipValue(text, i);
+        if (after === -1) return undefined;
+        i = skipWs(text, after);
+        if (text[i] !== ",") return undefined;
+        i = skipWs(text, i + 1);
+      }
+    }
+    if (last) {
+      if (text[i] !== '"') return undefined; // leaf must be a JSON string
+      const end = skipString(text, i);
+      if (end === -1) return undefined;
+      return [i, end];
+    }
+    // more segments remain: the value must be a container to descend into
+    if (text[i] !== "{" && text[i] !== "[") return undefined;
+  }
+  return undefined;
+}
+
 /** Every manifest/package.json that must carry the harness release version. */
 export const VERSION_SURFACES: readonly VersionSurface[] = [
   { label: "monorepo root", path: "package.json" },

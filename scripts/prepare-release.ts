@@ -37,6 +37,7 @@ import {
   VERSION_SURFACES,
   compareSemver,
   isPrereleaseVersion,
+  locateVersionSpan,
   readVersionAt,
 } from "./release-surfaces.ts";
 
@@ -240,10 +241,12 @@ function insertSection(changelog: string, version: string, date: string, body: s
 
 /**
  * Bump one surface's version, honoring its locator path. The parsed-value
- * guard confirms the version lives at the declared `versionPath` before the
- * text replace, so a restructured document fails loud instead of rewriting
- * an unrelated `"version"` key; `release:validate` re-reads the same locator,
- * closing the bump/read loop. Exported for tests.
+ * check confirms the version lives at the declared `versionPath`; the
+ * replacement is then spliced at the exact located span in the raw text
+ * (`locateVersionSpan` — structural walk), so a coincidental earlier
+ * version-looking string can never be rewritten. Unresolvable locators and
+ * value drift fail loud naming the path; `release:validate` re-reads the
+ * same locator, closing the bump/read loop. Exported for tests.
  */
 export async function bumpJsonVersion(
   path: string,
@@ -256,9 +259,9 @@ export async function bumpJsonVersion(
   if (located !== oldV) {
     throw new Error(`${path}: version at "${versionPath}" is ${located ?? "<missing>"}, expected "${oldV}"`);
   }
-  const re = new RegExp(`("version"\\s*:\\s*")${oldV.replace(/\./g, "\\.")}(")`);
-  if (!re.test(text)) throw new Error(`${path}: could not find version field "${oldV}"`);
-  await Bun.write(path, text.replace(re, `$1${newV}$2`));
+  const span = locateVersionSpan(text, versionPath);
+  if (!span) throw new Error(`${path}: could not locate "${versionPath}" in file text`);
+  await Bun.write(path, text.slice(0, span[0]) + JSON.stringify(newV) + text.slice(span[1]));
 }
 
 /**

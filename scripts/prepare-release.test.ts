@@ -183,7 +183,11 @@ describe("bumpJsonVersion (locator-aware bump)", () => {
     2,
   );
 
-  /** Run `fn` with cwd set to a fresh temp dir containing `files`. */
+  /**
+   * Invariant: `process.cwd()` is captured before `chdir` and restored, and
+   * the temp dir removed, in `finally` — even when `fn` throws (asserted by
+   * the dedicated restoration test below).
+   */
   async function withTempCwd(files: Record<string, string>, fn: () => Promise<void>): Promise<void> {
     const dir = mkdtempSync(join(tmpdir(), "mstar-release-"));
     const prevCwd = process.cwd();
@@ -223,11 +227,38 @@ describe("bumpJsonVersion (locator-aware bump)", () => {
     });
   });
 
+  test("replaces only the located occurrence when an earlier key carries the same version string", async () => {
+    // Models the QC F-002 scenario: a root-level version key textually before
+    // plugins[0].version with the same old value — the located span, not the
+    // first textual occurrence, must be rewritten.
+    const fixture = `{
+  "version": "3.7.0",
+  "plugins": [{ "name": "morning-star-harness", "version": "3.7.0", "source": { "source": "github" } }]
+}
+`;
+    await withTempCwd({ "marketplace.json": fixture }, async () => {
+      await bumpJsonVersion("marketplace.json", "3.7.0", "3.7.1", "plugins.0.version");
+      const json = JSON.parse(readFileSync("marketplace.json", "utf8"));
+      expect(json.version).toBe("3.7.0"); // earlier textual occurrence untouched
+      expect(readVersionAt(json, "plugins.0.version")).toBe("3.7.1"); // only the located key moved
+    });
+  });
+
   test("prerelease version flows through the nested locator unchanged", async () => {
     await withTempCwd({ "marketplace.json": MARKETPLACE_FIXTURE }, async () => {
       await bumpJsonVersion("marketplace.json", "3.7.0", "3.8.0-alpha.1", "plugins.0.version");
       const json = JSON.parse(readFileSync("marketplace.json", "utf8"));
       expect(readVersionAt(json, "plugins.0.version")).toBe("3.8.0-alpha.1");
     });
+  });
+
+  test("withTempCwd restores process.cwd() even when the callback throws", async () => {
+    const before = process.cwd();
+    await expect(
+      withTempCwd({ "x.json": "{}" }, async () => {
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+    expect(process.cwd()).toBe(before);
   });
 });
