@@ -84,6 +84,7 @@ import {
 } from './gates/plan-mode-bridge.ts'
 import {
   ADVISORY_LOGGER,
+  resetAdvisoryAbortWarn,
   runFallbacksAdvisory,
   setAdvisoryLogger,
 } from './gates/fallbacks-advisory.ts'
@@ -447,13 +448,19 @@ export function apply(ctx: Context, config: Config): void {
   // effective readback; the structural roles.list read on the loader-
   // fallback path). Never writes the fallbacks config; unreadable config →
   // skip + one debug. With the service present the pass is ASYNC — it awaits
-  // the idempotent re-declare before the readback, so the latch arms when
-  // the pass reports it ran (mounted).
+  // the idempotent re-declare before the readback; the latch arms ONLY when
+  // the pass reports it ran AND converged (`AdvisoryPassReport`) — an
+  // aborted pass (e.g. a rejected re-declare) must never suppress the
+  // `subagent/start` decision-point retry.
   setAdvisoryLogger((level, message) => {
     const logger = ctx.logger(ADVISORY_LOGGER)
     if (level === 'debug') logger.debug(message)
     else logger.warn(message)
   })
+  // Degraded-abort warn budget: at most ONE advisory abort warn per apply
+  // (module-level dedup in the advisory) — this apply opens the budget; the
+  // seeds inject child's teardown below re-opens it on a fiber swap.
+  resetAdvisoryAbortWarn()
   // One-shot latch: the pass is attempted at apply (profiles that declare
   // the fallbacks row before dsh) and — when unmounted at boot — at the
   // first `subagent/start` decision point (the loader mounts entries
@@ -480,8 +487,13 @@ export function apply(ctx: Context, config: Config): void {
     advisoryPassInFlight = true
     const generation = advisoryGeneration
     void runFallbacksAdvisory(ctx, packagedAgentsDir())
-      .then((ran) => {
-        if (ran && generation === advisoryGeneration) advisoryPassed = true
+      .then((report) => {
+        // Honest latch: arm only on a pass that RAN and CONVERGED. An
+        // aborted pass (e.g. a rejected re-declare) reports
+        // `{ ran: true, converged: false }` and must leave the latch open —
+        // the next decision point re-runs the pass (R2: the old boolean
+        // contract reported a rejected re-declare as ran → armed).
+        if (report.ran && report.converged && generation === advisoryGeneration) advisoryPassed = true
       })
       .finally(() => {
         advisoryPassInFlight = false
@@ -563,6 +575,9 @@ export function apply(ctx: Context, config: Config): void {
       for (const timer of retryTimers) clearTimeout(timer)
       advisoryPassed = false
       advisoryGeneration += 1
+      // A fiber swap re-opens the advisory's degraded-abort warn budget (the
+      // re-applied fiber is a fresh apply) alongside the latch reset above.
+      resetAdvisoryAbortWarn()
     }
   })
   registerSettleListener(ctx, config, pairing)
