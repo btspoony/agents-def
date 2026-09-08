@@ -464,7 +464,25 @@ function validateSkills(root: string, errors: string[], warnings: string[]) {
         );
         continue;
       }
-      const frontmatter = parseFrontmatter(skillMdPath);
+      // The skill dir passed containment, but SKILL.md itself may be a symlink
+      // whose target escapes the plugin root; resolve the final file and apply
+      // the same containment before reading it.
+      let realSkillMdPath: string;
+      try {
+        realSkillMdPath = realpathSync(skillMdPath);
+      } catch (error) {
+        warnings.push(
+          `skills: ${skillDir}/SKILL.md cannot be resolved (${(error as Error).message}; skill skipped)`,
+        );
+        continue;
+      }
+      if (!realSkillMdPath.startsWith(realRoot + path.sep)) {
+        warnings.push(
+          `skills: ${skillDir}/SKILL.md resolves outside the plugin root (${realSkillMdPath}; skill skipped)`,
+        );
+        continue;
+      }
+      const frontmatter = parseFrontmatter(realSkillMdPath);
       if (!frontmatter) {
         // §7.1: missing frontmatter means the skill does not conform; report and skip it.
         warnings.push(
