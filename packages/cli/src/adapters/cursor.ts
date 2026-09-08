@@ -19,11 +19,14 @@ const CURSOR_PLUGIN_MARKER = ".cursor-plugin/plugin.json";
 const CURSOR_PLUGIN_LINK = ".cursor/plugins/morning-star-harness";
 const CURSOR_AGENT_SMOKE_NAMES = ["fullstack-dev", "qc-specialist"];
 
-function globalInstallPath() {
+/** Install roots — exported for `../plugin-version-alignment` (the doctor
+ * alignment note discovers the installed plugin version at these paths;
+ * single home for the cursor install layout). */
+export function globalInstallPath() {
   return path.join(os.homedir(), ".cursor", "plugins", "local", CURSOR_PLUGIN_NAME);
 }
 
-function projectInstallPath() {
+export function projectInstallPath() {
   return path.join(resolveProjectRoot(), CURSOR_PLUGIN_LINK);
 }
 

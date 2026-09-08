@@ -1,4 +1,4 @@
-export const SUPPORTED_TARGETS = ["opencode", "cursor", "codex", "zcode", "omp", "dsh"] as const;
+export const SUPPORTED_TARGETS = ["opencode", "cursor", "codex", "zcode", "omp", "dsh", "kimi"] as const;
 export type Target = (typeof SUPPORTED_TARGETS)[number];
 export type Scope = "global" | "project";
 

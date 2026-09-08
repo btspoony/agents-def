@@ -24,9 +24,12 @@ const DSH_BIN = "dsh";
 const DSH_PROFILE = "web";
 const DSH_PROFILE_FLAG = "--profile";
 const DSH_DUMP_FLAG = "--dump-config";
-const DSH_HOME_ENV = "DSH_HOME";
-const DSH_HOME_SUBDIR = ".dsh";
-const DSH_PROFILES_DIR = "profiles";
+/** dsh home resolution: `$DSH_HOME`, else `~/.dsh`. Exported for
+ * `../plugin-version-alignment` (its dsh discovery scans the same home so
+ * the probe can never disagree with install). */
+export const DSH_HOME_ENV = "DSH_HOME";
+export const DSH_HOME_SUBDIR = ".dsh";
+export const DSH_PROFILES_DIR = "profiles";
 
 /** Subprocess timeouts (ms). The `add` call forwards to pnpm over the
  * network, so it gets a conservative ceiling: a stalled registry must

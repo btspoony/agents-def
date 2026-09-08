@@ -2,6 +2,7 @@ import type { AgentAdapter, Target } from "../types";
 import { codexAdapter } from "./codex";
 import { cursorAdapter } from "./cursor";
 import { dshAdapter } from "./dsh";
+import { kimiAdapter } from "./kimi";
 import { ompAdapter } from "./omp";
 import { opencodeAdapter } from "./opencode";
 import { zcodeAdapter } from "./zcode";
@@ -13,6 +14,7 @@ const adapters: Record<Target, AgentAdapter> = {
   zcode: zcodeAdapter,
   omp: ompAdapter,
   dsh: dshAdapter,
+  kimi: kimiAdapter,
 };
 
 export function getAdapter(target: Target) {

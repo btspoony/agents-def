@@ -38,42 +38,54 @@ function runOmp(args: string[], dryRun: boolean): void {
   runCliCommand(["omp", ...args], { dryRun });
 }
 
-function listInstalledPlugins(): Array<Record<string, unknown>> {
+/**
+ * Parse `omp plugin list --json` output into flat entry records (npm +
+ * marketplace groups flattened; pure — no subprocess). Exported so the
+ * JSON-parsing layer is testable without spawning omp.
+ */
+export function parseOmpPluginList(raw: string): Array<Record<string, unknown>> {
+  const parsed = JSON.parse(raw) as unknown;
+  if (Array.isArray(parsed)) return parsed as Array<Record<string, unknown>>;
+  if (parsed && typeof parsed === "object") {
+    const record = parsed as {
+      plugins?: unknown;
+      npm?: unknown;
+      marketplace?: unknown;
+    };
+    if (Array.isArray(record.plugins)) {
+      return record.plugins as Array<Record<string, unknown>>;
+    }
+    // omp 17.x: { npm: [...], marketplace: [...] }
+    const entries: Array<Record<string, unknown>> = [];
+    for (const key of ["npm", "marketplace"] as const) {
+      const group = record[key];
+      if (Array.isArray(group)) {
+        for (const item of group) {
+          if (item && typeof item === "object") entries.push(item as Record<string, unknown>);
+        }
+      }
+    }
+    if (entries.length > 0) return entries;
+  }
+  return [];
+}
+
+/** Exported for `../plugin-version-alignment`: the doctor alignment note
+ * reads the installed plugin version from the same listing the doctor's
+ * installed-state check uses (single JSON surface, no duplicate parsing). */
+export function listInstalledPlugins(): Array<Record<string, unknown>> {
   try {
     const raw = execFileSync("omp", ["plugin", "list", "--json"], {
       stdio: "pipe",
       encoding: "utf8",
     });
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) return parsed as Array<Record<string, unknown>>;
-    if (parsed && typeof parsed === "object") {
-      const record = parsed as {
-        plugins?: unknown;
-        npm?: unknown;
-        marketplace?: unknown;
-      };
-      if (Array.isArray(record.plugins)) {
-        return record.plugins as Array<Record<string, unknown>>;
-      }
-      // omp 17.x: { npm: [...], marketplace: [...] }
-      const entries: Array<Record<string, unknown>> = [];
-      for (const key of ["npm", "marketplace"] as const) {
-        const group = record[key];
-        if (Array.isArray(group)) {
-          for (const item of group) {
-            if (item && typeof item === "object") entries.push(item as Record<string, unknown>);
-          }
-        }
-      }
-      if (entries.length > 0) return entries;
-    }
-    return [];
+    return parseOmpPluginList(raw);
   } catch {
     return [];
   }
 }
 
-function findInstalledPlugin(plugins: Array<Record<string, unknown>>) {
+export function findInstalledPlugin(plugins: Array<Record<string, unknown>>) {
   return plugins.find((entry) => {
     const name = typeof entry.name === "string" ? entry.name : "";
     const pathValue = typeof entry.path === "string" ? entry.path : "";

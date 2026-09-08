@@ -3,7 +3,6 @@ import os from "node:os";
 import path from "node:path";
 import type { AgentAdapter, Scope } from "../types";
 import { ensureObject, readJson, writeJson, resolveProjectRoot, readHarnessVersion } from "../utils";
-import { compareSemver } from "../version-compare";
 import {
   REPO_URL,
   PLUGIN_NAME,
@@ -37,16 +36,6 @@ const ZCODE_PLUGINS_ROOT = path.join(os.homedir(), ".zcode", "cli", "plugins");
 const KNOWN_MARKETPLACES_PATH = path.join(ZCODE_PLUGINS_ROOT, "known_marketplaces.json");
 const MARKETPLACE_DIR = path.join(ZCODE_PLUGINS_ROOT, "marketplaces", MARKETPLACE_ID);
 const MARKETPLACE_JSON_PATH = path.join(MARKETPLACE_DIR, "marketplace.json");
-const ZCODE_PLUGINS_CACHE_ROOT = path.join(ZCODE_PLUGINS_ROOT, "cache");
-/** Manifest locations inside a cache version dir, in preference order. */
-const PLUGIN_MANIFEST_PATHS = [".zcode-plugin/plugin.json", "plugin.json"];
-/** Reportable version shape: anchored `X.Y.Z` with optional `-prerelease`.
- * Cache dirs only carry this shape; anything else (temp dirs) is skipped.
- * Deliberately looser than the §9-strict `RELEASE_VERSION_RE` release gate in
- * `scripts/release-surfaces.ts` (this accepts leading-zero prerelease
- * numerics): discovery only needs a stable `X.Y.Z[-pre]` shape for semver
- * ordering, not release validation. */
-const PLUGIN_VERSION_SHAPE_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 
 type GithubSource = { source: "github"; repo: string; ref?: string };
 
@@ -205,78 +194,10 @@ function validateKnownMarketplaces() {
   return errors;
 }
 
-/** Plugin manifest `version` field from a cache version dir, or `null` when
- * no manifest carries a reportable version (caller falls back to the dir name). */
-function readManifestVersion(versionDir: string): string | null {
-  for (const rel of PLUGIN_MANIFEST_PATHS) {
-    const manifestPath = path.join(versionDir, rel);
-    if (!fs.existsSync(manifestPath)) continue;
-    try {
-      const version = (readJson(manifestPath) as { version?: unknown }).version;
-      if (typeof version === "string" && PLUGIN_VERSION_SHAPE_RE.test(version)) return version;
-    } catch {
-      // Malformed manifest: try the next candidate source.
-    }
-  }
-  return null;
-}
-
-/**
- * Highest installed Morning Star plugin version under the ZCode plugin cache
- * (`<cacheRoot>/<marketplace>/${PLUGIN_NAME}/<version>/`, any marketplace id).
- * Manifest `version` field wins over the directory name; multiple versions
- * resolve to the highest semver. Absent or unreadable installs report as
- * `null` — the doctor alignment note stays informational, never an error.
- * `cacheRoot` is injectable so tests never touch the real home directory.
- */
-export function detectInstalledZcodePluginVersion(cacheRoot: string = ZCODE_PLUGINS_CACHE_ROOT): string | null {
-  let marketplaceEntries: fs.Dirent[];
-  try {
-    marketplaceEntries = fs.readdirSync(cacheRoot, { withFileTypes: true });
-  } catch {
-    return null;
-  }
-  let highest: string | null = null;
-  for (const marketplace of marketplaceEntries) {
-    if (!marketplace.isDirectory()) continue;
-    const pluginRoot = path.join(cacheRoot, marketplace.name, PLUGIN_NAME);
-    let versionEntries: fs.Dirent[];
-    try {
-      versionEntries = fs.readdirSync(pluginRoot, { withFileTypes: true });
-    } catch {
-      continue;
-    }
-    for (const versionEntry of versionEntries) {
-      if (!versionEntry.isDirectory()) continue;
-      const versionDir = path.join(pluginRoot, versionEntry.name);
-      const manifest = readManifestVersion(versionDir);
-      const candidate =
-        manifest ?? (PLUGIN_VERSION_SHAPE_RE.test(versionEntry.name) ? versionEntry.name : null);
-      if (candidate === null) continue;
-      if (highest === null || compareSemver(candidate, highest) > 0) highest = candidate;
-    }
-  }
-  return highest;
-}
-
-/**
- * The single zcode doctor alignment line comparing the running CLI version
- * with the installed plugin version. Informational only: callers put it in
- * `notes` — never in `errors`, never affecting the exit code. Four states:
- * aligned, CLI newer (update the plugin), plugin newer (update the CLI),
- * nothing installed (no direction implied, install hint only).
- */
-export function formatZcodePluginVersionDoctorNote(cliVersion: string, installed: string | null): string {
-  if (installed === null) {
-    return "No installed Morning Star plugin found under ~/.zcode/cli/plugins/cache/ (install from the mstar-local marketplace).";
-  }
-  const diff = compareSemver(cliVersion, installed);
-  if (diff === 0) return `Plugin/CLI versions aligned (${installed}).`;
-  if (diff > 0) {
-    return `CLI ${cliVersion} is newer than installed plugin ${installed} \u2014 update the Morning Star plugin in ZCode (Settings \u2192 Plugin Management \u2192 update from the mstar-local marketplace).`;
-  }
-  return `Installed plugin ${installed} is newer than CLI ${cliVersion} \u2014 update the global CLI: npm i -g @mstar-harness/cli@latest (or @${installed}).`;
-}
+/** Plugin manifest `version` field reader and the cache version discovery
+ * live in `../plugin-version-alignment` (shared across hosts, plan batch 2);
+ * the zcode doctor alignment note is printed centrally by `runDoctor` in
+ * `index.ts` for every target. */
 
 function validatePluginAgents(pluginRoot: string) {
   const errors: string[] = [];
@@ -365,12 +286,11 @@ function runDoctor(scope: Scope) {
   errors.push(...validateKnownMarketplaces());
   errors.push(...validateMarketplaceJson());
 
-  // Plugin/CLI version alignment: informational note only (same tier as the
-  // CLI-on-PATH note in index.ts) — never an error, never the exit code.
-  // readHarnessVersion() is the same anchor as `packageVersion` in index.ts.
-  const notes = [formatZcodePluginVersionDoctorNote(readHarnessVersion(), detectInstalledZcodePluginVersion())];
+  // Plugin/CLI version alignment moved to `../plugin-version-alignment` and
+  // is printed centrally by runDoctor in index.ts for every target — the
+  // adapter no longer emits its own note (it would print twice).
 
-  return { location: KNOWN_MARKETPLACES_PATH, errors, notes };
+  return { location: KNOWN_MARKETPLACES_PATH, errors };
 }
 
 export const zcodeAdapter: AgentAdapter = {
