@@ -790,6 +790,13 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
   if (options.settingsService === 'fake-deferred' && options.fallbacksModule === undefined) {
     throw new Error('settingsService: "fake-deferred" requires fallbacksModule (the deferred row models the settings arrival after the fallbacks apply window)')
   }
+  // The deferred settings row is an INLINE-row-list construct (appended after
+  // the fallbacks row above); a fixture cordis.yml REPLACES the inline list,
+  // so the deferred row would be silently dropped and the composition would
+  // mean nothing — fail fast (same philosophy as the guard above).
+  if (options.settingsService === 'fake-deferred' && options.cordisYml !== undefined) {
+    throw new Error('settingsService: "fake-deferred" is incompatible with cordisYml (the deferred settings row is an inline-row-list construct; a fixture composition would silently drop it)')
+  }
 
   // The dsh skill registry row mounts first (real dsh app layout): the
   // `@mstar-harness/dsh` plugin mounts skill-filesystem as a child, which injects

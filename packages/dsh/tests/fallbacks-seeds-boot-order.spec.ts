@@ -210,7 +210,6 @@ describe('fallbacks seeds boot-order — single REAL-package boot converges the 
       await waitForStableRoles(service!)
       const readback = service!.getEffectiveRoles()
       const effectiveIds = new Set(readback.roles.map((row) => row.id))
-      console.log(`boot-order: effective ids (${readback.roles.length}): ${[...effectiveIds].sort().join(', ')}`)
 
       // 5. RED assertion — the effective taxonomy carries ALL 20 ids after
       //    a plain boot. Failure output names the missing mstar ids.

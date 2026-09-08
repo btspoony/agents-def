@@ -172,6 +172,46 @@ function ctxWithService(service: FakeAdvisoryService, cfg: Record<string, unknow
   return ctx
 }
 
+/**
+ * Bounded poll until `predicate` holds (10 ms cadence, 3 s default budget) —
+ * the wiring cases' shared wait primitive (hoisted; the label names the
+ * awaited condition in the timeout error).
+ */
+async function waitFor(label: string, predicate: () => boolean, timeoutMs = 3000): Promise<void> {
+  const start = Date.now()
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) throw new Error(`waitFor[${label}] timed out`)
+    const { promise, resolve } = Promise.withResolvers<void>()
+    setTimeout(resolve, 10)
+    await promise
+  }
+}
+
+/** One fixed settle window (the wiring cases' shared pause primitive). */
+const settle = (ms: number): Promise<void> => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/**
+ * A fake fallbacks provider whose fiber can be disposed — the cordis service
+ * appears/disappears with the plugin apply (the HMR/fiber-swap driver the
+ * wiring cases mount through `ctx.plugin`).
+ */
+function fakeFallbacksProvider(fake: FakeAdvisoryService): { name: string; apply(ctx: Context): void } {
+  return {
+    name: 'fake-fallbacks-provider',
+    apply(ctx: Context) {
+      ctx.provide('llm-fallbacks', fake as unknown as FallbacksService)
+    },
+  }
+}
+
+/**
+ * Print-always skip notice (the boot-order spec's honesty pattern): the
+ * wiring cases drive the packaged `harness-agents/` mirror (a bundle-assets
+ * sync product, gitignored) — when it is absent the skip is PRINTED, never a
+ * silent green in the suite count.
+ */
+const MIRROR_SKIP_NOTICE = 'fallbacks-advisory wiring: SKIPPED — harness-agents mirror not synced (run `bun run bundle-assets` in packages/dsh)'
+
 describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
   it('(a) roles.list covers all mirror role ids with non-empty personas → pass, no logs, config unmutated', async () => {
     const mirror = await fixtureMirror()
@@ -460,31 +500,14 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
     if (mirror === undefined) return // bundle-assets not run — the live mirror is a precondition
     booted = await bootApp()
     ;(booted.ctx.get('loader') as FakeLoaderRegistry).entriesList = [liveEntry(rowConfig([]))]
-    // A fake fallbacks provider whose fiber can be disposed — the cordis
-    // service appears/disappears with the plugin apply (HMR/fiber swap).
-    const provider = (fake: FakeAdvisoryService): { name: string; apply(ctx: Context): void } => ({
-      name: 'fake-fallbacks-provider',
-      apply(ctx: Context) {
-        ctx.provide('llm-fallbacks', fake as unknown as FallbacksService)
-      },
-    })
-    const waitFor = async (predicate: () => boolean, timeoutMs = 3000): Promise<void> => {
-      const start = Date.now()
-      while (!predicate()) {
-        if (Date.now() - start > timeoutMs) throw new Error('waitFor timed out')
-        const { promise, resolve } = Promise.withResolvers<void>()
-        setTimeout(resolve, 10)
-        await promise
-      }
-    }
     const { captured, restore } = captureLogs()
     try {
       // First service instance — the first decision point runs ONE pass
       // (the service-present path is async: re-declare → readback → report).
       const first = new FakeAdvisoryService({ roles: [] })
-      const fiber1 = await booted.ctx.plugin(provider(first))
+      const fiber1 = await booted.ctx.plugin(fakeFallbacksProvider(first))
       booted.ctx.events.emit('subagent/start', startInfo('agent-1'))
-      await waitFor(() => captured.some(([, message]) => message.includes('mstar seeds declared')))
+      await waitFor('first-declared', () => captured.some(([, message]) => message.includes('mstar seeds declared')))
       // Latch armed: a second decision point emits nothing new.
       const afterFirst = captured.length
       booted.ctx.events.emit('subagent/start', startInfo('agent-2'))
@@ -497,10 +520,10 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       // Service re-appears (fallbacks re-applied / HMR) → the NEXT decision
       // point re-runs the pass (the mstar side re-converges).
       const second = new FakeAdvisoryService({ roles: [] })
-      const fiber2 = await booted.ctx.plugin(provider(second))
+      const fiber2 = await booted.ctx.plugin(fakeFallbacksProvider(second))
       const beforeReconverge = captured.length
       booted.ctx.events.emit('subagent/start', startInfo('agent-3'))
-      await waitFor(() => captured.slice(beforeReconverge).some(([, message]) => message.includes('mstar seeds declared')))
+      await waitFor('reconverge', () => captured.slice(beforeReconverge).some(([, message]) => message.includes('mstar seeds declared')))
       await fiber2.dispose()
     } finally {
       restore()
@@ -512,29 +535,12 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
     if (mirror === undefined) return // bundle-assets not run — the live mirror is a precondition
     booted = await bootApp()
     ;(booted.ctx.get('loader') as FakeLoaderRegistry).entriesList = [liveEntry(rowConfig([]))]
-    // A fake fallbacks provider whose fiber can be disposed — the cordis
-    // service appears/disappears with the plugin apply (HMR/fiber swap).
-    const provider = (fake: FakeAdvisoryService): { name: string; apply(ctx: Context): void } => ({
-      name: 'fake-fallbacks-provider',
-      apply(ctx: Context) {
-        ctx.provide('llm-fallbacks', fake as unknown as FallbacksService)
-      },
-    })
     const { captured, restore } = captureLogs()
     try {
       // Service #1 with a CONTROLLED declareSeeds: the pass's await on the
       // idempotent re-declare stays in flight until the test releases it —
       // the deterministic in-flight window for the race.
       const first = new FakeAdvisoryService({ roles: [] })
-      const waitFor = async (label: string, predicate: () => boolean, timeoutMs = 3000): Promise<void> => {
-        const start = Date.now()
-        while (!predicate()) {
-          if (Date.now() - start > timeoutMs) throw new Error(`waitFor[${label}] timed out`)
-          const { promise, resolve } = Promise.withResolvers<void>()
-          setTimeout(resolve, 10)
-          await promise
-        }
-      }
       let releaseDeclare!: () => void
       let heldDeclares = 0
       const declareGate = new Promise<void>((resolve) => { releaseDeclare = resolve })
@@ -547,7 +553,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
         await declareGate
         return { applied: seeds.map((s) => s.id), skipped: [], conflicts: [] }
       }
-      const fiber1 = await booted.ctx.plugin(provider(first))
+      const fiber1 = await booted.ctx.plugin(fakeFallbacksProvider(first))
       // First decision point: the service-present pass reaches the held
       // declare and suspends (the entry inject child AND the advisory pass
       // both await the same gate).
@@ -566,7 +572,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       // point MUST re-run the pass (the stale completion must not have
       // armed the latch).
       const second = new FakeAdvisoryService({ roles: [] })
-      const fiber2 = await booted.ctx.plugin(provider(second))
+      const fiber2 = await booted.ctx.plugin(fakeFallbacksProvider(second))
       const beforeReconverge = captured.length
       booted.ctx.events.emit('subagent/start', startInfo('agent-2'))
       await waitFor('reconverge', () => captured.slice(beforeReconverge).some(([, message]) => message.includes('mstar seeds declared')))
@@ -578,7 +584,12 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
 
   it('wiring — an aborted pass never arms the latch: the next decision point re-runs it and converges (honest latch)', async () => {
     const mirror = packagedAgentsDir()
-    if (mirror === undefined) return // bundle-assets not run — the live mirror is a precondition
+    if (mirror === undefined) {
+      // Print-always skip (the boot-order spec pattern) — a skipped run must
+      // be visible in the output, never read as a silent green.
+      console.log(MIRROR_SKIP_NOTICE)
+      return
+    }
     booted = await bootApp()
     ;(booted.ctx.get('loader') as FakeLoaderRegistry).entriesList = [liveEntry(rowConfig([]))]
     // A stub whose declareSeeds rejects the boot-window calls (the live
@@ -591,25 +602,9 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       if (rejectDeclares) throw new Error('llm-fallbacks: seeds: settings service is unavailable — seed roles cannot be written')
       return { applied: seeds.map((s) => s.id), skipped: [], conflicts: [] }
     }
-    const provider = (svc: FakeAdvisoryService): { name: string; apply(ctx: Context): void } => ({
-      name: 'fake-fallbacks-provider',
-      apply(ctx: Context) {
-        ctx.provide('llm-fallbacks', svc as unknown as FallbacksService)
-      },
-    })
-    const waitFor = async (label: string, predicate: () => boolean, timeoutMs = 3000): Promise<void> => {
-      const start = Date.now()
-      while (!predicate()) {
-        if (Date.now() - start > timeoutMs) throw new Error(`waitFor[${label}] timed out`)
-        const { promise, resolve } = Promise.withResolvers<void>()
-        setTimeout(resolve, 10)
-        await promise
-      }
-    }
-    const settle = (ms: number): Promise<void> => new Promise<void>((resolve) => setTimeout(resolve, ms))
     const { captured, restore } = captureLogs()
     try {
-      await booted.ctx.plugin(provider(fake))
+      await booted.ctx.plugin(fakeFallbacksProvider(fake))
       // First decision point while the stub still rejects: the pass runs the
       // seeds-aware path, the re-declare REJECTS → ONE degraded warn — and
       // the latch must NOT arm (the R2 fix under test).
@@ -652,7 +647,12 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
 
   it('wiring — two consecutive aborted passes warn ONCE per apply (degraded-abort dedup); resetAdvisoryAbortWarn reopens the budget', async () => {
     const mirror = packagedAgentsDir()
-    if (mirror === undefined) return // bundle-assets not run — the live mirror is a precondition
+    if (mirror === undefined) {
+      // Print-always skip (the boot-order spec pattern) — a skipped run must
+      // be visible in the output, never read as a silent green.
+      console.log(MIRROR_SKIP_NOTICE)
+      return
+    }
     booted = await bootApp()
     ;(booted.ctx.get('loader') as FakeLoaderRegistry).entriesList = [liveEntry(rowConfig([]))]
     const fake = new FakeAdvisoryService({ roles: [] })
@@ -661,25 +661,9 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
       stubDeclares += 1
       throw new Error('settings write failed')
     }
-    const provider = (svc: FakeAdvisoryService): { name: string; apply(ctx: Context): void } => ({
-      name: 'fake-fallbacks-provider',
-      apply(ctx: Context) {
-        ctx.provide('llm-fallbacks', svc as unknown as FallbacksService)
-      },
-    })
-    const waitFor = async (label: string, predicate: () => boolean, timeoutMs = 3000): Promise<void> => {
-      const start = Date.now()
-      while (!predicate()) {
-        if (Date.now() - start > timeoutMs) throw new Error(`waitFor[${label}] timed out`)
-        const { promise, resolve } = Promise.withResolvers<void>()
-        setTimeout(resolve, 10)
-        await promise
-      }
-    }
-    const settle = (ms: number): Promise<void> => new Promise<void>((resolve) => setTimeout(resolve, ms))
     const { captured, restore } = captureLogs()
     try {
-      await booted.ctx.plugin(provider(fake))
+      await booted.ctx.plugin(fakeFallbacksProvider(fake))
       const degradedWarns = (): number => captured.filter(([, message]) => message.includes('aborted (degraded')).length
       // Aborted pass #1: ONE degraded warn.
       booted.ctx.events.emit('subagent/start', startInfo('dedup-1'))

@@ -146,7 +146,7 @@ export {
 } from './gates/role-persona.ts'
 export type { RolePersonaLogLevel, RolePersonaLogSink, SubagentStartRequestView, SubagentsServiceView } from './gates/role-persona.ts'
 export { ADVISORY_LOGGER, runFallbacksAdvisory, setAdvisoryLogger } from './gates/fallbacks-advisory.ts'
-export type { AdvisoryLogLevel, AdvisoryLogSink } from './gates/fallbacks-advisory.ts'
+export type { AdvisoryLogLevel, AdvisoryLogSink, AdvisoryPassReport } from './gates/fallbacks-advisory.ts'
 export { DshHostAdapter } from './gates/adapter.ts'
 export type { DshHostAdapterOptions } from './gates/adapter.ts'
 
@@ -460,6 +460,17 @@ export function apply(ctx: Context, config: Config): void {
   // Degraded-abort warn budget: at most ONE advisory abort warn per apply
   // (module-level dedup in the advisory) — this apply opens the budget; the
   // seeds inject child's teardown below re-opens it on a fiber swap.
+  // Accepted dispositions (plan QC wave 1):
+  // - The dedup flag is PROCESS-WIDE module state (the same module-sink
+  //   pattern as `setAdvisoryLogger`), not per-context: concurrently
+  //   composed contexts in one process share the one-warn budget, so the
+  //   worst case is one suppressed diagnostic warn under concurrent
+  //   multi-context composition (production composes a single app).
+  // - A decision point landing inside the boot-retry window below (~300 ms)
+  //   can consume the budget on an ULTIMATELY-HEALTHY boot: its pass awaits
+  //   the re-declare, the transient reject aborts it, one degraded warn
+  //   fires — bounded (≤1/apply) and self-healing (the next decision point
+  //   re-runs the pass and converges).
   resetAdvisoryAbortWarn()
   // One-shot latch: the pass is attempted at apply (profiles that declare
   // the fallbacks row before dsh) and — when unmounted at boot — at the
@@ -534,6 +545,13 @@ export function apply(ctx: Context, config: Config): void {
     // sets `disposed` and clears every pending handle; a late-firing
     // attempt after that is a silent no-op (never a post-dispose declare
     // or log).
+    // Per-attempt diagnostics are intentional (accepted disposition, plan QC
+    // wave 1): every retry re-runs the full batch assembly, so
+    // `declareMstarSeeds`'s internal warn lines (a failing readback,
+    // interpolation-hazard skips) may re-emit up to once per attempt in the
+    // failure window. Dedupe is deliberately REJECTED — per-attempt
+    // observability is what keeps the transient-failure window legible; the
+    // exactly-once bound covers only the terminal ERROR below.
     let disposed = false
     const retryTimers: ReturnType<typeof setTimeout>[] = []
     const declareAttempt = (attempt: number): void => {
