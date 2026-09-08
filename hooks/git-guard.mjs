@@ -62,13 +62,46 @@ const VALUE_OPTS = new Set([
   "--work-tree",
 ]);
 
+/** Whitespace tokenizer that honors single/double quotes, so quoted
+ * `-C "/path with spaces"` values survive as one token. Shell-unaware
+ * beyond quoting (vars, subshells) — a gate heuristic, not a parser. */
+function tokenizeSegment(segment) {
+  const tokens = [];
+  let current = "";
+  let quote = null;
+  let hasToken = false;
+  for (const ch of segment) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      else current += ch;
+      hasToken = true;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      hasToken = true;
+      continue;
+    }
+    if (/\s/.test(ch)) {
+      if (hasToken) tokens.push(current);
+      current = "";
+      hasToken = false;
+      continue;
+    }
+    current += ch;
+    hasToken = true;
+  }
+  if (hasToken) tokens.push(current);
+  return tokens.filter(Boolean);
+}
+
 /** Per-segment analysis of every `git` invocation in a command line:
  * `{ sub, dirHint }` where `sub` is the git subcommand and `dirHint` is the
  * `-C`/`--work-tree` target when one is given. */
 function analyzeGitInvocations(command) {
   const invocations = [];
   for (const segment of command.split(/&&|\|\||[;|\n]/)) {
-    const tokens = segment.trim().split(/\s+/).filter(Boolean);
+    const tokens = tokenizeSegment(segment);
     let i = 0;
     while (i < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[i])) i += 1; // env assignments
     if (!tokens[i] || !/(^|\/)git$/.test(tokens[i])) continue;
@@ -93,7 +126,7 @@ function analyzeGitInvocations(command) {
   return invocations;
 }
 
-const BARE_FORCE = /(^|\s)--force(\s|$)|(^|\s)-f(\s|$)/;
+const BARE_FORCE = /(^|\s)--force(\s|$)|(^|\s)-[a-z]*f[a-z]*(\s|$)/;
 const COMMIT_ESCAPE_IN_COMMAND = /MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1(\s|$)/;
 
 const input = await readStdinJson();
