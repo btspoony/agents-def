@@ -6,6 +6,39 @@
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-09-08
+
+### Harness
+
+- 迭代技能（mstar-iteration）渐进式披露重构：主 SKILL.md 收敛为 122 行 phase 路由表（仅保留唯一路由表 + 通用不变量，重构前 408 行）；Phase 1 启动细节移至新文件 `skills/mstar-iteration/references/phase-1-prepare.md`，Phase 2 循环细节并入 `references/phase-2-worktree-lease.md`，start/drive/resume/close/PR 每条路由只命名一个 phase reference——结构性逐路由字节下降 23–56%（路由集由 37 项 closure 测试钉住；字节数据见 plan eval 证据，非观测模型加载）。
+- 命令（`iteration-start/drive/loop`）、PM 角色引用与 helper-discovery 指针全部重定向到 phase reference；生命周期规则无重复（phase 路由表是唯一派发表；§2.6 作为跨阶段 SSOT 留在主文件）。
+- 冻结 30 用例 skill-eval 语料（v28）新增五个对抗性 phase 边界用例（并行评审链、Phase 3 塌缩、提前开 PR、错误阶段 resume、覆盖暂停），折叠进既有用例 id 并钉住 product→architect→writing-specialist 顺序链；Cursor routing-evals 升至 v28 并新增五条对应回归用例。
+- 证据：共享 30 用例语料上的 paired dev 对比已完成（candidate `cef1675c` vs 原始基线 `ec7cc1bc`：17/20 vs 17/20，失败集完全一致，零候选侧回归，0 基础设施错误）；冻结三重复 heldout **未完成（24/60）**——真实模型运行被用户配额指令封顶，剩余验证由用户按 plan eval RUNBOOK 自行执行；逐路由检查了首轮与 resume 的 trace 观测读取（合成 fixture 未物化 skill 闭包，路由加载下降保持为结构性字节结论而非因果模型加载结论）；drift/standalone 全绿。
+- **根因修复**旧版 plugin-scanner 的 `SHELL_INJECTION_PATTERN` 误报，而非依赖压制：`packages/dsh` 命令 frontmatter 解析改为逐行匹配 label + 静态值正则（不再用 label 动态拼 `RegExp`）；engine 审计子进程测试改为纯字符串拼接构建脚本（`Bun.spawnSync` 附近不再出现模板字符串）。仓库根 **`.plugin-scanner.toml`** 现仅将 `UNICODE_OBFUSCATED_INSTRUCTION` 降级为 `medium`——这是仓库侧无法修复的残余：cisco 混淆指令签名正则无词边界（"readability→token"、"ready→environment"），双语文档中的普通中文文本在 awesome-ai-plugins 旧扫描栈（`plugin-scanner` 2.0.1116 + `cisco-ai-skill-scanner` 2.0.14）下必触发。我们的锁定栈（scanner 3.0.104 + cisco 2.0.12）不受影响，且自身 CI 不加载仓库配置（`trust_repository_policy: false`）；发现项保持可见，仅解除旧栈 `high` 门禁。
+- 移除跟踪代码注释、测试名称与迁移夹具中的本地 harness 溯源引用（plan/迭代/QC 报告编号）。
+- 深度静态安全扫描后的 CLI 路径处理加固：含 `..` 段的相对 `--output` 现在被拒绝（此前可越出项目根）；agent-plugin 安装校验要求插件根为真实目录，manifest/MCP/skill 组件路径改为字面量拼接；lint 目标收集与 tracked 文件列举对 readdir 条目名做守卫后拼接；自有 PR review 工件路径按 worktree 旁单段名构造。
+- skill-eval 全面转为自动化 / 测试驱动：移除 argv CLI 分发入口（`scripts/skill-eval/index.ts` 与 `manifest.ts` 的 stage 入口），各阶段改为经导出函数（`prepareManifest`、`executeManifest`、report 构建器）程序化调用；进程 spawn 仍隔离在 `node-launch.ts` 适配模块，`manifest.cli.path` 启动前校验（绝对本地路径、拒绝 URL scheme 与控制字符）并做 realpath 规范化；`canonicalJson` 键序不再依赖数组 `sort()`，并以字节稳定性等价测试钉住。
+- SDD 交接统一携带绝对目的地契约：fresh/resume/审查者提示模板写明绝对控制根、feature worktree/cwd、plan、brief/report 与 context 文件路径；原生托管子代理先观察 pwd/分支再写入，并明确声明后续主动 `chdir`、绝对路径写入或宿主原生编辑工具（`apply_patch`）不被拦截。
+- 新增绑定 SDD 执行面（spec A3）：`mstar sdd exec --context <context.json> -- <argv>` 以 feature worktree 为子进程起始 cwd（无 shell，退出码 1 门禁 / 2 用法 / 127 未找到 / 128+n 信号）；`mstar sdd check-context` 门禁 `source|artifact|launch` 动作；`task-brief`/`review-package` 支持 `--context` 先校验目的地再写入并输出绝对路径。新增因果重放套件：同一相对路径写入器 raw 启动复现错写 primary、绑定启动仅改 feature（全部使用一次性 fixture）。
+- Engine 新增导出：`resolveSddExecutionContext`、`checkSddAction`、`runInSddContext` —— 复用既有 lease/branch/path 机制的有界动作检查；无全局加固，不做沙箱声明。
+- 新增 **仅维护用的技能评估基线工具**（`scripts/skill-eval/`）：冻结的 30 条用例语料（5 条路由 x 6，每路由 dev4/heldout2，含首跑/续跑与假通过/错检出陷阱）、零模型调用的不可变 manifest `prepare` 阶段（exit 0/2）、argv 数组子进程 `run` 阶段（真实 CLI 执行、证据留档、可恢复调度，pass/fail/unverified/infrastructure 诚实判级，exit 0/1/2），以及不重跑模型的 `report` 汇总阶段。
+- 已记录真实冒烟基线：在 codex-cli 0.144.1 上验证了工具机制（闭包哨兵读取、workspace-write 隔离写入、精确 session-id 续跑）；事件流中无观测模型身份、用量归属未验证——两者均以显式 null 留档，不做任何固定模型疗效声明。
+- **证据门控的热路径技能瘦身**：从四个 standard 预设热路径文件（`mstar-harness-core`、`mstar-coding-behavior`、`mstar-dispatch-gates`、`mstar-roles/_shared/leaf-executor-core.md`）移除重复规则与模型原生通用教学内容——8 个有界消融批次，主体文件集合 −8,419 字节（−14.5%）——每条移除行都在冻结的 `scripts/skill-eval/ablations.json` 清单中携带来源、移除依据、恢复记录与存活属主。
+- **记录行为证据而不作断言**：每个批次仅在固定配对 dev 运行显示零新增 critical（授权 / 错误检出 / 假通过）失败且无正常成功回归（17/20 对 17/20）后才采纳；最终候选已重新冻结（基线 `c4e338a0`、候选 `4a750601`），用于 baseline/candidate/minimal 三次重复交错对比，heldout 评分留给 QA 独立裁决。token 级负载效应仍未验证（`usageBasis=unknown`）；不作任何效力或成本断言。
+- **受保护语义不动**：用户政策 #109/#144/#153/#156/#167、engine-legacy 条件档案、`Skill presets: none` 下的 engine-absent 回退可达性、以及所有负向约束属主全部保留并由 `scripts/skill-eval/closure.test.ts`（24 个测试）锚定；`validation:drift` 保持 exit 0。
+- **跨宿主统一的 skill lint 分类策略**：CLI `mstar skill lint`、dsh skill-lint 门禁与 drift Guard 5 改为消费共享 Engine 分类器 `classifySkillLint`（精确 `mstar-harness-core` → 五问豁免，`mstar-skill-authoring` → 严格 authoring，其余 `mstar-*` → runtime 别名表，其它一律严格 authoring）。身份取自已解析的技能目录 basename，而绝非 YAML `name`，已交付的 runtime 技能不再得到互相矛盾的 dsh/CLI 判定；frontmatter 与 ephemeral-citation 检查在所有 profile 下保持生效，dsh 内容盲修复行为不变。
+- **真实语料一致性 + 漂移敏感性证据**：在已交付语料上记录修改前后真实 lint 判定（修复前 dsh 以 authoring 模式误判 15/20 个 `mstar-*` 技能；候选实现下 dsh、CLI 与 Guard 5 对 18 个 runtime 技能全部通过、0 违规），并以红探针证明：故意错配的分类或删除真实标题都会使语料守卫变红。
+- 确立 **`mstar-roles` 为唯一加载选择权威**：角色 hub 拥有 `Skill presets:` 决策（身份优先；显式 `none` / 省略即 standard / 具名预设 / trivial 路由；未知预设直接拒绝而非猜测），`mstar-harness-core` 仍是生命周期/授权权威并指向 hub，不再要求所有专题无条件先读 core。
+- 使 `Skill presets: none` 自洽：角色身份、共享 leaf 安全边界与角色自有 QC/QA 证据义务在不加载可选专题时依然可达；`none` 不授予委托、不豁免门禁。
+- 移除各角色 reference 中重复的预设解释文字（各自仅保留成员清单），并收紧 Engine `lintLoadOrder` 契约：roles-hub bootstrap 是唯一被识别的例外——任意专题豁免仍然失败。
+- ZCode 插件卡片现在显示 Morning Star **图标与显示名称**：仓库自带的两份 marketplace 清单（`.claude-plugin/marketplace.json`、根 `marketplace.json`）与 CLI `zcode` 引导快照均在 `morning-star-harness` 条目上补齐 `icon` + `displayName`。
+- 内置 **ZCode 插件 hooks**（`hooks/hooks.json`）：**SessionStart** 在检测到 harness 工作区时注入一行上下文（{HARNESS_DIR} + `status.json` 摘要 + `mstar-harness-core` 加载指引；非 harness 工作区静默跳过）；**PreToolUse (Bash)** 为 `mstar-branch-worktree` 增加确定性 git 门禁——拦截默认保护分支上的直接 commit（逃生口 `MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1`）与裸 `git push --force`（必须用 `--force-with-lease`；`MSTAR_BRANCH_GUARD=off` 可整体关闭）。
+- 图标与 hooks 行为已同步写入 `INSTALL.md`（ZCode 章节）与 `mstar-host` → `references/zcode.md`。
+
+### 版本对齐
+
+- 提升 monorepo 根、`@mstar-harness/opencode`、`@mstar-harness/cli`、`@mstar-harness/engine`、`@mstar-harness/dsh`、Cursor/Codex/Kimi/ZCode/omp/Claude 插件清单及便携式 Agent Plugins 清单：**→ 3.7.0**。
+
 ## [3.6.3] - 2026-09-06
 
 ### Harness

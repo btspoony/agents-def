@@ -6,6 +6,23 @@ The monorepo root [CHANGELOG.md](../../CHANGELOG.md) summarizes cross-surface re
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-09-08
+
+### Changed
+
+- SDD handoffs now carry an absolute destination contract: fresh/resume/reviewer prompts cite the absolute control harness root, feature worktree/cwd, plan, brief/report and context file; native hosted subagents observe pwd/branch before writing, and the handoff states explicitly that a later deliberate `chdir`, absolute-path write, or host-native edit tool (`apply_patch`) is not blocked.
+- New bound SDD execution surface (spec A3): `mstar sdd exec --context <context.json> -- <argv>` launches CLI children with cwd bound to the feature worktree (no shell, exit 1 gate / 2 usage / 127 not-found / 128+n signals); `mstar sdd check-context` gates `source|artifact|launch` seams; `task-brief`/`review-package` accept `--context` to validate destinations before mkdir/write and emit absolute paths. A causal replay suite reruns the historical relative-source write raw (wrong-primary reproduced) vs bound (feature-only) on disposable fixtures.
+- Engine exports: `resolveSddExecutionContext`, `checkSddAction`, `runInSddContext` — bounded action checks reusing the existing lease/branch/path machinery; no new global hardening and no sandbox claim.
+- **One skill-lint classification policy across hosts**: CLI `mstar skill lint`, dsh skill-lint gate and drift Guard 5 now consume the shared Engine classifier `classifySkillLint` (exact `mstar-harness-core` → five-question exempt, `mstar-skill-authoring` → strict authoring, other `mstar-*` → runtime aliases, everything else → strict authoring). Identity is the resolved skill-directory basename — never the YAML `name` — so shipped runtime skills no longer receive conflicting dsh/CLI judgments; frontmatter and ephemeral-citation checks stay active in every profile and dsh content-blind repair behavior is unchanged.
+- **Real-corpus parity + drift sensitivity evidence**: before/after lint decisions recorded on the shipped corpus (pre-fix dsh failed 15/20 `mstar-*` skills in authoring mode; candidate dsh, CLI and Guard 5 all pass the 18 runtime skills with 0 violations), plus red probes proving an intentionally mismatched classification or a removed real heading fails the corpus guard.
+- Made **`mstar-roles` the single load-selection authority**: the roles hub owns the `Skill presets:` decision (identity-first; explicit `none` / omitted-standard / named preset / trivial routes; unknown preset refuses instead of guessing), and `mstar-harness-core` remains the lifecycle/authorization authority while pointing to the hub instead of mandating universal core reads.
+- Made `Skill presets: none` coherent: role identity, the shared leaf safety boundary, and role-owned QC/QA evidence obligations stay reachable without optional topics; `none` never grants delegation or waives gates.
+- Removed duplicated preset-interpretation prose from role references (each now lists only its preset members) and narrowed the Engine `lintLoadOrder` contract: the roles-hub bootstrap is the single recognized exception — arbitrary topic exemptions still fail.
+
+- Version alignment with harness **3.7.0**.
+
+See root [CHANGELOG.md](../../CHANGELOG.md) **3.7.0**.
+
 ## [3.6.3] - 2026-09-06
 
 ### Changed
