@@ -1,0 +1,32 @@
+{
+  "description": "Morning Star harness gates for ZCode: SessionStart harness-workspace context injection, and PreToolUse git guards backing mstar-branch-worktree (no direct commits on the default protected branch, no bare force pushes). Silent no-op outside git repos / harness workspaces; opt out with MSTAR_BRANCH_GUARD=off.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "process",
+            "command": "node",
+            "args": ["${ZCODE_PLUGIN_ROOT}/hooks/session-context.mjs"],
+            "timeoutMs": 10000,
+            "statusMessage": "Morning Star: detecting harness workspace…"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "process",
+            "command": "node",
+            "args": ["${ZCODE_PLUGIN_ROOT}/hooks/git-guard.mjs"],
+            "timeoutMs": 10000,
+            "statusMessage": "Morning Star: git branch gate…"
+          }
+        ]
+      }
+    ]
+  }
+}
