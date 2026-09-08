@@ -41,6 +41,7 @@ type GithubSource = { source: "github"; repo: string; ref?: string };
 
 type MarketplacePluginEntry = {
   name: string;
+  version: string;
   source: GithubSource;
   displayName: string;
   icon: string;
@@ -64,9 +65,29 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+/**
+ * Version for the bootstrap marketplace entry: prefer the local harness
+ * checkout's `.zcode-plugin/plugin.json` (matches what ZCode installs);
+ * fall back to the CLI package version when the marker is unreadable.
+ * Exported for tests.
+ */
+export function resolveMarketplaceEntryVersion(markerPath: string, fallback: string): string {
+  try {
+    const raw = JSON.parse(fs.readFileSync(markerPath, "utf8")) as { version?: unknown };
+    if (typeof raw.version === "string" && raw.version !== "") return raw.version;
+  } catch {
+    // marker unreadable (missing checkout / unparseable manifest) — fall through
+  }
+  return fallback;
+}
+
 function marketplacePluginEntry(): MarketplacePluginEntry {
   return {
     name: PLUGIN_NAME,
+    version: resolveMarketplaceEntryVersion(
+      path.join(HARNESS_REPO_PATH, ZCODE_PLUGIN_MARKER),
+      readHarnessVersion(),
+    ),
     source: { ...GITHUB_SOURCE },
     displayName: PLUGIN_DISPLAY_NAME,
     icon: PLUGIN_ICON_URL,
@@ -163,8 +184,8 @@ function validateMarketplaceJson() {
   }
   const expectedVersion = readHarnessVersion();
   // After a successful marketplace refresh, ZCode overwrites this snapshot with the
-  // repo-shipped manifest (`.claude-plugin/marketplace.json`), which pins no version —
-  // install-time versions come from `.zcode-plugin/plugin.json`.
+  // repo-shipped manifest (`.claude-plugin/marketplace.json`), which pins the release
+  // version at the plugin entry; snapshots seeded by older CLIs may still be versionless.
   if (entry.version !== undefined && entry.version !== expectedVersion) {
     errors.push(`ZCode marketplace plugin version must be ${expectedVersion}.`);
   }
