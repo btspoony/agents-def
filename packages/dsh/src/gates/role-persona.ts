@@ -83,8 +83,9 @@
  * bypasses the waterfall and would false-warn every healthy boot) assert
  * that the seam dispatched AND the returned value carries the wrapper brand.
  * A broken seam warns ONCE per apply (fail-loud); an unresolved service is
- * `service-absent` (`ok`, debug only — reads are intercepted per read, so a
- * later-mounted service still gets wrapped); any probe-internal error fails
+ * `service-absent` (`ok: true` + one debug — the apply ctx does not resolve
+ * `subagents`; cordis resolves the service in dispatch scopes, where reads
+ * are intercepted per read); any probe-internal error fails
  * OPEN (`ok` + one debug) — the probe never throws and never blocks a
  * dispatch. The decision core is the pure {@link evaluateSeamProbe}, so the
  * whole outcome table is unit-pinnable without cordis internals.
@@ -98,7 +99,12 @@
  * boot throw).
  *
  * Module boundary: no barrel — the entry imports this module by explicit
- * relative path and re-exports the public names verbatim. No dsh-subagent
+ * relative path and re-exports the public names verbatim, EXCEPT the four
+ * probe exports (`PERSONA_SEAM_EVENT`, `ROLE_PERSONA_WRAPPER_BRAND`,
+ * `evaluateSeamProbe`, `probeRolePersonaSeam`), which are deliberately NOT
+ * re-exported from the entry: the frozen entry surface keeps the probe
+ * observable only through this module (tests import it directly; the
+ * shipped bundle exports no probe symbol). No dsh-subagent
  * dependency: the runtime surface is consumed structurally (same pattern as
  * the probe's `LoaderEntryView` and T2's `fallbacks-structural.ts`).
  */
@@ -327,7 +333,11 @@ const SEAM_WARN = `role persona channel not installed — cordis '${PERSONA_SEAM
 export interface PersonaSeamProbeResult {
   /** `true` = the channel is healthy OR the probe failed open (never block apply). */
   ok: boolean
-  /** Set only when `ok === false`: why the channel is not installed. */
+  /**
+   * Why the probe classified the channel the way it did. `ok: false` ALWAYS
+   * carries a reason; `service-absent` may appear with `ok: true` (the
+   * sanctioned no-warn unresolved-service classification).
+   */
   reason?: 'seam-absent' | 'wrap-skipped' | 'service-absent'
 }
 
@@ -349,8 +359,10 @@ export interface SeamProbeInputs {
  *   longer dispatches the seam; our listener can never run. Dominates the
  *   other inputs (a silent canary means the delivery channel is gone).
  * - canary fired + read threw → `{ ok: true, reason: 'service-absent' }` —
- *   the seam works but the `subagents` service is unresolved (nothing to
- *   wrap; a later-mounted service still gets wrapped per read). Never a warn.
+ *   the seam works but the reading ctx does not resolve `subagents` (on the
+ *   real composition the apply ctx is inject-guarded; cordis resolves the
+ *   service in dispatch scopes, where reads are intercepted per read). Never
+ *   a warn.
  * - canary fired + branded value → `{ ok: true }` — healthy.
  * - canary fired + any other resolved value (unbranded object, primitive,
  *   undefined) → `{ ok: false, reason: 'wrap-skipped' }` — the listener ran
@@ -413,13 +425,21 @@ export function probeRolePersonaSeam(ctx: Context): PersonaSeamProbeResult {
     if (!result.ok) {
       log('warn', `${SEAM_WARN} (reason: ${result.reason})`)
     } else if (result.reason === 'service-absent') {
-      log('debug', `role persona seam probe: 'subagents' service unresolved at apply — nothing to wrap yet (a later-mounted service still gets wrapped per read)`)
+      log('debug', `role persona seam probe: 'subagents' unresolved at apply (the apply ctx does not resolve it — cordis resolves the service in dispatch scopes, where reads are intercepted per read)`)
     }
     return result
   } catch (error) {
     // Contained fail-open: a broken probe must never fail apply — report
     // once at debug and treat the channel as healthy (observation only).
-    log('debug', `role persona seam probe failed internally — fail-open (observation only): ${errorMessage(error)}`)
+    // The report itself is nested-guarded: `errorMessage(error)` is
+    // evaluated HERE, outside `log`'s own sink guard, so a thrown value
+    // with a hostile `toString` — or a throwing sink — must not escape
+    // the probe's fail-open path.
+    try {
+      log('debug', `role persona seam probe failed internally — fail-open (observation only): ${errorMessage(error)}`)
+    } catch {
+      // Swallowed: fail-open reporting is best-effort by contract.
+    }
     return { ok: true }
   }
 }

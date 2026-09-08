@@ -38,7 +38,7 @@
  *      fake `agents` service its runtime injects) — the shipped-surface
  *      persona-seam probe (5b) needs the `subagents` reads the artifact's
  *      channel intercepts.
- *   5b. Shipped-surface persona-seam probe (plan  Task 2): from the inject
+ *   5b. Shipped-surface persona-seam probe (plan Task 2): from the inject
  *       scope the real tool-subagent reads through, a temporary canary must
  *       dispatch the installed artifact's `internal/get` waterfall AND the
  *       read must resolve to the branded wrapper — the probe contract
@@ -170,7 +170,13 @@ function hasSeedsSurface(mstarPkgDir: string): boolean {
 /** The persona-seam probe surface the shipped bundle carries: the fail-loud
  * warn text in `dist/index.js` (the gates compile INTO the single-file
  * bundle; same marker mechanism as `hasSeedsSurface`). Absent on artifacts
- * published before the seam probe shipped. */
+ * published before the seam probe shipped.
+ * Cross-link (`SEAM_WARN` in `src/gates/role-persona.ts`): this marker is a
+ * verbatim prefix of that warn text — REWORDING `SEAM_WARN` silently DISARMS
+ * the 5b shipped-surface assertions (published artifacts stop matching the
+ * marker, so the vintage guard would print the deviation forever). Change
+ * the two strings together, and update the f9/f10 warn pins in
+ * `tests/persona-seam-probe.spec.ts` in the same edit. */
 function hasSeamProbeSurface(mstarPkgDir: string): boolean {
   const distIndex = join(mstarPkgDir, 'dist/index.js')
   if (!existsSync(distIndex)) return false
@@ -278,6 +284,39 @@ describe.skipIf(skipReason !== undefined)('installed-deployment e2e ', () => {
       console.log(`install-e2e: default add installed @mstar-harness/dsh@${installedVersion} WITH the seeds surface — no pin needed`)
     }
 
+    // 4b. Persona-seam probe surface vintage (plan Task 2): the same
+    //     npm-lag reality as the seeds pin above — pnpm's minimumReleaseAge
+    //     gate excludes fresh publishes from RANGE resolution, and a repo
+    //     version whose probe has not shipped yet resolves stale. When the
+    //     installed artifact lacks the probe surface (the fail-loud warn
+    //     marker in `dist/index.js`), re-add pinned to the repo's shipped
+    //     version (the explicit version bypasses the age gate — same
+    //     bypass as the seeds pin). If the pinned artifact STILL lacks the
+    //     surface, the probe has not published yet: print the explicit
+    //     deviation and leave the 5b assertions disarmed on this run (never
+    //     a silent skip) — once the probe version publishes, the pinned
+    //     artifact carries the surface and 5b asserts on every run.
+    //     Ordered BEFORE the step-5 host copy (mirroring the seeds pin):
+    //     a probe-surface re-add must land before the copy, so the armed
+    //     surface and the booted surface are the SAME artifact — probing
+    //     the disk copy only after the boot could arm 5b against a stale
+    //     (pre-re-add) booted channel.
+    let probeSurfaceArmed = hasSeamProbeSurface(installedMstarDir(dshHome))
+    if (!probeSurfaceArmed) {
+      const repoVersion = await readVersion(join(packageRoot, 'package.json'))
+      const installedVersion = await readVersion(join(installedMstarDir(dshHome), 'package.json'))
+      if (installedVersion !== repoVersion) {
+        console.log(`install-e2e: installed @mstar-harness/dsh@${installedVersion} WITHOUT the persona-seam probe surface — re-adding pinned @${repoVersion} (pnpm minimumReleaseAge gate; same bypass as the seeds pin)`)
+        runDsh(dshHome, ['plugin', '--profile', DSH_PROFILE, 'add', `@mstar-harness/dsh@${repoVersion}`], 300_000)
+      }
+      probeSurfaceArmed = hasSeamProbeSurface(installedMstarDir(dshHome))
+      if (!probeSurfaceArmed) {
+        console.log(`install-e2e: persona-seam probe SKIPPED on the installed artifact — @mstar-harness/dsh@${repoVersion} does not carry the probe surface yet (it ships with the release carrying the seam probe; tests/persona-seam-probe.spec.ts pins the probe at src level today)`)
+      } else {
+        console.log('install-e2e: persona-seam probe surface PRESENT on the installed artifact — 5b assertion armed')
+      }
+    }
+
     // 5. Single-instance resolution: copy the installed packages into the
     //    host module graph (real dirs, NOT symlinks — see header comment)
     //    so their bare imports resolve to the test-process instances.
@@ -328,34 +367,6 @@ describe.skipIf(skipReason !== undefined)('installed-deployment e2e ', () => {
       console.log(`install-e2e: local build mirror yields ${localIds.length} ids — installed artifact taxonomy ${JSON.stringify([...expectedIds].sort()) === JSON.stringify([...localIds].sort()) ? 'matches' : `DIFFERS (local only: ${localIds.filter((id) => !expectedIds.includes(id)).join(', ')})`}`)
     }
 
-    // 4b. Persona-seam probe surface vintage (plan  Task 2): the same
-    //     npm-lag reality as the seeds pin above — pnpm's minimumReleaseAge
-    //     gate excludes fresh publishes from RANGE resolution, and a repo
-    //     version whose probe has not shipped yet resolves stale. When the
-    //     installed artifact lacks the probe surface (the fail-loud warn
-    //     marker in `dist/index.js`), re-add pinned to the repo's shipped
-    //     version (the explicit version bypasses the age gate — same
-    //     bypass as the seeds pin). If the pinned artifact STILL lacks the
-    //     surface, the probe has not published yet: print the explicit
-    //     deviation and leave the 5b assertions disarmed on this run (never
-    //     a silent skip) — once the probe version publishes, the pinned
-    //     artifact carries the surface and 5b asserts on every run.
-    let probeSurfaceArmed = hasSeamProbeSurface(installedMstarDir(dshHome))
-    if (!probeSurfaceArmed) {
-      const repoVersion = await readVersion(join(packageRoot, 'package.json'))
-      const installedVersion = await readVersion(join(installedMstarDir(dshHome), 'package.json'))
-      if (installedVersion !== repoVersion) {
-        console.log(`install-e2e: installed @mstar-harness/dsh@${installedVersion} WITHOUT the persona-seam probe surface — re-adding pinned @${repoVersion} (pnpm minimumReleaseAge gate; same bypass as the seeds pin)`)
-        runDsh(dshHome, ['plugin', '--profile', DSH_PROFILE, 'add', `@mstar-harness/dsh@${repoVersion}`], 300_000)
-      }
-      probeSurfaceArmed = hasSeamProbeSurface(installedMstarDir(dshHome))
-      if (!probeSurfaceArmed) {
-        console.log(`install-e2e: persona-seam probe SKIPPED on the installed artifact — @mstar-harness/dsh@${repoVersion} does not carry the probe surface yet (it ships with the release carrying the seam probe; tests/persona-seam-probe.spec.ts pins the probe at src level today)`)
-      } else {
-        console.log('install-e2e: persona-seam probe surface PRESENT on the installed artifact — 5b assertion armed')
-      }
-    }
-
     // 5b. Shipped-surface persona-seam probe (armed by 4b): the INSTALLED
     //     artifact's persona channel intercepts `subagents` reads on the
     //     booted host composition — the branded-`ok` inputs of
@@ -369,18 +380,27 @@ describe.skipIf(skipReason !== undefined)('installed-deployment e2e ', () => {
     if (probeSurfaceArmed) {
       const probed = Promise.withResolvers<{ dispatched: boolean; wrapper: unknown }>()
       void booted!.ctx.inject(['subagents'], (sctx) => {
-        let dispatched = false
-        const disposeCanary = sctx.on(PERSONA_SEAM_EVENT, (_readCtx, _name, _error, next) => {
-          dispatched = true
-          return next()
-        })
-        let wrapper: unknown
+        // Guarded: the inject callback is fire-and-forget (`void`), so a
+        // throw here would leave `probed` unsettled and the await below
+        // would time out instead of failing as an assertion — the body
+        // computes first, resolves once complete, rejects on any throw
+        // (the canary disposer still runs via its own finally).
         try {
-          wrapper = (sctx as unknown as { subagents?: unknown }).subagents
-        } finally {
-          disposeCanary()
+          let dispatched = false
+          const disposeCanary = sctx.on(PERSONA_SEAM_EVENT, (_readCtx, _name, _error, next) => {
+            dispatched = true
+            return next()
+          })
+          let wrapper: unknown
+          try {
+            wrapper = (sctx as unknown as { subagents?: unknown }).subagents
+          } finally {
+            disposeCanary()
+          }
+          probed.resolve({ dispatched, wrapper })
+        } catch (error) {
+          probed.reject(error instanceof Error ? error : new Error(String(error)))
         }
-        probed.resolve({ dispatched, wrapper })
       })
       const { dispatched, wrapper } = await probed.promise
       expect(dispatched, 'internal/get waterfall dispatches on the installed composition').toBe(true)

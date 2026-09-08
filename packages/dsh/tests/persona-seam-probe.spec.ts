@@ -1,5 +1,5 @@
 /**
- * Persona seam probe pin family (plan  Task 2) — a DEDICATED file (not an
+ * Persona seam probe pin family (plan Task 2) — a DEDICATED file (not an
  * extension of the persona suite) so a seam drift fails a NAMED spec. Pins
  * the three drift surfaces the probe exists for:
  *
@@ -10,8 +10,9 @@
  *   a runtime-bearing context resolve to the branded wrapper (exactly one
  *   own symbol, value `true`, non-enumerable, key surface unchanged) and a
  *   start through the native channel still merges the persona;
- * - the probe VERDICTS: the full `evaluateSeamProbe` outcome table (this
- *   file is the table's one home), the sanctioned apply-ctx
+ * - the probe VERDICTS: the full `evaluateSeamProbe` outcome table (f2–f6
+ *   below are the authoritative table home; Task 1's unit originals p1–p6
+ *   live in `role-persona.spec.ts`), the sanctioned apply-ctx
  *   `service-absent` no-warn path, the `wrap-skipped` end-to-end variant,
  *   and the warn-emission surface (exactly ONE `mstar/role-persona` WARN,
  *   templated on `PERSONA_SEAM_EVENT`, when `ok === false`).
@@ -168,8 +169,18 @@ describe('persona seam probe — real composition (bootApp, real subagents runti
       const probed = Promise.withResolvers<PersonaSeamProbeResult>()
       const wrapperReady = Promise.withResolvers<unknown>()
       void app.ctx.inject(['subagents'], (sctx) => {
-        probed.resolve(probeRolePersonaSeam(sctx))
-        wrapperReady.resolve((sctx as unknown as { subagents?: unknown }).subagents)
+        // Guarded: the inject callback is fire-and-forget (`void`), so an
+        // unhandled throw here would never settle `probed` and the await
+        // below would time out instead of failing as an assertion — compute
+        // both values first, then resolve; any throw rejects `probed`.
+        try {
+          const result = probeRolePersonaSeam(sctx)
+          const wrapper = (sctx as unknown as { subagents?: unknown }).subagents
+          probed.resolve(result)
+          wrapperReady.resolve(wrapper)
+        } catch (error) {
+          probed.reject(error instanceof Error ? error : new Error(String(error)))
+        }
       })
       expect(await probed.promise).toEqual({ ok: true })
       // Healthy boot + probe: silent — no warn (and nothing else yet).
