@@ -43,7 +43,13 @@
  * `roleMap` is a taxonomy bridge for logging + future rule-driven interop
  * only. The mirror root is bound at apply (`setRolePersonaAgentsDir` ←
  * `packagedAgentsDir()`), package-relative so the shipped bundle works from
- * any launch cwd.
+ * any launch cwd. Lifetime: the root is a module-level binding with ONE
+ * writer — the per-apply `setRolePersonaAgentsDir` call — and it is read
+ * per start, so every start observes an apply-constant value; re-calling
+ * the setter (an HMR re-apply) IS the re-bind, and that re-bind is the
+ * intended reset (it also re-arms the mirror-absent latch below). The
+ * per-apply payload `Config.rolePersonas` is the contrast: closed over per
+ * apply in `registerRolePersonaChannel`.
  *
  * Capability gates (native fail-loud contracts, per surface): one-shot
  * `SubagentRuntime.start` REJECTS a request carrying `persona` for a
@@ -192,6 +198,16 @@ export function setRolePersonaLogger(sink: RolePersonaLogSink): RolePersonaLogSi
  * `apply` to the packaged mirror (package-relative resolution — the shipped
  * bundle works from any launch cwd). `undefined` → the channel is
  * config-only (no mirror defaults).
+ *
+ * Lifetime (module sink, deliberately not apply-closed): one binding per
+ * process with exactly ONE writer — {@link setRolePersonaAgentsDir},
+ * called once per apply from the entry (`packagedAgentsDir()`) — while the
+ * only read (`withRolePersona`, per start) observes an apply-constant
+ * value: the binding cannot change mid-apply, so the module variable is
+ * apply-scoped in effect. Contrast: the persona payload
+ * `Config.rolePersonas` is apply-closed (closed over in
+ * `registerRolePersonaChannel`); the mirror root is apply-scoped by
+ * re-binding rather than by closure.
  */
 let rolePersonaAgentsDir: string | undefined
 
@@ -204,8 +220,14 @@ let rolePersonaAgentsDir: string | undefined
 let mirrorAbsentDebugged = false
 
 /**
- * Bind the persona-defaults mirror root. Returns the PRIOR binding so a
- * caller can restore it (test pattern: {@link setRolePersonaLogger}).
+ * Bind the persona-defaults mirror root — the module sink's only writer,
+ * invoked once per apply from the entry with `packagedAgentsDir()`, so an
+ * HMR re-apply re-binds the root instead of inheriting the previous
+ * apply's binding. That re-bind is the intended reset: beyond swapping the
+ * root it re-arms the S-002 mirror-absent latch (`mirrorAbsentDebugged`),
+ * keeping the "no mirror" debug at most once per apply, and the returned
+ * PRIOR binding lets a caller restore the previous root (test pattern:
+ * {@link setRolePersonaLogger}).
  * @param dir - the mirror root, or `undefined` to disable mirror defaults.
  */
 export function setRolePersonaAgentsDir(dir: string | undefined): string | undefined {
