@@ -126,7 +126,7 @@ Read **`mstar-host`** after this skill; detect host per its table, then Read the
 ## 版本对齐（CLI ↔ host 插件）
 
 - 全局 CLI 与已安装的宿主插件**独立升级**；版本漂移是已知故障源（skills/commands 与 CLI 预期不再匹配）。
-- 检查：`mstar-harness doctor --target <host>`（已实现 zcode；其它宿主报告可观测版本并套用同一定向规则）。
+- 检查：`mstar-harness doctor --target <host>`（全部宿主已实现：opencode / cursor / codex / zcode / omp / dsh / kimi）。
 - **CLI 较新** → 提示用户更新宿主插件；**插件较新** → 提示用户更新全局 CLI（`npm i -g @mstar-harness/cli@latest`）。
 - 触发纪律：harness 行为异常/疑似过期、已知新版本发布后、或用户要求时运行——**不是**每个会话都跑。
 
