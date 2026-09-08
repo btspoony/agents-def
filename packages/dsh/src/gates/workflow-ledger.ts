@@ -1,7 +1,5 @@
 /**
- * Workflow-ledger session-event consumer (plan `20260815-dsh-workflow-ledger`
- * Task 3 — the W-B2 producer half).
- *
+ * Workflow-ledger session-event consumer. *
  * Source of record: the durable `tool-workflow/*` session events appended
  * into the CALLING PARENT session's log (top-level runs only — nested
  * transport calls record nothing upstream; Task 1 seam notes §4). The
@@ -19,9 +17,8 @@
  *     forked conversation — `session/created` fires after the seed enters
  *     the log, upstream `session/src/index.ts:961-995`) gets its snapshot
  *     cold-scanned ONCE on the creation announcement, closing the
- *     late-seeded-session gap (qc3 S-304 / qc2 W-1a).
- *
- * DEDUPE (qc2 W-1 / qc3 F-301 fix-wave): ONE DURABLE per-session watermark —
+ *     late-seeded-session gap. *
+ * DEDUPE : ONE DURABLE per-session watermark —
  * the next expected envelope `seq` (session-log position) — persisted to
  * `{HARNESS_DIR}/workflows/<id>/workflow-ledger-cursors.json` (a small
  * bounded sidecar next to the workflow-dir `agent-flow.jsonl`, written
@@ -31,17 +28,16 @@
  * created-backfill / live): envelopes with `seq` below it were already
  * recorded — across cold+live overlap AND across plugin re-applies (a
  * re-registration no longer re-records the same live sessions). The
- * watermark advances only AFTER the ledger row appended successfully (qc3
- * R-401 — a failing append leaves the cursor behind, so the row is
- * re-attempted at the next scan, never permanently lost). The in-memory
+ * watermark advances only AFTER the ledger row appended successfully (a failing append leaves the cursor behind, so the
+ * row is re-attempted at the next scan, never permanently lost). The in-memory
  * Map is the durable file's mirror (module-level cache keyed by WORKFLOW
  * DIR, bounded by the session cap AND by a workflow-dir count cap — qc3
  * S-4 — so a long-lived process across many workflow ids never grows the
  * cache unbounded); a failed durable write keeps the in-memory mirror
- * advanced (in-process dedupe — qc3 S-6) with one warn — a ledger row is
+ * advanced (in-process dedupe —) with one warn — a ledger row is
  * never lost and the workflow run is never affected.
  *
- * INTER-PROCESS SERIALIZATION (qc3 W-1 fix-wave): the watermark
+ * INTER-PROCESS SERIALIZATION : the watermark
  * read-modify-write (load fresh → mutate → whole-map save) runs inside the
  * per-workflow write lock shared with the ledger append
  * (`withWorkflowDirLock` from agent-flow.ts — the same lockdir pattern as
@@ -52,16 +48,15 @@
  * process's just-advanced cursor (the duplicate-row regression mode). The
  * lock is held only around the bounded cursor update, never across scans.
  *
- * Mapping (Task 2 schema): `tool-workflow/run-start` → `workflow-run`
+ * Mapping: `tool-workflow/run-start` → `workflow-run`
  * (`agent` = the carrying parent session id), `tool-workflow/agent-start` →
  * `workflow-agent` (`childId` preserved), `tool-workflow/run-end` →
  * `workflow-run-end`. `tool-workflow/agent-end` is upstream MEMBER
- * bookkeeping with no ledger kind (Task 2 handoff + plan Interfaces — the
+ * bookkeeping with no ledger kind (the
  * member `outcome` is intentionally not persisted) and is filtered out.
  * `ts` takes the envelope's `time`.
  *
- * P-c answer observation (plan `20260815-dsh-workflow-gate` Task 4 fold-in —
- * the Task-2 Important handoff): the workflow GATE cannot observe the ask
+ * P-c answer observation : the workflow GATE cannot observe the ask
  * outcome — the tool registry's `serviceAsk` consumes the approval result
  * internally, and the gate invents no answerer. The run-start observation
  * IS the answer seam: when the approval waterfall ALLOWS a workflow call,
@@ -69,7 +64,7 @@
  * (name carried) lands in the parent session log — the consumer maps it to
  * the `workflow-run` row AND records `allow` for the run name into the
  * apply-scoped {@link WorkflowAskCache} (`registerWorkflowLedger`'s third
- * parameter — the host adapter's instance). W-1 (qc2 fix-wave): the record
+ * parameter — the host adapter's instance). the record
  * fires ONLY for names the policy marked asked in this apply
  * (`WorkflowAskCache.markAsked` on every ask verdict; the observation
  * promotes via `wasAsked`) — a run observed without a prior ask (P-b
@@ -117,8 +112,7 @@ import {
 import type { AgentFlowWorkflowEvent } from './agent-flow.ts'
 import { asRecord } from './_shared.ts'
 import type { HarnessResolver } from './_shared.ts'
-// The SHARED P-c cache-key normalization (plan `20260815-dsh-workflow-gate`
-// Task 5 fold-in — the Task-4 Important congruence fix): the run-start
+// The SHARED P-c cache-key normalization : the run-start
 // observation MUST key the ask cache through the SAME function the gate
 // composes `metaName` with (dispatch.ts `workflowGateInputOf`), or a
 // control-char name re-asks forever. Also the display-field control-char
@@ -127,7 +121,7 @@ import type { HarnessResolver } from './_shared.ts'
 // workflow-policy imports dispatch.ts type-only — no runtime cycle.
 import { normalizeWorkflowName } from './workflow-policy.ts'
 // Type-only (erased at runtime — no cycle): the P-c per-session ask cache
-// (plan `20260815-dsh-workflow-gate` Task 4 fold-in) — this consumer
+//  — this consumer
 // OBSERVES the run-start and records the allow answer into the apply-scoped
 // cache owned by the host adapter.
 import type { WorkflowAskCache } from './workflow-policy.ts'
@@ -145,8 +139,8 @@ const TOOL_WORKFLOW_RUN_END = 'tool-workflow/run-end'
 const DEPTH_ADVISORY_THRESHOLD = 2
 
 /**
- * The durable watermark file name under the WORKFLOW dir (qc2 W-1 / qc3
- * F-301 fix-wave): `{ "v": 1, "cursors": { "<sessionId>": <nextSeq> } }` —
+ * The durable watermark file name under the WORKFLOW dir (/ qc3
+ * F-301 : `{ "v": 1, "cursors": { "<sessionId>": <nextSeq> } }` —
  * the next expected envelope seq per session id. Written atomically
  * (temp-file + rename) after every recorded workflow row; read lazily per
  * workflow dir (module-level cache). v3 layout: the sidecar lives in the
@@ -164,8 +158,7 @@ export const WORKFLOW_LEDGER_WATERMARK_FILE = 'workflow-ledger-cursors.json'
  */
 export const WORKFLOW_LEDGER_WATERMARK_MAX_SESSIONS = 256
 /**
- * Workflow-dir count cap for the module-level watermark cache (qc3 S-4
- * fix-wave): a long-lived process can touch many workflow ids over its
+ * Workflow-dir count cap for the module-level watermark cache: a long-lived process can touch many workflow ids over its
  * lifetime (each iteration lifecycle creates a new workflow dir) — the
  * cache evicts the OLDEST cached dir when it exceeds this cap. The file is
  * the durable store; the cache is only a mirror, so an evicted dir is
@@ -239,9 +232,8 @@ interface WorkflowLedgerRow {
   /**
    * The NORMALIZED (control chars stripped via the SHARED
    * `normalizeWorkflowName` — the gate's own metaName normalization, plan
-   * `20260815-dsh-workflow-gate` Task 5 congruence fold-in) but UNCAPPED
-   * run display name — run-start rows only: the P-c cache key (Task 4
-   * fold-in). The ledger event's `name` is deterministically capped at the
+   *   Task 5 congruence fold-in) but UNCAPPED
+   * run display name — run-start rows only: the P-c cache key. The ledger event's `name` is deterministically capped at the
    * read boundary; the cache must key on the FULL name — it matches the
    * gate's `meta.name` (the allowlist/ask identity), which is never
    * truncated.
@@ -274,8 +266,7 @@ type Watermark = Map<string, number>
 const watermarkCache = new Map<string, Watermark>()
 
 /**
- * Cache one workflow dir's watermark with a bounded cache (qc3 S-4
- * fix-wave): when the cache exceeds {@link WORKFLOW_LEDGER_WATERMARK_MAX_DIRS}
+ * Cache one workflow dir's watermark with a bounded cache: when the cache exceeds {@link WORKFLOW_LEDGER_WATERMARK_MAX_DIRS}
  * the OLDEST cached dir (Map insertion order) is evicted. The file is the
  * durable store — an evicted dir is re-read on its next visit, so eviction
  * never loses a cursor.
@@ -289,8 +280,7 @@ function cacheWatermark(workflowDir: string, watermark: Watermark): void {
   }
 }
 
-/** The number of workflow dirs currently mirrored in the module-level watermark cache (qc3 S-4 observability). */
-export function workflowLedgerWatermarkCacheSize(): number {
+/** The number of workflow dirs currently mirrored in the module-level watermark cache */export function workflowLedgerWatermarkCacheSize(): number {
   return watermarkCache.size
 }
 
@@ -302,7 +292,7 @@ export function workflowLedgerWatermarkCacheSize(): number {
  * never durable). Persisted values are validated (integer `nextSeq` in
  * [1, 2^31)) and invalid entries dropped.
  *
- * `fresh` (qc3 W-1 fix-wave): re-read the FILE and replace the in-memory
+ * `fresh` : re-read the FILE and replace the in-memory
  * map — used ONLY under the per-workflow write lock in `advanceWatermark`,
  * so the read-modify-write starts from the other process's last save, not
  * from a stale in-memory view (a whole-map save can no longer clobber a
@@ -349,7 +339,7 @@ function loadWatermark(workflowDir: string, fresh = false): Watermark {
  * pattern as the ledger's truncating replace, so concurrent readers never
  * observe a torn file). ALWAYS called under the per-workflow write lock
  * (`advanceWatermark` holds it across the fresh load → mutate → save
- * sequence — qc3 W-1: the whole-map save is serialized against other
+ * sequence —: the whole-map save is serialized against other
  * processes sharing the lifecycle). A failing write degrades to
  * in-memory-only with one warn: the ledger rows are already appended (never
  * lost); only cross-restart dedupe is lost. Contained — never throws.
@@ -368,7 +358,7 @@ function saveWatermark(workflowDir: string, watermark: Watermark): void {
 /**
  * Advance one session's watermark entry to `nextSeq` and persist. Runs the
  * whole read-modify-write under the per-workflow inter-process lock
- * (qc3 W-1 fix-wave — same lock as the ledger append): the fresh load
+ * (same lock as the ledger append): the fresh load
  * starts from the latest durable cursors, so two processes sharing one
  * lifecycle never clobber each other's advances; the session entry is
  * monotonic (`Math.max` — a stale concurrent advance never regresses an
@@ -380,7 +370,7 @@ function saveWatermark(workflowDir: string, watermark: Watermark): void {
  * evicted session re-records) is bounded by the cap and documented in the
  * README.
  *
- * DEGRADED PATH (qc3 S-6 fix-wave): a lock timeout (another writer stuck
+ * DEGRADED PATH : a lock timeout (another writer stuck
  * for the full timeout — a crashed/stuck peer), a reentrancy error, or a
  * throwing critical section leaves the durable file untouched, but the
  * in-memory mirror is STILL advanced (the same monotonic `Math.max`;
@@ -429,14 +419,14 @@ export function advanceWatermark(
           }
         }
         // Monotonic advance: a concurrent process that already pushed this
-        // session's cursor past `nextSeq` must never be regressed (qc3 W-1).
+        // session's cursor past `nextSeq` must never be regressed.
         watermark.set(sid, Math.max(watermark.get(sid) ?? 0, nextSeq))
         saveWatermark(workflowDir, watermark)
       },
       lockOpts,
     )
   } catch (error) {
-    // qc3 S-6: the durable write did NOT happen (lock timeout / reentrancy
+    // the durable write did NOT happen (lock timeout / reentrancy
     // / throwing critical section). The ledger row above is already
     // appended — keep the IN-MEMORY mirror advanced (the same monotonic
     // `Math.max`, idempotent with the locked path) so re-applies in this
@@ -468,7 +458,7 @@ export function advanceWatermark(
  * `tool-workflow/agent-end` (upstream member bookkeeping — no ledger kind).
  * Skipped events never abort the pass.
  *
- * Sequence + length bounds (qc2 W-2 / W-3 fix-wave): the envelope `seq`
+ * Sequence + length bounds (/ W-3 : the envelope `seq`
  * must be an integer in [0, 2^31) (a fractional seq would corrupt the
  * durable watermark's cursor math and silently drop later integer
  * envelopes); the member `seq` (`data.seq`, 1-based) must be an integer in
@@ -476,7 +466,7 @@ export function advanceWatermark(
  * (`runId`, `childId`) SKIP the row when oversized — truncating them could
  * forge collisions; display fields (`name`, `label`, `phase`) are capped
  * deterministically with a suffix marker AND stripped of ASCII control
- * characters (qc2 S-1 — a newline/tab/CR in a model-controlled display field
+ * characters (a newline/tab/CR in a model-controlled display field
  * must never reach the depth-advisory warn or a JSONL line).
  */
 function rowOf(session: unknown, envelope: unknown): WorkflowLedgerRow | undefined {
@@ -544,7 +534,7 @@ function rowOf(session: unknown, envelope: unknown): WorkflowLedgerRow | undefin
   }
   if (type === TOOL_WORKFLOW_AGENT_END) {
     // Upstream member bookkeeping — the member `outcome` is intentionally
-    // NOT persisted (Task 2 handoff + plan Interfaces: the schema has no
+    // NOT persisted (the schema has no
     // kind for it). Filtered, never mapped.
     return undefined
   }
@@ -584,7 +574,7 @@ function depthAdvisory(sessions: SessionsView, row: WorkflowLedgerRow, warned: S
 
 /**
  * Register the workflow-ledger consumer: (1) a `session/created` backfill
- * listener (registered FIRST — qc3 S-305 — so no apply-time window exists
+ * listener (registered FIRST — — so no apply-time window exists
  * between the snapshot and the attach); (2) a bounded cold scan over
  * `ctx.sessions.list()` reading each session's `events` snapshot for
  * `tool-workflow/*` rows (covers pre-restart runs — constructor-seeded
@@ -594,10 +584,10 @@ function depthAdvisory(sessions: SessionsView, row: WorkflowLedgerRow, warned: S
  * persisted to `{HARNESS_DIR}/workflows/<id>/workflow-ledger-cursors.json` —
  * the ACTIVE workflow dir, never the root) — re-applies
  * never duplicate; no other cache. The watermark advances only AFTER a
- * successful ledger append (qc3 R-401 — a failing append leaves the cursor
+ * successful ledger append (a failing append leaves the cursor
  * behind so the row is re-attempted at the next scan, never lost). Every
  * read/append is try/catch-contained — including `sessions.list()` itself
- * (qc2 S-7: one warn, the cold scan skipped, the consumer stays live); the
+ * (one warn, the cold scan skipped, the consumer stays live); the
  * `sessions` service absent → one debug log + consumer disabled (composition
  * without dsh-session). All appends go through `recordWorkflowEvent` (itself
  * fully contained — a failing ledger write never crashes or alters a
@@ -607,7 +597,7 @@ function depthAdvisory(sessions: SessionsView, row: WorkflowLedgerRow, warned: S
  * @param resolver - the shared per-workspace `{HARNESS_DIR}` resolver
  *   (harnessDir attribution from the carrying session's `header.cwd`).
  * @param workflowAskCache - the apply-scoped P-c ask cache (plan
- *   `20260815-dsh-workflow-gate` Task 4 fold-in — the host adapter's
+ *     Task 4 fold-in — the host adapter's
  *   instance; see the module doc "P-c answer observation"). Absent → the
  *   observation hook is disabled (W-B2 tests / compositions without the
  *   workflow gate).
@@ -622,7 +612,7 @@ export function registerWorkflowLedger(ctx: Context, resolver: HarnessResolver, 
   }
   // Depth advisory latch: per runId — ONE bounded warn at depth >= 2. Kept
   // per-apply (reset on re-registration), so it never grows across applies
-  // (qc3 S-301).
+    // depth-warn latch (reset per apply).
   const depthWarned = new Set<string>()
 
   const consume = (session: unknown, envelope: unknown): void => {
@@ -659,7 +649,7 @@ export function registerWorkflowLedger(ctx: Context, resolver: HarnessResolver, 
     const events = (session as SessionView).events
     if (Array.isArray(events) && events.length < next) next = 0
     if (row.seq < next) return // earlier-scan coverage — already recorded
-    // Record-then-advance (qc3 R-401): the ledger row is appended FIRST and
+    // Record-then-advance : the ledger row is appended FIRST and
     // the durable watermark advances ONLY on success — a failing append
     // leaves the cursor behind, so the row is re-attempted at the next scan
     // (re-apply / restart), never permanently lost. The only residual is one
@@ -667,8 +657,7 @@ export function registerWorkflowLedger(ctx: Context, resolver: HarnessResolver, 
     // calls — the duplicate mode the design already accepts and documents.
     if (recordWorkflowEvent({ harnessDir, workflowDir, event: row.event })) {
       advanceWatermark(workflowDir, sid, row.seq + 1, (candidate) => sessions.get(candidate) === undefined)
-      // P-c answer observation (plan `20260815-dsh-workflow-gate` Task 4
-      // fold-in — the Task-2 Important handoff; see the module doc): a
+      // P-c answer observation : a
       // run-start that produced a ledger row means the call RAN — the
       // approval waterfall allowed it (or the allow path let it through).
       // Record `allow` for the run's workflow name so a subsequent
@@ -683,7 +672,7 @@ export function registerWorkflowLedger(ctx: Context, resolver: HarnessResolver, 
       // matches the gate's `meta.name`); the ledger display field is
       // capped separately.
       //
-      // W-1 (qc2 fix-wave): `allow` is recorded ONLY for names that
+      // `allow` is recorded ONLY for names that
       // received an `ask` verdict in THIS apply (`markAsked` at the
       // policy's single ask point — `wasAsked` below). A run observed
       // WITHOUT a prior ask — a P-b advisory under `ask` mode (uncovered
@@ -726,7 +715,7 @@ export function registerWorkflowLedger(ctx: Context, resolver: HarnessResolver, 
     for (const envelope of events) consume(session, envelope)
   }
 
-  // SESSION-CREATED BACKFILL — registered BEFORE the cold scan (qc3 S-305):
+  // SESSION-CREATED BACKFILL — registered BEFORE the cold scan :
   // a session created between the `sessions.list()` snapshot and the listener
   // attach would be covered by neither. A session created AFTER apply with a
   // constructor-seeded log (replay/resume/fork) never publishes its seeds on
@@ -745,7 +734,7 @@ export function registerWorkflowLedger(ctx: Context, resolver: HarnessResolver, 
 
   // COLD SCAN — bounded per session: each session's events snapshot is read
   // ONCE; a throwing `list()` or read logs one warn and the pass is skipped
-  // (qc2 S-7 — the consumer stays live: the firehose and the created
+  // (the consumer stays live: the firehose and the created
   // backfill above keep recording; the run is never affected).
   let sessionsSnapshot: readonly unknown[]
   try {

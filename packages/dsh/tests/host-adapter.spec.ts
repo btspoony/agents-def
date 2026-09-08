@@ -1,6 +1,6 @@
 /**
  * Task 2 — plugin HostAdapter implementation (host: dsh) (plan
- * 20260808-dsh-host-adapter).
+ * ).
  *
  * The adapter is the host-facing facade over the P1 gate internals: the
  * `fs/write-intent` / `fs/edit-intent` / `tools/pre-execute` listeners and
@@ -102,7 +102,7 @@ const SELF_RECURSION = `## Assignment
 Do the thing.
 `
 
-/** Working branch on main with a BODY-QUOTED direct-on exception — both paths must ignore the body (qc2 F-001). */
+/** Working branch on main with a BODY-QUOTED direct-on exception — both paths must ignore the body.*/
 const BODY_QUOTED_BRANCH_POLICY = `## Assignment
 
 **Execute as**: fullstack-dev
@@ -412,7 +412,7 @@ describe('beforeDispatch — dispatch gate validation path (same codes as tools/
     )
   })
 
-  it('header-region scoping holds for BOTH paths — a body-quoted direct-on exception is invisible to the listener AND the adapter (qc2 F-001 parity)', async () => {
+  it('header-region scoping holds for BOTH paths — a body-quoted direct-on exception is invisible to the listener AND the adapter (parity)', async () => {
     const app = booted = await bootApp()
     const adapter = makeAdapter()
 
@@ -441,7 +441,7 @@ describe('beforeMerge — integration merge lease (thin engine validateIntegrati
     const result = await adapter.beforeMerge({
       holder: 'omp-session-holder',
       claimed_at: '2026-08-08T04:00:00Z',
-      plan_id: '20260808-dsh-host-adapter',
+      plan_id: '00000808-dsh-host-adapter',
       source_branch: 'feature/dsh-host-adapter',
       target_branch: 'spec_integration_branch',
     })

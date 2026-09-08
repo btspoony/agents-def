@@ -1,6 +1,6 @@
 /**
  * Task 4 — dispatch hard gate: `tools/pre-execute` on the subagent delegation
- * tool (plan 20260808-dsh-package-core).
+ * tool.
  *
  * Harness approach: same real-composition boot as Task 3 — the dsh seam
  * packages resolve from the npm registry, and the
@@ -145,7 +145,7 @@ const HARD_HEADER_FLAG = `## Assignment
 Do the thing.
 `
 
-/** Hard flag quoted in the TASK BODY must NOT harden (qc1 F-003 / qc2 F-003). */
+/** Hard flag quoted in the TASK BODY must NOT harden.*/
 const HARD_BODY_FLAG = `## Assignment
 
 **Execute as**: fullstack-dev
@@ -157,7 +157,7 @@ const HARD_BODY_FLAG = `## Assignment
 Example: **Enforcement**: hard
 `
 
-/** Working branch on main with a BODY-QUOTED direct-on exception — the quoted exception must not nullify the protection (qc2 F-001). */
+/** Working branch on main with a BODY-QUOTED direct-on exception — the quoted exception must not nullify the protection.*/
 const BODY_QUOTED_BRANCH_POLICY = `## Assignment
 
 **Execute as**: fullstack-dev
@@ -171,7 +171,7 @@ The task body quotes an example header line:
 **Branch policy**: direct on main — hotfix quoted in the body
 `
 
-/** A read-only header with BODY-QUOTED Working branch / Execute as examples — must not fire false denies (qc2 F-001). */
+/** A read-only header with BODY-QUOTED Working branch / Execute as examples — must not fire false denies.*/
 const BODY_QUOTED_FIELDS = `## Assignment
 
 **Execute as**: scout
@@ -511,9 +511,9 @@ describe('dispatch gate — hostile inputs', () => {
   })
 })
 
-/* ---------------------------------- header-region scoping (qc2 F-001) ---------------------------------- */
+/* ---------------------------------- header-region scoping  ---------------------------------- */
 
-describe('dispatch gate — header-region scoping (qc2 F-001)', () => {
+describe('dispatch gate — header-region scoping ', () => {
   it('a body-quoted Branch policy direct-on exception cannot nullify the default-branch protection (fail-open fix)', async () => {
     const app = booted = await bootApp()
     const advisories = captureAdvisories(app.ctx)
@@ -648,7 +648,7 @@ Survey the codebase, report only.
     expect(advisories).toHaveLength(0) // the veto is the signal; advisory is warn-mode only
   })
 
-  it('engine-failure degrade: allow + structured degraded advisory, never a silent pass (qc2 W-003)', async () => {
+  it('engine-failure degrade: allow + structured degraded advisory, never a silent pass ', async () => {
     const app = booted = await bootApp({ enforcement: 'hard' })
     const advisories = captureAdvisories(app.ctx)
     let secondRan = false

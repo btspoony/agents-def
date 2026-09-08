@@ -1,10 +1,10 @@
 /**
  * scripts/escape-dist-literals.ts — dist escaper guard semantics (QC fix
- * wave 3: qc1 F-001 + qc2 W-1/S-2 + qc3 F-1). Pins:
+ * wave 3: regression pins. Pins:
  * - non-ASCII OUTSIDE comments is escaped to `\uXXXX` (value-identical);
  * - non-ASCII INSIDE comments is left untouched;
  * - idempotency — escaping the escaped output changes nothing (the real
- *   script run twice on a file leaves the bytes identical, second run clean).
+ * script run twice on a file leaves the bytes identical, second run clean).
  *
  * The escaper is the bundler-level half of the two-layer ASCII defense
  * (bun build re-normalizes `\uXXXX` back to raw UTF-8 in string literals);

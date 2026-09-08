@@ -1,20 +1,22 @@
 ---
 name: mstar-roles
-description: Morning Star role prompt hub — `agents/*.md` shells plus full behavior in `references/*.md`. Role files are **identity-first** (mission / responsibilities / NEVER rules); topic `mstar-*` skills appear only as **PM-activated skill presets** (Assignment `Skill presets:` field), not default dependencies. Always load for any Morning Star role (`project-manager`, `product-manager`, `architect`, `code-reviewer`, `fullstack-dev`, `fullstack-dev-2`, `frontend-dev`, `qa-engineer`, `qc-specialist*`, `ops-engineer`, `writing-specialist`, `prompt-engineer`). Cross-role **Role → skill presets** summary in this SKILL.md; per-role preset menus in `references/*.md` are authoritative once PM activates them. Full topic skill index → **`mstar-harness-core`**.
+description: Morning Star role prompt hub and the **single load-selection authority** for Morning Star roles — `agents/*.md` shells plus full behavior in `references/*.md`. Role files are **identity-first** (mission / responsibilities / NEVER rules); topic `mstar-*` skills appear only as **PM-activated skill presets** (Assignment `Skill presets:` field), not default dependencies — this hub's § Load Order owns the omission / `none` / named-preset / resume / unknown-preset decision. Always load for any Morning Star role (`project-manager`, `product-manager`, `architect`, `code-reviewer`, `fullstack-dev`, `fullstack-dev-2`, `frontend-dev`, `qa-engineer`, `qc-specialist*`, `ops-engineer`, `writing-specialist`, `prompt-engineer`). Cross-role **Role → skill presets** summary in this SKILL.md; per-role preset menus in `references/*.md` are authoritative once PM activates them. Full topic skill index → **`mstar-harness-core`**.
 ---
 
 ## Load Order
 
-When a Morning Star role starts work in a session:
+This hub is the **single load-selection authority** for Morning Star roles (Spec A2): `mstar-harness-core` stays the lifecycle/authorization semantic authority and the global entry whenever it is loaded, but this hub owns the selection decision — core does not maintain a second mandatory-role table. When a Morning Star role starts work in a session:
 
-1. Read this `mstar-roles` skill; resolve role mapping and parameter tables below.
-2. Read the corresponding `references/<role>.md` file — **identity-first**: mission, scope, and NEVER rules come before any skill list.
-3. Load topic skills per the Assignment **`Skill presets:`** field, following that role's **Skill Preset (PM-Activated)** section. Omitted on an implementation / QC / QA round ⇒ the role's `standard` preset applies by default; explicit `Skill presets: none` (or a trivial route) ⇒ execute from identity + assignment alone without topic skills. Whenever `mstar-harness-core` is loaded, it remains the global entry (state machine, gates, routing).
-4. Expand placeholders from role parameters before execution.
+1. Read this `mstar-roles` skill; resolve role mapping and parameter tables below. This bootstrap is the **one exception** to topic→core: it does not require `mstar-harness-core` first.
+2. Read the corresponding `references/<role>.md` file — **identity-first**: mission, scope, and NEVER rules come before any skill list. Non-PM roles also read the linked minimal leaf boundary (`references/_shared/leaf-executor-core.md` — role-owned, always loads with the reference).
+3. Apply the Assignment **`Skill presets:`** decision — explicit `none` ⇒ no optional topic preset (identity + assignment + role-owned methods only); omitted on a substantive implementation / QC / QA round ⇒ the role's `standard` preset; explicit named preset ⇒ that role's supported members; omitted on a trivial route ⇒ identity only. **Role-owned** QC/QA methods and assigned evidence obligations load regardless of preset. `none` never grants delegation and never waives gates. **Unknown preset** or missing required identity ⇒ return Needs Context / Blocked — never infer `project-manager`.
+4. Whenever `mstar-harness-core` is loaded by that decision (PM required reads, `standard` routes, direct topic invocation) it remains the global entry (state machine, gates, routing); if any conflict appears, `mstar-harness-core` remains the authoritative source for lifecycle, gates, routing, and invariants.
+5. Resume: retain loaded identity/contract only when the source hashes are unchanged; read changed / phase-required material; never reinterpret `none` as permission.
+6. Expand placeholders from role parameters before execution.
 
-If any conflict appears, `mstar-harness-core` remains the authoritative source for lifecycle, gates, routing, and invariants. The table below summarizes each role's preset menu; when a role file's preset section differs, follow the role file for that session.
+The table below summarizes each role's preset menu; when a role file's preset section differs, follow the role file for that session.
 
-Exception: `project-manager` is the core orchestrator and keeps **required reading** (not a preset) — see `references/project-manager.md`.
+Exception: `project-manager` is the core orchestrator and keeps **required reading** (not a preset, never preset-gated) — see `references/project-manager.md`.
 
 ## Role Reference Mapping
 
@@ -37,7 +39,7 @@ Exception: `project-manager` is the core orchestrator and keeps **required readi
 
 ### Role → skill presets (PM-activated)
 
-PM-owned activation with a safe default: omitted `Skill presets:` on an implementation / QC / QA round means `standard`; explicit `none` runs identity-only. Rows summarize each role's preset menu — role-owned files (e.g. `references/qc-specialist/`, `references/qa-engineer/acceptance-gate.md`) are excluded; they always load with the reference.
+PM-owned activation; the omission / `none` / named-preset / resume / unknown-preset rule is defined once in **§ Load Order** above — this table only summarizes each role's preset menu (role refs own their named member lists). Role-owned files (e.g. `references/qc-specialist/`, `references/qa-engineer/acceptance-gate.md`) are excluded from presets; they always load with the reference.
 
 | Role | Preset menu |
 | --- | --- |
@@ -79,7 +81,7 @@ Role `references/*.md` files include explicit **`NEVER`** sections (anti-recursi
 
 PM consolidated (tri mode): `{SDD_DIR}/review/qc-consolidated.md` (same folder; no `<plan-id>` basename prefix) + durable main-plan summary. Naming SSOT: `mstar-artifacts/references/plan-files-and-reports.md`.
 
-> **Engine check (when available):** run `mstar roles validate` (or import `validateRoleMapping` / `lintLoadOrder` from `@mstar-harness/engine` in a host hook) to validate the mapping and parameter tables above against the on-disk `references/*.md` layout (shared families included) and lint the load-order declarations. On `fail` -> do not proceed; fix and re-run. Skill text below remains authoritative when the runtime is absent.
+> **Engine check (when available):** run `mstar roles validate` (or import `validateRoleMapping` / `lintLoadOrder` from `@mstar-harness/engine` in a host hook) to validate the mapping and parameter tables above against the on-disk `references/*.md` layout (shared families included) and lint the load-order declarations (topics declare core-first; this hub's bootstrap is the single exception and must declare the § Load Order decision matrix). On `fail` -> do not proceed; fix and re-run. Skill text below remains authoritative when the runtime is absent.
 
 ## Maintenance Rules
 
@@ -91,11 +93,11 @@ PM consolidated (tri mode): `{SDD_DIR}/review/qc-consolidated.md` (same folder; 
 
 ## Workflow
 
-加载顺序：Read 本 skill（角色映射 + 参数表）→ 解析对应 `references/<role>.md`（身份优先：mission / NEVER / responsibilities 在前）→ 按 Assignment 的 `Skill presets:` 字段加载专题 skill：实质轮次（implementation / QC / QA）缺省即默认该角色的 `standard` 预设；显式 `none`（或 trivial 路由）则以身份 + Assignment 执行。映射 / 参数表与磁盘 `references/*.md` 布局不符时先修再继续。
+加载顺序：Read 本 skill（角色映射 + 参数表；本 skill 即加载选择权威）→ 解析对应 `references/<role>.md`（身份优先：mission / NEVER / responsibilities 在前）+ 非 PM 角色读取其链接的 leaf 边界 → 按 § Load Order 的 `Skill presets:` 决策加载专题 skill（解释权只在 § Load Order；角色 ref 只列成员名单）。映射 / 参数表与磁盘 `references/*.md` 布局不符时先修再继续。
 
 ## Evidence
 
-正确结果 = 角色映射与加载契约可机器校验：`mstar roles validate` 通过（映射 + 加载顺序 0 violations，见上方 Engine check blockquote 的 import 形态），`references/*.md` 布局与上表一一对应，shared-family 角色共用同一 reference 文件（引擎校验可用时先跑；不可用时以本文件为准）。
+正确结果 = 角色映射与加载契约可机器校验：`mstar roles validate` 通过（映射 0 violations；加载顺序 0 violations —— 专题声明 core-first，`mstar-roles` hub bootstrap 走唯一例外并声明 identity-first / none / standard / role-owned methods / unknown-preset 决策矩阵，见上方 Engine check blockquote 的 import 形态），`references/*.md` 布局与上表一一对应，shared-family 角色共用同一 reference 文件（引擎校验可用时先跑；不可用时以本文件为准）。
 
 ## References
 

@@ -1,5 +1,5 @@
 /**
- * Shared REAL-composition boot for `@mstar-harness/dsh` tests (plan Task 2
+ * Shared REAL-composition boot for `@mstar-harness/dsh` tests (
  * pattern, extended for the Task 3 status gate): boots the REAL-composition
  * app by mounting the seam rows directly with `ctx.plugin` in the exact
  * order the dsh app composes them (skill → system-prompt → tools → commands
@@ -53,7 +53,7 @@ import * as plugin from '../src/index.ts'
 
 /**
  * Minimal in-memory `loader` service for the composition boot (plan
- * `20260814-dsh-fallbacks-integration` Task 1 — Step 5 `inject: ['loader']`):
+ *  Task 1 — Step 5 `inject: ['loader']`):
  * the mstar plugin's top-level `inject` now requires the `loader` service
  * before apply (the real dsh app always boots the profile loader first —
  * plugin-inventory precedent), so the harness mounts a structural fake that
@@ -76,7 +76,7 @@ export class FakeLoaderRegistry extends Service {
 
 /**
  * Minimal in-memory `jobs` service for the settle-pairing tests (plan
- * `20260811-panel-f4-timeliness` Task 1 — Step 1 seam probe): implements the
+ *  Task 1 — Step 1 seam probe): implements the
  * ONE contract the plugin consumes — `onJobDone(listener)` with the upstream
  * `JobDoneListener` signature `(snapshot, owner)` — and lets the test drive
  * terminal snapshots through {@link fireDone}. Mounted as the
@@ -127,7 +127,7 @@ export interface SubagentStartPayload {
 
 /**
  * Recording subagent provider for the NATIVE persona-channel tests (plan
- * `20260831-dsh-alpha2-optional-fallbacks` Task 3): registers on the REAL
+ *  Task 3): registers on the REAL
  * `@deepseek-ai/dsh-subagent` runtime and records the RESOLVED request each
  * `start` receives — after the channel's persona merge and capability gate.
  * The one-shot run handle is the minimal contract `observeRun` consumes
@@ -244,8 +244,7 @@ export function startContinuableViaNativeChannel(
 }
 
 /**
- * Minimal in-memory `agents` service (plan `20260814-dsh-fallbacks-integration`
- * Task 2): implements the contracts the plugin's seams consume — `get(id)`
+ * Minimal in-memory `agents` service  implements the contracts the plugin's seams consume — `get(id)`
  * child resolution (documented in the `@deepseek-ai/dsh-subagent` event
  * contract; the real registry's own admission boundary) — plus
  * `register(agent)` so a test can fake-register a child agent (the
@@ -255,7 +254,7 @@ export function startContinuableViaNativeChannel(
  * `agent/created` / `agent/disposed` — none of it consumed by the plugin.
  *
  * `create(inputs)` supports the CONTINUABLE persona-channel tests (plan
- * `20260831-dsh-alpha2-optional-fallbacks` Task 3 fix round): the real
+ *  Task 3 fix round): the real
  * continuation manager materializes every continuable child through
  * `agents.create({ sessionId, meta, seed, agentOptions, signal, setup })`.
  * This fake RECORDS the creation inputs and THROWS — the earliest real
@@ -296,7 +295,7 @@ export class FakeAgentRegistry extends Service {
 
 /**
  * Minimal in-memory `sessions` service for the workflow-ledger consumer e2e
- * tests (plan `20260815-dsh-workflow-gate` Task 4 — the W-B2 run rows +
+ * tests (the W-B2 run rows +
  * the P-c answer observation alongside the gate verdict rows): implements
  * the ONE contract the workflow-ledger consumer reads — `get(id)` /
  * `list()` over live sessions (the depth advisory + cold scan) — plus
@@ -351,8 +350,7 @@ export class FakeSessionsRegistry extends Service {
 }
 /**
  * Minimal in-memory `sessionPersistence` service for the CONTINUABLE
- * persona-channel tests (plan `20260831-dsh-alpha2-optional-fallbacks`
- * Task 3 fix round): the real continuation manager's `startContinuable`
+ * persona-channel tests (plan  fix round): the real continuation manager's `startContinuable`
  * requires the service to EXIST (`requirePersistence()` →
  * `PERSISTENCE_UNAVAILABLE` otherwise) but, for a fresh child without a
  * caller-reserved id, reads nothing from it before handing off to
@@ -368,7 +366,7 @@ export class FakeSessionPersistence extends Service {
 
 /**
  * Minimal in-memory `settings` service for the REAL-fallbacks composition
- * (plan `20260817-dsh-roles-e2e` Task 1 — installed-deployment e2e): the
+ * (installed-deployment e2e): the
  * upstream `dsh-llm-fallbacks` plugin writes its seed registry through the
  * `settings` service (`seedsIo.writeRoles` → `sctx.settings.update(...)`),
  * which the real dsh app always provides (`dsh-settings-file` row). Without
@@ -476,7 +474,7 @@ export interface BootOptions {
    * Mount the {@link FakeJobRegistry} as the `jobs` service (the
    * `@deepseek-ai/dsh-jobs-fake` row + module map) so the plugin's
    * `ctx.inject(['jobs'])` onJobDone wiring registers against it (plan
-   * `20260811-panel-f4-timeliness` Task 1 seam probe).
+   *  Task 1 seam probe).
    */
   jobsService?: 'fake'
   /**
@@ -484,7 +482,7 @@ export interface BootOptions {
    * `@deepseek-ai/dsh-agent-fake` row + module map) so the seams that read
    * live agents resolve fake-registered children via
    * `ctx.get('agents')?.get(id)` (plan
-   * `20260814-dsh-fallbacks-integration` Task 2 — the real dsh app always
+   *  Task 2 — the real dsh app always
    * composes dsh-agent before the subagent seam). The REAL subagents row
    * also requires it: the runtime's constructor injects `agents` for its
    * continuation manager, and the continuable persona tests observe the
@@ -493,7 +491,7 @@ export interface BootOptions {
   agentsService?: 'fake'
   /**
    * Mount the REAL `@deepseek-ai/dsh-subagent` row (the `ctx.subagents`
-   * runtime seam — plan `20260831-dsh-alpha2-optional-fallbacks` Task 3):
+   * runtime seam —):
    * the native persona-channel tests register a {@link FakeSubagentProvider}
    * on it and drive starts through {@link startViaNativeChannel} /
    * {@link startContinuableViaNativeChannel}. Requires
@@ -506,8 +504,7 @@ export interface BootOptions {
    * Mount the {@link FakeSessionsRegistry} as the `sessions` service (the
    * `@deepseek-ai/dsh-session-fake` row + module map) so the plugin's
    * `registerWorkflowLedger` consumer wiring registers against it — the W-B2
-   * run rows + the P-c answer observation e2e (plan `20260815-dsh-workflow-gate`
-   * Task 4; the real dsh app always composes dsh-session before the plugin).
+   * run rows + the P-c answer observation e2e (plan ; the real dsh app always composes dsh-session before the plugin).
    */
   sessionsService?: 'fake'
   /**
@@ -515,8 +512,7 @@ export interface BootOptions {
    * service (the `@deepseek-ai/dsh-session-persistence-fake` row + module
    * map): the REAL runtime's `startContinuable` requires the service to
    * exist (`PERSISTENCE_UNAVAILABLE` otherwise) — the continuable
-   * persona-channel tests opt in (plan `20260831-dsh-alpha2-optional-fallbacks`
-   * Task 3 fix round; the real dsh app composes a persistence backend
+   * persona-channel tests opt in (plan  fix round; the real dsh app composes a persistence backend
    * before continuable children are addressable).
    */
   sessionPersistence?: 'fake'
@@ -524,7 +520,7 @@ export interface BootOptions {
   roleMap?: Record<string, string>
   /** Persona map (Config `rolePersonas`): mstar role id → persona text. */
   rolePersonas?: Record<string, string>
-  /** Workflow/ralph gate mode (Config `workflowGate`, plan `20260815-dsh-workflow-gate`). */
+  /** Workflow/ralph gate mode (Config `workflowGate`,). */
   workflowGate?: 'off' | 'warn' | 'ask' | 'hard'
   /** Workflow name allowlist (Config `workflowNames`; empty/absent ⇒ every name unknown). */
   workflowNames?: string[]
@@ -532,7 +528,7 @@ export interface BootOptions {
    * Seed a minimal v2 tree (root status.json + one active workflow snapshot)
    * under the boot harness dir BEFORE the plugin applies — the v3
    * write-path precondition for the agent-flow writer / workflow-ledger
-   * consumer (plan `20260819-workflow-dsh-viz` Task 2). Opt-in: tests that
+   * consumer . Opt-in: tests that
    * assert the bare-harness degrade (no status.json → state null) must NOT
    * set it.
    */
@@ -557,15 +553,14 @@ export interface BootOptions {
   harnessDir?: string | null
   /**
    * Module-source override for the `@mstar-harness/dsh` row (plan
-   * `20260817-dsh-roles-e2e` Task 1 — installed-deployment e2e): the
+   *  Task 1 — installed-deployment e2e): the
    * default is the src plugin (`../src/index.ts`); an installed-artifact
    * test passes the dist namespace imported from the real install. The
    * default behavior is unchanged when omitted.
    */
   pluginModule?: unknown
   /**
-   * REAL `dsh-llm-fallbacks` row (plan `20260817-dsh-roles-e2e` Task 1):
-   * when set, a `dsh-llm-fallbacks` row is mounted AFTER the mstar row
+   * REAL `dsh-llm-fallbacks` row  * when set, a `dsh-llm-fallbacks` row is mounted AFTER the mstar row
    * with this module as its source (the real profile entry-list order is
    * mstar first, fallbacks second — the seeds inject child is armed at
    * mstar apply and fires when the fallbacks service appears). Absent by
@@ -591,7 +586,7 @@ export interface BootResult {
   root: string
   harnessDir: string
   /**
-   * The fallbacks row fiber (plan `20260817-dsh-roles-e2e` Task 1 — set
+   * The fallbacks row fiber (set
    * when `fallbacksModule` was mounted): the host may dispose it and
    * re-apply the row with a settings-derived config to model the real
    * app's config-stack re-composition (settings write → HMR re-apply).
@@ -733,7 +728,7 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
   const root = options.root ?? await mkdtemp(join(tmpdir(), 'dsh-mstar-boot-'))
   const harnessDir = join(root, 'harness')
   await mkdir(harnessDir, { recursive: true })
-  // v3 write-path precondition (plan `20260819-workflow-dsh-viz` Task 2):
+  // v3 write-path precondition:
   // the agent-flow writer / workflow-ledger consumer append only to an
   // ACTIVE workflow — tests that exercise the ledger opt in to the seeded
   // v2 tree (root status.json + one active workflow snapshot).
@@ -752,7 +747,7 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
   // (the real dsh app always composes them).
   const inlineRows: ReadonlyArray<{ name: string; config?: Record<string, unknown> }> = [
     // The fake loader row mounts FIRST: the mstar plugin's top-level
-    // `inject: ['loader']` (plan 20260814-dsh-fallbacks-integration Task 1)
+    // `inject: ['loader']` 
     // requires the service before apply — the real dsh app always boots the
     // profile loader before composing plugin rows.
     { name: '@deepseek-ai/dsh-loader-fake' },
@@ -762,49 +757,43 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
     // before the tool registry row.
     { name: '@deepseek-ai/dsh-system-prompt' },
     // The tool registry row mounts before the plugin so `ctx.tools` exists
-    // when the v2 seams register their model-facing tools (Task 1 of plan
-    // 20260808-dsh-seams-bundle; the real dsh app always composes dsh-tools).
+    // when the v2 seams register their model-facing tools (the real dsh app
+    // always composes dsh-tools).
     { name: '@deepseek-ai/dsh-tools' },
     // The command registry row mounts before the plugin so `ctx.commands`
     // exists when the bundled mstar commands register (the real dsh app
     // always composes dsh-commands).
     { name: '@deepseek-ai/dsh-commands' },
-    // The fake jobs service row (only when requested — plan
-    // `20260811-panel-f4-timeliness` Task 1): provides `ctx.jobs` so the
+    // The fake jobs service row (only when requested): provides `ctx.jobs` so the
     // plugin's deferred `ctx.inject(['jobs'])` onJobDone wiring fires.
     ...(options.jobsService !== undefined ? [{ name: '@deepseek-ai/dsh-jobs-fake' }] : []),
-    // The fake agents service row (only when requested — plan
-    // `20260814-dsh-fallbacks-integration` Task 2): provides `ctx.get('agents')`
+    // The fake agents service row (only when requested): provides `ctx.get('agents')`
     // so the seams that read live agents resolve fake-registered children.
     ...(options.agentsService !== undefined ? [{ name: '@deepseek-ai/dsh-agent-fake' }] : []),
-    // The REAL subagents runtime row (only when requested — plan
-    // `20260831-dsh-alpha2-optional-fallbacks` Task 3): provides
+    // The REAL subagents runtime row (only when requested): provides
     // `ctx.subagents` so the native persona-channel tests can register a
     // fake provider and drive starts through the channel. Mounted BEFORE
     // the mstar row (the real dsh app composes the subagent seam before the
     // plugin layers).
     ...(options.subagents !== undefined ? [{ name: '@deepseek-ai/dsh-subagent' }] : []),
-    // The fake sessions service row (only when requested — plan
-    // `20260815-dsh-workflow-gate` Task 4): provides `ctx.get('sessions')`
-    // so the plugin's `registerWorkflowLedger` consumer registers (W-B2 run
-    // rows + the P-c answer observation e2e).
+    // The fake sessions service row (only when requested): provides
+    // `ctx.get('sessions')` so the plugin's `registerWorkflowLedger`
+    // consumer registers (workflow run rows + the P-c answer observation e2e).
     ...(options.sessionsService !== undefined ? [{ name: '@deepseek-ai/dsh-session-fake' }] : []),
-    // The fake session-persistence row (only when requested — plan
-    // `20260831-dsh-alpha2-optional-fallbacks` Task 3 fix round): satisfies
+    // The fake session-persistence row (only when requested): satisfies
     // the REAL runtime's `requirePersistence()` so `startContinuable`
     // proceeds past its persistence precondition (the continuable
     // persona-channel tests).
     ...(options.sessionPersistence !== undefined ? [{ name: '@deepseek-ai/dsh-session-persistence-fake' }] : []),
-    // The fake settings service row (only when requested — plan
-    // `20260817-dsh-roles-e2e` Task 1): mounted BEFORE the plugin layers
+    // The fake settings service row (only when requested): mounted BEFORE
+    // the plugin layers
     // so the real fallbacks plugin's `ctx.inject(['settings'])` child
     // binds `writeRoles` at its own apply (the real dsh app composes the
     // `dsh-settings-file` row before the plugin layers).
     ...(options.settingsService !== undefined ? [{ name: '@deepseek-ai/dsh-settings-fake' }] : []),
     // The mstar plugin row (carries the boot-time Config below).
     { name: '@mstar-harness/dsh' },
-    // The REAL fallbacks layer (only when requested — plan
-    // `20260817-dsh-roles-e2e` Task 1 installed-deployment e2e): the real
+    // The REAL fallbacks layer (only when requested): the real
     // dsh app's profile entry list puts `@mstar-harness/dsh` BEFORE
     // `dsh-llm-fallbacks` (probed on dsh 0.1.0-rc.6), so the seeds inject
     // child arms at mstar apply and fires when the fallbacks service
@@ -849,9 +838,9 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
   // function as `default` (CJS-style); the mstar plugin is named-only.
   const modules = new Map<string, unknown>([
     // `pluginModule` overrides the src default with an installed-artifact
-    // module (plan `20260817-dsh-roles-e2e` Task 1).
+    // module .
     ['@mstar-harness/dsh', options.pluginModule ?? plugin],
-    // The REAL fallbacks row module (plan `20260817-dsh-roles-e2e` Task 1;
+    // The REAL fallbacks row module (plan  Task 1;
     // only mounted when the option is set, see the row list above). The
     // seam unwrap handles the named-export plugin shape (`name`/`apply`/
     // `provide` namespace — same path as the mstar dist).
@@ -877,32 +866,27 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
     // named exports provide the CommandRuntime (the host app provides it at
     // runtime via peerDependencies).
     ['@deepseek-ai/dsh-commands', await import('@deepseek-ai/dsh-commands')],
-    // The fake `loader` service (plan `20260814-dsh-fallbacks-integration`
-    // Task 1): a `{ default }` module so the seam unwrap resolves the class.
+    // The fake `loader` service  a `{ default }` module so the seam unwrap resolves the class.
     ['@deepseek-ai/dsh-loader-fake', { default: FakeLoaderRegistry }],
-    // The fake `jobs` service (plan `20260811-panel-f4-timeliness` Task 1):
-    // a `{ default }` module so the seam unwrap resolves the class.
+    // The fake `jobs` service  // a `{ default }` module so the seam unwrap resolves the class.
     ...(options.jobsService !== undefined
       ? [['@deepseek-ai/dsh-jobs-fake', { default: FakeJobRegistry }] as const]
       : []),
-    // The fake `agents` service (plan `20260814-dsh-fallbacks-integration`
-    // Task 2): a `{ default }` module so the seam unwrap resolves the class.
+    // The fake `agents` service  a `{ default }` module so the seam unwrap resolves the class.
     ...(options.agentsService !== undefined
       ? [['@deepseek-ai/dsh-agent-fake', { default: FakeAgentRegistry }] as const]
       : []),
-    // The fake `sessions` service (plan `20260815-dsh-workflow-gate` Task 4):
-    // a `{ default }` module so the seam unwrap resolves the class.
+    // The fake `sessions` service  // a `{ default }` module so the seam unwrap resolves the class.
     ...(options.sessionsService !== undefined
       ? [['@deepseek-ai/dsh-session-fake', { default: FakeSessionsRegistry }] as const]
       : []),
     // The fake `sessionPersistence` service (plan
-    // `20260831-dsh-alpha2-optional-fallbacks` Task 3 fix round): a
+    //  Task 3 fix round): a
     // `{ default }` module so the seam unwrap resolves the class.
     ...(options.sessionPersistence !== undefined
       ? [['@deepseek-ai/dsh-session-persistence-fake', { default: FakeSessionPersistence }] as const]
       : []),
-    // The fake `settings` service (plan `20260817-dsh-roles-e2e` Task 1):
-    // a `{ default }` module so the seam unwrap resolves the class.
+    // The fake `settings` service  // a `{ default }` module so the seam unwrap resolves the class.
     ...(options.settingsService !== undefined
       ? [['@deepseek-ai/dsh-settings-fake', { default: FakeSettingsRegistry }] as const]
       : []),
@@ -915,7 +899,7 @@ export async function bootApp(options: BootOptions = {}): Promise<BootResult> {
     // `ctx.plugin` validates a plain config object against the plugin's
     // schemastery `Config` (the same validation the loader applied to rows).
     const fiber = await ctx.plugin(mountable as Parameters<Context['plugin']>[0], row.name === '@mstar-harness/dsh' && Object.keys(config).length > 0 ? config : undefined)
-    // The fallbacks row handle (plan `20260817-dsh-roles-e2e` Task 1): the
+    // The fallbacks row handle  the
     // e2e disposes it to model the host config-stack re-composition.
     if (row.name === 'dsh-llm-fallbacks') fallbacksFiber = fiber
   }

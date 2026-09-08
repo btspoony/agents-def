@@ -12,6 +12,8 @@ Before any non-trivial PM action, read in order:
 
 **Not required:** `mstar-coding-behavior` (orchestration-only PM work).
 
+**Required reading is not preset-gated.** PM is exempt from `Skill presets` (the `mstar-roles` hub § Load Order keeps PM required reading unconditional): the lifecycle / Done-ownership stop conditions (`mstar-harness-core` § 状态机 — only `project-manager` or `qa-engineer` set `Done`; QA gate required first) and the assigned evidence obligations stay reachable on every PM round — including plan close — under every preset decision.
+
 Full cross-role matrix: `mstar-roles` SKILL.md.
 
 This file is a compact PM orchestrator shell.
@@ -125,14 +127,14 @@ If any item below matches, fix the dispatch/plan state or mark `Blocked`—do **
 - **NEVER** run tests/repro in the PM orchestration thread to substitute for `QA gate: mandatory` dispatch.
 - **NEVER** let non-PM/non-QA roles mark plan `Done`.
 - **NEVER** accept “temporary workaround”, “follow-up later”, “next plan”, or “split into batches” as narrative-only scope management. If work is deferred or staged, write the roadmap/tracking location before implement GO or Done.
-- **NEVER** perform specialist document edits in the PM thread when host invoke is required — that is `dispatch incomplete` (`mstar-dispatch-gates`, `mstar-iteration` §1.6).
-- **NEVER** mark the last plan `Done` and then create a PR or declare the iteration complete without **`## Phase 3: iteration-close`** and `mstar-iteration` §3.1–§3.5 checklists.
+- **NEVER** perform specialist document edits in the PM thread when host invoke is required — that is `dispatch incomplete` (`mstar-dispatch-gates`, `mstar-iteration/references/phase-1-prepare.md` §1.6).
+- **NEVER** mark the last plan `Done` and then create a PR or declare the iteration complete without **`## Phase 3: iteration-close`** and `mstar-iteration/references/phase-3-iteration-close.md` §3.1–§3.5 checklists.
 - **NEVER** treat final plan closure prose as iteration-close — compound, roadmap `delivered`, and compass `status: completed` require Phase 3.
 - **NEVER** steal or overwrite an active `execution_lease` or `integration_merge_lease` (no TTL, age, or inactivity authority); override only on explicit current-turn user instruction + audit snapshot plan `notes` / `notes.jsonl` (`mstar-engine-legacy` `references/lease-protocol.md` — “Lease prohibitions”; field semantics → `mstar-artifacts/references/status-and-residuals.md` — “Iteration execution leases”).
 - **NEVER** writable-dispatch for a plan without a **verified** `execution_lease` for that plan (resume only when same `holder` passes verify-held-lease against Assignment `Worktree path` / `Working branch`).
 - **NEVER** writable-dispatch when a plan is `InProgress` but has **no** `execution_lease` — complete orphan recovery first (`mstar-engine-legacy` `references/lease-protocol.md` — “Orphan recovery”; engine-present: `mstar lease verify --workflow <id>` + iteration checklist).
 - **NEVER** run or dispatch **parallel** integration merges into `spec_integration_branch` — merge is **serial** via the snapshot top-level `integration_merge_lease` from the control worktree (`mstar-iteration` §2.6 · `mstar-branch-worktree` L1).
-- **NEVER** cross-plan writable implement without distinct per-plan verified `execution_lease` + feature worktree; `Plan parallelism: serial` forces serial **scheduling** only — it does **not** waive control worktree or lease gates (`mstar-iteration` §2.0 #5).
+- **NEVER** cross-plan writable implement without distinct per-plan verified `execution_lease` + feature worktree; `Plan parallelism: serial` forces serial **scheduling** only — it does **not** waive control worktree or lease gates (`mstar-iteration/references/phase-2-worktree-lease.md` §2.0 #5).
 - **NEVER** dispatch **cross-plan parallel** writable implement when same-host exclusive write lock is **not** available on the coordination snapshot path (`workflows/<id>/snapshot.json`; cross-host / no shared flock) — default **`Plan parallelism: serial`** or **Blocked** if Assignment still claims parallel; exception only on current-turn user `Cross-host lease race: accepted` (or equivalent) + audit `plans[].notes` — **including when `Worktree mode: waived`** (`mstar-engine-legacy` `references/lease-protocol.md` — full protocol; `mstar-iteration` `references/phase-2-worktree-lease.md` — execution checklist).
 - **NEVER** set `Worktree mode: waived` because default-gitignored `plans/` are missing under a feature worktree — keep feature worktrees; put absolute control **`Plan Path`** / **`SDD dir`** / **`Control harness root`** on Assignments (`mstar-branch-worktree` 「Harness path SSOT under default gitignore」). No flock → serial scheduling only, not worktree waiver.
 
@@ -150,7 +152,7 @@ If any item below matches, fix the dispatch/plan state or mark `Blocked`—do **
 | **Cursor / OpenCode** host iteration `commands/` | Command Boot + **`project-manager.md`** — iteration lifecycle only; **not** required for ordinary per-plan PM |
 | **OpenCode** (no command, not `/pm`) | `project-manager` + `mstar-host` → `opencode.md` |
 
-**Dispatch-first**, iteration branch policy（`iteration_base_branch` / `spec_integration_branch` / `target_branch`）, Autonomous Execute → **`mstar-iteration`** §2. Routing, gates, Task Board, QC, templates → this file + topic `mstar-*` skills.
+**Dispatch-first**, iteration branch policy（`iteration_base_branch` / `spec_integration_branch` / `target_branch`）, Autonomous Execute → **`mstar-iteration/references/phase-2-worktree-lease.md`**. Routing, gates, Task Board, QC, templates → this file + topic `mstar-*` skills.
 
 ---
 

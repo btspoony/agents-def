@@ -1,6 +1,6 @@
 /**
  * Manifest contract for the dsh web client module (plan
- * `20260810-dsh-upstream-adapter`, Task 1 — AC anchor AC-8).
+ * , Task 1 — AC anchor AC-8).
  *
  * Root cause: upstream dsh moved client-module discovery from the top-level
  * `dshClient` package.json field to the nested `dsh.client`
@@ -44,7 +44,7 @@ import { join, normalize, relative } from 'node:path'
 const PKG_DIR = join(import.meta.dir, '..')
 const pkg = JSON.parse(readFileSync(join(PKG_DIR, 'package.json'), 'utf8')) as Record<string, unknown>
 
-/** The inject faces the boot graph wires as edges — documented contract (plan Task 1). */
+/** The inject faces the boot graph wires as edges — documented contract (). */
 const EXPECTED_INJECT = [
   '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-conversation',

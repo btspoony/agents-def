@@ -278,14 +278,14 @@ describe("readHarnessVersion / harnessVersionFrom", () => {
     // Spec: roadmap §8.5 C6 — single source for the harness version; the root
     // package.json (`name: "morning-star"`) is the version anchor. Engine,
     // cli, opencode and root all share it (single-version invariant). Derived
-    // comparison only — no hardcoded version literal (qc3 F-9).
+        // comparison only — no hardcoded version literal.
     const repoRoot = resolve(import.meta.dir, "..", "..", "..");
     const rootPkg = readJson(join(repoRoot, "package.json"));
     expect(rootPkg.name).toBe("morning-star");
     expect(readHarnessVersion()).toBe(rootPkg.version);
   });
 
-  test("own manifest first: a published engine layout resolves without any morning-star package (qc3 F-1)", () => {
+  test("own manifest first: a published engine layout resolves without any morning-star package ", () => {
     // Simulates `node_modules/@mstar-harness/engine/dist/engine.js` with the
     // engine's own package.json next to it and NO morning-star manifest
     // anywhere above — the walk-up alone would return "0.0.0".

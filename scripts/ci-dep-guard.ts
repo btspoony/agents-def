@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * ci-dep-guard.ts — roadmap §8.7 item 5 (qc2 F-004): the
+ * ci-dep-guard.ts — roadmap §8.7 item 5 : the
  * `@mstar-harness/opencode` dep tree must never contain `commander` or
  * `inquirer` — including the scoped `@inquirer/*` family (`@inquirer/prompts`,
  * `@inquirer/core`, `@inquirer/type` — the roadmap names exactly

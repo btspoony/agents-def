@@ -4,23 +4,23 @@
  *
  * Spec sources:
  * - `beforeDispatch` host hook + v1 non-blocking warn / never-block
- *   contract: roadmap §8.5 +
- *   D2 (v1 = non-blocking lints; hard gates are v2 opt-in).
+ * contract: roadmap §8.5 +
+ * D2 (v1 = non-blocking lints; hard gates are v2 opt-in).
  * - Assignment core fields (`Execute as` / `Delegation` / `Task category`
- *   presence): roadmap §4.3 dispatch/gates layer + Slice 2 Global
- *   Constraint; the legacy presence codes (`assignment.presence.*`) stay
- *   observable as ALIASES on the engine's core-field violations (qc1 F-002)
- *   — the local presence parser is removed, one engine parser owns the
- *   grammar.
+ * presence): roadmap §4.3 dispatch/gates layer + Slice 2 Global
+ * Constraint; the legacy presence codes (`assignment.presence.*`) stay
+ * observable as ALIASES on the engine's core-field violations 
+ * — the local presence parser is removed, one engine parser owns the
+ * grammar.
  * - Full field validation (exactly-one Working-branch form, create-form
- *   `<base>`, Branch policy reason) + default-branch gate: Slice 3 via
- *   `dispatch.validateAssignmentFields` / `dispatch.assertDefaultBranchProtected`,
- *   direct-on exception wiring per the CLI fix ea010f1
- *   (`mstar dispatch validate`); gate branch derived from the Assignment's
- *   own branch forms (qc3 F-2); read-only roles skip both branch gates
- *   (qc3 F-1); the anti-recursion precheck is caller-scoped (issue #156) —
- *   this host cannot observe the dispatching agent, so the leg never runs
- *   here and the NEVER red line stays prompt-level.
+ * `<base>`, Branch policy reason) + default-branch gate: Slice 3 via
+ * `dispatch.validateAssignmentFields` / `dispatch.assertDefaultBranchProtected`,
+ * direct-on exception wiring per the CLI fix ea010f1
+ * (`mstar dispatch validate`); gate branch derived from the Assignment's
+ * own branch forms ; read-only roles skip both branch gates
+ * ; the anti-recursion precheck is caller-scoped (issue #156) —
+ * this host cannot observe the dispatching agent, so the leg never runs
+ * here and the NEVER red line stays prompt-level.
  *
  * The exported `validateDispatchAssignment` helper is the hook module; the
  * plugin wiring (`tool.execute.before` on the opencode `task` tool) is
@@ -158,8 +158,7 @@ const createWithoutBase = `## Assignment
 Create the branch.
 `;
 
-/** Dangling create form — trailing `from`, no base (qc2 S-1 / qc3 F-5). */
-const createDanglingFrom = `## Assignment
+/** Dangling create form — trailing `from`, no base */const createDanglingFrom = `## Assignment
 
 **Execute as**: fullstack-dev
 **Delegation**: forbidden
@@ -169,8 +168,7 @@ const createDanglingFrom = `## Assignment
 Create the branch.
 `;
 
-/** Read-only orientation assignment — no branch form is legitimate (qc3 F-1 / qc2 S-5). */
-const scoutAssignment = `## Assignment
+/** Read-only orientation assignment — no branch form is legitimate */const scoutAssignment = `## Assignment
 
 **Execute as**: scout
 **Delegation**: forbidden
@@ -240,7 +238,7 @@ describe("validateDispatchAssignment (warn-only wrapper, full validation)", () =
     const { warnings, log } = captureWarnings();
     const result = validateDispatchAssignment(missingExecuteAs, { log });
     expect(result!.ok).toBe(false);
-    // Single parser: NO stacked presence warning — one violation per missing field.
+ // Single parser: NO stacked presence warning — one violation per missing field.
     expect(warnings).toHaveLength(2);
     expect(warnings.some((w) => w.includes("assignment.field.missing-execute-as"))).toBe(true);
     expect(warnings.some((w) => w.includes("assignment.field.branch-missing"))).toBe(true);
@@ -270,7 +268,7 @@ describe("validateDispatchAssignment (warn-only wrapper, full validation)", () =
     const { warnings, log } = captureWarnings();
     const result = validateDispatchAssignment(missingAllFields, { log });
     expect(result!.ok).toBe(false);
-    // The fixture still carries a Working branch — no branch-missing.
+ // The fixture still carries a Working branch — no branch-missing.
     expect(warnings).toHaveLength(3);
     for (const code of [
       "assignment.field.missing-execute-as",
@@ -279,7 +277,7 @@ describe("validateDispatchAssignment (warn-only wrapper, full validation)", () =
     ]) {
       expect(warnings.some((w) => w.includes(code))).toBe(true);
     }
-    // Every core-field violation carries its legacy presence alias.
+ // Every core-field violation carries its legacy presence alias.
     for (const v of result!.violations) {
       if (v.code.startsWith("assignment.field.missing-")) {
         expect(v.aliases).toHaveLength(1);
@@ -305,8 +303,8 @@ describe("validateDispatchAssignment (warn-only wrapper, full validation)", () =
   });
 
   test("non-string prompt stays silent (no assignmentText.match abort)", () => {
-    // Host tool args are `any`; RegExp.test coerces objects then `.match` throws.
-    // Exported helper must fail soft — same abort line the user saw on OpenCode boot.
+ // Host tool args are `any`; RegExp.test coerces objects then `.match` throws.
+ // Exported helper must fail soft — same abort line the user saw on OpenCode boot.
     const entries: Array<[string, string]> = [];
     const log: StatusLogger = (level, message) => {
       entries.push([level, message]);
@@ -319,8 +317,8 @@ describe("validateDispatchAssignment (warn-only wrapper, full validation)", () =
   });
 
   test("field fragment without heading is linted, not silent", () => {
-    // A bare `Execute as:` line is Assignment-shaped — the other two fields
-    // still warn (engine field codes only; presence codes are aliases).
+ // A bare `Execute as:` line is Assignment-shaped — the other two fields
+ // still warn (engine field codes only; presence codes are aliases).
     const { warnings, log } = captureWarnings();
     const result = validateDispatchAssignment("Execute as: [unbalanced", { log });
     expect(result!.ok).toBe(false);
@@ -347,11 +345,11 @@ describe("validateDispatchAssignment full-validation matrix (Slice 3)", () => {
     expect(result!.ok).toBe(false);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("assignment.field.branch-missing-base");
-    // The created branch (feature/x) itself is not default-protected — no gate warn.
+ // The created branch (feature/x) itself is not default-protected — no gate warn.
     expect(warnings[0]).not.toContain("dispatch.default-branch.protected");
   });
 
-  test("dangling create form ('create feature/x from') → branch-missing-base warn (qc2 S-1 / qc3 F-5)", () => {
+  test("dangling create form ('create feature/x from') → branch-missing-base warn", () => {
     const { warnings, log } = captureWarnings();
     const result = validateDispatchAssignment(createDanglingFrom, { log });
     expect(result!.ok).toBe(false);
@@ -359,7 +357,7 @@ describe("validateDispatchAssignment full-validation matrix (Slice 3)", () => {
     expect(warnings[0]).toContain("assignment.field.branch-missing-base");
   });
 
-  test("read-only scout assignment without a branch form → no branch-missing warn (qc3 F-1 / qc2 S-5)", () => {
+  test("read-only scout assignment without a branch form → no branch-missing warn", () => {
     const { warnings, log } = captureWarnings();
     const result = validateDispatchAssignment(scoutAssignment, { log });
     expect(result!.ok).toBe(true);
@@ -416,9 +414,9 @@ describe("validateDispatchAssignment full-validation matrix (Slice 3)", () => {
     const { warnings, log } = captureWarnings();
     const result = validateDispatchAssignment(exceptionBranchMismatch, { log });
     expect(result!.ok).toBe(false);
-    // Branch-policy branch differs from the checked Working branch → protected.
+ // Branch-policy branch differs from the checked Working branch → protected.
     expect(warnings.some((w) => w.includes("dispatch.default-branch.protected"))).toBe(true);
-    // Both branch forms present → branch-multiple too.
+ // Both branch forms present → branch-multiple too.
     expect(warnings.some((w) => w.includes("assignment.field.branch-multiple"))).toBe(true);
   });
 
@@ -442,10 +440,10 @@ describe("validateDispatchAssignment full-validation matrix (Slice 3)", () => {
 
 describe("anti-recursion in validateDispatchAssignment (caller-scoped, issue #156)", () => {
   test("spawn target == Execute as (the documented compliant dispatch) → ok, zero violations, silent", () => {
-    // The host adapter cannot observe the dispatching agent's identity, so
-    // the caller-scoped precheck never runs here — pre-#156 the adapter fed
-    // the spawn TARGET (`args.subagent`) as the binding, and target ==
-    // `Execute as` self-flagged every compliant dispatch at critical.
+ // The host adapter cannot observe the dispatching agent's identity, so
+ // the caller-scoped precheck never runs here — pre-#156 the adapter fed
+ // the spawn TARGET (`args.subagent`) as the binding, and target ==
+ // `Execute as` self-flagged every compliant dispatch at critical.
     const { warnings, log } = captureWarnings();
     const result = validateDispatchAssignment(completeAssignment, { log });
     expect(result!.ok).toBe(true);
@@ -457,7 +455,7 @@ describe("anti-recursion in validateDispatchAssignment (caller-scoped, issue #15
     const { warnings, log } = captureWarnings();
     const result = validateDispatchAssignment(missingExecuteAs, { log });
     expect(result!.violations.some((v) => v.code.startsWith("dispatch.anti-recursion."))).toBe(false);
-    // Field + branch warnings still fire.
+ // Field + branch warnings still fire.
     expect(warnings.some((w) => w.includes("assignment.field.missing-execute-as"))).toBe(true);
   });
 
@@ -470,8 +468,8 @@ describe("anti-recursion in validateDispatchAssignment (caller-scoped, issue #15
       entries.push([level, message]);
     };
     try {
-      // No `Enforcement` header flag on the Assignment — the repo setting
-      // alone escalates warn → error + hardBlocked.
+ // No `Enforcement` header flag on the Assignment — the repo setting
+ // alone escalates warn → error + hardBlocked.
       const result = validateDispatchAssignment(missingExecuteAs, { log });
       expect(result!.ok).toBe(false);
       expect(result!.hardBlocked).toBe(true);
@@ -509,8 +507,8 @@ describe("plugin wiring (tool.execute.before)", () => {
         { args: { subagent_type: "fullstack-dev", prompt: missingExecuteAs } },
       );
     } finally {
-      // Restore even if beforeExecute throws (qc3 S-4): a left-patched
-      // console.warn would pollute every later capture in this file.
+ // Restore even if beforeExecute throws : a left-patched
+ // console.warn would pollute every later capture in this file.
       warnings = restore();
     }
     expect(
@@ -535,8 +533,8 @@ describe("plugin wiring (tool.execute.before)", () => {
     const plugin = await MorningStarHarnessPlugin();
     const beforeExecute = plugin["tool.execute.before"];
 
-    // OpenCode `args.subagent` key — the spawn TARGET equal to Execute as is
-    // the documented compliant dispatch, not recursion.
+ // OpenCode `args.subagent` key — the spawn TARGET equal to Execute as is
+ // the documented compliant dispatch, not recursion.
     const restore = captureConsoleWarn();
     let warnings: string[];
     try {
@@ -549,7 +547,7 @@ describe("plugin wiring (tool.execute.before)", () => {
     }
     expect(warnings.filter((w) => w.includes("[mstar-harness]"))).toEqual([]);
 
-    // Cursor-style `args.subagent_type` key.
+ // Cursor-style `args.subagent_type` key.
     const restore2 = captureConsoleWarn();
     try {
       await beforeExecute!(
@@ -589,8 +587,8 @@ describe("plugin wiring (tool.execute.before)", () => {
     try {
       await beforeExecute!(
         { tool: "task", sessionID: "s1", callID: "c1" },
-        // No `subagent` / `subagent_type` key — a legal spawn-policy-default
-        // dispatch; the binding field carries the target, never the caller.
+ // No `subagent` / `subagent_type` key — a legal spawn-policy-default
+ // dispatch; the binding field carries the target, never the caller.
         { args: { prompt: completeAssignment } },
       );
     } finally {
@@ -608,7 +606,7 @@ describe("plugin wiring (tool.execute.before)", () => {
     try {
       await beforeExecute!(
         { tool: "task", sessionID: "s1", callID: "c1" },
-        // Non-matching binding — the scout role itself is not re-invoked.
+ // Non-matching binding — the scout role itself is not re-invoked.
         { args: { subagent: "reviewer", prompt: scoutAssignment } },
       );
     } finally {
@@ -626,7 +624,7 @@ describe("plugin wiring (tool.execute.before)", () => {
     try {
       await beforeExecute!(
         { tool: "task", sessionID: "s1", callID: "c1" },
-        // Non-matching binding so only the branch gate fires.
+ // Non-matching binding so only the branch gate fires.
         { args: { subagent_type: "reviewer", prompt: workingBranchMain } },
       );
     } finally {
@@ -652,10 +650,10 @@ describe("plugin wiring (tool.execute.before)", () => {
 });
 
 describe("hard mode (Enforcement: hard flag — Slice 5, roadmap §8.5 C4/D2)", () => {
-  // Spec: roadmap §8.5 C4 + D2 — v2 hard gates are opt-in per Assignment via
-  // `Enforcement: hard`; the hook returns the GateResult with hardBlocked
-  // and surfaces error-level logs, NEVER a raw exception; flag absent →
-  // warn-only (unchanged); flag inert when the engine is absent.
+ // Spec: roadmap §8.5 C4 + D2 — v2 hard gates are opt-in per Assignment via
+ // `Enforcement: hard`; the hook returns the GateResult with hardBlocked
+ // and surfaces error-level logs, NEVER a raw exception; flag absent →
+ // warn-only (unchanged); flag inert when the engine is absent.
   const capture = (): { entries: Array<[string, string]>; log: StatusLogger } => {
     const entries: Array<[string, string]> = [];
     const log: StatusLogger = (level, message) => {
@@ -672,11 +670,11 @@ describe("hard mode (Enforcement: hard flag — Slice 5, roadmap §8.5 C4/D2)", 
     }).not.toThrow();
     expect(result!.ok).toBe(false);
     expect(result!.hardBlocked).toBe(true);
-    // Missing Execute as (branch form absent too — no Working branch field).
+ // Missing Execute as (branch form absent too — no Working branch field).
     expect(entries.some(([level, text]) => level === "error" && text.includes("assignment.field.missing-execute-as"))).toBe(true);
-    // Hard mode must not emit warn-level lines for the same violations.
+ // Hard mode must not emit warn-level lines for the same violations.
     expect(entries.some(([level]) => level === "warn")).toBe(false);
-    // Skill-text pointer present in the error.
+ // Skill-text pointer present in the error.
     expect(entries.some(([, text]) => text.includes("Enforcement: hard"))).toBe(true);
   });
 
@@ -721,7 +719,7 @@ describe("hard mode (Enforcement: hard flag — Slice 5, roadmap §8.5 C4/D2)", 
     expect(result!.violations.some((v) => v.code === "assignment.field.missing-delegation")).toBe(false);
   });
 
-  test("body example **Enforcement**: hard after `# Change` does NOT harden (qc1 F-003 / qc2 F-003)", () => {
+  test("body example **Enforcement**: hard after `# Change` does NOT harden", () => {
     const { entries, log } = capture();
     const text = `## Assignment
 
@@ -733,8 +731,8 @@ describe("hard mode (Enforcement: hard flag — Slice 5, roadmap §8.5 C4/D2)", 
 An example Assignment template line: **Enforcement**: hard
 `;
     const result = validateDispatchAssignment(text, { log });
-    // Missing Execute as is a real violation — but the flag lives in the
-    // BODY, so the gate stays warn-only (no hardBlocked, no error lines).
+ // Missing Execute as is a real violation — but the flag lives in the
+ // BODY, so the gate stays warn-only (no hardBlocked, no error lines).
     expect(result!.ok).toBe(false);
     expect(result!.hardBlocked).toBe(false);
     expect(entries.some(([level]) => level === "warn")).toBe(true);
@@ -777,8 +775,8 @@ An example Assignment template line: **Enforcement**: hard
       console.error = original;
     }
     expect(errors.some((e) => e.includes("[mstar-harness]") && e.includes("hard gate"))).toBe(true);
-    // The GateResult is not silently discarded: the hook surfaces the
-    // hardBlocked state explicitly (host has no refusal channel).
+ // The GateResult is not silently discarded: the hook surfaces the
+ // hardBlocked state explicitly (host has no refusal channel).
     expect(errors.some((e) => e.includes("hard-gate blocked (hardBlocked=true)"))).toBe(true);
   });
 
@@ -791,9 +789,9 @@ An example Assignment template line: **Enforcement**: hard
       errors.push(String(message));
     };
     try {
-      // No subagent key (legal spawn-policy default) and the Assignment's own
-      // `**Enforcement**: hard` header: only the REAL violation (the stripped
-      // branch form) may harden the gate — never the empty target binding.
+ // No subagent key (legal spawn-policy default) and the Assignment's own
+ // `**Enforcement**: hard` header: only the REAL violation (the stripped
+ // branch form) may harden the gate — never the empty target binding.
       await beforeExecute!(
         { tool: "task", sessionID: "s1", callID: "c1" },
         { args: { prompt: hardCompleteAssignment.replace("**Working branch**: feature/example", "") } },

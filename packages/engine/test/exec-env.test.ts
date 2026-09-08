@@ -4,14 +4,14 @@
  *
  * Detector contract (plan "Task 3 · Interfaces" + STOP conditions):
  * - Stable detector = source-text scan of the three engine files that shell
- *   out to git (`path.ts` `defaultWorkspaceRoot`, `sdd.ts` `gitOut` /
- *   `reviewPackage` / `assertBaseSha`, `worktree.ts` `probeBranch`).
+ * out to git (`path.ts` `defaultWorkspaceRoot`, `sdd.ts` `gitOut` /
+ * `reviewPackage` / `assertBaseSha`, `worktree.ts` `probeBranch`).
  * - Every git `execFileSync` call's options literal must be env-permissive:
- *   `env` unset (inherit), `env: process.env`, or a non-empty subset.
- *   Regression = `env: {}` or an env object that pins `PATH` to an empty
- *   string.
+ * `env` unset (inherit), `env: process.env`, or a non-empty subset.
+ * Regression = `env: {}` or an env object that pins `PATH` to an empty
+ * string.
  * - Production source is never rewritten (test-only; do not export
- *   `defaultWorkspaceRoot` — it stays private at `path.ts:119`).
+ * `defaultWorkspaceRoot` — it stays private at `path.ts:119`).
  *
  * Why source-text and not a runtime monkey-patch of `node:child_process`:
  * the stale 005 sample monkey-patched the test file's own import binding
@@ -42,7 +42,7 @@ const GIT_SHELL_OUT_FILES: ReadonlyArray<{ name: string; path: string }> = [
 type GitExecSite = {
   file: string;
   line: number;
-  /** Options object literal text (comments already masked by the scanner). */
+ /** Options object literal text (comments already masked by the scanner). */
   options: string;
 };
 
@@ -146,8 +146,8 @@ function gitExecSites(src: string, file: string): GitExecSite[] {
     if (mask[m.index] === 1) continue; // inside a comment — not a real call
     const args = splitArgs(src, m.index + m[0].length);
     if (!args || args.length === 0 || !isGitBinary(args[0])) continue;
-    // Options object = the last argument when it is an object literal; a
-    // call without options has no env to regress on (env unset → inherit).
+ // Options object = the last argument when it is an object literal; a
+ // call without options has no env to regress on (env unset → inherit).
     const last = args[args.length - 1];
     if (!last.startsWith("{")) continue;
     const line = src.slice(0, m.index).split("\n").length;
@@ -170,8 +170,8 @@ function envLiteralOf(options: string): string | null {
   if (!m) return null;
   const rest = options.slice(m.index + m[0].length).replace(/^\s+/, "");
   if (!rest.startsWith("{")) {
-    // Identifier / member expression, e.g. `process.env` — consume to the
-    // next comma, newline, or closing brace.
+ // Identifier / member expression, e.g. `process.env` — consume to the
+ // next comma, newline, or closing brace.
     const end = /[,\n}]/.exec(rest);
     return (end ? rest.slice(0, end.index) : rest).trim();
   }
@@ -221,7 +221,7 @@ function envVerdict(options: string): { ok: true } | { ok: false; reason: string
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("engine git execFileSync env pinning (plan 20260822-cli-engine-leftover T3)", () => {
+describe("engine git execFileSync env pinning", () => {
   test("site inventory matches the plan scan (path.ts 1, sdd.ts 4, worktree.ts 1)", () => {
     const perFile: Record<string, GitExecSite[]> = {
       "path.ts": [],
@@ -234,9 +234,9 @@ describe("engine git execFileSync env pinning (plan 20260822-cli-engine-leftover
     expect(perFile["path.ts"].length).toBe(1);
     expect(perFile["sdd.ts"].length).toBe(4);
     expect(perFile["worktree.ts"].length).toBe(1);
-    // Drift detector: if a git site moves or the count changes, THIS test
-    // must be updated — never the production env (plan drift check:
-    // "update the test, not production").
+ // Drift detector: if a git site moves or the count changes, THIS test
+ // must be updated — never the production env (plan drift check:
+ // "update the test, not production").
     expect(
       perFile["path.ts"].length + perFile["sdd.ts"].length + perFile["worktree.ts"].length,
     ).toBe(6);

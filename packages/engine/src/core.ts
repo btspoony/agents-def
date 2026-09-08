@@ -96,7 +96,7 @@ export function readJson(filePath: string): Record<string, unknown> {
  * Creates parent directories as needed; on failure the temp file is removed
  * and the error rethrown, so the target is never partially written.
  *
- * Durability note (qc2 F-013): no fsync before the rename — atomicity (no
+ * Durability note : no fsync before the rename — atomicity (no
  * partial file) is guaranteed by the same-dir temp + rename, but a power
  * loss immediately after rename may lose the write. Acceptable for
  * coordination files (status.json) whose writers re-read + verify the
@@ -166,8 +166,7 @@ function findRootPackageJson(startDir: string): string | null {
  * The single-version invariant makes both equivalent in-repo; the
  * own-manifest-first order fixes published installs, where no
  * `morning-star` manifest exists anywhere above `node_modules` and the walk
- * alone would regress to `"0.0.0"` (qc3 F-1).
- */
+ * alone would regress to `"0.0.0"`. */
 export function harnessVersionFrom(moduleDir: string): string {
   const ownManifest = join(moduleDir, "..", "package.json");
   try {

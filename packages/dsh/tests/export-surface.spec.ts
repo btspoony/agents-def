@@ -1,7 +1,6 @@
 /**
  * Export-surface snapshot for `src/index.ts` — the frozen baseline for the
- * `src/index.ts → src/gates/*` split (plan `20260810-dsh-entry-split`,
- * Task 1; BASE `76bbad4`).
+ * `src/index.ts → src/gates/*` split.
  *
  * The entry's public export surface is part of the plugin's contract:
  * consumers import `apply`, `Config`, `DshHostAdapter`, the `lint*` veto
@@ -23,13 +22,13 @@
  * Frozen at BASE `76bbad4` (pre-split). Do not edit the lists below without
  * an explicit export-surface change review — the split is moves-only.
  *
- * Extended for plan `20260810-agent-flow-catalog-graph` (Task 1): the
+ * Extended for (Task 1): the
  * agent-flow ledger's public API (`recordDispatch` / `recordSettle` /
  * `readAgentFlow` + `AGENT_FLOW_FILE` / `AGENT_FLOW_MAX_EVENTS` /
  * `SETTLE_SEAM`) and its event/view types joined the entry surface — a
  * deliberate, reviewed addition (new module), not a split drift.
  *
- * Extended for plan `20260815-dsh-workflow-gate` (Task 4): the durable
+ * Extended for (Task 4): the durable
  * workflow/ralph gate verdict record (`recordWorkflowVerdict` + the
  * `workflow-verdict` vocabulary types) joined the entry surface — the
  * ledger plan's record path, matching the `recordDispatch` / `recordSettle`
@@ -42,7 +41,7 @@ import type * as EntryTypes from '../src/index.ts'
 
 /** The frozen VALUE exports (runtime-visible; `Config` is also an interface). */
 const FROZEN_VALUE_EXPORTS = [
-  // Deliberate addition for plan `20260815-dsh-fallbacks-personas` Task 4:
+  // Deliberate addition for:
   // the warn-only adoption advisory surface (logger label, the one-pass
   // entry, and the apply-bound sink setter — mirror of the role-persona
   // logger pattern).
@@ -53,7 +52,7 @@ const FROZEN_VALUE_EXPORTS = [
   'DshHostAdapter',
   'DshMstar',
   'HarnessResolver',
-  // Deliberate replacement for plan `20260831-dsh-alpha2-optional-fallbacks`
+  // Deliberate replacement for
   // Task 3: the native persona-channel surface (logger label, the channel
   // registration, and the apply-bound sink/mirror setters) replaces the
   // removed `subagent/start` decoration exports (DECORATION_LOGGER,
@@ -77,12 +76,12 @@ const FROZEN_VALUE_EXPORTS = [
   'readAgentFlow',
   'recordDispatch',
   'recordSettle',
-  // Deliberate addition for plan `20260815-dsh-workflow-gate` Task 4: the
+  // Deliberate addition for: the
   // durable workflow/ralph gate verdict record (one row per gated call —
   // the ledger plan's record path; the `workflow-verdict` kind).
   'recordWorkflowVerdict',
   'runFallbacksAdvisory',
-  // Deliberate replacement for plan `20260831-dsh-alpha2-optional-fallbacks`
+  // Deliberate replacement for
   // Task 3: the persona-defaults mirror-root binding and the channel log
   // sink (apply binds both; tests restore them) — `setRolePersonaAgentsDir`
   // + `setRolePersonaLogger` replace `setDecorationAgentsDir` +
@@ -101,7 +100,7 @@ const FROZEN_TYPE_ONLY_EXPORTS = [
   'AgentFlowEventView',
   'AgentFlowSummaryRow',
   'AgentFlowView',
-  // Deliberate replacement for plan `20260831-dsh-alpha2-optional-fallbacks`
+  // Deliberate replacement for
   // Task 3: the native persona-channel vocabulary (log levels/sink + the
   // structural runtime/request views) replaces the removed decoration types
   // (DecorationLogLevel, DecorationLogSink, SubagentRunInfoView).
@@ -121,7 +120,7 @@ const FROZEN_TYPE_ONLY_EXPORTS = [
   'SettleOutcome',
   'SkillLintAdvisory',
   'StatusGateAdvisory',
-  // Deliberate additions for plan `20260815-dsh-workflow-gate` Task 4: the
+  // Deliberate additions for: the
   // `workflow-verdict` ledger vocabulary (verdict + mode + record input —
   // the adapter's public `recordWorkflowVerdict` method types).
   'WorkflowGateMode',
@@ -155,7 +154,7 @@ type _CordisEventStatusGate = Events['mstar/status-gate']
 type _CordisEventSkillLint = Events['mstar/skill-lint']
 type _CordisEventSeamLint = Events['mstar/seam-lint']
 
-describe('src/index.ts export surface (frozen — plan 20260810-dsh-entry-split T1)', () => {
+describe('src/index.ts export surface (frozen)', () => {
   it('value exports: exact set unchanged', () => {
     expect(Object.keys(entry).sort()).toEqual([...FROZEN_VALUE_EXPORTS].sort())
   })

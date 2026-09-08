@@ -3,7 +3,7 @@
  * lifecycle status enum, validator invariants, and the whole-rewrite writer.
  *
  * Spec sources (each test cites the plan/brief section it enforces):
- * - Snapshot schema (final): plan `20260819-workflow-engine-core.md` Task 2 —
+ * - Snapshot schema (final): plan .md` Task 2 —
  *   `schema_version: 1` (snapshot-own; `version` stays the root-file
  *   discriminator), `id`/`type`/`status` enums, `started_at`/`ended_at?`/
  *   `updated_at`, `phase?`, `plans[]` (legacy PlanRow verbatim — unknown row
@@ -72,7 +72,7 @@ function legacyRow(overrides: Record<string, unknown> = {}): Record<string, unkn
 function validSnapshot(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     schema_version: 1,
-    id: "20260819-workflow-engine-core",
+    id: "00000819-workflow-engine-core",
     type: "iteration",
     status: "completed",
     started_at: "2026-08-19T00:00:00Z",
@@ -84,7 +84,7 @@ function validSnapshot(overrides: Record<string, unknown> = {}): Record<string, 
     branch: { base: "main", integration: "spec_integration_branch", target: "main" },
     control_worktree_path: "/Users/bibi/workspace/ai/mstar-harness",
     legacy_metadata: { program_roadmap: "roadmap.md" },
-    compass_ref: "iterations/20260819-workflow-engine-core/delivery-compass.md",
+    compass_ref: "iterations/00000819-workflow-engine-core/delivery-compass.md",
     ...overrides,
   };
 }
@@ -107,16 +107,16 @@ describe("validateWorkflowSnapshot — schema basics", () => {
           execution_lease: {
             holder: "P1T2Implement",
             claimed_at: "2026-08-19T00:00:00Z",
-            worktree_path: "/Users/bibi/workspace/ai/mstar-harness/.worktrees/20260819-workflow-engine-core",
-            working_branch: "feature/20260819-workflow-engine-core",
+            worktree_path: "/Users/bibi/workspace/ai/mstar-harness/.worktrees/00000819-workflow-engine-core",
+            working_branch: "feature/00000819-workflow-engine-core",
           },
         }),
       ],
       integration_merge_lease: {
         holder: "Main",
         claimed_at: "2026-08-19T00:00:00Z",
-        plan_id: "20260819-workflow-engine-core",
-        source_branch: "feature/20260819-workflow-engine-core",
+        plan_id: "00000819-workflow-engine-core",
+        source_branch: "feature/00000819-workflow-engine-core",
         target_branch: "spec_integration_branch",
       },
     });
@@ -140,7 +140,7 @@ describe("validateWorkflowSnapshot — schema basics", () => {
     );
   });
 
-  test("top-level version is rejected — reserved for the root-file discriminator (QC wave-1 S-a)", () => {
+  test("top-level version is rejected — reserved for the root-file discriminator ", () => {
     expectViolations(
       validateWorkflowSnapshot(validSnapshot({ version: 2 })),
       "workflow.snapshot.reserved-version",
@@ -281,8 +281,8 @@ describe("validateWorkflowSnapshot — terminal invariants (no dangling leases, 
       integration_merge_lease: {
         holder: "Main",
         claimed_at: "2026-08-19T00:00:00Z",
-        plan_id: "20260819-workflow-engine-core",
-        source_branch: "feature/20260819-workflow-engine-core",
+        plan_id: "00000819-workflow-engine-core",
+        source_branch: "feature/00000819-workflow-engine-core",
         target_branch: "spec_integration_branch",
       },
     });
@@ -300,16 +300,16 @@ describe("validateWorkflowSnapshot — terminal invariants (no dangling leases, 
             execution_lease: {
               holder: "P1T2Implement",
               claimed_at: "2026-08-19T00:00:00Z",
-              worktree_path: "/Users/bibi/workspace/ai/mstar-harness/.worktrees/20260819-workflow-engine-core",
-              working_branch: "feature/20260819-workflow-engine-core",
+              worktree_path: "/Users/bibi/workspace/ai/mstar-harness/.worktrees/00000819-workflow-engine-core",
+              working_branch: "feature/00000819-workflow-engine-core",
             },
           }),
         ],
         integration_merge_lease: {
           holder: "Main",
           claimed_at: "2026-08-19T00:00:00Z",
-          plan_id: "20260819-workflow-engine-core",
-          source_branch: "feature/20260819-workflow-engine-core",
+          plan_id: "00000819-workflow-engine-core",
+          source_branch: "feature/00000819-workflow-engine-core",
           target_branch: "spec_integration_branch",
         },
       });
@@ -322,7 +322,7 @@ describe("writeWorkflowSnapshot — whole-rewrite under withStatusWriteLock", ()
   test("writes snapshot.json into dir (created recursively) with the exact snapshot", async () => {
     const root = tmpRoot("workflow-writer-");
     setArtifactStore(createFsStore(root));
-    const dir = join(root, "workflows", "20260819-workflow-engine-core");
+    const dir = join(root, "workflows", "00000819-workflow-engine-core");
     const snapshot = validSnapshot();
     await writeWorkflowSnapshot(snapshot as never, dir);
 
@@ -337,7 +337,7 @@ describe("writeWorkflowSnapshot — whole-rewrite under withStatusWriteLock", ()
   test("the .status-write.lockdir lands inside the snapshot dir, never the parent", async () => {
     const root = tmpRoot("workflow-writer-");
     setArtifactStore(createFsStore(root));
-    const dir = join(root, "workflows", "20260819-workflow-engine-core");
+    const dir = join(root, "workflows", "00000819-workflow-engine-core");
     await writeWorkflowSnapshot(validSnapshot() as never, dir);
 
     // Lockdir is transient (removed on release) — the invariant is location:
@@ -352,7 +352,7 @@ describe("writeWorkflowSnapshot — whole-rewrite under withStatusWriteLock", ()
   test("refuses to write an invalid snapshot and leaves no file behind", async () => {
     const root = tmpRoot("workflow-writer-");
     setArtifactStore(createFsStore(root));
-    const dir = join(root, "workflows", "20260819-workflow-engine-core");
+    const dir = join(root, "workflows", "00000819-workflow-engine-core");
     const invalid = validSnapshot({ status: "completed", ended_at: undefined });
     await expect(writeWorkflowSnapshot(invalid as never, dir)).rejects.toThrow(/invalid workflow snapshot/);
     expect(existsSync(join(dir, WORKFLOW_SNAPSHOT_FILE))).toBe(false);
@@ -363,7 +363,7 @@ describe("writeWorkflowSnapshot — whole-rewrite under withStatusWriteLock", ()
   test("overwrites an existing snapshot (whole-rewrite)", async () => {
     const root = tmpRoot("workflow-writer-");
     setArtifactStore(createFsStore(root));
-    const dir = join(root, "workflows", "20260819-workflow-engine-core");
+    const dir = join(root, "workflows", "00000819-workflow-engine-core");
     mkdirSync(dir, { recursive: true });
     const first = validSnapshot({ updated_at: "2026-08-19T10:00:00Z" });
     const second = validSnapshot({ updated_at: "2026-08-19T11:00:00Z" });
@@ -375,9 +375,9 @@ describe("writeWorkflowSnapshot — whole-rewrite under withStatusWriteLock", ()
     rmSync(root, { recursive: true, force: true });
   });
 
-  test("routes the write through the active ArtifactStore (SP2-AC3: put({ kind: \"snapshot\", ... }))", async () => {
+  test("routes the write through the active ArtifactStore ( put({ kind: \"snapshot\", ... }))", async () => {
     const root = tmpRoot("workflow-store-");
-    const dir = join(root, "workflows", "20260819-workflow-engine-core");
+    const dir = join(root, "workflows", "00000819-workflow-engine-core");
     const snapshot = validSnapshot();
     const puts: ArtifactDoc[] = [];
     const recording: ArtifactStore = {
@@ -394,7 +394,7 @@ describe("writeWorkflowSnapshot — whole-rewrite under withStatusWriteLock", ()
       await writeWorkflowSnapshot(snapshot as never, dir);
       expect(puts).toHaveLength(1);
       expect(puts[0]!.kind).toBe("snapshot");
-      expect(puts[0]!.key).toBe("20260819-workflow-engine-core");
+      expect(puts[0]!.key).toBe("00000819-workflow-engine-core");
       expect(puts[0]!.payload).toEqual(snapshot);
       // The recording store performs no FS write — the durable write is the
       // store's; the writer keeps only the lock + validation duties.
@@ -403,18 +403,18 @@ describe("writeWorkflowSnapshot — whole-rewrite under withStatusWriteLock", ()
       rmSync(root, { recursive: true, force: true });
     }
   });
-  test("fails loud when dir lies outside the active store root (qc3 F-201); nothing written anywhere", async () => {
+  test("fails loud when dir lies outside the active store root ; nothing written anywhere", async () => {
     const root = tmpRoot("workflow-writer-");
     const other = tmpRoot("workflow-outside-");
     setArtifactStore(createFsStore(root));
     try {
-      const dir = join(other, "workflows", "20260819-workflow-engine-core");
+      const dir = join(other, "workflows", "00000819-workflow-engine-core");
       const snapshot = validSnapshot();
       await expect(writeWorkflowSnapshot(snapshot as never, dir)).rejects.toThrow(/routed writer path mismatch/);
       // The guard fires before mkdir/lockdir creation — neither the caller's
       // target nor the store-resolved path receives a snapshot file.
       expect(existsSync(join(dir, WORKFLOW_SNAPSHOT_FILE))).toBe(false);
-      expect(existsSync(join(root, "workflows", "20260819-workflow-engine-core", WORKFLOW_SNAPSHOT_FILE))).toBe(false);
+      expect(existsSync(join(root, "workflows", "00000819-workflow-engine-core", WORKFLOW_SNAPSHOT_FILE))).toBe(false);
       expect(existsSync(join(dir, ".status-write.lockdir"))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });

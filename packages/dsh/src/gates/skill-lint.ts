@@ -1,7 +1,6 @@
 /**
  * Skill-authoring lint gate — `SKILL.md` write-intent gating under the
- * configured skill roots (plan `20260810-dsh-entry-split` §9 extraction).
- *
+ * configured skill roots. *
  * The content-blind `fs/write-intent` listener (`skillWriteIntentListener`,
  * registered by the entry `apply` with `prepend`) lints the pre-write
  * on-disk document and applies the status-gate repair-escape policy; the
@@ -16,11 +15,13 @@ import { basename, dirname, resolve, sep } from 'node:path'
 import { type Context } from '@deepseek-ai/cordis'
 import {
   applyEnforcement,
+  classifySkillLint,
   findEphemeralCitations,
   lintFiveQuestion,
   lintFrontmatter,
   resolveAssetPath,
   resolveSkillRoot,
+  stripFrontmatter,
 } from '@mstar-harness/engine'
 import type { EphemeralCitation, GateResult, ValidationResult } from '@mstar-harness/engine'
 import type { FsTarget, FsWriteIntent } from '@deepseek-ai/dsh-fs'
@@ -84,20 +85,7 @@ export class SkillLintVetoError extends Error {
 }
 
 /**
- * Strip a leading `---`-fenced YAML frontmatter block, returning the body
- * (five-question lint takes the body; the frontmatter lint takes the full
- * doc — CLI `mstar skill lint` parity, same semantics).
- */
-function stripFrontmatter(text: string): string {
-  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/)
-  if (lines.length === 0 || lines[0].trim() !== '---') return text
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trim() === '---') return lines.slice(i + 1).join('\n')
-  }
-  return text
-}
-
-/** Ephemeral-citation violation codes (knowledge
+ * Ephemeral-citation violation codes (knowledge
  * conventions/skill-content-porting-discipline.md §3 — "No ephemeral
  * citations in durable skill text": concrete per-task artifacts and SDD
  * deeplinks survive nothing). Severity `medium` — the gate's warn/hard mode
@@ -123,14 +111,27 @@ function ephemeralViolation(citation: EphemeralCitation): ValidationResult {
  * CLI `mstar skill lint` combination plus the ephemeral-citation gate;
  * violation codes `lint.frontmatter.*` / `skill-authoring.five-question.*`
  * / `skill.ephemeral.*`). Pure: no enforcement, no I/O.
+ *
+ * Five-question profile (spec A4): the shared Engine classifier
+ * (`classifySkillLint`) selects the mode from `options.skillId` — the
+ * trusted resolved skill-target basename passed by the fs-intent path and
+ * `lintSkillWrite`. A doc-only call (no `skillId`) stays strict authoring —
+ * the greenfield default is never loosened by an unparented document. The
+ * frontmatter and ephemeral-citation checks run in every profile; `core`
+ * (exact `mstar-harness-core`) skips only the five-question check.
  * @param doc - the full SKILL.md text.
+ * @param options - `skillId`: the resolved skill-target directory basename
+ * (trusted boundary identity — never the doc's YAML `name` alone).
  */
-export function lintSkillDoc(doc: string): GateResult {
+export function lintSkillDoc(doc: string, options: { skillId?: string } = {}): GateResult {
   const violations: ValidationResult[] = []
   const frontmatter = lintFrontmatter(doc)
   if (!frontmatter.ok) violations.push(...frontmatter.violations)
-  const body = lintFiveQuestion(stripFrontmatter(doc))
-  if (!body.ok) violations.push(...body.violations)
+  const profile = classifySkillLint(options.skillId)
+  if (profile.mode !== null) {
+    const body = lintFiveQuestion(stripFrontmatter(doc), profile.mode)
+    if (!body.ok) violations.push(...body.violations)
+  }
   // Ephemeral-citation finder is discovery-only (engine returns an array, not
   // a GateResult) — wrap into violations here. Deliberately the ONLY wiring
   // point: `lintSkillWrite` delegates to this entry (hard veto inherited) and
@@ -149,11 +150,17 @@ export function lintSkillDoc(doc: string): GateResult {
  * needed on this branch. The content-blind listener path (where the
  * incoming doc is never visible) routes through {@link gateSkillIntent}
  * instead, which applies the status-gate repair-escape decision.
+ *
+ * The lint profile is classified from the trusted resolved skill-target
+ * basename (spec A4): `basename(dirname(resolve(options.target)))` — the
+ * write's own target, never the document's YAML `name`.
  * @param doc - the document about to be written (the write's content).
- * @param options - target display path (veto message) + resolved hard flag.
+ * @param options - target display path (veto message + profile identity) +
+ * resolved hard flag.
  */
 export function lintSkillWrite(doc: string, options: { target: string; hard: boolean }): GateResult {
-  const result = lintSkillDoc(doc)
+  const skillId = basename(dirname(resolve(options.target)))
+  const result = lintSkillDoc(doc, { skillId })
   if (options.hard && !result.ok) {
     throw new SkillLintVetoError(options.target, result.violations)
   }
@@ -249,7 +256,9 @@ function gateSkillIntent(ctx: Context, harnessDir: string | null, config: Config
       })
       return
     }
-    const result = lintSkillDoc(doc)
+    // Profile identity (spec A4): the trusted resolved skill-target
+    // basename — the configured skill-root boundary, never the YAML name.
+    const result = lintSkillDoc(doc, { skillId: basename(dirname(skillPath)) })
     if (result.ok) return
     const hard = resolveSeamHard(harnessDir, config)
     // The advisory carries the ENFORCED verdict (status-gate shape:

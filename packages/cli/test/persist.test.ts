@@ -1,7 +1,5 @@
 /**
- * CLI `mstar persist` / `persist get` — ArtifactStore persist port (plan
- * 20260827-artifact-store Task 4 Part A; iteration spec `artifact-store`
- * SP2-AC4..AC8).
+ * CLI `mstar persist` / `persist get` — ArtifactStore persist port.
  *
  * Each case spawns the real CLI entry as a subprocess. The default FsStore
  * is pinned to a temp harness via `MSTAR_HARNESS_DIR` (the store resolves
@@ -26,7 +24,7 @@ interface RunResult {
   stderr: string;
 }
 
-/** Spawn env with ambient harness env vars pinned out (qc3 F-4 convention):
+/** Spawn env with ambient harness env vars pinned out:
  * dir resolution must never leak into fixtures. MSTAR_STORE_MODULE is
  * pinned too so an ambient module cannot redirect a fixture. */
 function cliEnv(): Record<string, string> {
@@ -112,7 +110,7 @@ const SNAPSHOT_PAYLOAD = {
   plans: [],
 };
 const RESIDUALS_PAYLOAD = { entries: {} };
-/** Minimal valid `mstar.review/v1` envelope (SP3-AC1 shape; tally consistent
+/** Minimal valid `mstar.review/v1` envelope (shape; tally consistent
  * — {1 should-fix, 1 nit} ⇒ 100-15-3=82, needs fixes). */
 const REVIEW_PAYLOAD = {
   schema: "mstar.review/v1",
@@ -155,7 +153,7 @@ function storeModuleSource(envVar: string): string {
 }
 
 /** Self-contained recording store module: writes {kind, key, payload} so a
- * test can assert the kind that reached the store's put (SP3-AC6). */
+ * test can assert the kind that reached the store's put. */
 function recordingStoreModuleSource(envVar: string): string {
   return [
     'import { writeFileSync } from "node:fs";',
@@ -171,7 +169,7 @@ function recordingStoreModuleSource(envVar: string): string {
 }
 
 describe("mstar persist — FsStore round-trip in a temp harness dir (MSTAR_HARNESS_DIR)", () => {
-  test("snapshot put then get round-trips (SP2-AC4)", () => {
+  test("snapshot put then get round-trips", () => {
     withTempDir((dir) => {
       const payloadFile = writePayload(dir, "snapshot.json", SNAPSHOT_PAYLOAD);
       const put = runCli(["persist", "snapshot", "--key", "wf-1", "--file", payloadFile], { env: harnessEnv(dir) });
@@ -233,7 +231,7 @@ describe("mstar persist — FsStore round-trip in a temp harness dir (MSTAR_HARN
     });
   });
 
-  test("json kind persists to the absolute key path (SP2-AC8 positive)", () => {
+  test("json kind persists to the absolute key path", () => {
     withTempDir((dir) => {
       const payloadFile = writePayload(dir, "payload.json", { hello: "world" });
       const target = join(dir, "custom", "payload.json");
@@ -247,7 +245,7 @@ describe("mstar persist — FsStore round-trip in a temp harness dir (MSTAR_HARN
     });
   });
 
-  test("json kind with a non-absolute key is rejected (SP2-AC8)", () => {
+  test("json kind with a non-absolute key is rejected", () => {
     withTempDir((dir) => {
       const payloadFile = writePayload(dir, "payload.json", { hello: "world" });
       const r = runCli(["persist", "json", "--key", "relative/path.json", "--file", payloadFile], {
@@ -259,7 +257,7 @@ describe("mstar persist — FsStore round-trip in a temp harness dir (MSTAR_HARN
   });
 });
 
-describe("mstar persist — validators run before put (SP2-AC5)", () => {
+describe("mstar persist — validators run before put", () => {
   test("status validator rejects a v1 document (exit 1, no write)", () => {
     withTempDir((dir) => {
       const payloadFile = writePayload(dir, "v1.json", { version: 1, plans: [] });
@@ -303,7 +301,7 @@ describe("mstar persist — validators run before put (SP2-AC5)", () => {
   });
 });
 
-describe("mstar persist review — validateMstarReviewV1 before put (SP3-AC6)", () => {
+describe("mstar persist review — validateMstarReviewV1 before put", () => {
   test("rejects an inspector M1 vocab envelope (exit 1, no write)", () => {
     withTempDir((dir) => {
       const payloadFile = writePayload(dir, "m1-review.json", { verdict: "approve" });
@@ -379,7 +377,7 @@ describe("mstar persist review — validateMstarReviewV1 before put (SP3-AC6)", 
     });
   });
 
-  test("recording store receives kind: review for a valid envelope (SP3-AC6)", () => {
+  test("recording store receives kind: review for a valid envelope", () => {
     withTempDir((dir) => {
       const moduleFile = join(dir, "recording-store.ts");
       writeFileSync(moduleFile, recordingStoreModuleSource("RECORDING_STORE_FILE"), "utf8");
@@ -473,7 +471,7 @@ describe("mstar persist — --stdin and default-stdin payloads", () => {
   });
 });
 
-describe("mstar persist — --store / MSTAR_STORE_MODULE module injection (SP2-AC6 / AC7)", () => {
+describe("mstar persist — --store / MSTAR_STORE_MODULE module injection", () => {
   test("--store loads the module and routes the put through it", () => {
     withTempDir((dir) => {
       const moduleFile = join(dir, "store-mod.ts");
@@ -537,7 +535,7 @@ describe("mstar persist — --store / MSTAR_STORE_MODULE module injection (SP2-A
     });
   });
 
-  test("--store with a URI scheme is rejected before any import (SP2-AC7)", () => {
+  test("--store with a URI scheme is rejected before any import", () => {
     withTempDir((dir) => {
       const payloadFile = writePayload(dir, "snapshot.json", SNAPSHOT_PAYLOAD);
       const r = runCli(["persist", "snapshot", "--key", "k", "--file", payloadFile, "--store", "http://example.com/s.mjs"], {
@@ -610,7 +608,7 @@ describe("mstar persist — --schema under the D3 fail-loud store contract", () 
   });
 });
 
-describe("mstar persist list — D4/D5 enumeration face (plan 20260828-store-cli-faces T1)", () => {
+describe("mstar persist list — D4/D5 enumeration face", () => {
   test("snapshot keys print one per line ascending, no header (D5)", () => {
     withTempDir((dir) => {
       const payloadFile = writePayload(dir, "snapshot.json", SNAPSHOT_PAYLOAD);
@@ -716,7 +714,7 @@ function deletingStoreModuleSource(envVar: string): string {
   ].join("\n");
 }
 
-describe("mstar persist get --validate + persist delete — D1/D2 faces (plan 20260828-store-cli-faces T2)", () => {
+describe("mstar persist get --validate + persist delete — D1/D2 faces", () => {
   test("valid status doc + --validate → exit 0; stdout is payload JSON only; stderr note validation: ok (D1)", () => {
     withTempDir((dir) => {
       const payloadFile = writePayload(dir, "status.json", STATUS_PAYLOAD);

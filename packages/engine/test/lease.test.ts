@@ -4,40 +4,40 @@
  *
  * Spec sources (each test cites the skill/reference section it enforces):
  * - Lease objects + required fields (holder / claimed_at / worktree_path /
- *   working_branch; integration_merge_lease adds plan_id / source_branch /
- *   target_branch; optional session_label is display-only): `mstar-artifacts`
- *   `references/status-and-residuals.md` § `plans[].execution_lease` +
- *   § Snapshot top-level `integration_merge_lease` (v3 — relocated from the
- *   v1 root `metadata.integration_merge_lease` in the workflow-engine-core
- *   hard cutover) + the iteration-worktree-plan-lease maintenance ADR
- *   (normative field names; `claimed_at` RFC 3339 UTC with explicit `Z`).
+ * working_branch; integration_merge_lease adds plan_id / source_branch /
+ * target_branch; optional session_label is display-only): `mstar-artifacts`
+ * `references/status-and-residuals.md` § `plans[].execution_lease` +
+ * § Snapshot top-level `integration_merge_lease` (v3 — relocated from the
+ * v1 root `metadata.integration_merge_lease` in the workflow-engine-core
+ * hard cutover) + the iteration-worktree-plan-lease maintenance ADR
+ * (normative field names; `claimed_at` RFC 3339 UTC with explicit `Z`).
  * - `null` / tombstone lease objects are invalid — writers delete the key on
- *   release, never write `null`: status-and-residuals.md § "Hold, release,
- *   and override" + § Agent prohibitions ("MUST NOT write `null` or tombstone
- *   objects for lease keys — delete the key on release").
+ * release, never write `null`: status-and-residuals.md § "Hold, release,
+ * and override" + § Agent prohibitions ("MUST NOT write `null` or tombstone
+ * objects for lease keys — delete the key on release").
  * - Claim-before-InProgress (Todo/Blocked → InProgress + full lease in one
- *   update), same-holder resume (verify-held-lease: worktree_path +
- *   working_branch match), different-holder → Blocked ("no timestamp makes it
- *   stealable"), InProgress-without-lease orphan (STOP, do not invent a
- *   lease): status-and-residuals.md § Claim-before-`InProgress` +
- *   § Orphan recovery; phase-2-worktree-lease.md § Execution lease.
+ * update), same-holder resume (verify-held-lease: worktree_path +
+ * working_branch match), different-holder → Blocked ("no timestamp makes it
+ * stealable"), InProgress-without-lease orphan (STOP, do not invent a
+ * lease): status-and-residuals.md § Claim-before-`InProgress` +
+ * § Orphan recovery; phase-2-worktree-lease.md § Execution lease.
  * - Release deletes `execution_lease` (never null); `Done` deletes it in the
- *   same update **only after** successful integration merge:
- *   status-and-residuals.md § "Hold, release, and override" + § Integration
- *   merge protocol.
+ * same update **only after** successful integration merge:
+ * status-and-residuals.md § "Hold, release, and override" + § Integration
+ * merge protocol.
  * - Steal override requires explicit current-turn user instruction + audit
- *   `plans[].notes` — agents MUST NOT infer override from age/inactivity:
- *   status-and-residuals.md § "Hold, release, and override" + § Agent
- *   prohibitions.
+ * `plans[].notes` — agents MUST NOT infer override from age/inactivity:
+ * status-and-residuals.md § "Hold, release, and override" + § Agent
+ * prohibitions.
  * - Same-host exclusive write lock: `flock` on `{HARNESS_DIR}/.status-write.lock`
- *   preferred; atomic `mkdir` on `{HARNESS_DIR}/.status-write.lockdir/`
- *   alternative (success acquires; existing dir → another writer holds the
- *   lock; remove the directory only after success/rollback):
- *   status-and-residuals.md § "Same-host exclusive write lock (control
- *   status.json)" + phase-2-worktree-lease.md § "Same-host exclusive write
- *   lock". The lock guards all coordination writes — the root `status.json`
- *   AND `workflows/<id>/snapshot.json` (v3 lease claim/verify read-write
- *   the snapshot).
+ * preferred; atomic `mkdir` on `{HARNESS_DIR}/.status-write.lockdir/`
+ * alternative (success acquires; existing dir → another writer holds the
+ * lock; remove the directory only after success/rollback):
+ * status-and-residuals.md § "Same-host exclusive write lock (control
+ * status.json)" + phase-2-worktree-lease.md § "Same-host exclusive write
+ * lock". The lock guards all coordination writes — the root `status.json`
+ * AND `workflows/<id>/snapshot.json` (v3 lease claim/verify read-write
+ * the snapshot).
  *
  * `claimed_at` acceptance: normative form is RFC 3339 UTC with explicit `Z`
  * (ADR field table); the repo's local `YYYY-MM-DD` date convention is also
@@ -93,27 +93,27 @@ function violationCodes(gate: { violations: { code: string }[] }): string[] {
 
 describe("validateExecutionLease", () => {
   test("valid lease with RFC 3339 UTC claimed_at passes", () => {
-    // Spec: status-and-residuals.md § plans[].execution_lease — required
-    // holder / claimed_at (RFC 3339 UTC, Z) / worktree_path / working_branch;
-    // optional session_label display-only.
+ // Spec: status-and-residuals.md § plans[].execution_lease — required
+ // holder / claimed_at (RFC 3339 UTC, Z) / worktree_path / working_branch;
+ // optional session_label display-only.
     const gate = validateExecutionLease(validExecutionLease());
     expect(gate.ok).toBe(true);
     expect(gate.violations).toEqual([]);
   });
 
   test("valid lease with repo date-only claimed_at passes (real control data)", () => {
-    // Spec: ADR field table claims RFC 3339 UTC with Z; the repo's local
-    // `YYYY-MM-DD` date convention is accepted too — the real control
-    // control status.json execution_lease for
-    // 20260808-slice1-engine-foundation uses `"claimed_at": "2026-08-08"`
-    // and `mstar lease verify` must pass on it.
+ // Spec: ADR field table claims RFC 3339 UTC with Z; the repo's local
+ // `YYYY-MM-DD` date convention is accepted too — the real control
+ // control status.json execution_lease for
+ // 20260808-slice1-engine-foundation uses `"claimed_at": "2026-08-08"`
+ // and `mstar lease verify` must pass on it.
     const gate = validateExecutionLease(validExecutionLease({ claimed_at: "2026-08-08" }));
     expect(gate.ok).toBe(true);
     expect(gate.violations).toEqual([]);
   });
 
   test("missing required fields are flagged (holder, claimed_at, worktree_path, working_branch)", () => {
-    // Spec: § plans[].execution_lease — all four fields Required: Yes.
+ // Spec: § plans[].execution_lease — all four fields Required: Yes.
     const gate = validateExecutionLease({ session_label: "Plan A implementation" });
     expect(gate.ok).toBe(false);
     expect(violationCodes(gate)).toEqual(
@@ -127,8 +127,8 @@ describe("validateExecutionLease", () => {
   });
 
   test("null and tombstone objects are rejected", () => {
-    // Spec: § Hold/release + § Agent prohibitions — `null` and tombstone
-    // objects are invalid; writers delete the key, never write null.
+ // Spec: § Hold/release + § Agent prohibitions — `null` and tombstone
+ // objects are invalid; writers delete the key, never write null.
     for (const tombstone of [null, "tombstone", 42, []]) {
       const gate = validateExecutionLease(tombstone);
       expect(gate.ok).toBe(false);
@@ -146,8 +146,8 @@ describe("validateExecutionLease", () => {
   });
 
   test("worktree_path must be an absolute path", () => {
-    // Spec: § plans[].execution_lease — worktree_path is an absolute path
-    // string; MUST differ from metadata.control_worktree_path.
+ // Spec: § plans[].execution_lease — worktree_path is an absolute path
+ // string; MUST differ from metadata.control_worktree_path.
     const gate = validateExecutionLease(validExecutionLease({ worktree_path: "relative/worktree" }));
     expect(gate.ok).toBe(false);
     expect(violationCodes(gate)).toContain("lease.execution-lease.invalid-worktree-path");
@@ -155,7 +155,7 @@ describe("validateExecutionLease", () => {
   });
 
   test("invalid claimed_at formats are flagged", () => {
-    // Spec: ADR — RFC 3339 UTC timestamp with explicit Z offset (audit only).
+ // Spec: ADR — RFC 3339 UTC timestamp with explicit Z offset (audit only).
     for (const bad of ["tomorrow", "2026-13-99", "2026-07-22T02:30:00", "2026-07-22 02:30:00Z", 1700000000]) {
       const gate = validateExecutionLease(validExecutionLease({ claimed_at: bad }));
       expect(gate.ok).toBe(false);
@@ -164,16 +164,16 @@ describe("validateExecutionLease", () => {
   });
 
   test("session_label must be a string when present (display only)", () => {
-    // Spec: § plans[].execution_lease — session_label: string, No; display
-    // only, MUST NOT authorize or compare ownership.
+ // Spec: § plans[].execution_lease — session_label: string, No; display
+ // only, MUST NOT authorize or compare ownership.
     const gate = validateExecutionLease(validExecutionLease({ session_label: 123 }));
     expect(gate.ok).toBe(false);
     expect(violationCodes(gate)).toContain("lease.execution-lease.invalid-session-label");
   });
 
   test("unknown extra fields are allowed (real data carries base_sha)", () => {
-    // The real control execution_lease carries `base_sha`; the SSOT field set
-    // is the required minimum — extra fields must not be flagged.
+ // The real control execution_lease carries `base_sha`; the SSOT field set
+ // is the required minimum — extra fields must not be flagged.
     const gate = validateExecutionLease(validExecutionLease({ base_sha: "471db08" }));
     expect(gate.ok).toBe(true);
   });
@@ -181,10 +181,10 @@ describe("validateExecutionLease", () => {
 
 describe("validateIntegrationMergeLease", () => {
   test("valid serial merge lease passes", () => {
-    // Spec: status-and-residuals.md § Snapshot top-level
-    // integration_merge_lease (v3) — required holder / claimed_at / plan_id /
-    // source_branch / target_branch (resolved spec_integration_branch);
-    // optional session_label.
+ // Spec: status-and-residuals.md § Snapshot top-level
+ // integration_merge_lease (v3) — required holder / claimed_at / plan_id /
+ // source_branch / target_branch (resolved spec_integration_branch);
+ // optional session_label.
     const gate = validateIntegrationMergeLease(validMergeLease());
     expect(gate.ok).toBe(true);
     expect(gate.violations).toEqual([]);
@@ -205,9 +205,9 @@ describe("validateIntegrationMergeLease", () => {
   });
 
   test("null and tombstone objects are rejected (absent = unclaimed; never null)", () => {
-    // Spec: § Snapshot top-level integration_merge_lease — absent means
-    // unclaimed; writers delete the key on release, never write null or
-    // tombstone.
+ // Spec: § Snapshot top-level integration_merge_lease — absent means
+ // unclaimed; writers delete the key on release, never write null or
+ // tombstone.
     for (const tombstone of [null, [], "stale"]) {
       const gate = validateIntegrationMergeLease(tombstone);
       expect(gate.ok).toBe(false);
@@ -244,9 +244,9 @@ describe("claimLease", () => {
   const FIELDS = { worktree_path: "/repo-worktrees/plan-a", working_branch: "feature/plan-a" };
 
   test("claim-before-InProgress: Todo → InProgress with full execution_lease", () => {
-    // Spec: § Claim-before-InProgress — set status InProgress AND write the
-    // full execution_lease (holder / claimed_at / worktree_path /
-    // working_branch) in one update, before any writable dispatch.
+ // Spec: § Claim-before-InProgress — set status InProgress AND write the
+ // full execution_lease (holder / claimed_at / worktree_path /
+ // working_branch) in one update, before any writable dispatch.
     const result = claimLease(row(), "cursor:bc-1234", FIELDS);
     expect(result.ok).toBe(true);
     expect(result.outcome).toBe("claimed");
@@ -256,13 +256,13 @@ describe("claimLease", () => {
     expect(lease.worktree_path).toBe("/repo-worktrees/plan-a");
     expect(lease.working_branch).toBe("feature/plan-a");
     expect(lease.claimed_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/);
-    // claimed_at is now (RFC 3339 UTC with Z), not a stale/fixed value.
+ // claimed_at is now (RFC 3339 UTC with Z), not a stale/fixed value.
     const claimed = Date.parse(String(lease.claimed_at));
     expect(Math.abs(Date.now() - claimed)).toBeLessThan(60_000);
   });
 
   test("Blocked → InProgress with lease (claim path also covers Blocked)", () => {
-    // Spec: § Claim-before-InProgress — claim from Todo or Blocked.
+ // Spec: § Claim-before-InProgress — claim from Todo or Blocked.
     const result = claimLease(row({ status: "Blocked" }), "cursor:bc-1234", FIELDS);
     expect(result.ok).toBe(true);
     expect(result.outcome).toBe("claimed");
@@ -277,9 +277,9 @@ describe("claimLease", () => {
   });
 
   test("same-holder resume: lease kept, no new claim, verify-held-lease fields match", () => {
-    // Spec: § Claim-before-InProgress #2 — same holder → resume: confirm
-    // worktree_path and working_branch match the Assignment; continue (not
-    // steal/block, not a new claim).
+ // Spec: § Claim-before-InProgress #2 — same holder → resume: confirm
+ // worktree_path and working_branch match the Assignment; continue (not
+ // steal/block, not a new claim).
     const prior = row({
       status: "InProgress",
       execution_lease: { holder: "cursor:bc-1234", claimed_at: RFC3339_Z, ...FIELDS },
@@ -287,14 +287,14 @@ describe("claimLease", () => {
     const result = claimLease(prior, "cursor:bc-1234", FIELDS);
     expect(result.ok).toBe(true);
     expect(result.outcome).toBe("resumed");
-    // The existing lease is preserved verbatim — claimed_at is not rewritten.
+ // The existing lease is preserved verbatim — claimed_at is not rewritten.
     expect(result.row.execution_lease).toEqual({ holder: "cursor:bc-1234", claimed_at: RFC3339_Z, ...FIELDS });
     expect(result.row.status).toBe("InProgress");
   });
 
   test("same-holder resume with mismatched worktree_path is refused (verify-held-lease)", () => {
-    // Spec: § Claim-before-InProgress #2 — verify-held-lease requires
-    // worktree_path and working_branch to match the Assignment.
+ // Spec: § Claim-before-InProgress #2 — verify-held-lease requires
+ // worktree_path and working_branch to match the Assignment.
     const prior = row({
       status: "InProgress",
       execution_lease: { holder: "cursor:bc-1234", claimed_at: RFC3339_Z, ...FIELDS },
@@ -317,8 +317,8 @@ describe("claimLease", () => {
   });
 
   test("different-holder claim is refused — no timestamp makes it stealable", () => {
-    // Spec: § Claim-before-InProgress #3 — different holder → Blocked; no
-    // timestamp, TTL, or inactivity makes it stealable.
+ // Spec: § Claim-before-InProgress #3 — different holder → Blocked; no
+ // timestamp, TTL, or inactivity makes it stealable.
     const prior = row({
       status: "InProgress",
       execution_lease: { holder: "cursor:bc-1234", claimed_at: RFC3339_Z, ...FIELDS },
@@ -330,8 +330,8 @@ describe("claimLease", () => {
   });
 
   test("InProgress without execution_lease is flagged as orphan — no lease invented", () => {
-    // Spec: § Claim-before-InProgress #4 + § Orphan recovery — InProgress
-    // without lease → STOP; do not writable-dispatch or invent a lease.
+ // Spec: § Claim-before-InProgress #4 + § Orphan recovery — InProgress
+ // without lease → STOP; do not writable-dispatch or invent a lease.
     const prior = row({ status: "InProgress" });
     const result = claimLease(prior, "cursor:bc-1234", FIELDS);
     expect(result.ok).toBe(false);
@@ -341,8 +341,8 @@ describe("claimLease", () => {
   });
 
   test("claim from a non-Todo/Blocked status without lease is refused", () => {
-    // Spec: § Claim-before-InProgress — claim transitions are
-    // Todo/Blocked → InProgress; other statuses are not claimable.
+ // Spec: § Claim-before-InProgress — claim transitions are
+ // Todo/Blocked → InProgress; other statuses are not claimable.
     for (const status of ["InReview", "Done"]) {
       const result = claimLease(row({ status }), "cursor:bc-1234", FIELDS);
       expect(result.ok).toBe(false);
@@ -351,8 +351,8 @@ describe("claimLease", () => {
   });
 
   test("null/tombstone execution_lease on the row is rejected, not silently replaced", () => {
-    // Spec: § Agent prohibitions — null/tombstone lease keys are invalid
-    // writes; a corrupt stored value must be surfaced, not overwritten.
+ // Spec: § Agent prohibitions — null/tombstone lease keys are invalid
+ // writes; a corrupt stored value must be surfaced, not overwritten.
     const prior = row({ status: "InProgress", execution_lease: null });
     const result = claimLease(prior, "cursor:bc-1234", FIELDS);
     expect(result.ok).toBe(false);
@@ -361,9 +361,9 @@ describe("claimLease", () => {
   });
 
   test("relative worktree_path in claim fields is rejected before the transition (row unmutated)", () => {
-    // Fix round (reviewer): ClaimLeaseFields must be validated via
-    // validateExecutionLease BEFORE the Todo/Blocked → InProgress transition —
-    // a relative worktree_path must not be written.
+ // Fix round (reviewer): ClaimLeaseFields must be validated via
+ // validateExecutionLease BEFORE the Todo/Blocked → InProgress transition —
+ // a relative worktree_path must not be written.
     const prior = row();
     const result = claimLease(prior, "cursor:bc-1234", { ...FIELDS, worktree_path: "worktrees/plan-a" });
     expect(result.ok).toBe(false);
@@ -408,8 +408,8 @@ describe("releaseLease", () => {
   }
 
   test("release deletes execution_lease entirely (never writes null)", () => {
-    // Spec: § Hold, release, and override — delete execution_lease in the
-    // same complete-file update — never `null`; § Agent prohibitions.
+ // Spec: § Hold, release, and override — delete execution_lease in the
+ // same complete-file update — never `null`; § Agent prohibitions.
     const result = releaseLease(leasedRow(), "cursor:bc-1234");
     expect(result.ok).toBe(true);
     expect(result.outcome).toBe("released");
@@ -418,8 +418,8 @@ describe("releaseLease", () => {
   });
 
   test("release preserves the rest of the plan row", () => {
-    // Spec: § Agent prohibitions — writers MUST preserve unrelated plan rows
-    // and fields on every lease mutation.
+ // Spec: § Agent prohibitions — writers MUST preserve unrelated plan rows
+ // and fields on every lease mutation.
     const prior = leasedRow();
     const result = releaseLease(prior, "cursor:bc-1234");
     expect(result.row.id).toBe("plan-a");
@@ -447,9 +447,9 @@ describe("releaseLease", () => {
   });
 
   test("different-holder release is refused, lease preserved (same-session holder check)", () => {
-    // Spec: § Hold, release, and override — release is a same-session-holder
-    // operation; no timestamp makes a lease stealable, so another holder must
-    // Blocked instead of releasing.
+ // Spec: § Hold, release, and override — release is a same-session-holder
+ // operation; no timestamp makes a lease stealable, so another holder must
+ // Blocked instead of releasing.
     const prior = leasedRow();
     const result = releaseLease(prior, "other:session-99");
     expect(result.ok).toBe(false);
@@ -461,8 +461,8 @@ describe("releaseLease", () => {
 
 describe("sameHolderResume", () => {
   test("true iff lease holder matches the session holder", () => {
-    // Spec: § Claim-before-InProgress #2 — resume is authorized only when
-    // holder equals this session.
+ // Spec: § Claim-before-InProgress #2 — resume is authorized only when
+ // holder equals this session.
     const lease = { holder: "cursor:bc-1234", claimed_at: RFC3339_Z, worktree_path: "/wt", working_branch: "feature/plan-a" };
     expect(sameHolderResume(lease, "cursor:bc-1234")).toBe(true);
     expect(sameHolderResume(lease, "other:session")).toBe(false);
@@ -479,17 +479,17 @@ describe("canSteal", () => {
   const lease = { holder: "cursor:bc-1234", claimed_at: RFC3339_Z, worktree_path: "/wt", working_branch: "feature/plan-a" };
 
   test("always false without an explicit user override", () => {
-    // Spec: § Agent prohibitions — MUST NOT steal an active lease; no TTL,
-    // age, or inactivity authority in v1.
+ // Spec: § Agent prohibitions — MUST NOT steal an active lease; no TTL,
+ // age, or inactivity authority in v1.
     expect(canSteal(lease, "other:session")).toBe(false);
     expect(canSteal(lease, "other:session", {})).toBe(false);
   });
 
   test("true only with an explicit current-turn user override for a different holder", () => {
-    // Spec: § Hold, release, and override — the ONLY exception is an explicit
-    // user instruction in the current turn; the caller must still append an
-    // audit entry to plans[].notes (timestamp, prior holder, new holder,
-    // user authorized).
+ // Spec: § Hold, release, and override — the ONLY exception is an explicit
+ // user instruction in the current turn; the caller must still append an
+ // audit entry to plans[].notes (timestamp, prior holder, new holder,
+ // user authorized).
     expect(canSteal(lease, "other:session", { userOverride: true })).toBe(true);
   });
 
@@ -545,10 +545,10 @@ describe("planExecutionLeaseLocations / verifyPlanExecutionLease (snapshot plan-
   });
 
   test("claim/verify operate on a workflow snapshot's plan row (v3 data home)", () => {
-    // Task 5 relocation: lease claim/verify read-write
-    // `workflows/<id>/snapshot.json` — the snapshot's `plans[]` rows are the
-    // legacy PlanRow shape verbatim, and the lease functions are pure row
-    // transitions on that row.
+ // relocation: lease claim/verify read-write
+ // `workflows/<id>/snapshot.json` — the snapshot's `plans[]` rows are the
+ // legacy PlanRow shape verbatim, and the lease functions are pure row
+ // transitions on that row.
     const snapshot = {
       schema_version: 1,
       id: "wf-1",
@@ -566,8 +566,8 @@ describe("planExecutionLeaseLocations / verifyPlanExecutionLease (snapshot plan-
     expect(claimed.ok).toBe(true);
     expect(claimed.outcome).toBe("claimed");
     expect(claimed.row.status).toBe("InProgress");
-    // The caller persists the claimed row back into the snapshot's plans[]
-    // (whole-snapshot write under the status write lock).
+ // The caller persists the claimed row back into the snapshot's plans[]
+ // (whole-snapshot write under the status write lock).
     const persisted = snapshot.plans as Array<Record<string, unknown>>;
     persisted[0] = claimed.row as unknown as Record<string, unknown>;
     expect(persisted[0].execution_lease).toEqual(claimed.row.execution_lease);
@@ -583,11 +583,11 @@ describe("withStatusWriteLock", () => {
   }
 
   test("serializes two concurrent writers (read-increment-write, no lost update)", async () => {
-    // Spec: § Same-host exclusive write lock — lease/status mutations run
-    // inside a same-host exclusive write lock for the full
-    // read-check-replace-verify sequence; the lock serializes concurrent
-    // writers on the same coordination file (root status.json or a workflow
-    // snapshot).
+ // Spec: § Same-host exclusive write lock — lease/status mutations run
+ // inside a same-host exclusive write lock for the full
+ // read-check-replace-verify sequence; the lock serializes concurrent
+ // writers on the same coordination file (root status.json or a workflow
+ // snapshot).
     const dir = makeDir();
     try {
       const statusPath = join(dir, "status.json");
@@ -596,13 +596,13 @@ describe("withStatusWriteLock", () => {
 
       const writer = async (id: string) =>
         withStatusWriteLock(statusPath, async () => {
-          // Read-check-replace: a lockless interleaving would read the same
-          // value twice and lose one increment. The `await Promise.resolve()`
-          // yield is the race window — no wall-clock delay needed: writer B
-          // starts (and reads) while writer A is suspended at this point, so
-          // a non-exclusive lock would drop one increment deterministically.
-          // Fake timers cannot drive this: the lock acquisition itself is
-          // real filesystem I/O (mkdir + poll).
+ // Read-check-replace: a lockless interleaving would read the same
+ // value twice and lose one increment. The `await Promise.resolve()`
+ // yield is the race window — no wall-clock delay needed: writer B
+ // starts (and reads) while writer A is suspended at this point, so
+ // a non-exclusive lock would drop one increment deterministically.
+ // Fake timers cannot drive this: the lock acquisition itself is
+ // real filesystem I/O (mkdir + poll).
           const current = Number(readFileSync(counterPath, "utf8"));
           await Promise.resolve();
           writeFileSync(counterPath, String(current + 1));
@@ -613,7 +613,7 @@ describe("withStatusWriteLock", () => {
       expect(a).toBe("a");
       expect(b).toBe("b");
       expect(readFileSync(counterPath, "utf8")).toBe("2");
-      // Lock directory removed after the critical section (all exit paths).
+ // Lock directory removed after the critical section (all exit paths).
       expect(existsSync(join(dir, ".status-write.lockdir"))).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -621,7 +621,7 @@ describe("withStatusWriteLock", () => {
   });
 
   test("removes the lock directory when fn throws", async () => {
-    // Spec: release on all exit paths (success or failure).
+ // Spec: release on all exit paths (success or failure).
     const dir = makeDir();
     try {
       const statusPath = join(dir, "status.json");
@@ -637,8 +637,8 @@ describe("withStatusWriteLock", () => {
   });
 
   test("existing lockdir blocks a second writer until timeout (another writer holds the lock)", async () => {
-    // Spec: § Same-host exclusive write lock (alternative) — existing
-    // lockdir → another writer holds the lock; Blocked, no silent bypass.
+ // Spec: § Same-host exclusive write lock (alternative) — existing
+ // lockdir → another writer holds the lock; Blocked, no silent bypass.
     const dir = makeDir();
     try {
       const statusPath = join(dir, "status.json");
@@ -646,7 +646,7 @@ describe("withStatusWriteLock", () => {
       await expect(withStatusWriteLock(statusPath, () => "never", { timeoutMs: 120 })).rejects.toThrow(
         /another writer holds/i,
       );
-      // The other writer's lockdir is not removed by the blocked waiter.
+ // The other writer's lockdir is not removed by the blocked waiter.
       expect(existsSync(join(dir, ".status-write.lockdir"))).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -665,9 +665,9 @@ describe("withStatusWriteLock", () => {
   });
 
   test("double-unlock guard: a late finally never removes a second writer's lockdir", async () => {
-    // Spec: qc2 F-002 — writer A's fn removes the lockdir (rollback); writer B
-    // acquires a fresh lockdir; A's finally must detect the changed (dev, ino)
-    // and skip rmdir, so B's lock is not destroyed.
+ // Spec: — writer A's fn removes the lockdir (rollback); writer B
+ // acquires a fresh lockdir; A's finally must detect the changed (dev, ino)
+ // and skip rmdir, so B's lock is not destroyed.
     const dir = makeDir();
     try {
       const statusPath = join(dir, "status.json");
@@ -677,8 +677,8 @@ describe("withStatusWriteLock", () => {
       const { promise: gate, resolve: openGate } = Promise.withResolvers<void>();
 
       const a = withStatusWriteLock(statusPath, async () => {
-        // A's fn rolls back by removing its own lockdir (holder.pid first —
-        // rmdir fails on a non-empty directory).
+ // A's fn rolls back by removing its own lockdir (holder.pid first —
+ // rmdir fails on a non-empty directory).
         unlinkSync(join(lockDir, "holder.pid"));
         rmdirSync(lockDir);
         aRemovedOwn = true;
@@ -690,11 +690,11 @@ describe("withStatusWriteLock", () => {
         return "b";
       });
 
-      // Real-timer exception: this interleaving is driven by real filesystem
-      // state (mkdir/rmdir/stat) across two concurrent async tasks — fake
-      // timers cannot advance real FS I/O, so the poll waits on observable
-      // state rather than a fixed delay (same rationale as the suite's
-      // "serializes two concurrent writers" yield comment).
+ // Real-timer exception: this interleaving is driven by real filesystem
+ // state (mkdir/rmdir/stat) across two concurrent async tasks — fake
+ // timers cannot advance real FS I/O, so the poll waits on observable
+ // state rather than a fixed delay (same rationale as the suite's
+ // "serializes two concurrent writers" yield comment).
       const start = Date.now();
       while (!(aRemovedOwn && bInside) && Date.now() - start < 5_000) {
         await Bun.sleep(2);
@@ -704,7 +704,7 @@ describe("withStatusWriteLock", () => {
       expect(bInside).toBe(true); // B acquired the lockdir A removed
       await expect(a).resolves.toBeUndefined();
       expect(await b).toBe("b");
-      // B's own finally removed B's lockdir; A's finally skipped it.
+ // B's own finally removed B's lockdir; A's finally skipped it.
       expect(existsSync(lockDir)).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -718,14 +718,14 @@ describe("withStatusWriteLock", () => {
       const lockDir = join(dir, ".status-write.lockdir");
       await expect(
         withStatusWriteLock(statusPath, async () => {
-          // rollback removes the lockdir (holder.pid first) before the throw
+ // rollback removes the lockdir (holder.pid first) before the throw
           unlinkSync(join(lockDir, "holder.pid"));
           rmdirSync(lockDir);
           throw new Error("boom");
         }),
       ).rejects.toThrow("boom");
       expect(existsSync(lockDir)).toBe(false);
-      // A subsequent writer can acquire normally.
+ // A subsequent writer can acquire normally.
       expect(await withStatusWriteLock(statusPath, () => "ok")).toBe("ok");
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -738,11 +738,11 @@ describe("withStatusWriteLock", () => {
       const statusPath = join(dir, "status.json");
       await expect(
         withStatusWriteLock(statusPath, async () => {
-          // Nested call on the SAME lockdir — must throw fast, not wait 30s.
+ // Nested call on the SAME lockdir — must throw fast, not wait 30s.
           return withStatusWriteLock(statusPath, () => "nested");
         }),
       ).rejects.toThrow(/not reentrant/i);
-      // The outer lock was still released cleanly.
+ // The outer lock was still released cleanly.
       expect(existsSync(join(dir, ".status-write.lockdir"))).toBe(false);
     } finally {
       rmSync(dir, { recursive: true, force: true });

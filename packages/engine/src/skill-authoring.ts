@@ -6,14 +6,14 @@
  * Source skills (semantic SSOT — this module implements their deterministic
  * rules, it never redefines them; roadmap §8.5 C2):
  * - `mstar-skill-authoring` SKILL.md § Frontmatter Contract — `name` stable
- *   lowercase-hyphen; `description` is the trigger contract (not a workflow
- *   summary), third person.
+ * lowercase-hyphen; `description` is the trigger contract (not a workflow
+ * summary), third person.
  * - `mstar-skill-authoring` SKILL.md § Body 必须回答的 5 问 + § 默认 Body
- *   结构 — a SKILL.md body answers five questions via key sections (Load
- *   Order, Workflow, Decision Rules, Evidence, References).
+ * 结构 — a SKILL.md body answers five questions via key sections (Load
+ * Order, Workflow, Decision Rules, Evidence, References).
  * - `mstar-skill-authoring` SKILL.md § Skill-relative script and asset
- *   paths ("skill `my-skill` → scripts/do-thing") + `mstar-host` SKILL.md
- *   § Resolve loaded skill root (per-host resolution).
+ * paths ("skill `my-skill` → scripts/do-thing") + `mstar-host` SKILL.md
+ * § Resolve loaded skill root (per-host resolution).
  *
  * The SkillsBench six principles and trigger-contract reasoning stay prompt.
  */
@@ -91,10 +91,43 @@ function collectHeadings(bodyText: string): string[] {
  * — shipped `mstar-*` topic skills). */
 export type FiveQuestionMode = "authoring" | "runtime";
 
+/** Skill-lint profile kind (spec A4): `core` = the `mstar-harness-core` hub
+ * (five-question exempt), `runtime` = shipped `mstar-*` topic skills, and
+ * `authoring` = the standard plus every non-`mstar-*`/unknown input. */
+export type SkillLintKind = "core" | "runtime" | "authoring";
+
+/** Classification result: the profile kind plus the five-question mode to
+ * apply — `null` mode means the five-question check is skipped entirely
+ * (core exemption only; every other check stays active). */
+export type SkillLintProfile = { kind: SkillLintKind; mode: FiveQuestionMode | null };
+
 /**
- * Locked runtime alias table (plan 20260816-audit-001-five-question-runtime-
- * alignment, Step 2): heading synonyms that answer the same question for
- * shipped topic skills, verified against the corpus at `81480e7`. Tokens are
+ * One lint-classification policy (spec A4
+ * the single profile SSOT the CLI, dsh and drift Guard 5 consume.
+ * Semantics preserve the CLI `skill lint` selection verbatim:
+ * - exact `mstar-harness-core` → `core` / `null` (five-question exempt by
+ * design — hub headings; frontmatter + ephemeral checks still run);
+ * - exact `mstar-skill-authoring` → `authoring` (the standard's own
+ * definition stays strict despite the `mstar-` prefix);
+ * - any other `mstar-*` → `runtime` (locked alias table applies);
+ * - unknown / non-`mstar-*` / missing identity → `authoring` (strict
+ * default — greenfield inputs are never loosened).
+ * The `skillId` is the resolved target directory basename at the CLI and
+ * dsh configured skill-root boundaries — never an arbitrary YAML `name`
+ * alone (a misleading frontmatter name must not select a looser profile).
+ * These are lint profiles only: not authorization, not trusted origin.
+ */
+export function classifySkillLint(skillId: string | undefined): SkillLintProfile {
+  const id = skillId ?? "";
+  if (id === "mstar-harness-core") return { kind: "core", mode: null };
+  if (id === "mstar-skill-authoring") return { kind: "authoring", mode: "authoring" };
+  if (id.startsWith("mstar-")) return { kind: "runtime", mode: "runtime" };
+  return { kind: "authoring", mode: "authoring" };
+}
+
+/**
+ * Locked runtime alias table: heading synonyms that answer the same question
+ * for shipped topic skills, verified against the shipped-skill corpus. Tokens are
  * case-insensitive heading substrings (any heading level); the `decision-rules`
  * breadth is bounded by the corpus regression test pinning current state.
  * `load-order` has no aliases — the canonical label covers 15/16 skills and

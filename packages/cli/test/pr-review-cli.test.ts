@@ -19,7 +19,7 @@ import { PR_REVIEW_TIER_BUDGETS } from "@mstar-harness/engine";
 const CLI_ROOT = resolve(import.meta.dir, "..");
 const SRC_ENTRY = join(CLI_ROOT, "src/index.ts");
 
-/** Spawn env with ambient harness env vars pinned out (qc3 F-4). */
+/** Spawn env with ambient harness env vars pinned out. */
 function cliEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
@@ -113,7 +113,7 @@ describe("mstar pr-review tally", () => {
     });
   });
 
-  test("malformed findings JSON exits 1 (plan-QC F-003)", () => {
+  test("malformed findings JSON exits 1", () => {
     withTempDir((dir) => {
       const findings = join(dir, "findings.json");
       writeFileSync(findings, "{");
@@ -123,7 +123,7 @@ describe("mstar pr-review tally", () => {
     });
   });
 
-  test("non-array findings JSON (object) exits 1 (plan-QC F-003)", () => {
+  test("non-array findings JSON (object) exits 1", () => {
     withTempDir((dir) => {
       const findings = join(dir, "findings.json");
       writeFileSync(findings, '{"mergeClass":"must-fix"}');
@@ -133,7 +133,7 @@ describe("mstar pr-review tally", () => {
     });
   });
 
-  test.each(["1e2", "0x10", "-3"])("count flag %s rejected with exit 1 — digits-only grammar (plan-QC F-004)", (raw) => {
+  test.each(["1e2", "0x10", "-3"])("count flag %s rejected with exit 1 — digits-only grammar ", (raw) => {
     withTempDir((dir) => {
       const findings = join(dir, "findings.json");
       writeFileSync(findings, "[]");

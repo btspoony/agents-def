@@ -1,5 +1,5 @@
 /**
- * Task 4 — profile bundle layer (plan 20260808-dsh-seams-bundle): the
+ * Task 4 — profile bundle layer : the
  * `@mstar-harness/dsh` package doubles as a dsh profile bundle per the
  * dsh-bundle contract (manifest `dsh.bundle.patch` + a `cordis.patch.yml`
  * patch list; `- insert:` op; id-targeted patches replace a row's WHOLE

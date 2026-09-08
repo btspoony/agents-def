@@ -4,31 +4,31 @@
  *
  * Spec sources (each test cites the skill/reference section it enforces):
  * - Assignment field contract — `Execute as` / `Delegation` / `Task category`
- *   present with non-empty values; paste-only assignments missing fields are
- *   flagged: `mstar-dispatch-gates` SKILL.md § "调度防串扰（强制）" +
- *   § "Assignment 顶部反模式块" + § 反模式（派发）("Assignment 已写、invoke
- *   为零（paste-only）").
+ * present with non-empty values; paste-only assignments missing fields are
+ * flagged: `mstar-dispatch-gates` SKILL.md § "调度防串扰（强制）" +
+ * § "Assignment 顶部反模式块" + § 反模式（派发）("Assignment 已写、invoke
+ * 为零（paste-only）").
  * - Branch-field forms — writable Assignment must contain EXACTLY ONE of
- *   `Working branch: <existing>` | `Working branch: create <new> from <base>`
- *   | `Branch policy: direct on <branch> — <reason>`; `create` without
- *   `<base>` is flagged (never assume `main`): `mstar-branch-worktree`
- *   SKILL.md § "Assignment 要求（PM）" + § "`<base>` 与叠分支（stacked
- *   branches）".
+ * `Working branch: <existing>` | `Working branch: create <new> from <base>`
+ * | `Branch policy: direct on <branch> — <reason>`; `create` without
+ * `<base>` is flagged (never assume `main`): `mstar-branch-worktree`
+ * SKILL.md § "Assignment 要求（PM）" + § "`<base>` 与叠分支（stacked
+ * branches）".
  * - Default-protected-branch gate — no writable work on `main`/`master`
- *   unless the Assignment carries an explicit `Branch policy: direct on
- *   <branch> — <reason>` exception: `mstar-branch-worktree` SKILL.md
- *   § "Git 功能分支门禁（业务仓库）" § 默认规则.
- * - N→seat mapping — sdd → 3 (qc1..qc3 + consolidated), inline → 1
- *   (qc.md), targeted re-review → listed seats: `mstar-dispatch-gates`
- *   SKILL.md § "QC tri-review（SDD 强制）" / "QC 单席（例外）" / "QC
- *   targeted re-review" + `mstar-roles` SKILL.md "QC reviewer" 参数表.
+ * unless the Assignment carries an explicit `Branch policy: direct on
+ * <branch> — <reason>` exception: `mstar-branch-worktree` SKILL.md
+ * § "Git 功能分支门禁（业务仓库）" § 默认规则.
+ * - N→seat mapping — sdd → 3 , inline → 1
+ * (qc.md), targeted re-review → listed seats: `mstar-dispatch-gates`
+ * SKILL.md § "QC tri-review（SDD 强制）" / "QC 单席（例外）" / "QC
+ * targeted re-review" + `mstar-roles` SKILL.md "QC reviewer" 参数表.
  * - Tri identity — initial wave exactly `qc-specialist` / `qc-specialist-2`
- *   / `qc-specialist-3`: `mstar-dispatch-gates` SKILL.md § "QC tri-review"
- *   + `mstar-roles` SKILL.md QC reviewer 参数表.
+ * / `qc-specialist-3`: `mstar-dispatch-gates` SKILL.md § "QC tri-review"
+ * + `mstar-roles` SKILL.md QC reviewer 参数表.
  * - Anti-recursion — leaf executor MUST NOT invoke a Task/subagent whose
- *   role binding (`subagent_type` / `agent` / `subagent`) equals its own
- *   `Execute as` (NEVER red line): `mstar-dispatch-gates` SKILL.md
- *   § "承接方反递归红线（NEVER / DO NOT；leaf executor 必读）".
+ * role binding (`subagent_type` / `agent` / `subagent`) equals its own
+ * `Execute as` (NEVER red line): `mstar-dispatch-gates` SKILL.md
+ * § "承接方反递归红线（NEVER / DO NOT；leaf executor 必读）".
  */
 import { describe, expect, test } from "bun:test";
 import {
@@ -104,7 +104,7 @@ Working branch: feature/foo
     expect(r.violations.some((v) => v.code === "assignment.field.missing-task-category")).toBe(false);
   });
 
-  test("missing core fields carry the legacy presence codes as aliases (single parser, qc1 F-002)", () => {
+  test("missing core fields carry the legacy presence codes as aliases (single parser(", () => {
     const text = `## Assignment
 
 **Delegation**: forbidden
@@ -114,11 +114,11 @@ Working branch: feature/foo
     const r = validateAssignmentFields(text);
     const executeAs = r.violations.find((v) => v.code === "assignment.field.missing-execute-as");
     expect(executeAs).toBeDefined();
-    // Exactly ONE violation for the missing field — the presence namespace is
-    // an alias on it, not a second stacked violation.
+ // Exactly ONE violation for the missing field — the presence namespace is
+ // an alias on it, not a second stacked violation.
     expect(r.violations.filter((v) => v.message.includes("Execute as"))).toHaveLength(1);
     expect(executeAs!.aliases).toContain("assignment.presence.missing-execute-as");
-    // Branch-form violations carry no presence alias.
+ // Branch-form violations carry no presence alias.
     const branchMissing = r.violations.find((v) => v.code === "assignment.field.branch-missing");
     expect(branchMissing?.aliases).toBeUndefined();
   });
@@ -299,7 +299,7 @@ describe("validateAssignmentFields — branch-form matrix (writable)", () => {
     expect(r.violations.some((v) => v.code === "assignment.field.branch-missing-base")).toBe(true);
   });
 
-  test("create form with dangling 'from' ('create feature/x from') → assignment.field.branch-missing-base (qc2 S-1 / qc3 F-5)", () => {
+  test("create form with dangling 'from' ('create feature/x from') → assignment.field.branch-missing-base", () => {
     const r = validateAssignmentFields(assignment({ "Working branch": "create feature/x from" }));
     expect(r.ok).toBe(false);
     expect(r.violations.some((v) => v.code === "assignment.field.branch-missing-base")).toBe(true);
@@ -459,7 +459,7 @@ describe("executionModeToN — N→seat mapping", () => {
     expect(r.n).toBe(1);
   });
 
-  test("targeted duplicate seats are deduped before counting (qc2 S-3): [a,a,b] → 2", () => {
+  test("targeted duplicate seats are deduped before counting : [a,a,b] → 2", () => {
     const r = executionModeToN("targeted", { seats: ["qc-specialist", "qc-specialist", "qc-specialist-3"] });
     expect(r.ok).toBe(true);
     expect(r.n).toBe(2);
@@ -595,7 +595,7 @@ describe("antiRecursionPrecheck — self-type NEVER red line", () => {
   });
 });
 
-describe("parseAssignmentBranchForms — engine single branch-form grammar (qc1 F-001 / qc3 F-3)", () => {
+describe("parseAssignmentBranchForms — engine single branch-form grammar", () => {
   test("Working branch: <existing> → workingBranch (first token)", () => {
     expect(parseAssignmentBranchForms(assignment({ "Working branch": "feature/foo" })).workingBranch).toBe("feature/foo");
   });
@@ -728,7 +728,7 @@ describe("parseBranchPolicyDirectOnBranch — strict direct-on exception (CLI/pl
   });
 });
 
-describe("isReadOnlyAssignmentRole — scout/explore read-only roles (qc3 F-1 / qc2 S-5)", () => {
+describe("isReadOnlyAssignmentRole — scout/explore read-only roles", () => {
   test("scout and explore are read-only (case-insensitive)", () => {
     expect(isReadOnlyAssignmentRole("scout")).toBe(true);
     expect(isReadOnlyAssignmentRole("explore")).toBe(true);
@@ -778,10 +778,10 @@ Delegation: forbidden
 });
 
 describe("parseEnforcementFlag — Enforcement: hard flag (Slice 5, roadmap §8.5 C4/D2)", () => {
-  // Spec: roadmap §8.5 C4 + decision D2 — v2 hard gates are enabled per
-  // Assignment/compass via `Enforcement: hard` (Assignment header, bold or
-  // plain) or compass frontmatter `enforcement: hard`; the flag is never
-  // global; rollback = unset flag; flag inert when the engine is absent.
+ // Spec: roadmap §8.5 C4 + decision D2 — v2 hard gates are enabled per
+ // Assignment/compass via `Enforcement: hard` (Assignment header, bold or
+ // plain) or compass frontmatter `enforcement: hard`; the flag is never
+ // global; rollback = unset flag; flag inert when the engine is absent.
   test("Assignment bold form: **Enforcement**: hard → hard, source assignment", () => {
     expect(parseEnforcementFlag(`## Assignment\n\n**Execute as**: fullstack-dev\n**Enforcement**: hard\n`)).toEqual({
       hard: true,
@@ -870,11 +870,11 @@ enforcement: hard
   });
 });
 
-describe("assignmentHeaderRegion — Assignment header-only scope (qc1 F-003 / qc2 F-003)", () => {
-  // Spec: the Assignment enforcement flag is read from the HEADER region
-  // only — the text before the first body marker (`# Task`-style heading,
-  // `---` separator, or single-`#` heading). An example
-  // `**Enforcement**: hard` line quoted in the task body must not harden.
+describe("assignmentHeaderRegion — Assignment header-only scope", () => {
+ // Spec: the Assignment enforcement flag is read from the HEADER region
+ // only — the text before the first body marker (`# Task`-style heading,
+ // `---` separator, or single-`#` heading). An example
+ // `**Enforcement**: hard` line quoted in the task body must not harden.
   test("no body marker → the full text is the header region", () => {
     const text = "## Assignment\n\n**Execute as**: fullstack-dev\n**Enforcement**: hard\n";
     expect(assignmentHeaderRegion(text)).toBe(text);
@@ -972,8 +972,8 @@ Example Assignment snippet: **Enforcement**: hard
   });
 });
 
-describe("composeDispatchGate — shared host dispatch-gate composition (qc1 F-001/F-006, qc2 F-005/F-007, qc3 F-007/F-008)", () => {
-  /** Writable assignment with NO branch form — branch-missing + env-fallback targets. */
+describe("composeDispatchGate — shared host dispatch-gate composition", () => {
+ /** Writable assignment with NO branch form — branch-missing + env-fallback targets. */
   const noBranchText = `## Assignment
 
 **Execute as**: fullstack-dev
@@ -991,9 +991,9 @@ describe("composeDispatchGate — shared host dispatch-gate composition (qc1 F-0
   });
 
   test("issue #156: no caller + no callerRequired → anti-recursion leg SKIPPED (omp/opencode compliant dispatch never self-flags)", () => {
-    // The omp/opencode/cursor binding field carries the spawn TARGET, which
-    // equals `Execute as` on every compliant dispatch (mstar-host omp.md C5).
-    // Without a caller binding the precheck must not run at all.
+ // The omp/opencode/cursor binding field carries the spawn TARGET, which
+ // equals `Execute as` on every compliant dispatch (mstar-host omp.md C5).
+ // Without a caller binding the precheck must not run at all.
     const result = composeDispatchGate(VALID_ASSIGNMENT);
     expect(result.ok).toBe(true);
     expect(result.violations.some((v) => v.code.startsWith("dispatch.anti-recursion."))).toBe(false);

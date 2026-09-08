@@ -4,18 +4,18 @@
  *
  * Spec sources (each test cites the skill/reference section it enforces):
  * - 9-row worked-example check table: `mstar-audit/references/pr-review.md`
- *   § Worked examples (check table) — each row's input → expected score_pct
- *   + verdict, verbatim. The table is the SSOT; these fixtures mirror it
- *   row-for-row.
+ * § Worked examples (check table) — each row's input → expected score_pct
+ * + verdict, verbatim. The table is the SSOT; these fixtures mirror it
+ * row-for-row.
  * - Tally/score formula: pr-review.md § Tally and derived score — integer
- *   arithmetic only, floor at 0, no second formula.
+ * arithmetic only, floor at 0, no second formula.
  * - Leftover unmet-AC increments: pr-review.md § Tally and derived score —
- *   unsafe-to-ship → must_fix + 1, else should_fix + 1; a tally increment,
- *   not a fourth class, not a second finding.
+ * unsafe-to-ship → must_fix + 1, else should_fix + 1; a tally increment,
+ * not a fourth class, not a second finding.
  * - Override invariant: pr-review.md § Override invariant — score never
- *   overrides verdict.
+ * overrides verdict.
  * - Display contract: pr-review.md § Display contract (chat output) — the
- *   two-line chat header, verbatim.
+ * two-line chat header, verbatim.
  *
  * prreview engine unit tests — tally, report path, seat prompts, tier
  * budgets, finding lint.
@@ -172,9 +172,9 @@ describe("Worked-example check table — pr-review.md § Worked examples", () =>
 });
 
 describe("Display contract — pr-review.md § Display contract (chat output)", () => {
-  // The two-line chat header is verbatim: "{verdict} · {score_pct}%\n
-  // must-fix=<n> should-fix=<n> nit=<n> unverified=<n>". Assert the full
-  // string for every check-table row (≥ 3 cases).
+ // The two-line chat header is verbatim: "{verdict} · {score_pct}%\n
+ // must-fix=<n> should-fix=<n> nit=<n> unverified=<n>". Assert the full
+ // string for every check-table row (≥ 3 cases).
   for (const row of CHECK_TABLE) {
     test(`row ${row.row} chatHeader is the verbatim two-line display`, () => {
       const result = computePrTally(row.input);
@@ -317,9 +317,9 @@ import { afterAll } from "bun:test";
 import { prReviewReportPath, validatePrReviewReport } from "../src/prreview.js";
 import type { PrReportTarget } from "../src/prreview.js";
 
-describe("computePrTally — engine boundary guard (plan-QC F-005)", () => {
+describe("computePrTally — engine boundary guard", () => {
   test("negative unverifiedCount throws TypeError instead of minting score_pct > 100", () => {
-    // Before the guard: 100 - 10 * (-1) = 110 — out of range.
+ // Before the guard: 100 - 10 * (-1) = 110 — out of range.
     expect(() => computePrTally({ findings: [], unverifiedCount: -1 })).toThrow(TypeError);
     expect(() => computePrTally({ findings: [], unverifiedCount: -1 })).toThrow(/unverifiedCount must be a non-negative integer/);
   });
@@ -372,8 +372,8 @@ describe("prReviewReportPath — target forms (pr-review.md § Local report arch
     const dir = reportsDir("diff-nosha");
     const resolved = prReviewReportPath({ reportsDir: dir, date: "2026-08-24", target: { kind: "diff" } });
     expect(resolved).toBe(join(dir, "2026-08-24-diff.md"));
-    // Pure resolution: nothing is ever written, so nothing — least of all
-    // an invented hex segment — appears in the directory.
+ // Pure resolution: nothing is ever written, so nothing — least of all
+ // an invented hex segment — appears in the directory.
     expect(readdirSync(dir)).toEqual([]);
   });
 
@@ -408,8 +408,8 @@ describe("prReviewReportPath — collision escalation -r2/-r3 across report AND 
     writeFileSync(first, "report v1\n");
     const second = prReviewReportPath({ reportsDir: dir, date: "2026-08-24", target: { kind: "pr", n: 7 } });
     expect(second).toBe(join(dir, "2026-08-24-pr7-r2.md"));
-    // The resolver never writes/overwrites: only r1 (written by the caller)
-    // exists; r2 exists solely as the NEXT path handed back.
+ // The resolver never writes/overwrites: only r1 (written by the caller)
+ // exists; r2 exists solely as the NEXT path handed back.
     expect(readdirSync(dir)).toEqual(["2026-08-24-pr7.md"]);
     expect(readFileSync(join(dir, "2026-08-24-pr7.md"), "utf8")).toBe("report v1\n");
   });
@@ -421,7 +421,7 @@ describe("prReviewReportPath — collision escalation -r2/-r3 across report AND 
     writeFileSync(third, "v3\n");
     const fourth = prReviewReportPath({ reportsDir: dir, date: "2026-08-25", target: { kind: "pr", n: 8 } });
     expect(fourth.endsWith("2026-08-25-pr8-r4.md")).toBe(true);
-    // Never overwrite: every prior file survived byte-for-byte.
+ // Never overwrite: every prior file survived byte-for-byte.
     expect(readFileSync(join(dir, "2026-08-25-pr8-r2.md"), "utf8")).toBe("x\n");
     expect(readFileSync(join(dir, "2026-08-25-pr8-r3.md"), "utf8")).toBe("v3\n");
   });
@@ -436,7 +436,7 @@ describe("prReviewReportPath — collision escalation -r2/-r3 across report AND 
       slug: "api-seat",
     });
     expect(stage1Again.endsWith("2026-08-26-pr9-stage1-api-seat-r2.md")).toBe(true);
-    // The stage-1 collision must not bleed into the stage-2 stem.
+ // The stage-1 collision must not bleed into the stage-2 stem.
     const stage2 = prReviewReportPath({
       reportsDir: dir,
       date: "2026-08-26",
@@ -445,12 +445,12 @@ describe("prReviewReportPath — collision escalation -r2/-r3 across report AND 
       slug: "api-seat",
     });
     expect(stage2.endsWith("2026-08-26-pr9-stage2-api-seat.md")).toBe(true);
-    // And a report re-review does NOT collide with an unrelated evidence file.
+ // And a report re-review does NOT collide with an unrelated evidence file.
     const reportAgain = prReviewReportPath({ reportsDir: dir, date: "2026-08-26", target: { kind: "pr", n: 9 } });
     expect(reportAgain.endsWith("2026-08-26-pr9.md")).toBe(true);
   });
 
-  test("same-day re-review never returns an already-existing path (plan Task 2 contract item 6)", () => {
+  test("same-day re-review never returns an already-existing path ( contract item 6)", () => {
     for (let i = 0; i < 5; i++) {
       const next = prReviewReportPath({ reportsDir: dir, date: "2026-08-27", target: { kind: "branch", slug: "topic-a" } });
       writeFileSync(next, `gen ${i}\n`);
@@ -460,7 +460,7 @@ describe("prReviewReportPath — collision escalation -r2/-r3 across report AND 
     expect(new Set(names).size).toBe(5);
   });
 
-  test("a same-stem DIRECTORY occupies the name — non-file dirents count as taken (plan-QC F-002)", () => {
+  test("a same-stem DIRECTORY occupies the name — non-file dirents count as taken", () => {
     dir = join(tmp, "occupied-dir");
     mkdirSync(dir, { recursive: true });
     mkdirSync(join(dir, "2026-08-28-pr10.md"));
@@ -468,15 +468,15 @@ describe("prReviewReportPath — collision escalation -r2/-r3 across report AND 
     expect(resolved.endsWith("2026-08-28-pr10-r2.md")).toBe(true);
   });
 
-  test("a same-stem SYMLINK occupies the name — resolver never hands back a symlink-following path (plan-QC F-002)", () => {
+  test("a same-stem SYMLINK occupies the name — resolver never hands back a symlink-following path", () => {
     dir = join(tmp, "occupied-symlink");
     mkdirSync(dir, { recursive: true });
     const escapeDir = mkdtempSync(join(tmpdir(), "engine-prreview-outside-"));
     symlinkSync(join(escapeDir, "target.md"), join(dir, "2026-08-28-pr11.md"));
     try {
       const resolved = prReviewReportPath({ reportsDir: dir, date: "2026-08-28", target: { kind: "pr", n: 11 } });
-      // Without name-based occupancy the resolver would return the link path
-      // itself and a caller write would follow it out of reportsDir.
+ // Without name-based occupancy the resolver would return the link path
+ // itself and a caller write would follow it out of reportsDir.
       expect(resolved.endsWith("2026-08-28-pr11-r2.md")).toBe(true);
       expect(resolved.startsWith(dir)).toBe(true);
     } finally {
@@ -492,11 +492,11 @@ describe("prReviewReportPath — argument contract errors", () => {
 
   test("missing --slug with --stage throws (slug <domain>-<seat> is required whenever stage is given)", () => {
     expect(() =>
-      // @ts-expect-error — slug deliberately omitted alongside stage to prove runtime enforcement
+ // @ts-expect-error — slug deliberately omitted alongside stage to prove runtime enforcement
       prReviewReportPath({ reportsDir: tmp, date: "2026-08-24", target: { kind: "pr", n: 3 }, stage: 1 }),
     ).toThrow(/slug/);
     expect(() =>
-      // @ts-expect-error — symmetric case: slug without stage is also rejected
+ // @ts-expect-error — symmetric case: slug without stage is also rejected
       prReviewReportPath({ reportsDir: tmp, date: "2026-08-24", target: { kind: "pr", n: 3 }, slug: "api-seat" }),
     ).toThrow(/stage and slug go together/);
   });
@@ -552,10 +552,10 @@ describe("validatePrReviewReport — valid reports pass", () => {
       expect(validatePrReviewReport(report(`${line}\n`)).ok).toBe(true);
     },
   );
-  test("report shaped exactly like the pr-review.md § Local report archive frontmatter template passes (plan-QC F-001)", () => {
-    // Template keys, in template order — no fixture-only extras. The
-    // optional `tier` and `pipeline` lines are left out (template marks
-    // them optional); `comments` must NOT trip missing-comments anymore.
+  test("report shaped exactly like the pr-review.md § Local report archive frontmatter template passes", () => {
+ // Template keys, in template order — no fixture-only extras. The
+ // optional `tier` and `pipeline` lines are left out (template marks
+ // them optional); `comments` must NOT trip missing-comments anymore.
     const fromTemplate = `---
 type: pr-review
 pr: 134
@@ -699,17 +699,17 @@ describe("validatePrReviewReport - optional elapsed minutes", () => {
 import { prReviewSeatPrompt, validateFindingDoc } from "../src/prreview.js";
 
 /**
- * Fix-round-2 regressions (plan 20260826-prreview-execution task 1):
+ * Fix-round-2 regressions:
  *
  * - `validateFindingDoc` Confidence accepts the LEADING enum token out of
- *   `AUDIT_CONFIDENCES` (HIGH | MED | LOW) with `MEDIUM` tolerated as the
- *   MED alias; free-text gloss after a separator is allowed (review I-3:
- *   the round-1 regex lost `LOW`). Bogus tokens stay flagged.
+ * `AUDIT_CONFIDENCES` (HIGH | MED | LOW) with `MEDIUM` tolerated as the
+ * MED alias; free-text gloss after a separator is allowed (review I-3:
+ * the round-1 regex lost `LOW`). Bogus tokens stay flagged.
  * - `prReviewSeatPrompt` collect-wave gating (review I-2 doc/code match):
- *   SSOT pr-review.md § Review depth — `default` folds collection into
- *   the two domain seats ("collection folded in = seat reuse"), only
- *   `deep` fans Stage 1 collect seats as one wave (§ Cuttable vs never-cut:
- *   "stage-as-wave"). So the stage-as-wave line is DEEP-ONLY in prompts.
+ * SSOT pr-review.md § Review depth — `default` folds collection into
+ * the two domain seats ("collection folded in = seat reuse"), only
+ * `deep` fans Stage 1 collect seats as one wave (§ Cuttable vs never-cut:
+ * "stage-as-wave"). So the stage-as-wave line is DEEP-ONLY in prompts.
  */
 
 function findingWithConfidence(confidence: string): string {
@@ -786,12 +786,12 @@ describe("prReviewSeatPrompt — collect-wave is deep-only, tiers differ (fix ro
   });
 
   test("no diffFile → prompt has no pinned-diff-snapshot ingredient", () => {
-    // Anchor on the ingredient line itself - the ## Budget block legitimately
-    // mentions that the pinned diff snapshot read does not count.
+ // Anchor on the ingredient line itself - the ## Budget block legitimately
+ // mentions that the pinned diff snapshot read does not count.
     expect(prReviewSeatPrompt(base)).not.toContain("Read the pinned diff snapshot FIRST:");
   });
 
-  test("relative diffFile throws TypeError (absolute-path contract, qc3 F-002)", () => {
+  test("relative diffFile throws TypeError (absolute-path contract(", () => {
     expect(() => prReviewSeatPrompt({ ...base, diffFile: "relative/review-diff.txt" })).toThrow(TypeError);
     expect(() => prReviewSeatPrompt({ ...base, diffFile: "relative/review-diff.txt" })).toThrow(/diffFile must be an absolute path/);
   });
@@ -803,7 +803,7 @@ describe("prReviewSeatPrompt — collect-wave is deep-only, tiers differ (fix ro
 });
 
 // ---------------------------------------------------------------------------
-// validateMstarReviewV1 — mstar.review/v1 envelope (SP3 review-json-kind)
+// validateMstarReviewV1 — mstar.review/v1 envelope 
 // ---------------------------------------------------------------------------
 import { validateMstarReviewV1 } from "../src/prreview.js";
 
@@ -842,14 +842,14 @@ function reviewDoc(overrides: Record<string, unknown> = {}): Record<string, unkn
   };
 }
 
-describe("validateMstarReviewV1 — mstar.review/v1 envelope (SP3 review-json-kind)", () => {
-  test("valid envelope with harness vocab passes (SP3-AC1)", () => {
+describe("validateMstarReviewV1 — mstar.review/v1 envelope ", () => {
+  test("valid envelope with harness vocab passes", () => {
     const gate = validateMstarReviewV1(reviewDoc());
     expect(gate.ok).toBe(true);
     expect(gate.violations).toEqual([]);
   });
 
-  test("missing schema and wrong schema id fail-loud (SP3-AC3)", () => {
+  test("missing schema and wrong schema id fail-loud", () => {
     const missing = reviewDoc();
     delete missing.schema;
     expect(codes(validateMstarReviewV1(missing))).toContain("review.missing-schema");
@@ -858,13 +858,13 @@ describe("validateMstarReviewV1 — mstar.review/v1 envelope (SP3 review-json-ki
     expect(codes(validateMstarReviewV1(wrong))).toContain("review.invalid-schema");
   });
 
-  test("unknown verdict rejected (SP3-AC3)", () => {
+  test("unknown verdict rejected", () => {
     const gate = validateMstarReviewV1(reviewDoc({ verdict: "maybe" }));
     expect(gate.ok).toBe(false);
     expect(codes(gate)).toContain("review.invalid-verdict");
   });
 
-  test("inspector M1 verdict vocab rejected with review.inspector-vocab (SP3-AC2)", () => {
+  test("inspector M1 verdict vocab rejected with review.inspector-vocab", () => {
     for (const verdict of ["comment", "request_changes", "approve"]) {
       const gate = validateMstarReviewV1(reviewDoc({ verdict }));
       expect(gate.ok).toBe(false);
@@ -872,7 +872,7 @@ describe("validateMstarReviewV1 — mstar.review/v1 envelope (SP3 review-json-ki
     }
   });
 
-  test("inspector M1 severity vocab in mergeClass rejected with review.inspector-vocab (SP3-AC2)", () => {
+  test("inspector M1 severity vocab in mergeClass rejected with review.inspector-vocab", () => {
     for (const mergeClass of ["critical", "warning", "suggestion", "info"]) {
       const doc = reviewDoc();
       (doc.findings as Record<string, unknown>[])[0].mergeClass = mergeClass;
@@ -882,7 +882,7 @@ describe("validateMstarReviewV1 — mstar.review/v1 envelope (SP3 review-json-ki
     }
   });
 
-  test("stray inspector M1 severity key on a finding rejected with review.inspector-vocab (SP3-AC2)", () => {
+  test("stray inspector M1 severity key on a finding rejected with review.inspector-vocab", () => {
     const doc = reviewDoc();
     (doc.findings as Record<string, unknown>[])[0].severity = "critical";
     const gate = validateMstarReviewV1(doc);
@@ -890,7 +890,7 @@ describe("validateMstarReviewV1 — mstar.review/v1 envelope (SP3 review-json-ki
     expect(codes(gate)).toContain("review.inspector-vocab");
   });
 
-  test("missing or empty title/body rejected (SP3-AC3)", () => {
+  test("missing or empty title/body rejected", () => {
     const missingTitle = reviewDoc();
     delete (missingTitle.findings as Record<string, unknown>[])[0].title;
     expect(codes(validateMstarReviewV1(missingTitle))).toContain("review.empty-title");
@@ -904,7 +904,7 @@ describe("validateMstarReviewV1 — mstar.review/v1 envelope (SP3 review-json-ki
     expect(codes(validateMstarReviewV1(emptyBody))).toContain("review.empty-body");
   });
 
-  test("non-array findings rejected (SP3-AC3)", () => {
+  test("non-array findings rejected", () => {
     const gate = validateMstarReviewV1(reviewDoc({ findings: "none" }));
     expect(gate.ok).toBe(false);
     expect(codes(gate)).toContain("review.findings-not-array");
@@ -993,7 +993,7 @@ describe("validateMstarReviewV1 — mstar.review/v1 envelope (SP3 review-json-ki
 });
 
 // ---------------------------------------------------------------------------
-// synthesizeReview — mstar.review/v1 envelope (SP3 review-json-kind)
+// synthesizeReview — mstar.review/v1 envelope 
 // ---------------------------------------------------------------------------
 
 /** CHECK_TABLE findings carry only mergeClass; synthesizeReview needs full
@@ -1007,7 +1007,7 @@ function fullFindings(findings: PrTallyInput["findings"]): MstarReviewFinding[] 
   }));
 }
 
-/** The locked deterministic summary template (SP3-AC4) — exact bytes for
+/** The locked deterministic summary template — exact bytes for
  * {1 should-fix, 1 nit} ⇒ 82, needs fixes. */
 const LOCKED_SUMMARY = `## Verdict: needs fixes \u00b7 82%
 
@@ -1016,8 +1016,8 @@ must-fix=0 should-fix=1 nit=1 unverified=0
 - should-fix: Unhandled null deref
 - nit: Typo in comment`;
 
-describe("synthesizeReview — mstar.review/v1 envelope (SP3 review-json-kind)", () => {
-  test("9-row check table: same verdict/score/tally as computePrTally (SP3-AC4)", () => {
+describe("synthesizeReview — mstar.review/v1 envelope ", () => {
+  test("9-row check table: same verdict/score/tally as computePrTally", () => {
     for (const row of CHECK_TABLE) {
       const synthesized = synthesizeReview({
         findings: fullFindings(row.input.findings),
@@ -1030,12 +1030,12 @@ describe("synthesizeReview — mstar.review/v1 envelope (SP3 review-json-kind)",
       expect(synthesized.verdict).toBe(row.expected.verdict);
       expect(synthesized.tally?.scorePct).toBe(row.expected.scorePct);
       expect(synthesized.tally?.tally).toEqual(row.expected.tally);
-      // The synthesized envelope is a valid mstar.review/v1 document.
+ // The synthesized envelope is a valid mstar.review/v1 document.
       expect(validateMstarReviewV1(synthesized).ok).toBe(true);
     }
   });
 
-  test("omitted summary_md uses the locked deterministic template (SP3-AC4)", () => {
+  test("omitted summary_md uses the locked deterministic template", () => {
     const findings: MstarReviewFinding[] = [
       {
         mergeClass: "should-fix",
@@ -1070,7 +1070,7 @@ must-fix=0 should-fix=0 nit=0 unverified=0`);
     expect(synthesized.summary_md).toBe(summary_md);
   });
 
-  test("findings pass through untouched (SP3-AC4)", () => {
+  test("findings pass through untouched", () => {
     const findings: MstarReviewFinding[] = [
       { mergeClass: "must-fix", title: "Auth bypass", body: "Token check is skipped on the retry path." },
       { mergeClass: "nit", title: "Typo", body: "s/recieve/receive/", file_path: "src/a.ts", line_start: 3, line_end: 3 },
@@ -1086,7 +1086,7 @@ must-fix=0 should-fix=0 nit=0 unverified=0`);
     expect(synthesizeReview({ findings: [] }).target).toBeUndefined();
   });
 
-  test("synchronous and deterministic — same input, same envelope (SP3-AC5)", () => {
+  test("synchronous and deterministic — same input, same envelope", () => {
     const findings = fullFindings([{ mergeClass: "must-fix" }, { mergeClass: "nit" }]);
     const first = synthesizeReview({ findings });
     const second = synthesizeReview({ findings });
@@ -1097,7 +1097,7 @@ must-fix=0 should-fix=0 nit=0 unverified=0`);
 
 // ---------------------------------------------------------------------------
 // PR_REVIEW_TIER_BUDGETS — per-tier wall-clock budgets + per-seat caps
-// (SP1 tier time-budget; prose SSOT: pr-review.md § Review depth)
+// (tier time budget; prose SSOT: pr-review.md § Review depth)
 // ---------------------------------------------------------------------------
 import { PR_REVIEW_TIER_BUDGETS } from "../src/prreview.js";
 
@@ -1163,19 +1163,19 @@ describe("PR_REVIEW_TIER_BUDGETS — per-tier time budgets (pr-review.md § Revi
     try {
       mutable.wallClockMinutes = 99;
     } catch {
-      // strict mode throws on frozen assignment - equally acceptable
+ // strict mode throws on frozen assignment - equally acceptable
     }
     expect(PR_REVIEW_TIER_BUDGETS.quick.wallClockMinutes).toBe(5);
   });
 });
 
 // ---------------------------------------------------------------------------
-// prReviewSeatPrompt — per-seat ## Budget block (SP1 tier time-budget, task 2)
+// prReviewSeatPrompt — per-seat ## Budget block (tier time budget)
 // Rendered from PR_REVIEW_TIER_BUDGETS[tier] — never literals in the prompt
 // body; every tier (incl. omitted → default) ships the block.
 // ---------------------------------------------------------------------------
 
-describe("prReviewSeatPrompt — per-seat ## Budget block (SP1 tier time-budget)", () => {
+describe("prReviewSeatPrompt — per-seat ## Budget block (tier time budget)", () => {
   const base = {
     stage: 2 as const,
     domain: "backend",
@@ -1224,15 +1224,15 @@ describe("prReviewSeatPrompt — per-seat ## Budget block (SP1 tier time-budget)
       const prompt =
         tier === undefined ? prReviewSeatPrompt({ ...base, stage: 1 }) : prReviewSeatPrompt({ ...base, stage: 1, tier });
       expect(prompt).toContain("## Budget");
-      // Stage-1 collect seats' contract is "NO findings table" - the findings
-      // cap line must not render against it (fix wave 1, F-002/S-1).
+ // Stage-1 collect seats' contract is "NO findings table" - the findings
+ // cap line must not render against it.
       expect(prompt).not.toContain(`- At most ${row.perSeatFindingsCap} findings.`);
       expect(prompt).toContain(`- Open at most ${row.fileOpenCap} files (the pinned diff snapshot read does not count).`);
       expect(prompt).toContain(`- Evidence payload \u2248 ${row.evidenceTokensCap} tokens.`);
       expect(prompt).toContain(expansionStopClause);
       expect(prompt).toContain("NO findings table. NO verdict. Collect evidence only.");
     }
-    // Stage 2 unchanged: the findings cap still renders for domain seats.
+ // Stage 2 unchanged: the findings cap still renders for domain seats.
     const stage2 = prReviewSeatPrompt({ ...base, tier: "deep" });
     expect(stage2).toContain(`- At most ${PR_REVIEW_TIER_BUDGETS.deep.perSeatFindingsCap} findings.`);
   });
@@ -1269,7 +1269,7 @@ describe("prReviewSeatPrompt — per-seat ## Budget block (SP1 tier time-budget)
 });
 
 // ---------------------------------------------------------------------------
-// prReviewSeatPrompt — collectFolded seat option (SP2 context-pack, task 1)
+// prReviewSeatPrompt — collectFolded seat option (context-pack)
 // When the collect wave folds onto the Stage-2 domain seats (SSOT
 // pr-review.md § Review pipeline fold default; prose "collection folded in
 // = seat reuse" is the § Review depth default-tier row), the seat prompt
@@ -1281,7 +1281,7 @@ describe("prReviewSeatPrompt — per-seat ## Budget block (SP1 tier time-budget)
 // cross-domain security seat (never folded). Omitted/false: no line.
 // ---------------------------------------------------------------------------
 
-describe("prReviewSeatPrompt — collectFolded option (SP2 collect-wave fold)", () => {
+describe("prReviewSeatPrompt — collectFolded option (collect-wave fold)", () => {
   const base = {
     stage: 2 as const,
     domain: "backend",
@@ -1289,7 +1289,7 @@ describe("prReviewSeatPrompt — collectFolded option (SP2 collect-wave fold)", 
     skillRoot: "/tmp/engine-seat-skill",
     worktreePath: "/tmp/engine-seat-worktree",
     reconFacts: [],
-    // The fold default requires the pinned diff pack - base is pack-present.
+ // The fold default requires the pinned diff pack - base is pack-present.
     diffFile: "/tmp/engine-seat-diff.patch",
   };
   const foldLine =

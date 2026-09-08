@@ -1,10 +1,9 @@
 /**
- * Canvas LAYOUT tests (plan 20260812-panel-f5-agent-layout Task 2 + plan
- * 20260812-panel-f5-design-system Task 5 — the render layer): the column /
+ * Canvas LAYOUT tests (the render layer): the column /
  * sub-bucket rework of the agent canvas —
  *
  * - column order: the 4 EXPECTED_ROLE_FLOW stages ONLY — the standalone
- *   UNKNOWN column is REMOVED (Task 5, user 2026-08-12 feedback #3: FOUR
+ *   UNKNOWN column is REMOVED (FOUR
  *   columns total); `zone: 'general'` entities render in the "unknown /
  *   未匹配角色" SUB-PARTITION at the bottom of the LAST column
  *   (`data-sub-bucket="unknown"` + `layout.unknown` band geometry);
@@ -16,7 +15,7 @@
  * - the bidirectional supervise line (`data-agent-edge-supervise`): static
  *   presence, SIDE-GAP vertical anchors (card right edge + 18px — design
  *   doc §2.5/§2.7, clear of the "sdd-reviewer" caption H2) with band-EDGE
- *   y-extents (QC W-001), drawn as a bezier `C` path (`edgePath`); dim
+ *   y-extents, drawn as a bezier `C` path (`edgePath`); dim
  *   dashed without evidence, lit business with it
  *   (`data-agent-edge-supervise-lit` — the projected `evidenced` flag);
  * - the Task 5 edge rework: expected/next edges NEVER render; actual edges
@@ -24,16 +23,12 @@
  *   edge midpoints) with the target STANDOFF 10px (arrow tip off the card,
  *   H1); caption-crossing same-column flows route in the LEFT side gap (H2);
  *   the 4 hover-visible port dots (`data-agent-port`) render per card;
- * - the Legend / locale sync (plan 20260813-panel-agent-canvas-legend-layout
- *   Task 1: ONLY the 3 role-card status entries; the 7 collaboration-edge /
- *   layout entries are gone);
- * - the Phase 1/2 LEFT-RIGHT layout (plan 20260813-panel-agent-canvas-legend-layout
- *   Task 2: Phase 1 leftmost, Phase 2 right, top-aligned — all columns share
+ * - the Legend / locale sync (ONLY the 3 role-card status entries; the
+ *   collaboration-edge / layout entries are gone);
+ * - the Phase 1/2 LEFT-RIGHT layout (Phase 1 leftmost, Phase 2 right,
+ *   top-aligned — all columns share
  *   one colY; a Phase 1 → Phase 2 handoff is a direct horizontal bezier);
- * - the col-skip side-gap DETOUR (plan QC tri R1: a cross-column edge whose
- *   columns SKIP an intermediate column — e.g. writing-specialist →
- *   qc-specialist — reroutes as a multi-`L` polyline below the intermediate
- *   card band instead of a direct bezier through the card bodies, H1).
+ * - the col-skip side-gap DETOUR.
  *
  * The projection layer (bucket fields, supervise edge data, zones, the
  * general-endpoint edge filter) is covered by client-graph-projection.spec.ts;
@@ -123,7 +118,7 @@ function dispatchEvent(over: { ts: number; role: string; agent?: string; planId?
 
 /** One settle row as the T1 ledger view emits it (spec §2.2 — carries the
  * PAIRED dispatch identity when `role` is given, plan
- * `20260811-panel-f4-timeliness` Task 1 — the settled-status fixtures need
+ *  Task 1 — the settled-status fixtures need
  * the exact-identity pairing). */
 function settleEvent(over: { ts: number; agent?: string; outcome?: 'ok' | 'error' | 'denied'; role?: string; planId?: string; taskId?: string }): AgentFlowEventView {
   return {
@@ -268,8 +263,8 @@ function pathSegments(d: string): { x1: number; y1: number; x2: number; y2: numb
   return segs
 }
 
-/** The conservative bounding box of ONE path segment (H1/H2 stroke checks —
- * plan QC tri R1): a `C` bezier's control-point hull (the curve lies inside
+/** The conservative bounding box of ONE path segment (H1/H2 stroke checks):
+ * a `C` bezier's control-point hull (the curve lies inside
  * it); an `L` line's endpoint box (EXACT for the axis-aligned detour
  * segments — the whole-path bbox of a detour necessarily ENCLOSES the
  * intermediate band it bypasses, so the invariant is asserted per segment,
@@ -285,8 +280,7 @@ function segmentBox(s: { x1: number; y1: number; x2: number; y2: number; cx1: nu
 }
 
 /** The text seats of the deterministic layout (design doc §1.1 constants):
- * Phase group labels (plan 20260812-panel-f5-design-system Task 8 + plan
- * 20260813-panel-agent-canvas-legend-layout T2 — one top-aligned label row
+ * Phase group labels (one top-aligned label row
  * per left-right group) + column labels (LABEL_H) + sub-bucket captions
  * (SUB_LABEL_H). */
 function textSeats(layout: CanvasLayout): { x: number; y: number; w: number; h: number }[] {
@@ -316,7 +310,7 @@ describe('agent canvas layout — columns & sub-buckets (plan f5 T2 + design-sys
       'autonomous-execute:qc-tri',
       'autonomous-execute:qa-gate',
     ])
-    // Task 5 (user 2026-08-12 feedback #3): FOUR columns — the rightmost
+    // FOUR columns — the rightmost
     // UNKNOWN_COLUMN is gone (general sinks into the qa-gate column bottom).
     expect(cols).toHaveLength(4)
     expect(html).not.toContain('data-canvas-column="unknown"')
@@ -412,7 +406,7 @@ describe('agent canvas layout — columns & sub-buckets (plan f5 T2 + design-sys
   })
 })
 
-describe('agent canvas layout — supervise line (plan 20260812-panel-f5-agent-layout T2)', () => {
+describe('agent canvas layout — supervise line ', () => {
   it('renders the static bidirectional supervise edge, dimmed without dispatch evidence', () => {
     const html = agentsHtml(baseSource) // degraded → no dispatch evidence
     // The anchor value embeds the column id + sub-bucket prefix (React SSR
@@ -467,7 +461,7 @@ describe('agent canvas layout — supervise line (plan 20260812-panel-f5-agent-l
   })
 })
 
-describe('agent canvas layout — legend & locale (plan 20260813-panel-agent-canvas-legend-layout T1)', () => {
+describe('agent canvas layout — legend & locale ', () => {
   it('legend: ONLY the 3 role-card status entries render; the 7 collaboration-edge / layout entries are REMOVED', () => {
     const html = agentsHtml(baseSource)
     // Task 1 (图例精简): exactly the 3 entity-status entries, no others.
@@ -502,7 +496,7 @@ describe('agent canvas layout — legend & locale (plan 20260813-panel-agent-can
   })
 })
 
-describe('agent canvas — Task 5 edge rework: bezier curves + card ports + H1/H2 (plan 20260812-panel-f5-design-system T5)', () => {
+describe('agent canvas — edge rework: bezier curves + card ports + H1/H2 ', () => {
   it('actual edge: a forward flow anchors to the card PORTS (source east → target west) with the 10px standoff (H1)', () => {
     // fullstack-dev (sdd-implement) → qc-specialist (qc-tri), same plan.
     const html = agentsHtml(flowSource([
@@ -513,7 +507,7 @@ describe('agent canvas — Task 5 edge rework: bezier curves + card ports + H1/H
     expect(lineAttr(path, 'data-agent-edge-actual')).toBe('fullstack-dev-&gt;qc-specialist')
     const d = parsePath(lineAttr(path, 'd'))
     // Source EAST port: the card right-edge midpoint. LEFT-RIGHT layout (plan
-    // 20260813-panel-agent-canvas-legend-layout T2): Phase 2 starts at x=248,
+    // Phase 2 starts at x=248,
     // the sdd-implement column shares colY=54 with every other column, the
     // implementor caption pushes the first card (fullstack-dev) to y=102 —
     // 176×72 card → east port (436, 138).
@@ -584,7 +578,7 @@ describe('agent canvas — Task 5 edge rework: bezier curves + card ports + H1/H
     expect(d.y2).toBe(540 - 10) // target north − STANDOFF
   })
 
-  it('actual edge: a REVERSE same-column flow (source below target) ends on the target SOUTH side, arrow pointing up — never through the cards (qc3 W-001)', () => {
+  it('actual edge: a REVERSE same-column flow (source below target) ends on the target SOUTH side, arrow pointing up — never through the cards ', () => {
     // The caption-free reverse pair fullstack-dev-2 → fullstack-dev: the
     // pair-dedupe keeps the latest direction, so the implementor-2 →
     // implementor rework collapses to this direction (source BELOW target).
@@ -614,7 +608,7 @@ describe('agent canvas — Task 5 edge rework: bezier curves + card ports + H1/H
     expect(overlaps(bbox, { x: 248 + 12, y: 186, w: 176, h: 72 })).toBe(false) // source fullstack-dev-2
   })
 
-  it('actual edge: the REVERSE rework collapse (code-reviewer → fullstack-dev) reroutes in the side gap with the tip on the target SOUTH side (qc3 W-001)', () => {
+  it('actual edge: the REVERSE rework collapse (code-reviewer → fullstack-dev) reroutes in the side gap with the tip on the target SOUTH side ', () => {
     // The implement → review → rework cycle (fullstack-dev → code-reviewer →
     // fullstack-dev) collapses to the LATEST direction: code-reviewer →
     // fullstack-dev — a same-column edge whose source sits BELOW the target.
@@ -645,8 +639,8 @@ describe('agent canvas — Task 5 edge rework: bezier curves + card ports + H1/H
     expect(overlaps(bbox, { x: 248 + 12, y: 540, w: 176, h: 72 })).toBe(false) // source code-reviewer
   })
 
-  it('arrow markers are pinned to a fixed 6px user-space body — the same-column standoff clears the source card for the REAL marker extents (qc2 F-001)', () => {
-    // qc2 F-001: the old markers used the strokeWidth-scaled default
+  it('arrow markers are pinned to a fixed 6px user-space body — the same-column standoff clears the source card for the REAL marker extents', () => {
+    // The old markers used the strokeWidth-scaled default
     // (markerUnits unset → "strokeWidth") — a 10×10 viewBox / refX=9 marker
     // at stroke-width 1.5 rendered ~9.45px long, so the `gap − 8` standoff
     // left the arrow base INSIDE the source card (the comment claimed a 7px
@@ -732,9 +726,7 @@ describe('agent canvas — Task 5 edge rework: bezier curves + card ports + H1/H
     for (const edge of view.edges) {
       const g = edgePath(edge, layout)
       if (g === null) continue
-      // Per-segment stroke checks (plan QC tri R1 — the side-gap detour's
-      // whole-path hull would enclose the band it bypasses, so the invariant
-      // is asserted per segment, never on the whole-path bbox).
+      // Per-segment stroke checks.
       for (const seg of pathSegments(g.d)) {
         const box = segmentBox(seg)
         for (const seat of seats) {
@@ -752,7 +744,7 @@ describe('agent canvas — Task 5 edge rework: bezier curves + card ports + H1/H
   })
 })
 
-describe('agent canvas — emphasis tiers (plan 20260812-panel-f5-design-system T4, design doc §3)', () => {
+describe('agent canvas — emphasis tiers (plan  T4, design doc §3)', () => {
   it('Phase 2: autonomous-execute cards current, review-edit-chain + on-demand/general off (data-agent-emphasis)', () => {
     const html = agentsHtml(phase2Source([dispatchEvent({ ts: 1, role: 'fullstack-dev', agent: 'a1' })]))
     // Lit AND idle cards both carry the PROJECTED tier (idle fullstack-dev
@@ -795,7 +787,7 @@ describe('agent canvas — emphasis tiers (plan 20260812-panel-f5-design-system 
   })
 })
 
-describe('agent canvas — Phase 1/2 groups + current-plan annotation (plan 20260812-panel-f5-design-system T8, user feedback #2)', () => {
+describe('agent canvas — Phase 1/2 groups + current-plan annotation ', () => {
   /** A phase-2 source whose state.plans carries the given InProgress rows. */
   function planSource(inProgress: string[]): MstarEngineStatusSource {
     return {
@@ -810,7 +802,7 @@ describe('agent canvas — Phase 1/2 groups + current-plan annotation (plan 2026
     }
   }
 
-  it('two group anchors in stage order: Phase 1 (iteration-start) LEFTMOST, Phase 2 (autonomous-execute) RIGHT (plan 20260813-panel-agent-canvas-legend-layout T2)', () => {
+  it('two group anchors in stage order: Phase 1 (iteration-start) LEFTMOST, Phase 2 (autonomous-execute) RIGHT ', () => {
     const view = projectGraph(baseSource).agents
     const layout = layoutAgents(view)
     // The groups split the 4 columns by phase: Phase 1 = review-edit-chain,
@@ -853,7 +845,7 @@ describe('agent canvas — Phase 1/2 groups + current-plan annotation (plan 2026
   })
 
   it('renders the group labels: Phase 1 label + Phase 2 label with the CURRENT-PLAN chip (data-canvas-group-plan)', () => {
-    const html = agentsHtml(planSource(['20260812-panel-f5-design-system']))
+    const html = agentsHtml(planSource(['00000812-panel-f5-design-system']))
     expect(html).toContain('data-canvas-group="iteration-start"')
     expect(html).toContain('data-canvas-group-index="1"')
     expect(html).toContain('data-canvas-group="autonomous-execute"')
@@ -861,15 +853,15 @@ describe('agent canvas — Phase 1/2 groups + current-plan annotation (plan 2026
     expect(html).toContain('Phase 1 · sequential (review-edit-chain)')
     expect(html).toContain('Phase 2 · iterative plan loop')
     // The Phase-2 annotation chip carries the FIRST InProgress plan id.
-    expect(html).toContain('data-canvas-group-plan="20260812-panel-f5-design-system"')
-    expect(html).toContain('plan: 20260812-panel-f5-design-system')
+    expect(html).toContain('data-canvas-group-plan="00000812-panel-f5-design-system"')
+    expect(html).toContain('plan: ')
     // Phase 1 carries no plan chip.
     expect(html).not.toContain('data-canvas-group-no-plan')
     // zh labels localize.
-    const zhHtml = agentsHtml(planSource(['20260812-panel-f5-design-system']), 'zh')
+    const zhHtml = agentsHtml(planSource(['00000812-panel-f5-design-system']), 'zh')
     expect(zhHtml).toContain('Phase 1 · 顺序完成（review-edit-chain）')
     expect(zhHtml).toContain('Phase 2 · 循环迭代 plans')
-    expect(zhHtml).toContain('plan: 20260812-panel-f5-design-system')
+    expect(zhHtml).toContain('plan: ')
   })
 
   it('no InProgress plan → the muted「no in-progress plan」note, no plan chip', () => {
@@ -903,7 +895,7 @@ describe('agent canvas — Phase 1/2 groups + current-plan annotation (plan 2026
   })
 })
 
-describe('agent canvas — inter-phase edge routing (plan 20260813-panel-agent-canvas-legend-layout T2, H2)', () => {
+describe('agent canvas — inter-phase edge routing (plan  T2, H2)', () => {
   it('a Phase 1 → Phase 2 handoff (writing-specialist → fullstack-dev) is a DIRECT horizontal bezier — source east → target west', () => {
     // writing-specialist (Phase 1, review-edit-chain — the FIRST card of its
     // plain stack, y=84) → fullstack-dev (Phase 2, sdd-implement — the first
@@ -954,7 +946,7 @@ describe('agent canvas — inter-phase edge routing (plan 20260813-panel-agent-c
     expect(d.x1).toBe(248 + 12 + 176) // source east port
   })
 
-  it('a col-skip cross-column edge (writing-specialist → qc-specialist) reroutes via the SIDE-GAP DETOUR — the direct line would pierce the intermediate column cards (plan QC tri R1 / F-002)', () => {
+  it('a col-skip cross-column edge (writing-specialist → qc-specialist) reroutes via the SIDE-GAP DETOUR — the direct line would pierce the intermediate column cards ', () => {
     // writing-specialist (Phase 1, review-edit-chain — the FIRST card of its
     // plain stack, y=84, center 120) → qc-specialist (Phase 2, qc-tri — first
     // card, y=84, center 120): the source column (0) and target column (2)
@@ -1028,7 +1020,7 @@ describe('agent canvas — inter-phase edge routing (plan 20260813-panel-agent-c
     }
   })
 
-  it('a REVERSE col-skip cross-column edge (qc-specialist → writing-specialist, Phase 2 → Phase 1) reroutes via the side-gap detour too (plan QC tri R1 / F-003)', () => {
+  it('a REVERSE col-skip cross-column edge (qc-specialist → writing-specialist, Phase 2 → Phase 1) reroutes via the side-gap detour too ', () => {
     // qc-specialist (Phase 2, qc-tri — first card, center 120) →
     // writing-specialist (Phase 1, review-edit-chain — first card, center
     // 120): source column (2) > target column (0) — source WEST → target
@@ -1095,7 +1087,7 @@ describe('agent canvas — inter-phase edge routing (plan 20260813-panel-agent-c
   })
 })
 
-describe('agent canvas — settled done frame + off interaction (plan 20260812-panel-f5-design-system T8, user feedback #1/#3)', () => {
+describe('agent canvas — settled done frame + off interaction ', () => {
   it('settled + emphasis current → the green done frame marker + the green ✓ (data-agent-done="true")', () => {
     // Phase 2: fullstack-dev settled (paired settle) + emphasis 'current' →
     // the completion marker shows.
@@ -1163,7 +1155,7 @@ describe('agent canvas — settled done frame + off interaction (plan 20260812-p
   })
 })
 
-describe('agent canvas — comprehensive H1/H2: every edge shape clears card bodies + text seats (plan 20260813-panel-quick-fixes T3)', () => {
+describe('agent canvas — comprehensive H1/H2: every edge shape clears card bodies + text seats ', () => {
   /** Assert one edge's route clears every text seat + every card body other
    * than its own source/target (per segment — the strict H1/H2 invariant). */
   function assertEdgeClear(label: string, edge: AgentEdge, layout: CanvasLayout): void {

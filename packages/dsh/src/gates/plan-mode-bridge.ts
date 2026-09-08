@@ -1,5 +1,5 @@
 /**
- * PlanMode bridge (plan `20260816-dsh-nb2-goal-bridge` Task 4b — N-B3): the
+ * PlanMode bridge : the
  * Prepare-phase flag flip — a one-way mirror of the harness Prepare state
  * into the host plan-mode session state (`ctx.get('planMode')`, STRUCTURAL
  * view — no new peer dependency; upstream `packages/plan/plan-mode/src/
@@ -12,7 +12,7 @@
  * so repeated evaluation at multiple decision points never churns session
  * events.
  *
- * Policy (Task 1 definition, T1-verified): plan mode is ON iff an active
+ * Policy: plan mode is ON iff an active
  * iteration steers (compass `status: active|locked` — {@link
  * steeringCompass}, goal-bridge parity) AND the SELECTED workflow snapshot
  * carries ≥1 plan row in the `Todo` state (the Prepare window — a plan
@@ -47,7 +47,7 @@ import type { HarnessResolver } from './_shared.ts'
 // `subagent/start` root walk (explicit no-barrel imports — plan Task 4b;
 // goal-bridge.ts does not import this module, so there is no cycle).
 import { isRootLikeAgent, rootAgentOf, steeringCompass } from './goal-bridge.ts'
-// v3 relocation (plan `20260819-workflow-dsh-viz` Task 3): the Todo probe
+// v3 relocation : the Todo probe
 // reads the SELECTED workflow snapshot's plan rows — the root v1 `plans[]`
 // home is gone. The bridge is a READ-only mirror, so the read resolver
 // (active → terminal → error) applies.

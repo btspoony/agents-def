@@ -21,7 +21,7 @@ import { join, resolve } from "node:path";
 const CLI_ROOT = resolve(import.meta.dir, "..");
 const SRC_ENTRY = join(CLI_ROOT, "src/index.ts");
 
-/** Spawn env with ambient harness env vars pinned out (qc3 F-4). */
+/** Spawn env with ambient harness env vars pinned out. */
 function cliEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
@@ -108,7 +108,7 @@ describe("mstar review seats — execution-mode → QC seat count matrix", () =>
     });
   });
 
-  test("targeted duplicate reviewers are deduped before counting (qc2 S-3): [a,a,b] → 2 seats", () => {
+  test("targeted duplicate reviewers are deduped before counting: [a,a,b] → 2 seats", () => {
     withAssignment(assignmentWithMode("targeted"), (file) => {
       const result = runCli([
         "review",

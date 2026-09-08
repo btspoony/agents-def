@@ -3,84 +3,84 @@
   "updated_at": "2026-08-19",
   "plans": [
     {
-      "id": "20260814-dsh-fallbacks-integration",
+      "id": "00000814-dsh-fallbacks-integration",
       "title": "dsh-llm-fallbacks integration: dependency + capability probe + role decoration + subagent_fork coverage",
-      "file": ".mstar/plans/20260814-dsh-fallbacks-integration.md",
+      "file": ".mstar/plans/00000814-dsh-fallbacks-integration.md",
       "status": "Done",
       "merge_commit": "721bce5",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-adapter-roadmap.md",
         "iteration_refs": [
-          "iter-20260814-fallbacks-integration"
+          "iter-00000814-fallbacks-integration"
         ],
-        "spec_integration_branch": "iteration/iter-20260814-fallbacks-integration",
-        "merge_target": "iteration/iter-20260814-fallbacks-integration"
+        "spec_integration_branch": "iteration/iter-00000814-fallbacks-integration",
+        "merge_target": "iteration/iter-00000814-fallbacks-integration"
       }
     },
     {
-      "id": "20260815-dsh-peer-deps-drift",
+      "id": "00000815-dsh-peer-deps-drift",
       "title": "peer-deps spec drift fix (prepare removed at 787957b)",
-      "file": ".mstar/plans/20260815-dsh-peer-deps-drift.md",
+      "file": ".mstar/plans/00000815-dsh-peer-deps-drift.md",
       "status": "Done",
       "merge_commit": "3ad214e",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-adapter-roadmap.md",
         "iteration_refs": [
-          "iter-20260815-fallbacks-personas-workflow"
+          "iter-00000815-fallbacks-personas-workflow"
         ],
-        "spec_integration_branch": "iteration/iter-20260815-fallbacks-personas-workflow",
-        "merge_target": "iteration/iter-20260815-fallbacks-personas-workflow"
+        "spec_integration_branch": "iteration/iter-00000815-fallbacks-personas-workflow",
+        "merge_target": "iteration/iter-00000815-fallbacks-personas-workflow"
       }
     },
     {
-      "id": "20260815-dsh-fallbacks-personas",
+      "id": "00000815-dsh-fallbacks-personas",
       "title": "fallbacks 0.1.3 + harness-agents persona defaults + adoption advisory",
-      "file": ".mstar/plans/20260815-dsh-fallbacks-personas.md",
+      "file": ".mstar/plans/00000815-dsh-fallbacks-personas.md",
       "status": "Done",
       "merge_commit": "a26fd1d",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-adapter-roadmap.md",
         "iteration_refs": [
-          "iter-20260815-fallbacks-personas-workflow"
+          "iter-00000815-fallbacks-personas-workflow"
         ],
-        "spec_integration_branch": "iteration/iter-20260815-fallbacks-personas-workflow",
-        "merge_target": "iteration/iter-20260815-fallbacks-personas-workflow"
+        "spec_integration_branch": "iteration/iter-00000815-fallbacks-personas-workflow",
+        "merge_target": "iteration/iter-00000815-fallbacks-personas-workflow"
       }
     },
     {
-      "id": "20260815-dsh-workflow-ledger",
+      "id": "00000815-dsh-workflow-ledger",
       "title": "W-B2 workflow ledger from tool-workflow session events",
-      "file": ".mstar/plans/20260815-dsh-workflow-ledger.md",
+      "file": ".mstar/plans/00000815-dsh-workflow-ledger.md",
       "status": "Done",
       "merge_commit": "6bdb574",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-adapter-roadmap.md",
         "iteration_refs": [
-          "iter-20260815-fallbacks-personas-workflow"
+          "iter-00000815-fallbacks-personas-workflow"
         ],
-        "spec_integration_branch": "iteration/iter-20260815-fallbacks-personas-workflow",
-        "merge_target": "iteration/iter-20260815-fallbacks-personas-workflow"
+        "spec_integration_branch": "iteration/iter-00000815-fallbacks-personas-workflow",
+        "merge_target": "iteration/iter-00000815-fallbacks-personas-workflow"
       }
     },
     {
-      "id": "20260815-dsh-workflow-gate",
+      "id": "00000815-dsh-workflow-gate",
       "title": "W-B3 workflow gate (off/warn/ask/hard; P-a/P-b/P-c)",
-      "file": ".mstar/plans/20260815-dsh-workflow-gate.md",
+      "file": ".mstar/plans/00000815-dsh-workflow-gate.md",
       "status": "Done",
       "merge_commit": "11aceda",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-adapter-roadmap.md",
         "iteration_refs": [
-          "iter-20260815-fallbacks-personas-workflow"
+          "iter-00000815-fallbacks-personas-workflow"
         ],
-        "spec_integration_branch": "iteration/iter-20260815-fallbacks-personas-workflow",
-        "merge_target": "iteration/iter-20260815-fallbacks-personas-workflow"
+        "spec_integration_branch": "iteration/iter-00000815-fallbacks-personas-workflow",
+        "merge_target": "iteration/iter-00000815-fallbacks-personas-workflow"
       }
     },
     {
-      "id": "20260815-mstar-review-audit-folds",
+      "id": "00000815-mstar-review-audit-folds",
       "title": "QC deep-review lenses + audit methodology folds (survey A+D)",
-      "file": ".mstar/plans/20260815-mstar-review-audit-folds.md",
+      "file": ".mstar/plans/00000815-mstar-review-audit-folds.md",
       "status": "Done",
       "merge_commit": "234d918",
       "task_commits": [
@@ -92,27 +92,27 @@
       "metadata": {
         "primary_spec": ".mstar/references/dsh-skills-survey/adoption-plan.md",
         "iteration_refs": [
-          "iter-20260815-dsh-skills-adoption"
+          "iter-00000815-dsh-skills-adoption"
         ],
-        "spec_integration_branch": "iteration/iter-20260815-dsh-skills-adoption",
-        "merge_target": "iteration/iter-20260815-dsh-skills-adoption",
+        "spec_integration_branch": "iteration/iter-00000815-dsh-skills-adoption",
+        "merge_target": "iteration/iter-00000815-dsh-skills-adoption",
         "spec_refs": [
           ".mstar/references/dsh-skills-survey/inventory.md"
         ]
       }
     },
     {
-      "id": "20260815-mstar-knowledge-prose-folds",
+      "id": "00000815-mstar-knowledge-prose-folds",
       "title": "knowledge/prose/editorial folds (survey B+C+E)",
-      "file": ".mstar/plans/20260815-mstar-knowledge-prose-folds.md",
+      "file": ".mstar/plans/00000815-mstar-knowledge-prose-folds.md",
       "status": "Done",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-skills-survey/adoption-plan.md",
         "iteration_refs": [
-          "iter-20260815-dsh-skills-adoption"
+          "iter-00000815-dsh-skills-adoption"
         ],
-        "spec_integration_branch": "iteration/iter-20260815-dsh-skills-adoption",
-        "merge_target": "iteration/iter-20260815-dsh-skills-adoption",
+        "spec_integration_branch": "iteration/iter-00000815-dsh-skills-adoption",
+        "merge_target": "iteration/iter-00000815-dsh-skills-adoption",
         "spec_refs": [
           ".mstar/references/dsh-skills-survey/inventory.md"
         ]
@@ -128,17 +128,17 @@
       "merge_commit": "63d344c"
     },
     {
-      "id": "20260815-mstar-harness-mechanics-folds",
+      "id": "00000815-mstar-harness-mechanics-folds",
       "title": "harness mechanics folds: push-safety + skill-authoring devices + bilingual rule (survey F+G+G-repo)",
-      "file": ".mstar/plans/20260815-mstar-harness-mechanics-folds.md",
+      "file": ".mstar/plans/00000815-mstar-harness-mechanics-folds.md",
       "status": "Done",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-skills-survey/adoption-plan.md",
         "iteration_refs": [
-          "iter-20260815-dsh-skills-adoption"
+          "iter-00000815-dsh-skills-adoption"
         ],
-        "spec_integration_branch": "iteration/iter-20260815-dsh-skills-adoption",
-        "merge_target": "iteration/iter-20260815-dsh-skills-adoption",
+        "spec_integration_branch": "iteration/iter-00000815-dsh-skills-adoption",
+        "merge_target": "iteration/iter-00000815-dsh-skills-adoption",
         "spec_refs": [
           ".mstar/references/dsh-skills-survey/inventory.md"
         ]
@@ -151,17 +151,17 @@
       "merge_commit": "7da3b7e"
     },
     {
-      "id": "20260816-mechanical-verification",
+      "id": "00000816-mechanical-verification",
       "title": "Mechanical verification from skills-adoption learnings (ephemeral-citation lint + drift guards)",
-      "file": ".mstar/plans/20260816-mechanical-verification.md",
+      "file": ".mstar/plans/00000816-mechanical-verification.md",
       "status": "Done",
       "metadata": {
-        "primary_spec": ".mstar/plans/20260816-mechanical-verification.md",
+        "primary_spec": ".mstar/plans/00000816-mechanical-verification.md",
         "spec_refs": [
           ".mstar/knowledge/conventions/skill-content-porting-discipline.md",
           ".mstar/knowledge/config-errors/jaq-jq-status-write-pattern.md"
         ],
-        "spec_integration_branch": "feature/20260816-mechanical-verification",
+        "spec_integration_branch": "feature/00000816-mechanical-verification",
         "merge_target": "main"
       },
       "task_commits": [
@@ -174,17 +174,17 @@
       "merge_commit": "c148b38"
     },
     {
-      "id": "20260816-dsh-b4-seeds",
+      "id": "00000816-dsh-b4-seeds",
       "title": "B4 seeds adoption: 13 subagent roles via upstream 0.1.7 seeds surface + advisory effective-state + ^0.1.7 pin",
-      "file": ".mstar/plans/20260816-dsh-b4-seeds.md",
+      "file": ".mstar/plans/00000816-dsh-b4-seeds.md",
       "status": "Done",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-adapter-roadmap.md",
         "iteration_refs": [
-          "iter-20260816-dsh-seeds-bridges"
+          "iter-00000816-dsh-seeds-bridges"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-dsh-seeds-bridges",
-        "merge_target": "iteration/iter-20260816-dsh-seeds-bridges"
+        "spec_integration_branch": "iteration/iter-00000816-dsh-seeds-bridges",
+        "merge_target": "iteration/iter-00000816-dsh-seeds-bridges"
       },
       "task_commits": [
         "208fb9d",
@@ -197,17 +197,17 @@
       "merge_commit": "b028860"
     },
     {
-      "id": "20260816-dsh-nb1-systemprompt",
+      "id": "00000816-dsh-nb1-systemprompt",
       "title": "N-B1 ctx.systemPrompt injection: harness-rules pointer + engine-status context (child role-persona untouched)",
-      "file": ".mstar/plans/20260816-dsh-nb1-systemprompt.md",
+      "file": ".mstar/plans/00000816-dsh-nb1-systemprompt.md",
       "status": "Done",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-adapter-roadmap.md",
         "iteration_refs": [
-          "iter-20260816-dsh-seeds-bridges"
+          "iter-00000816-dsh-seeds-bridges"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-dsh-seeds-bridges",
-        "merge_target": "iteration/iter-20260816-dsh-seeds-bridges"
+        "spec_integration_branch": "iteration/iter-00000816-dsh-seeds-bridges",
+        "merge_target": "iteration/iter-00000816-dsh-seeds-bridges"
       },
       "task_commits": [
         "a11effd",
@@ -217,17 +217,17 @@
       "merge_commit": "8fa0d69"
     },
     {
-      "id": "20260816-dsh-surface-sync",
+      "id": "00000816-dsh-surface-sync",
       "title": "dsh surface sync: /codebase-audit input hint [simplify] + skill-lint ephemeral wiring + docs parity",
-      "file": ".mstar/plans/20260816-dsh-surface-sync.md",
+      "file": ".mstar/plans/00000816-dsh-surface-sync.md",
       "status": "Done",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-adapter-roadmap.md",
         "iteration_refs": [
-          "iter-20260816-dsh-seeds-bridges"
+          "iter-00000816-dsh-seeds-bridges"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-dsh-seeds-bridges",
-        "merge_target": "iteration/iter-20260816-dsh-seeds-bridges"
+        "spec_integration_branch": "iteration/iter-00000816-dsh-seeds-bridges",
+        "merge_target": "iteration/iter-00000816-dsh-seeds-bridges"
       },
       "task_commits": [
         "fe225db",
@@ -238,17 +238,17 @@
       "merge_commit": "a52b859"
     },
     {
-      "id": "20260816-dsh-nb2-goal-bridge",
+      "id": "00000816-dsh-nb2-goal-bridge",
       "title": "N-B2 goal bridge: iteration objective mirror + maxGoalRounds cap + blocked advisory (+ N-B3 assessment)",
-      "file": ".mstar/plans/20260816-dsh-nb2-goal-bridge.md",
+      "file": ".mstar/plans/00000816-dsh-nb2-goal-bridge.md",
       "status": "Done",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-adapter-roadmap.md",
         "iteration_refs": [
-          "iter-20260816-dsh-seeds-bridges"
+          "iter-00000816-dsh-seeds-bridges"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-dsh-seeds-bridges",
-        "merge_target": "iteration/iter-20260816-dsh-seeds-bridges"
+        "spec_integration_branch": "iteration/iter-00000816-dsh-seeds-bridges",
+        "merge_target": "iteration/iter-00000816-dsh-seeds-bridges"
       },
       "task_commits": [
         "5cb068e",
@@ -260,17 +260,17 @@
       "merge_commit": "575ac2c"
     },
     {
-      "id": "20260816-inspect-leaf-contract",
+      "id": "00000816-inspect-leaf-contract",
       "title": "dsh-inspect leaf evidence & honesty contract: coding-behavior dataflow diagnosis + QC evidence contract and Unconfirmed verdict (C1+C2)",
-      "file": ".mstar/plans/20260816-inspect-leaf-contract.md",
+      "file": ".mstar/plans/00000816-inspect-leaf-contract.md",
       "status": "Done",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-inspect-survey.md",
         "iteration_refs": [
-          "iter-20260816-dsh-inspect-adoption"
+          "iter-00000816-dsh-inspect-adoption"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-dsh-inspect-adoption",
-        "merge_target": "iteration/iter-20260816-dsh-inspect-adoption"
+        "spec_integration_branch": "iteration/iter-00000816-dsh-inspect-adoption",
+        "merge_target": "iteration/iter-00000816-dsh-inspect-adoption"
       },
       "merge_commit": "33d7fb7",
       "task_commits": [
@@ -281,17 +281,17 @@
       ]
     },
     {
-      "id": "20260816-inspect-redteam-consolidation",
+      "id": "00000816-inspect-redteam-consolidation",
       "title": "dsh-inspect adversarial vet and consolidation coverage semantics: audit Phase-3 red-team pass + review-qc unmentioned-is-unreviewed (C3+C4)",
-      "file": ".mstar/plans/20260816-inspect-redteam-consolidation.md",
+      "file": ".mstar/plans/00000816-inspect-redteam-consolidation.md",
       "status": "Done",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-inspect-survey.md",
         "iteration_refs": [
-          "iter-20260816-dsh-inspect-adoption"
+          "iter-00000816-dsh-inspect-adoption"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-dsh-inspect-adoption",
-        "merge_target": "iteration/iter-20260816-dsh-inspect-adoption"
+        "spec_integration_branch": "iteration/iter-00000816-dsh-inspect-adoption",
+        "merge_target": "iteration/iter-00000816-dsh-inspect-adoption"
       },
       "merge_commit": "db8b532",
       "task_commits": [
@@ -303,17 +303,17 @@
       "notes": "merge-lease claim omitted at db8b532 merge (PM deviation, single-session serial merge, no competing holder — retrospective audit note); Plan 1 merge 33d7fb7 did claim/release correctly"
     },
     {
-      "id": "20260816-inspect-fixround-failloud",
+      "id": "00000816-inspect-fixround-failloud",
       "title": "dsh-inspect fix-round mechanics + residual fail-loud contract (engine verify-first) + regression-fixation record (C5+C6+C8)",
-      "file": ".mstar/plans/20260816-inspect-fixround-failloud.md",
+      "file": ".mstar/plans/00000816-inspect-fixround-failloud.md",
       "status": "Done",
       "metadata": {
         "primary_spec": ".mstar/references/dsh-inspect-survey.md",
         "iteration_refs": [
-          "iter-20260816-dsh-inspect-adoption"
+          "iter-00000816-dsh-inspect-adoption"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-dsh-inspect-adoption",
-        "merge_target": "iteration/iter-20260816-dsh-inspect-adoption"
+        "spec_integration_branch": "iteration/iter-00000816-dsh-inspect-adoption",
+        "merge_target": "iteration/iter-00000816-dsh-inspect-adoption"
       },
       "merge_commit": "3d3e5e0",
       "task_commits": [
@@ -326,17 +326,17 @@
       ]
     },
     {
-      "id": "20260816-audit-001-five-question-lint",
+      "id": "00000816-audit-001-five-question-lint",
       "title": "Audit 001: five-question lint runtime alignment — 17/18 shipped mstar-* skills fail mstar skill lint",
-      "file": ".mstar/plans/audit-2026-08-16/001-five-question-runtime-alignment.md",
+      "file": ".mstar/plans/audit-0000-08-16/001-five-question-runtime-alignment.md",
       "status": "Done",
       "metadata": {
-        "primary_spec": ".mstar/plans/audit-2026-08-16/README.md",
+        "primary_spec": ".mstar/plans/audit-0000-08-16/README.md",
         "iteration_refs": [
-          "iter-20260816-audit-mechanical-alignment"
+          "iter-00000816-audit-mechanical-alignment"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-audit-mechanical-alignment",
-        "merge_target": "iteration/iter-20260816-audit-mechanical-alignment"
+        "spec_integration_branch": "iteration/iter-00000816-audit-mechanical-alignment",
+        "merge_target": "iteration/iter-00000816-audit-mechanical-alignment"
       },
       "merge_commit": "54263d4",
       "task_commits": [
@@ -348,17 +348,17 @@
       ]
     },
     {
-      "id": "20260816-audit-002-cli-root-paths",
+      "id": "00000816-audit-002-cli-root-paths",
       "title": "Audit 002: resolve CLI relative path args against project root (resolveProjectRoot unused; skill lint fails under packages/cli cwd)",
-      "file": ".mstar/plans/audit-2026-08-16/002-cli-project-root-paths.md",
+      "file": ".mstar/plans/audit-0000-08-16/002-cli-project-root-paths.md",
       "status": "Done",
       "metadata": {
-        "primary_spec": ".mstar/plans/audit-2026-08-16/README.md",
+        "primary_spec": ".mstar/plans/audit-0000-08-16/README.md",
         "iteration_refs": [
-          "iter-20260816-audit-mechanical-alignment"
+          "iter-00000816-audit-mechanical-alignment"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-audit-mechanical-alignment",
-        "merge_target": "iteration/iter-20260816-audit-mechanical-alignment"
+        "spec_integration_branch": "iteration/iter-00000816-audit-mechanical-alignment",
+        "merge_target": "iteration/iter-00000816-audit-mechanical-alignment"
       },
       "merge_commit": "7a32b09",
       "task_commits": [
@@ -367,17 +367,17 @@
       ]
     },
     {
-      "id": "20260816-audit-003-roles-validate-cli",
+      "id": "00000816-audit-003-roles-validate-cli",
       "title": "Audit 003: mstar roles validate CLI + drift-lint corpus guard for validateRoleMapping/lintLoadOrder",
-      "file": ".mstar/plans/audit-2026-08-16/003-roles-validate-cli-and-ci.md",
+      "file": ".mstar/plans/audit-0000-08-16/003-roles-validate-cli-and-ci.md",
       "status": "Done",
       "metadata": {
-        "primary_spec": ".mstar/plans/audit-2026-08-16/README.md",
+        "primary_spec": ".mstar/plans/audit-0000-08-16/README.md",
         "iteration_refs": [
-          "iter-20260816-audit-mechanical-alignment"
+          "iter-00000816-audit-mechanical-alignment"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-audit-mechanical-alignment",
-        "merge_target": "iteration/iter-20260816-audit-mechanical-alignment"
+        "spec_integration_branch": "iteration/iter-00000816-audit-mechanical-alignment",
+        "merge_target": "iteration/iter-00000816-audit-mechanical-alignment"
       },
       "merge_commit": "1d74f0d",
       "task_commits": [
@@ -387,17 +387,17 @@
       ]
     },
     {
-      "id": "20260816-audit-004-validator-cli-surface",
+      "id": "00000816-audit-004-validator-cli-surface",
       "title": "Audit 004: CLI entry points for import-only validators (techDebtRollup, findingsCleanupGate, validateIntegrationMergeLease, assertQcAlignment, resolveSkillRoot)",
-      "file": ".mstar/plans/audit-2026-08-16/004-import-only-validator-cli.md",
+      "file": ".mstar/plans/audit-0000-08-16/004-import-only-validator-cli.md",
       "status": "Done",
       "metadata": {
-        "primary_spec": ".mstar/plans/audit-2026-08-16/README.md",
+        "primary_spec": ".mstar/plans/audit-0000-08-16/README.md",
         "iteration_refs": [
-          "iter-20260816-audit-mechanical-alignment"
+          "iter-00000816-audit-mechanical-alignment"
         ],
-        "spec_integration_branch": "iteration/iter-20260816-audit-mechanical-alignment",
-        "merge_target": "iteration/iter-20260816-audit-mechanical-alignment"
+        "spec_integration_branch": "iteration/iter-00000816-audit-mechanical-alignment",
+        "merge_target": "iteration/iter-00000816-audit-mechanical-alignment"
       },
       "merge_commit": "5d93b79",
       "task_commits": [
@@ -406,12 +406,12 @@
       ]
     },
     {
-      "id": "20260817-cli-bin-alias",
+      "id": "00000817-cli-bin-alias",
       "title": "CLI mstar bin alias + drift-lint citation-prefix guard (prose<->binary alignment)",
-      "file": ".mstar/plans/20260817-cli-bin-alias.md",
+      "file": ".mstar/plans/00000817-cli-bin-alias.md",
       "status": "Done",
       "metadata": {
-        "primary_spec": ".mstar/plans/20260817-cli-bin-alias.md"
+        "primary_spec": ".mstar/plans/00000817-cli-bin-alias.md"
       },
       "merge_commit": "7fde7ab",
       "task_commits": [
@@ -425,17 +425,17 @@
       ]
     },
     {
-      "id": "20260817-cli-dsh-install",
+      "id": "00000817-cli-dsh-install",
       "title": "CLI init --target dsh - two-command orchestrated install (adapter + --no-fallbacks + idempotency + doctor three-state + README bilingual)",
-      "file": ".mstar/plans/20260817-cli-dsh-install.md",
+      "file": ".mstar/plans/00000817-cli-dsh-install.md",
       "status": "Done",
       "metadata": {
-        "primary_spec": ".mstar/plans/20260817-cli-dsh-install.md",
+        "primary_spec": ".mstar/plans/00000817-cli-dsh-install.md",
         "iteration_refs": [
-          "iter-20260817-dsh-cli-roles"
+          "iter-00000817-dsh-cli-roles"
         ],
-        "spec_integration_branch": "iteration/iter-20260817-dsh-cli-roles",
-        "merge_target": "iteration/iter-20260817-dsh-cli-roles"
+        "spec_integration_branch": "iteration/iter-00000817-dsh-cli-roles",
+        "merge_target": "iteration/iter-00000817-dsh-cli-roles"
       },
       "task_commits": [
         "8df351a",
@@ -445,17 +445,17 @@
       "merge_commit": "cc67461"
     },
     {
-      "id": "20260817-dsh-roles-e2e",
+      "id": "00000817-dsh-roles-e2e",
       "title": "roles presence e2e closure - installed-deployment assertion (B4 seeds verification, no mechanism change) + full-support docs",
-      "file": ".mstar/plans/20260817-dsh-roles-e2e.md",
+      "file": ".mstar/plans/00000817-dsh-roles-e2e.md",
       "status": "Done",
       "metadata": {
-        "primary_spec": ".mstar/plans/20260817-dsh-roles-e2e.md",
+        "primary_spec": ".mstar/plans/00000817-dsh-roles-e2e.md",
         "iteration_refs": [
-          "iter-20260817-dsh-cli-roles"
+          "iter-00000817-dsh-cli-roles"
         ],
-        "spec_integration_branch": "iteration/iter-20260817-dsh-cli-roles",
-        "merge_target": "iteration/iter-20260817-dsh-cli-roles"
+        "spec_integration_branch": "iteration/iter-00000817-dsh-cli-roles",
+        "merge_target": "iteration/iter-00000817-dsh-cli-roles"
       },
       "task_commits": [
         "a9779be",
@@ -465,14 +465,14 @@
       "merge_commit": "c8a4b89"
     },
     {
-      "plan_id": "20260717-kimi-host",
-      "file": ".mstar/plans/20260717-kimi-host-support.md",
+      "plan_id": "00000717-kimi-host",
+      "file": ".mstar/plans/00000717-kimi-host-support.md",
       "title": "Kimi Code host full support",
       "status": "Done"
     },
     {
-      "plan_id": "20260722-iter-wt-lease",
-      "file": ".mstar/plans/20260722-iteration-worktree-plan-lease.md",
+      "plan_id": "00000722-iter-wt-lease",
+      "file": ".mstar/plans/00000722-iteration-worktree-plan-lease.md",
       "title": "Iteration worktree control + cross-plan execution lease",
       "status": "Done",
       "done_at": "2026-07-22",
@@ -480,8 +480,8 @@
         "primary_spec": null,
         "task_category": "logic",
         "execution_mode": "sdd",
-        "working_branch": "feature/20260722-iter-wt-lease",
-        "spec_integration_branch": "feature/20260722-iter-wt-lease",
+        "working_branch": "feature/00000722-iter-wt-lease",
+        "spec_integration_branch": "feature/00000722-iter-wt-lease",
         "qc_gate": "Approve with residuals",
         "qa_gate": "mandatory",
         "qa_mode": "acceptance-only",
@@ -490,9 +490,9 @@
       }
     },
     {
-      "id": "20260728-zero-residual",
-      "plan_id": "20260728-zero-residual",
-      "file": ".mstar/plans/20260728-findings-cleanup-zero-residual.md",
+      "id": "00000728-zero-residual",
+      "plan_id": "00000728-zero-residual",
+      "file": ".mstar/plans/00000728-findings-cleanup-zero-residual.md",
       "title": "Findings cleanup: zero-residual mode",
       "status": "Done",
       "owner": "@project-manager",
@@ -519,8 +519,8 @@
       }
     },
     {
-      "plan_id": "20260807-agent-plugins-v1",
-      "file": ".mstar/plans/20260807-agent-plugins-v1.md",
+      "plan_id": "00000807-agent-plugins-v1",
+      "file": ".mstar/plans/00000807-agent-plugins-v1.md",
       "title": "Agent Plugins v1.0.0 portable package support",
       "status": "Done",
       "owner": "@project-manager",
@@ -548,9 +548,9 @@
           "release_validate": "pass v1.8.8",
           "ci": "success (validate run 31184961541, release-prep run 31185014808)"
         },
-        "review_bundle": ".mstar/sdd/20260807-agent-plugins-v1/review/",
-        "sdd_dir": ".mstar/sdd/20260807-agent-plugins-v1/",
-        "sdd_progress": ".mstar/sdd/20260807-agent-plugins-v1/progress.md",
+        "review_bundle": ".mstar/sdd/00000807-agent-plugins-v1/review/",
+        "sdd_dir": ".mstar/sdd/00000807-agent-plugins-v1/",
+        "sdd_progress": ".mstar/sdd/00000807-agent-plugins-v1/progress.md",
         "pr": {
           "number": 68,
           "url": "https://github.com/btspoony/mstar-harness/pull/68",
@@ -602,8 +602,8 @@
       ]
     },
     {
-      "plan_id": "20260808-slice1-engine-foundation",
-      "file": ".mstar/plans/20260808-slice1-engine-foundation.md",
+      "plan_id": "00000808-slice1-engine-foundation",
+      "file": ".mstar/plans/00000808-slice1-engine-foundation.md",
       "title": "Slice 1: engine scaffold + core/path/status/lease + CLI + opencode beforeStatusWrite",
       "status": "Done",
       "owner": "@project-manager",
@@ -617,10 +617,10 @@
         ],
         "spec_integration_branch": "feature/skill-programmatic-split",
         "merge_target": "feature/skill-programmatic-split",
-        "worktree_path": "/Users/bibi/workspace/ai/worktrees/mstar-harness-skill-engine",
+        "worktree_path": "/Users/dev/workspace/ai/worktrees/mstar-harness-skill-engine",
         "working_branch": "feature/skill-programmatic-split",
-        "plan_path": "/Users/bibi/workspace/ai/mstar-harness/.mstar/plans/20260808-slice1-engine-foundation.md",
-        "sdd_dir": "/Users/bibi/workspace/ai/mstar-harness/.mstar/sdd/20260808-slice1-engine-foundation"
+        "plan_path": "/Users/dev/workspace/ai/mstar-harness/.mstar/plans/00000808-slice1-engine-foundation.md",
+        "sdd_dir": "/Users/dev/workspace/ai/mstar-harness/.mstar/sdd/00000808-slice1-engine-foundation"
       },
       "task_commits": [
         {
@@ -674,12 +674,12 @@
       ],
       "done_at": "2026-08-08",
       "notes": [
-        "execution_lease removed on harness-root merge (Done plan): holder=omp-pm-session-20260808, claimed_at=2026-08-08, worktree_path=/Users/bibi/workspace/ai/worktrees/mstar-harness-skill-engine, working_branch=feature/skill-programmatic-split"
+        "execution_lease removed on harness-root merge (Done plan): holder=omp-pm-session-00000808, claimed_at=2026-08-08, worktree_path=/Users/dev/workspace/ai/worktrees/mstar-harness-skill-engine, working_branch=feature/skill-programmatic-split"
       ]
     },
     {
-      "plan_id": "20260808-slice2-sdd-iteration",
-      "file": ".mstar/plans/20260808-slice2-sdd-iteration.md",
+      "plan_id": "00000808-slice2-sdd-iteration",
+      "file": ".mstar/plans/00000808-slice2-sdd-iteration.md",
       "title": "Slice 2: sdd/iteration modules + script ports + opencode beforeDispatch",
       "status": "Done",
       "owner": "@project-manager",
@@ -693,10 +693,10 @@
         ],
         "spec_integration_branch": "feature/skill-programmatic-split",
         "merge_target": "feature/skill-programmatic-split",
-        "worktree_path": "/Users/bibi/workspace/ai/worktrees/mstar-harness-skill-engine",
+        "worktree_path": "/Users/dev/workspace/ai/worktrees/mstar-harness-skill-engine",
         "working_branch": "feature/skill-programmatic-split",
-        "plan_path": "/Users/bibi/workspace/ai/mstar-harness/.mstar/plans/20260808-slice2-sdd-iteration.md",
-        "sdd_dir": "/Users/bibi/workspace/ai/mstar-harness/.mstar/sdd/20260808-slice2-sdd-iteration"
+        "plan_path": "/Users/dev/workspace/ai/mstar-harness/.mstar/plans/00000808-slice2-sdd-iteration.md",
+        "sdd_dir": "/Users/dev/workspace/ai/mstar-harness/.mstar/sdd/00000808-slice2-sdd-iteration"
       },
       "task_commits": [
         {
@@ -739,8 +739,8 @@
       "done_at": "2026-08-08"
     },
     {
-      "plan_id": "20260808-slice3-dispatch-git-gates",
-      "file": ".mstar/plans/20260808-slice3-dispatch-git-gates.md",
+      "plan_id": "00000808-slice3-dispatch-git-gates",
+      "file": ".mstar/plans/00000808-slice3-dispatch-git-gates.md",
       "title": "Slice 3: dispatch/worktree modules + omp command preflight",
       "status": "Done",
       "owner": "@project-manager",
@@ -754,10 +754,10 @@
         ],
         "spec_integration_branch": "feature/skill-programmatic-split",
         "merge_target": "feature/skill-programmatic-split",
-        "worktree_path": "/Users/bibi/workspace/ai/worktrees/mstar-harness-skill-engine",
+        "worktree_path": "/Users/dev/workspace/ai/worktrees/mstar-harness-skill-engine",
         "working_branch": "feature/skill-programmatic-split",
-        "plan_path": "/Users/bibi/workspace/ai/mstar-harness/.mstar/plans/20260808-slice3-dispatch-git-gates.md",
-        "sdd_dir": "/Users/bibi/workspace/ai/mstar-harness/.mstar/sdd/20260808-slice3-dispatch-git-gates"
+        "plan_path": "/Users/dev/workspace/ai/mstar-harness/.mstar/plans/00000808-slice3-dispatch-git-gates.md",
+        "sdd_dir": "/Users/dev/workspace/ai/mstar-harness/.mstar/sdd/00000808-slice3-dispatch-git-gates"
       },
       "task_commits": [
         {
@@ -800,8 +800,8 @@
       "done_at": "2026-08-08"
     },
     {
-      "plan_id": "20260808-slice4-lints-scaffolds",
-      "file": ".mstar/plans/20260808-slice4-lints-scaffolds.md",
+      "plan_id": "00000808-slice4-lints-scaffolds",
+      "file": ".mstar/plans/00000808-slice4-lints-scaffolds.md",
       "title": "Slice 4: lint/design-md/audit/compound/roles/host/skill-authoring",
       "status": "Done",
       "owner": "@project-manager",
@@ -815,10 +815,10 @@
         ],
         "spec_integration_branch": "feature/skill-programmatic-split",
         "merge_target": "feature/skill-programmatic-split",
-        "worktree_path": "/Users/bibi/workspace/ai/worktrees/mstar-harness-skill-engine",
+        "worktree_path": "/Users/dev/workspace/ai/worktrees/mstar-harness-skill-engine",
         "working_branch": "feature/skill-programmatic-split",
-        "plan_path": "/Users/bibi/workspace/ai/mstar-harness/.mstar/plans/20260808-slice4-lints-scaffolds.md",
-        "sdd_dir": "/Users/bibi/workspace/ai/mstar-harness/.mstar/sdd/20260808-slice4-lints-scaffolds"
+        "plan_path": "/Users/dev/workspace/ai/mstar-harness/.mstar/plans/00000808-slice4-lints-scaffolds.md",
+        "sdd_dir": "/Users/dev/workspace/ai/mstar-harness/.mstar/sdd/00000808-slice4-lints-scaffolds"
       },
       "task_commits": [
         {
@@ -861,8 +861,8 @@
       "done_at": "2026-08-08"
     },
     {
-      "plan_id": "20260808-slice5-hardgates-close",
-      "file": ".mstar/plans/20260808-slice5-hardgates-close.md",
+      "plan_id": "00000808-slice5-hardgates-close",
+      "file": ".mstar/plans/00000808-slice5-hardgates-close.md",
       "title": "Slice 5: hard gates + bash deprecation + program close (v2.0.0)",
       "status": "Done",
       "owner": "@project-manager",
@@ -876,10 +876,10 @@
         ],
         "spec_integration_branch": "feature/skill-programmatic-split",
         "merge_target": "feature/skill-programmatic-split",
-        "worktree_path": "/Users/bibi/workspace/ai/worktrees/mstar-harness-skill-engine",
+        "worktree_path": "/Users/dev/workspace/ai/worktrees/mstar-harness-skill-engine",
         "working_branch": "feature/skill-programmatic-split",
-        "plan_path": "/Users/bibi/workspace/ai/mstar-harness/.mstar/plans/20260808-slice5-hardgates-close.md",
-        "sdd_dir": "/Users/bibi/workspace/ai/mstar-harness/.mstar/sdd/20260808-slice5-hardgates-close"
+        "plan_path": "/Users/dev/workspace/ai/mstar-harness/.mstar/plans/00000808-slice5-hardgates-close.md",
+        "sdd_dir": "/Users/dev/workspace/ai/mstar-harness/.mstar/sdd/00000808-slice5-hardgates-close"
       },
       "task_commits": [
         {
@@ -916,8 +916,8 @@
       "done_at": "2026-08-08"
     },
     {
-      "plan_id": "20260808-omp-inprocess-binding",
-      "file": ".mstar/plans/20260808-omp-inprocess-binding.md",
+      "plan_id": "00000808-omp-inprocess-binding",
+      "file": ".mstar/plans/00000808-omp-inprocess-binding.md",
       "title": "omp plugin in-process engine binding (hooks + tools)",
       "status": "Done",
       "owner": "@project-manager",
@@ -929,8 +929,8 @@
         "execution_mode": "sdd",
         "working_branch": "feature/omp-inprocess-binding",
         "merge_target": "main",
-        "plan_path": "/Users/bibi/workspace/ai/mstar-harness/.mstar/plans/20260808-omp-inprocess-binding.md",
-        "sdd_dir": "/Users/bibi/workspace/ai/mstar-harness/.mstar/sdd/20260808-omp-inprocess-binding",
+        "plan_path": "/Users/dev/workspace/ai/mstar-harness/.mstar/plans/00000808-omp-inprocess-binding.md",
+        "sdd_dir": "/Users/dev/workspace/ai/mstar-harness/.mstar/sdd/00000808-omp-inprocess-binding",
         "pr_url": "https://github.com/btspoony/mstar-harness/pull/78",
         "merged_commit": "a2354da"
       },
@@ -967,8 +967,8 @@
       ]
     },
     {
-      "plan_id": "20260809-omp-engine-compat-hotfix",
-      "file": ".mstar/plans/20260809-omp-engine-compat-hotfix.md",
+      "plan_id": "00000809-omp-engine-compat-hotfix",
+      "file": ".mstar/plans/00000809-omp-engine-compat-hotfix.md",
       "title": "omp plugin engine-version compatibility (composeDispatchGate degrade)",
       "status": "Done",
       "owner": "@project-manager",
@@ -980,8 +980,8 @@
         "working_branch": "fix/omp-engine-version-compat",
         "merge_target": "main",
         "pr_url": "https://github.com/btspoony/mstar-harness/pull/80",
-        "plan_path": "/Users/bibi/workspace/ai/mstar-harness/.mstar/plans/20260809-omp-engine-compat-hotfix.md",
-        "sdd_dir": "/Users/bibi/workspace/ai/mstar-harness/.mstar/sdd/20260809-omp-engine-compat-hotfix",
+        "plan_path": "/Users/dev/workspace/ai/mstar-harness/.mstar/plans/00000809-omp-engine-compat-hotfix.md",
+        "sdd_dir": "/Users/dev/workspace/ai/mstar-harness/.mstar/sdd/00000809-omp-engine-compat-hotfix",
         "merged_commit": "e65d809"
       },
       "notes": [
@@ -989,8 +989,8 @@
       ]
     },
     {
-      "plan_id": "20260811-code-reviewer-role",
-      "file": ".mstar/plans/20260811-code-reviewer-role.md",
+      "plan_id": "00000811-code-reviewer-role",
+      "file": ".mstar/plans/00000811-code-reviewer-role.md",
       "title": "code-reviewer role: SDD L2 reviewer + audit carrier (role + wiring + engine/docs sync)",
       "status": "Done",
       "owner": "@project-manager",
@@ -1004,10 +1004,10 @@
         ],
         "spec_integration_branch": "iteration/v2.1.0",
         "merge_target": "iteration/v2.1.0",
-        "worktree_path": "/Users/bibi/workspace/ai/worktrees/mstar-harness-code-reviewer",
+        "worktree_path": "/Users/dev/workspace/ai/worktrees/mstar-harness-code-reviewer",
         "working_branch": "iteration/v2.1.0",
-        "plan_path": "/Users/bibi/workspace/ai/mstar-harness/.mstar/plans/20260811-code-reviewer-role.md",
-        "sdd_dir": "/Users/bibi/workspace/ai/mstar-harness/.mstar/sdd/20260811-code-reviewer-role"
+        "plan_path": "/Users/dev/workspace/ai/mstar-harness/.mstar/plans/00000811-code-reviewer-role.md",
+        "sdd_dir": "/Users/dev/workspace/ai/mstar-harness/.mstar/sdd/00000811-code-reviewer-role"
       },
       "done_at": "2026-08-11",
       "notes": [
@@ -1017,8 +1017,8 @@
       ]
     },
     {
-      "plan_id": "20260811-gitignore-default-ignore",
-      "file": ".mstar/plans/20260811-gitignore-default-ignore.md",
+      "plan_id": "00000811-gitignore-default-ignore",
+      "file": ".mstar/plans/00000811-gitignore-default-ignore.md",
       "title": "Gitignore default-ignore pattern for harness dirs (.mstar/** + tracked re-includes)",
       "status": "Done",
       "owner": "@project-manager",
@@ -1028,23 +1028,23 @@
         "execution_mode": "inline",
         "working_branch": "fix/gitignore-default-ignore",
         "merge_target": "main",
-        "plan_path": "/Users/bibi/workspace/ai/mstar-harness/.mstar/plans/20260811-gitignore-default-ignore.md"
+        "plan_path": "/Users/dev/workspace/ai/mstar-harness/.mstar/plans/00000811-gitignore-default-ignore.md"
       },
       "done_at": "2026-08-11",
       "notes": [
-        "2026-08-11 inline hotfix: 5 files (skill fence + engine constants/validator + tests + CLI array + fragment); QC single-seat Approve (F-002 wording fixed, F-001 -> R1); pm-acceptance Pass; PR #88 squash-merged (b940e2e); worktree+branch cleaned; main @ b940e2e"
+        "2026-08-11 inline hotfix: 5 files (skill fence + engine constants/validator + tests + CLI array + fragment); QC single-seat Approve (wording finding fixed, low finding -> R1); pm-acceptance Pass; PR #88 squash-merged (b940e2e); worktree+branch cleaned; main @ b940e2e"
       ]
     },
     {
-      "id": "20260819-workflow-engine-core",
+      "id": "00000819-workflow-engine-core",
       "title": "Workflow/project engine core: snapshot + status v2 + roadmap/register schemas + resolvers + migrate logic",
-      "file": ".mstar/plans/20260819-workflow-engine-core.md",
+      "file": ".mstar/plans/00000819-workflow-engine-core.md",
       "status": "InProgress",
       "execution_lease": {
         "holder": "omp-pm-v3.0.0",
         "claimed_at": "2026-08-19T08:40:25Z",
-        "worktree_path": "/Users/bibi/workspace/ai/mstar-harness/.worktrees/20260819-workflow-engine-core",
-        "working_branch": "feature/20260819-workflow-engine-core",
+        "worktree_path": "/Users/dev/workspace/ai/mstar-harness/.worktrees/00000819-workflow-engine-core",
+        "working_branch": "feature/00000819-workflow-engine-core",
         "session_label": "v3.0.0 Phase 2 P1"
       },
       "metadata": {
@@ -1056,9 +1056,9 @@
       }
     },
     {
-      "id": "20260819-workflow-migrate-cli",
+      "id": "00000819-workflow-migrate-cli",
       "title": "CLI migrate + consumer hard cutover + repo dogfood",
-      "file": ".mstar/plans/20260819-workflow-migrate-cli.md",
+      "file": ".mstar/plans/00000819-workflow-migrate-cli.md",
       "status": "Todo",
       "metadata": {
         "primary_spec": ".mstar/references/workflow-lifecycle-local-survey.md",
@@ -1069,9 +1069,9 @@
       }
     },
     {
-      "id": "20260819-workflow-dsh-viz",
+      "id": "00000819-workflow-dsh-viz",
       "title": "dsh per-lifecycle data path + panel + project rollup",
-      "file": ".mstar/plans/20260819-workflow-dsh-viz.md",
+      "file": ".mstar/plans/00000819-workflow-dsh-viz.md",
       "status": "Todo",
       "metadata": {
         "primary_spec": ".mstar/references/workflow-lifecycle-local-survey.md",
@@ -1082,9 +1082,9 @@
       }
     },
     {
-      "id": "20260819-workflow-skills-thinning",
+      "id": "00000819-workflow-skills-thinning",
       "title": "Skills retirement + rewrite + mstar-engine-legacy + project governance",
-      "file": ".mstar/plans/20260819-workflow-skills-thinning.md",
+      "file": ".mstar/plans/00000819-workflow-skills-thinning.md",
       "status": "Todo",
       "metadata": {
         "primary_spec": ".mstar/references/workflow-lifecycle-local-survey.md",
@@ -1120,7 +1120,7 @@
     "iteration_base_branch": "main",
     "target_branch": "main",
     "spec_integration_branch": "iteration/v3.0.0",
-    "control_worktree_path": "/Users/bibi/workspace/ai/mstar-harness",
+    "control_worktree_path": "/Users/dev/workspace/ai/mstar-harness",
     "iteration_refs": [
       "v3.0.0"
     ],

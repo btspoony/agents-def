@@ -4,13 +4,13 @@
  *
  * Spec sources:
  * - `beforeStatusWrite` host hook + non-blocking warn / never-block
- *   contract: roadmap §8.5 + D2 (default = non-blocking lints; hard gates
- *   are opt-in via compass `enforcement: hard`).
+ * contract: roadmap §8.5 + D2 (default = non-blocking lints; hard gates
+ * are opt-in via compass `enforcement: hard`).
  * - v2 root status.json schema + workflows[] + snapshot invariants:
- *   engine `status.validateStatus`; workflow snapshot schema: engine
- *   `workflow.validateWorkflowSnapshot`; project register schema: engine
- *   `project.validateProjectRegister` (the v1 root `residual_findings`
- *   surface is gone — the residual write gate moved to the register path).
+ * engine `status.validateStatus`; workflow snapshot schema: engine
+ * `workflow.validateWorkflowSnapshot`; project register schema: engine
+ * `project.validateProjectRegister` (the v1 root `residual_findings`
+ * surface is gone — the residual write gate moved to the register path).
  *
  * The exported `validateStatusWrite` helper is the hook module; the plugin
  * wiring (`tool.execute.before` on opencode `write`/`edit`) is exercised
@@ -25,7 +25,7 @@ import { MorningStarHarnessPlugin, validateStatusWrite, type StatusLogger } from
 import type { GateResult } from "@mstar-harness/engine";
 
 /**
- * Ambient MSTAR_HARNESS_DIR is pinned out for the whole file (qc3 F-4):
+ * Ambient MSTAR_HARNESS_DIR is pinned out for the whole file :
  * resolveHarnessDir honors the env var ahead of `.mstar/` probing, so an
  * ambient value would redirect every `.mstar` fixture to the env dir.
  */
@@ -142,12 +142,12 @@ describe("validateStatusWrite (exported hook module)", () => {
       const log: StatusLogger = (level, message) => {
         if (level === "warn") warnings.push(message);
       };
-      // File does not exist yet — the doc is all we can validate.
+ // File does not exist yet — the doc is all we can validate.
       const result = await validateStatusWrite(statusPath, { doc: invalidDoc, log });
       expect(result).not.toBeNull();
       expect(result!.ok).toBe(false);
       expect(warnings.some((w) => w.includes("status.workflow.invalid-type"))).toBe(true);
-      // Valid doc → silent even when the file does not exist.
+ // Valid doc → silent even when the file does not exist.
       warnings.length = 0;
       const okResult = await validateStatusWrite(statusPath, { doc: validDoc, log });
       expect(okResult!.ok).toBe(true);
@@ -168,7 +168,7 @@ describe("validateStatusWrite (exported hook module)", () => {
         if (level === "warn") warnings.push(message);
       };
       let result: GateResult | null = null;
-      // Awaiting directly proves no-throw: a rejection would fail the test.
+ // Awaiting directly proves no-throw: a rejection would fail the test.
       result = await validateStatusWrite(statusPath, { log });
       expect(result!.ok).toBe(false);
       expect(warnings.some((w) => w.includes("status.invalid-json"))).toBe(true);
@@ -185,16 +185,16 @@ describe("validateStatusWrite (exported hook module)", () => {
       const log: StatusLogger = (level, message) => {
         if (level === "warn") warnings.push(message);
       };
-      // Not named status.json.
+ // Not named status.json.
       expect(await validateStatusWrite(join(project, "package.json"), { log })).toBeNull();
-      // status.json outside the resolved harness dir (different subtree).
+ // status.json outside the resolved harness dir (different subtree).
       const stray = join(project, "dist", "status.json");
       mkdirSync(join(project, "dist"));
       writeFileSync(stray, JSON.stringify(invalidDoc));
       expect(await validateStatusWrite(stray, { log })).toBeNull();
-      // Harness status.json that does not exist yet, no doc → nothing to validate.
+ // Harness status.json that does not exist yet, no doc → nothing to validate.
       expect(await validateStatusWrite(join(project, ".mstar", "status.json"), { log })).toBeNull();
-      // A snapshot.json NOT under workflows/<id>/ is not a gated target.
+ // A snapshot.json NOT under workflows/<id>/ is not a gated target.
       const straySnapshot = join(project, ".mstar", "workflows", "snapshot.json");
       mkdirSync(join(project, ".mstar", "workflows"));
       writeFileSync(straySnapshot, JSON.stringify(invalidSnapshotDoc));
@@ -250,10 +250,10 @@ describe("validateStatusWrite (exported hook module)", () => {
   });
 
   test("default layout with plans/ inside .mstar: all three docs stay gated (W-REV-2)", async () => {
-    // Regression: classification resolved the root via `resolveHarnessDir`'s
-    // rung-3 `plans/` probe, which matched the NESTED `.mstar/plans` subdir
-    // of the default layout and returned it as the harness root — making
-    // every canonical doc fall outside the rel and silently UNGATED.
+ // Regression: classification resolved the root via `resolveHarnessDir`'s
+ // rung-3 `plans/` probe, which matched the NESTED `.mstar/plans` subdir
+ // of the default layout and returned it as the harness root — making
+ // every canonical doc fall outside the rel and silently UNGATED.
     const project = makeProject();
     const harness = join(project, ".mstar");
     mkdirSync(join(harness, "plans"), { recursive: true });
@@ -270,11 +270,11 @@ describe("validateStatusWrite (exported hook module)", () => {
       const log: StatusLogger = (level, message) => {
         if (level === "warn") warnings.push(message);
       };
-      // Root status.json lint still runs (file form).
+ // Root status.json lint still runs (file form).
       const statusResult = await validateStatusWrite(statusPath, { log });
       expect(statusResult).not.toBeNull();
       expect(statusResult!.ok).toBe(true);
-      // Snapshot kind still reaches the snapshot validator.
+ // Snapshot kind still reaches the snapshot validator.
       const snapResult = await validateStatusWrite(snapshotPath, { doc: invalidSnapshotDoc, log });
       expect(snapResult).not.toBeNull();
       expect(snapResult!.ok).toBe(false);
@@ -282,12 +282,12 @@ describe("validateStatusWrite (exported hook module)", () => {
       warnings.length = 0;
       const snapOk = await validateStatusWrite(snapshotPath, { doc: validSnapshotDoc, log });
       expect(snapOk!.ok).toBe(true);
-      // Register kind still reaches the register validator.
+ // Register kind still reaches the register validator.
       const regResult = await validateStatusWrite(registerPath, { doc: invalidRegisterDoc, log });
       expect(regResult).not.toBeNull();
       expect(regResult!.ok).toBe(false);
       expect(warnings.some((w) => w.includes("project.register.invalid-entry-list"))).toBe(true);
-      // Non-canonical snapshot (not under workflows/<id>/) stays ungated.
+ // Non-canonical snapshot (not under workflows/<id>/) stays ungated.
       const stray = join(harness, "workflows", "snapshot.json");
       writeFileSync(stray, JSON.stringify(invalidSnapshotDoc));
       warnings.length = 0;
@@ -299,21 +299,21 @@ describe("validateStatusWrite (exported hook module)", () => {
   });
 
   test("pathological double harness: inner sparse-harness docs stay gated under an outer full-marker root (W-REV-3)", async () => {
-    // Regression: classification resolves the root by marker probe FIRST —
-    // when a nested SPARSE harness (a `.mstar/` root missing one of the
-    // three full markers) sits below an outer FULL-marker root, the probe
-    // returns the OUTER root, the inner doc's rel falls outside the
-    // canonical set, and the doc is silently UNGATED. The fix retries
-    // `resolveHarnessDir` (name probe) when the probe root hit but rel is
-    // non-canonical, so inner docs stay gated.
+ // Regression: classification resolves the root by marker probe FIRST —
+ // when a nested SPARSE harness (a `.mstar/` root missing one of the
+ // three full markers) sits below an outer FULL-marker root, the probe
+ // returns the OUTER root, the inner doc's rel falls outside the
+ // canonical set, and the doc is silently UNGATED. The fix retries
+ // `resolveHarnessDir` (name probe) when the probe root hit but rel is
+ // non-canonical, so inner docs stay gated.
     const project = makeProject();
-    // Outer full-marker root at the repo root.
+ // Outer full-marker root at the repo root.
     writeFileSync(join(project, "status.json"), JSON.stringify(validDoc, null, 2));
     mkdirSync(join(project, "workflows"));
     mkdirSync(join(project, "projects"));
-    // Inner sparse harness: `.mstar/` with workflows/ + projects/ but NO
-    // status.json and NO plans/ — the marker probe skips it, the name probe
-    // still finds it.
+ // Inner sparse harness: `.mstar/` with workflows/ + projects/ but NO
+ // status.json and NO plans/ — the marker probe skips it, the name probe
+ // still finds it.
     const harness = join(project, "inner", ".mstar");
     mkdirSync(join(harness, "workflows", "wf-inner"), { recursive: true });
     mkdirSync(join(harness, "projects", "_inner"), { recursive: true });
@@ -325,7 +325,7 @@ describe("validateStatusWrite (exported hook module)", () => {
       const log: StatusLogger = (level, message) => {
         if (level === "warn") warnings.push(message);
       };
-      // Snapshot kind still reaches the snapshot validator.
+ // Snapshot kind still reaches the snapshot validator.
       const snapResult = await validateStatusWrite(snapshotPath, { doc: invalidSnapshotDoc, log });
       expect(snapResult).not.toBeNull();
       expect(snapResult!.ok).toBe(false);
@@ -333,19 +333,19 @@ describe("validateStatusWrite (exported hook module)", () => {
       warnings.length = 0;
       const snapOk = await validateStatusWrite(snapshotPath, { doc: validSnapshotDoc, log });
       expect(snapOk!.ok).toBe(true);
-      // Register kind still reaches the register validator.
+ // Register kind still reaches the register validator.
       const regResult = await validateStatusWrite(registerPath, { doc: invalidRegisterDoc, log });
       expect(regResult).not.toBeNull();
       expect(regResult!.ok).toBe(false);
       expect(warnings.some((w) => w.includes("project.register.invalid-entry-list"))).toBe(true);
-      // Root status.json kind still reaches the status validator (file absent
-      // at classification time — the write-gate scenario).
+ // Root status.json kind still reaches the status validator (file absent
+ // at classification time — the write-gate scenario).
       warnings.length = 0;
       const statusResult = await validateStatusWrite(statusPath, { doc: invalidDoc, log });
       expect(statusResult).not.toBeNull();
       expect(statusResult!.ok).toBe(false);
       expect(warnings.some((w) => w.includes("status.workflow.invalid-type"))).toBe(true);
-      // Non-canonical snapshot (not under workflows/<id>/) stays ungated.
+ // Non-canonical snapshot (not under workflows/<id>/) stays ungated.
       const stray = join(harness, "workflows", "snapshot.json");
       writeFileSync(stray, JSON.stringify(invalidSnapshotDoc));
       warnings.length = 0;
@@ -357,11 +357,11 @@ describe("validateStatusWrite (exported hook module)", () => {
   });
 
   test("custom `.mstarc` workflow_dir/project_dir: coordination docs at the DECLARED locations classify (Phase-5 F1)", async () => {
-    // Regression: classification used the hardcoded `workflows/` /
-    // `projects/` rel prefixes (and the marker probe checked the default
-    // names) — under a `.mstarc` custom layout every coordination doc fell
-    // outside the canonical set and was silently UNGATED. The fix resolves
-    // the layout dirs through the engine resolvers.
+ // Regression: classification used the hardcoded `workflows/` /
+ // `projects/` rel prefixes (and the marker probe checked the default
+ // names) — under a `.mstarc` custom layout every coordination doc fell
+ // outside the canonical set and was silently UNGATED. The fix resolves
+ // the layout dirs through the engine resolvers.
     const project = makeProject();
     const harness = join(project, ".mstar");
     mkdirSync(join(harness, "cw-wf", "wf-1"), { recursive: true });
@@ -377,24 +377,24 @@ describe("validateStatusWrite (exported hook module)", () => {
       const log: StatusLogger = (level, message) => {
         if (level === "warn") warnings.push(message);
       };
-      // Valid snapshot at the custom location → ok, no warnings.
+ // Valid snapshot at the custom location → ok, no warnings.
       const okResult = await validateStatusWrite(snapshotPath, { log });
       expect(okResult).not.toBeNull();
       expect(okResult!.ok).toBe(true);
       expect(warnings).toEqual([]);
-      // Invalid doc at the custom location reaches the snapshot validator.
+ // Invalid doc at the custom location reaches the snapshot validator.
       warnings.length = 0;
       const bad = await validateStatusWrite(snapshotPath, { doc: invalidSnapshotDoc, log });
       expect(bad).not.toBeNull();
       expect(bad!.ok).toBe(false);
       expect(warnings.some((w) => w.includes("workflow.snapshot.invalid-type"))).toBe(true);
-      // Register at the custom project dir classifies too.
+ // Register at the custom project dir classifies too.
       warnings.length = 0;
       const reg = await validateStatusWrite(registerPath, { doc: invalidRegisterDoc, log });
       expect(reg).not.toBeNull();
       expect(reg!.ok).toBe(false);
       expect(warnings.some((w) => w.includes("project.register.invalid-entry-list"))).toBe(true);
-      // Non-canonical custom-layout path (no <id> component) stays ungated.
+ // Non-canonical custom-layout path (no <id> component) stays ungated.
       const stray = join(harness, "cw-wf", "snapshot.json");
       writeFileSync(stray, JSON.stringify(invalidSnapshotDoc));
       warnings.length = 0;
@@ -406,7 +406,7 @@ describe("validateStatusWrite (exported hook module)", () => {
   });
 
   test("non-string targetPath stays silent (no paths[0] abort)", async () => {
-    // Bun path.resolve(object) → `The "paths[0]" property must be of type string, got object`.
+ // Bun path.resolve(object) → `The "paths[0]" property must be of type string, got object`.
     const entries: Array<[string, string]> = [];
     const log: StatusLogger = (level, message) => {
       entries.push([level, message]);
@@ -474,7 +474,7 @@ describe("plugin wiring (tool.execute.before)", () => {
       let warnings = restore();
       expect(warnings.some((w) => w.includes("[mstar-harness]") && w.includes("status.workflow.invalid-type"))).toBe(true);
 
-      // Non-write tools carrying a filePath must not trigger the lint.
+ // Non-write tools carrying a filePath must not trigger the lint.
       const restore2 = captureConsoleWarn();
       await beforeWrite!(
         { tool: "read", sessionID: "s1", callID: "c2" },
@@ -502,13 +502,13 @@ describe("plugin wiring (tool.execute.before)", () => {
         errors.push(String(message));
       };
       try {
-        // path alias + already-parsed object content
+ // path alias + already-parsed object content
         await beforeWrite!(
           { tool: "write", sessionID: "s1", callID: "c1" },
           { args: { path: statusPath, content: invalidDoc } },
         );
-        // Getter that flips type after the typeof snapshot would previously
-        // reach path.resolve(object) and log status.json validation aborted.
+ // Getter that flips type after the typeof snapshot would previously
+ // reach path.resolve(object) and log status.json validation aborted.
         let reads = 0;
         const flakyArgs = {
           get filePath() {
@@ -529,12 +529,12 @@ describe("plugin wiring (tool.execute.before)", () => {
 });
 
 describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)", () => {
-  // Spec: roadmap §8.5 C4 + D2 — v2 hard gates are opt-in per
-  // Assignment/compass; compass frontmatter `enforcement: hard` in the repo
-  // makes invalid status writes refused (structured result with
-  // `hardBlocked`, error-level logs, never a raw throw); flag absent →
-  // warn-only (unchanged); explicit `opts.enforcement` (write context)
-  // overrides the compass probe.
+ // Spec: roadmap §8.5 C4 + D2 — v2 hard gates are opt-in per
+ // Assignment/compass; compass frontmatter `enforcement: hard` in the repo
+ // makes invalid status writes refused (structured result with
+ // `hardBlocked`, error-level logs, never a raw throw); flag absent →
+ // warn-only (unchanged); explicit `opts.enforcement` (write context)
+ // overrides the compass probe.
   const capture = (): { entries: Array<[string, string]>; log: StatusLogger } => {
     const entries: Array<[string, string]> = [];
     const log: StatusLogger = (level, message) => {
@@ -543,7 +543,7 @@ describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)
     return { entries, log };
   };
 
-  /** Create a project with `.mstar/status.json` + an iteration compass. */
+ /** Create a project with `.mstar/status.json` + an iteration compass. */
   const makeHardRepo = (hard: boolean): { project: string; statusPath: string } => {
     const project = makeProject();
     const harness = join(project, ".mstar");
@@ -564,16 +564,16 @@ describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)
     try {
       const { entries, log } = capture();
       let result: GateResult | null = null;
-      // Awaiting directly proves no-throw: a rejection would fail the test.
+ // Awaiting directly proves no-throw: a rejection would fail the test.
       result = await validateStatusWrite(statusPath, { doc: invalidDoc, log });
       expect(result!.ok).toBe(false);
       expect(result!.hardBlocked).toBe(true);
       expect(
         entries.some(([level, text]) => level === "error" && text.includes("status.workflow.invalid-type")),
       ).toBe(true);
-      // No warn-level lines for the same violations in hard mode.
+ // No warn-level lines for the same violations in hard mode.
       expect(entries.some(([level]) => level === "warn")).toBe(false);
-      // Skill-text pointer present.
+ // Skill-text pointer present.
       expect(entries.some(([, text]) => text.includes("Enforcement: hard"))).toBe(true);
     } finally {
       rmSync(project, { recursive: true, force: true });
@@ -608,7 +608,7 @@ describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)
   });
 
   test("explicit write-context enforcement (opts.enforcement) overrides the compass probe", async () => {
-    // No compass at all — the explicit flag decides.
+ // No compass at all — the explicit flag decides.
     const project = makeProject();
     mkdirSync(join(project, ".mstar"));
     const statusPath = join(project, ".mstar", "status.json");
@@ -622,7 +622,7 @@ describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)
       expect(hard!.hardBlocked).toBe(true);
       expect(entries.some(([level]) => level === "error")).toBe(true);
 
-      // Explicit non-hard override wins over a hard compass.
+ // Explicit non-hard override wins over a hard compass.
       const { project: hardProject, statusPath: hardStatusPath } = makeHardRepo(true);
       try {
         const soft = await validateStatusWrite(hardStatusPath, {
@@ -640,12 +640,12 @@ describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)
   });
 
   test("plugin wiring (f8): edit literal replace that corrupts status.json is caught POST-patch in hard mode", async () => {
-    // Regression (audit-20260821-f8): the edit branch validated only the
-    // PRE-edit on-disk file, so an edit that turns a valid status.json
-    // invalid (version 2 -> 1) passed silently. The hook must synthesize
-    // the patched doc from the literal single `oldString` -> `newString`
-    // pair and lint the patched result. Pre-change this test is red: the
-    // pre-edit file is valid, so no logs are emitted.
+ // Regression (audit-20260821-f8): the edit branch validated only the
+ // PRE-edit on-disk file, so an edit that turns a valid status.json
+ // invalid (version 2 -> 1) passed silently. The hook must synthesize
+ // the patched doc from the literal single `oldString` -> `newString`
+ // pair and lint the patched result. Pre-change this test is red: the
+ // pre-edit file is valid, so no logs are emitted.
     const { project, statusPath } = makeHardRepo(true);
     try {
       const plugin = await MorningStarHarnessPlugin();
@@ -701,11 +701,11 @@ describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)
   });
 
   test("plugin wiring (f8): oldString absent from the file falls back to pre-edit lint (no fuzzy synthesis)", async () => {
-    // The host applies fuzzy matchers (LineTrimmed/BlockAnchor/
-    // WhitespaceNormalized) when the literal misses; the hook MUST NOT
-    // re-implement them. `oldString` never occurs in the file, and the
-    // `newString` would corrupt the doc if applied — the correct behavior
-    // is to lint the (valid) pre-edit file and stay silent.
+ // The host applies fuzzy matchers (LineTrimmed/BlockAnchor/
+ // WhitespaceNormalized) when the literal misses; the hook MUST NOT
+ // re-implement them. `oldString` never occurs in the file, and the
+ // `newString` would corrupt the doc if applied — the correct behavior
+ // is to lint the (valid) pre-edit file and stay silent.
     const { project, statusPath } = makeHardRepo(true);
     try {
       const plugin = await MorningStarHarnessPlugin();
@@ -731,9 +731,9 @@ describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)
 
   test("plugin wiring (f8): replaceAll literal edit corrupting every workflow entry is caught post-patch in hard mode", async () => {
     const { project, statusPath } = makeHardRepo(true);
-    // Two valid workflow entries WITH matching non-terminal snapshots so
-    // the pre-edit file passes the item-level lint; the replaceAll edit
-    // turns every "type": "plan" into "type": "sprint".
+ // Two valid workflow entries WITH matching non-terminal snapshots so
+ // the pre-edit file passes the item-level lint; the replaceAll edit
+ // turns every "type": "plan" into "type": "sprint".
     mkdirSync(join(project, ".mstar", "workflows", "wf-1"), { recursive: true });
     mkdirSync(join(project, ".mstar", "workflows", "wf-2"), { recursive: true });
     writeFileSync(
@@ -789,15 +789,15 @@ describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)
     }
   });
 
-  test("plugin wiring (qc3 S-3 / qc2 S): edit whose literal replace breaks JSON syntax reports invalid-doc, not migration-required", async () => {
-    // Regression (qc3 S-2/S-3 + qc2 f8): when the patched text fails
-    // JSON.parse, the hook used to pass the RAW STRING as `doc`; for the
-    // status kind the string overload of the validator treats it as a FILE
-    // PATH, reads `{}` for the missing path, and misreports
-    // `status.migration-required` instead of the true invalid-doc cause.
-    // The fix passes an explicit non-object marker (`null`) so the gate
-    // fires with `status.invalid-doc` on ALL kinds. The gate must never
-    // pass silently.
+  test("plugin wiring : edit whose literal replace breaks JSON syntax reports invalid-doc, not migration-required", async () => {
+ // Regression : when the patched text fails
+ // JSON.parse, the hook used to pass the RAW STRING as `doc`; for the
+ // status kind the string overload of the validator treats it as a FILE
+ // PATH, reads `{}` for the missing path, and misreports
+ // `status.migration-required` instead of the true invalid-doc cause.
+ // The fix passes an explicit non-object marker (`null`) so the gate
+ // fires with `status.invalid-doc` on ALL kinds. The gate must never
+ // pass silently.
     const { project, statusPath } = makeHardRepo(true);
     try {
       const plugin = await MorningStarHarnessPlugin();
@@ -821,21 +821,21 @@ describe("hard mode (compass enforcement: hard — Slice 5, roadmap §8.5 C4/D2)
       } finally {
         console.error = original;
       }
-      // The true cause is surfaced — not the string-as-path fallthrough.
+ // The true cause is surfaced — not the string-as-path fallthrough.
       expect(errors.some((e) => e.includes("[mstar-harness]") && e.includes("status.invalid-doc"))).toBe(true);
       expect(errors.some((e) => e.includes("status.migration-required"))).toBe(false);
-      // The gate fires (hard mode: error lines + hardBlocked refusal marker).
+ // The gate fires (hard mode: error lines + hardBlocked refusal marker).
       expect(errors.some((e) => e.includes("hard-gate blocked (hardBlocked=true)"))).toBe(true);
     } finally {
       rmSync(project, { recursive: true, force: true });
     }
   });
 
-  test("plugin wiring (qc1 S-004): non-unique literal WITHOUT replaceAll falls back to pre-edit lint", async () => {
-    // The same literal occurs in two workflow entries; without
-    // `replaceAll: true` the replacement is ambiguous (the host could
-    // target either span) so the hook MUST NOT synthesize — it lints the
-    // (valid) pre-edit file and stays silent.
+  test("plugin wiring : non-unique literal WITHOUT replaceAll falls back to pre-edit lint", async () => {
+ // The same literal occurs in two workflow entries; without
+ // `replaceAll: true` the replacement is ambiguous (the host could
+ // target either span) so the hook MUST NOT synthesize — it lints the
+ // (valid) pre-edit file and stays silent.
     const { project, statusPath } = makeHardRepo(true);
     mkdirSync(join(project, ".mstar", "workflows", "wf-1"), { recursive: true });
     mkdirSync(join(project, ".mstar", "workflows", "wf-2"), { recursive: true });

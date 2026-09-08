@@ -1,8 +1,6 @@
 /**
  * Engine-status pre-step catalog — the ONE unified `mstar-engine-status`
- * row appended at `agent/pre-step` (plan `20260810-dsh-entry-split` §14
- * extraction).
- *
+ * row appended at `agent/pre-step`. *
  * `preStepCatalogListener` delegates through `next()` and appends the unified
  * catalog message (watermark fields + iteration phase-gate section +
  * workspace-state digest) to the composed step messages, digest-gated per
@@ -10,7 +8,7 @@
  * (`buildCatalogSources` / `catalogSourcesFor`, Config `catalogTtlMs`) keeps
  * the hot path a timestamp compare + Map lookup between refreshes.
  *
- * v3 per-lifecycle aggregation (plan `20260819-workflow-dsh-viz` Task 1):
+ * v3 per-lifecycle aggregation :
  * the state + iteration sections aggregate the SELECTED workflow lifecycle
  * (compass v3.0.0 § Catalog selection rule — `resolveReadWorkflow` in
  * `workflow-selection.ts`): active `workflows[]` first (multi-active →
@@ -151,7 +149,7 @@ export interface CatalogCacheEntry {
 
 /**
  * The apply-scoped `harnessDir → cache key` reverse map + invalidation
- * closure (plan `20260811-panel-f4-timeliness` Task 2, decision D3): the
+ * closure : the
  * catalog cache is keyed by {@link EXPLICIT_CACHE_KEY} or the session cwd,
  * while ledger records (dispatch/settle) identify the affected workspace by
  * `{HARNESS_DIR}` — the reverse map bridges the two so a ledger change
@@ -223,8 +221,7 @@ export function buildCatalogSources(ctx: Context, harnessDir: string | null): Ms
  * mid-session plan/compass/residual staleness window the user opted into;
  * Config `catalogTtlMs`).
  *
- * The `harnessDir → key` reverse map (plan `20260811-panel-f4-timeliness`
- * Task 2, decision D3) is registered on BOTH hit and build: a later ledger
+ * The `harnessDir → key` reverse map  is registered on BOTH hit and build: a later ledger
  * record (dispatch/settle) for this harness dir can then invalidate exactly
  * this cache entry through the apply-bound closure (see
  * `createCatalogInvalidation`) — the 60s TTL no longer bounds ledger-change
@@ -334,7 +331,7 @@ function renderAgentFlowLine(flow: AgentFlowView): string {
     : `${[latest.role, [latest.planId, latest.taskId !== null ? `#${latest.taskId}` : null]
         .filter((part): part is string => part !== null)
         .join('')].filter((part) => part !== '').join('→')} ${hhmm(latest.ts)}`
-  // Window-full marker (qc3 F-004 fix-wave): the read window caps at
+  // Window-full marker : the read window caps at
   // AGENT_FLOW_DEFAULT_LIMIT (50), so an events array AT the cap reads like
   // a total — annotate it. The marker is approximate when the ledger holds
   // exactly `limit` events (the window is full either way; distinguishing
@@ -377,7 +374,7 @@ function harnessStateSource(harnessDir: string | null): MstarHarnessState | null
   if (!existsSync(statusPath)) return null
   try {
     const selection = resolveReadWorkflow(harnessDir)
-    // ONE residual rollup per catalog build (qc3 S-1 fix-wave): the state
+    // ONE residual rollup per catalog build : the state
     // section AND the project rollup zone consume the same register parse —
     // never two independent `residualRollup` walks per refresh.
     const rollup = residualRollup(harnessDir)
@@ -404,7 +401,7 @@ function harnessStateSource(harnessDir: string | null): MstarHarnessState | null
     const snapshotPath = join(harnessDir, selection.dir, WORKFLOW_SNAPSHOT_FILE)
     let snapshot: Record<string, unknown>
     if (!existsSync(snapshotPath)) {
-      // S-d fix-wave: an active/terminal selection whose snapshot is
+      // S-d: an active/terminal selection whose snapshot is
       // MISSING degrades to a STRUCTURED selection error (the state section
       // stays PRESENT with the operator-visible reason and empty
       // aggregates) — never a silent null state section. (`readJson` would
@@ -450,7 +447,7 @@ function harnessStateSource(harnessDir: string | null): MstarHarnessState | null
           // done_at passthrough: trimmed string; missing/empty → null (an
           // ALWAYS-present nullable scalar — lossless JSON, never omitted).
           doneAt: str(row.done_at),
-          // Iteration memberships (plan 20260813-panel-quick-fixes Task 2):
+          // Iteration memberships :
           // `metadata.iteration_refs` array of iteration ids; missing/non-array
           // → [] (an ALWAYS-present array — lossless JSON, never omitted).
           iterationRefs: iterationRefsOf(metadata?.iteration_refs),
@@ -495,7 +492,7 @@ function harnessStateSource(harnessDir: string | null): MstarHarnessState | null
       // cycle as the sibling state rows (one bounded ledger read per TTL
       // refresh; spec §2.2). v3: the ledger lives in the SELECTED workflow
       // dir (`workflows/<id>/agent-flow.jsonl`), never the root file.
-      // Fix-wave (qc1 F-001): a MISSING ledger reads as the EMPTY view
+      // Fix-wave : a MISSING ledger reads as the EMPTY view
       // (recording hasn't started — the panel shows the no-dispatches-yet
       // empty state per the plan promise); only an UNREADABLE ledger → null
       // (advisory — the agent-flow line is absent). The state section as a
@@ -509,11 +506,11 @@ function harnessStateSource(harnessDir: string | null): MstarHarnessState | null
 }
 
 /**
- * The shared empty-aggregate state for a selection failure (S-d fix-wave):
+ * The shared empty-aggregate state for a selection failure (S-d :
  * the state section stays PRESENT with the operator-visible reason and
  * empty aggregates — never a root v1 read, never a silent null state. The
  * project rollup zone still shows the workspace-level residual counts (the
- * rollup is computed once per build — qc3 S-1 — and passed in).
+ * rollup is computed once per build — — and passed in).
  */
 function selectionErrorState(
   selection: WorkflowSelectionView,
@@ -553,7 +550,7 @@ function selectionErrorState(
  * registers / no open entries → `openResiduals: []`. Unreadable roadmaps
  * are skipped (advisory).
  *
- * qc3 S-1 (fix-wave): the open-residual rollup is computed ONCE per catalog
+ * the open-residual rollup is computed ONCE per catalog
  * build by the caller and passed in — this zone never re-walks the project
  * registers itself.
  */
@@ -613,7 +610,7 @@ function residualRollup(harnessDir: string): { residuals: HarnessResidualView[];
         for (const finding of findings) {
           const entry = asRecord(finding)
           if (entry === undefined) continue
-          // Open-parity FIRST (W-A fix-wave): a closed register entry
+          // Open-parity FIRST (W-A : a closed register entry
           // (resolved / waived / closed lifecycle) is NOT an open residual
           // — the engine's `isOpenResidual` parity — so it must never
           // count toward the severity rollup NOR the detail view. The
@@ -880,10 +877,7 @@ function iterationGateSource(harnessDir: string | null): MstarIterationGateView 
  * workspace root and TTL-refreshed — Config `catalogTtlMs`).
  * @param ttlMs - catalog refresh interval in milliseconds.
  * @param register - the apply-scoped `harnessDir → cache key` reverse-map
- * registration (plan `20260811-panel-f4-timeliness` Task 2 — keeps every
- * workspace's entry invalidatable by a ledger change; see
- * `createCatalogInvalidation`).
- * @param digests - per agent+workspace turn digests (last rendered text)
+ * registration. * @param digests - per agent+workspace turn digests (last rendered text)
  * for the digest-gated re-emission.
  * @param payload - the proposed step the loop is about to enter.
  * @param next - the remaining pre-step chain; its value is the delegated decision.

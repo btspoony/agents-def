@@ -1,6 +1,6 @@
 /**
  * Task 3 — native-first role-persona delivery (plan
- * `20260831-dsh-alpha2-optional-fallbacks`): a role-matched one-shot start
+ * ): a role-matched one-shot start
  * merges the persona into the request's NATIVE `persona` slot
  * (`@deepseek-ai/dsh-subagent` `SubagentStartRequest.persona`); the additive
  * `mstar:role-persona` system-prompt section is GONE. dsh composes the
@@ -22,8 +22,7 @@
  * - persona delivery is fallbacks-independent: unmounted AND mounted
  *   fallbacks compositions both deliver (fallbacks stays seeds + advisory).
  *
- * Persona source precedence (plan `20260815-dsh-fallbacks-personas` Task 3,
- * unchanged): an explicit `request.persona` (caller intent) wins →
+ * Persona source precedence (* unchanged): an explicit `request.persona` (caller intent) wins →
  * `Config.rolePersonas[executeAs]` → bundled `harness-agents/` mirror
  * default → skip. `PERSONA_INTERPOLATION_HAZARD` validation stays
  */
@@ -310,7 +309,7 @@ describe('native persona channel — SubagentStartRequest.persona merge', () => 
 
   it('(h) containment — a throwing log sink never escapes; a throwing merge degrades with one warn and the original request', async () => {
     const { app, provider } = await bootWithProvider('fake-spawn', { personaCapability: true })
-    // (1) Log containment (plan QC F-002): the merge still lands while the
+    // (1) Log containment : the merge still lands while the
     // sink throws — the delivery debug never escapes the channel.
     const sinkThrows = setRolePersonaLogger(() => { throw new Error('sink exploded') })
     try {
@@ -359,7 +358,7 @@ describe('native persona channel — SubagentStartRequest.persona merge', () => 
     }
   })
 
-  // ---- Task 3 lookup chain (plan 20260815-dsh-fallbacks-personas): explicit request → config → mirror default → skip ----
+  // ---- Task 3 lookup chain : explicit request → config → mirror default → skip ----
 
   it('(p) an explicit request persona (caller intent) wins over the role persona', async () => {
     const { app, provider } = await bootWithProvider('fake-spawn', { personaCapability: true })
@@ -476,7 +475,7 @@ describe('native persona channel — SubagentStartRequest.persona merge', () => 
     const fixture = await fixtureMirror([[`${EXECUTE_AS}.md`, MIRROR_SHELL]])
     // A trap shell OUTSIDE the fixture mirror, reachable via `../` join
     // normalization — if the role id reached the filesystem, its persona
-    // would be merged (the exact QC F-001 attack path through the
+    // would be merged (the exact attack path through the
     // Assignment-header parse).
     const stem = `evil-${Math.random().toString(36).slice(2)}`
     const trap = join(tmpdir(), `${stem}.md`)

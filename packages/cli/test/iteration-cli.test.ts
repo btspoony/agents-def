@@ -73,7 +73,7 @@ interface RunResult {
 }
 
 /**
- * Spawn env with ambient harness env vars pinned out (qc3 F-4): the CLI
+ * Spawn env with ambient harness env vars pinned out: the CLI
  * resolves harness dirs from MSTAR_HARNESS_DIR / MSTAR_CONTROL_ROOT ahead
  * of probing, and SDD_DIR redirects default outfile paths — ambient values
  * would redirect every fixture spuriously.
@@ -298,7 +298,7 @@ plans: ["a, b", "c"]
     });
   });
 
-  test("plans: ['a, b'] → exit 1: comma inside single quotes is ambiguous, not split (qc2 F-001)", () => {
+  test("plans: ['a, b'] → exit 1: comma inside single quotes is ambiguous, not split", () => {
     withFixtures((dir, statusPath, compassPath) => {
       writeFileSync(
         compassPath,
@@ -474,7 +474,7 @@ plans: ["ok"]
     });
   });
 
-  test("hostile workflow id (path traversal) is rejected before any read, exit 1 (qc2 S-2)", () => {
+  test("hostile workflow id (path traversal) is rejected before any read, exit 1", () => {
     withFixtures((dir, _statusPath, compassPath) => {
       for (const bad of ["../../etc", "a/b", "..", "."]) {
         const result = runCli(["iteration", "gate", "--workflow", bad, "--harness", dir, "--compass", compassPath]);

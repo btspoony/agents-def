@@ -9,7 +9,7 @@
  * the iteration-gate view mapping (shared by the catalog and the tools),
  * and the canonical status file name.
  *
- * Module boundary (plan `20260810-dsh-entry-split`): gates import from this
+ * Module boundary : gates import from this
  * module by explicit relative path (no barrel); the entry re-exports the
  * public names verbatim — consumers import through `src/index.ts`.
  */
@@ -98,9 +98,7 @@ export interface Config {
   roleMap?: Record<string, string>
   /**
    * mstar role id → persona text — the native persona channel's only
-   * payload source (plan `20260814-dsh-fallbacks-integration` Task 2;
-   * channel reworked onto the native `SubagentStartRequest.persona` slot by
-   * plan `20260831-dsh-alpha2-optional-fallbacks` Task 3). A role-matched
+   * payload source . A role-matched
    * one-shot start merges the persona into the request's native `persona`
    * slot — dsh composes it as the scoped shadowing `deployment:persona`
    * section on the child, persists it in the child descriptor, and reapplies
@@ -122,7 +120,7 @@ export interface Config {
    */
   rolePersonas?: Record<string, string>
   /**
-   * Workflow/ralph gate mode (plan `20260815-dsh-workflow-gate` W-B3, AC-7):
+   * Workflow/ralph gate mode :
    * `off` disables the gate entirely (workflow/ralph calls pass through
    * untouched, NO verdict row); `warn` (default) logs an advisory for
    * policy-unknown fan-out without ever blocking; `ask` routes first-seen
@@ -139,7 +137,7 @@ export interface Config {
    */
   workflowNames?: string[]
   /**
-   * Goal-bridge round cap (plan `20260816-dsh-nb2-goal-bridge` Task 2): the
+   * Goal-bridge round cap : the
    * flat `maxGoalRounds` the goal bridge passes to the goals service when it
    * mirrors the active iteration objective (bounds autonomous Phase 2
    * loops — the service itself throws on resume past the cap). Absent →
@@ -168,7 +166,7 @@ export const PERSONA_INTERPOLATION_HAZARD = /\{\{[\s\S]*\}\}/
 
 /**
  * Screen ONE dynamic string before it is embedded into dsh system-prompt
- * section/context text (plan QC fix wave W-1): break every COMPLETE
+ * section/context text (): break every COMPLETE
  * `{{...}}` group (the renderer's STRICT `interpolate` throws on any `{{`
  * paired with a later `}}` — unknown variable, malformed group, undefined
  * value), while leaving a LONE `{{` without a later `}}` verbatim (upstream
@@ -223,7 +221,7 @@ export const Config: z<Config> = z.object({
       return value
     },
   ).default(undefined as unknown as Record<string, string>),
-  // Workflow/ralph gate (plan `20260815-dsh-workflow-gate`): `workflowGate`
+  // Workflow/ralph gate : `workflowGate`
   // defaults to 'warn' (no surprise hard-block — the gate is advisory-only
   // unless the deployment opts into ask/hard); `workflowNames` preserves
   // omission via `.default(undefined)` (schemastery empty-value default
@@ -232,7 +230,7 @@ export const Config: z<Config> = z.object({
   // the dispatch/persona array keys so absence stays observable).
   workflowGate: z.union(['off', 'warn', 'ask', 'hard']).default('warn'),
   workflowNames: z.array(z.string()).default(undefined as unknown as string[]),
-  // Goal-bridge round cap (plan `20260816-dsh-nb2-goal-bridge` Task 2):
+  // Goal-bridge round cap :
   // flat numeric key preserving omission via `.default(undefined)` (the
   // `catalogTtlMs` precedent) — the module resolves the 256 fallback, so
   // absence stays observable at the Config boundary.
@@ -252,7 +250,7 @@ export function asRecord(value: unknown): Record<string, unknown> | undefined {
 
 /**
  * Cap on the plan / lease rows joined into the `<mstar_engine_status>`
- * catalog state lines (plan `20260830-dsh-catalog-cap` D1): ONE catalog-owned
+ * catalog state lines : ONE catalog-owned
  * constant shared by the `plans:` and `leases:` joins so an oversized
  * workflow snapshot cannot balloon the single-line catalog state section.
  * Numeric precedent: `DIGEST_PLAN_CAP` in `system-prompt.ts` (digest-side,
@@ -272,7 +270,7 @@ export const CATALOG_STATE_JOIN_LIMIT = 8
  * (`length === 0` → `none` / `none registered` / `none active`) — this
  * helper is never reached for empty arrays.
  *
- * Hoisted from `system-prompt.ts` (plan `20260830-dsh-catalog-cap` D3) so
+ * Hoisted from `system-prompt.ts`  so
  * the GLOBAL digest and the catalog state lines share ONE join-capping
  * implementation; `_shared.ts` imports no gates-local module, so no import
  * cycle is introduced.
@@ -362,8 +360,7 @@ export function packagedSkillsDir(): string | undefined {
 /**
  * Resolve the plugin package's own `harness-agents/` mirror (synced from the
  * repo root by `bundle-assets` at build time; gitignored) — the
- * zero-config role-persona default source (plan
- * `20260815-dsh-fallbacks-personas` Task 3). Same dual-depth probe semantics
+ * zero-config role-persona default source. Same dual-depth probe semantics
  * as {@link resolvePackagedSkillsDir}: `'../harness-agents'` (dist layout
  * candidate) then `'../../harness-agents'` (source-layout candidate);
  * `src/harness-agents` is non-canonical and skipped shallow-first.

@@ -6,9 +6,9 @@ status: completed
 iteration_base_branch: dev-dsh
 target_branch: dev-dsh
 plans:
-  - 20260808-dsh-package-core
-  - 20260808-dsh-host-adapter
-  - 20260808-dsh-seams-bundle
+  - 00000808-dsh-package-core
+  - 00000808-dsh-host-adapter
+  - 00000808-dsh-seams-bundle
 ---
 
 # v2.1.0 Delivery Compass (fixture: real frontmatter, trimmed body)

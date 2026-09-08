@@ -8,7 +8,7 @@
  * `none`, never crash.
  *
  * The branches block was removed from the sidebar in this task (moved to the
- * iteration zone, plan 20260810-panel-canvas-zones); the branch anchor fields
+ * iteration zone); the branch anchor fields
  * stay in the catalog source (the iteration zone consumes them).
  */
 

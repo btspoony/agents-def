@@ -1,6 +1,6 @@
 /**
  * Empty-state render tests for the no-harness branch (plan
- * 20260812-panel-f5-agent-layout Task 3): when the catalog source carries no
+ *  Task 3): when the catalog source carries no
  * harness (`harnessDir === null && state === null && iteration == null`), the
  * panel renders a CENTERED inactive-state card — icon (`data-mstar-empty-icon`)
  * + title (the reused `empty.no-harness` key, `data-mstar-empty="no-harness"`)
@@ -151,7 +151,7 @@ function panelHtml(
 
 /* ------------------------------- tests -------------------------------- */
 
-describe('workflow panel — no-harness centered inactive state (plan 20260812-panel-f5-agent-layout T3)', () => {
+describe('workflow panel — no-harness centered inactive state ', () => {
   it('no harness → centered inactive-state card (icon + title + hint + freshness), no tabs / sidebar / meta dock', () => {
     const html = panelHtml(noHarnessSource)
     expect(html).toContain('data-mstar-panel="no-harness"')

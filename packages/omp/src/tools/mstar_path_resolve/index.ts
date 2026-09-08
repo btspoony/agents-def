@@ -12,7 +12,7 @@
  * code.
  *
  * `resolveWorkflowDir` / `resolveProjectDir` are P1-only engine exports
- * absent from the published floor `^2.0.2` (qc3 F-001 / fix-wave W-B) —
+ * absent from the published floor `^2.0.2`  —
  * they come from a DYNAMIC engine import. On a stale engine the tool keeps
  * working with the six v1-era symbols and skips the two v3 dirs with a
  * one-time warning (never a module-link crash, never a silent drop).
@@ -39,14 +39,14 @@ function result(text: string, details: unknown, isError: boolean): AgentToolResu
 let workflowProjectDirWarned = false;
 
 /**
- * Resolve the two v3 subdirs from a DYNAMIC engine import (fix-wave W-B):
+ * Resolve the two v3 subdirs from a DYNAMIC engine import :
  * missing exports degrade to `null` + a one-time warning line — the six
  * v1-era symbols still resolve.
  */
 async function resolveV3Dirs(pi: CustomToolAPI): Promise<{ workflowDir: string | null; projectDir: string | null; warning: string | null }> {
-  // Dynamic import (fix-wave W-B): static named imports of these exports
-  // would fail at module link on published engines (^2.0.2 floor) and
-  // silently drop the tool from /extensions.
+ // Dynamic import : static named imports of these exports
+ // would fail at module link on published engines (^2.0.2 floor) and
+ // silently drop the tool from /extensions.
   const engine = await import("@mstar-harness/engine");
   if (typeof engine.resolveWorkflowDir !== "function" || typeof engine.resolveProjectDir !== "function") {
     let warning: string | null = null;

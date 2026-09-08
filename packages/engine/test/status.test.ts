@@ -5,30 +5,30 @@
  *
  * Spec sources (each test cites the skill/reference section it enforces):
  * - status.json schema + required fields + root-only `residual_findings`
- *   (reject dual-write under `metadata.residual_findings`):
- *   `skills/mstar-artifacts/references/status-and-residuals.md`
- *   § Basic structure + § General constraints ("Init with `residual_findings`:
- *   {}; no dual-write with legacy side") + § Common queries (legacy read path).
+ * (reject dual-write under `metadata.residual_findings`):
+ * `skills/mstar-artifacts/references/status-and-residuals.md`
+ * § Basic structure + § General constraints ("Init with `residual_findings`:
+ * {}; no dual-write with legacy side") + § Common queries (legacy read path).
  * - Severity enum + legacy `"warning"` → `low` normalization (read + rollup):
- *   § "Residual findings: `severity` (SSOT, machine field)" — allowed values
- *   `critical|high|medium|low|nit`; `warning`/`Major`/non-English forbidden in
- *   JSON; legacy `"severity": "warning"` is read and rolled up as `low`.
- *   `null`/`""` → `medium` (rollup `norm_sev` semantics).
+ * § "Residual findings: `severity` (SSOT, machine field)" — allowed values
+ * `critical|high|medium|low|nit`; `warning`/`Major`/non-English forbidden in
+ * JSON; legacy `"severity": "warning"` is read and rolled up as `low`.
+ * `null`/`""` → `medium` (rollup `norm_sev` semantics).
  * - Findings cleanup modes (zero-residual vs allow-residual; blocker-defer
- *   definition; nit/waived rules): § Findings cleanup modes. v3 relocation:
- *   the gate reads the project register (`projects/<id>/residuals.json`,
- *   one entry per plan-id key) instead of the v1 root `residual_findings`;
- *   the plan-metadata `findings_cleanup` mirror is deleted (no dual-track).
+ * definition; nit/waived rules): § Findings cleanup modes. v3 relocation:
+ * the gate reads the project register (`projects/<id>/residuals.json`,
+ * one entry per plan-id key) instead of the v1 root `residual_findings`;
+ * the plan-metadata `findings_cleanup` mirror is deleted (no dual-track).
  * - Rollup aggregates (total_open / by_severity / by_target / by_plan):
- *   § `metadata.tech_debt_summary` (optional rollup) — canonical compute is
- *   `techDebtRollup` (engine; no CLI form). v3 relocation: the rollup
- *   aggregates project registers under `{PROJECT_DIR}`; the v1 stored-summary
- *   drift check (`metadata.tech_debt_summary`) is deleted — the register is
- *   the source of truth, so `stored` is always null and the retained
- *   `checks`/`overall` fields report DRIFT (export-surface compatibility
- *   until the P2 CLI cutover).
+ * § `metadata.tech_debt_summary` (optional rollup) — canonical compute is
+ * `techDebtRollup` (engine; no CLI form). v3 relocation: the rollup
+ * aggregates project registers under `{PROJECT_DIR}`; the v1 stored-summary
+ * drift check (`metadata.tech_debt_summary`) is deleted — the register is
+ * the source of truth, so `stored` is always null and the retained
+ * `checks`/`overall` fields report DRIFT (export-surface compatibility
+ * until the P2 CLI cutover).
  * - `ValidationResult`/`GateResult` shapes + severity machine SSOT:
- *   `packages/engine/src/core.ts` (roadmap §8.5 C2/C4).
+ * `packages/engine/src/core.ts` (roadmap §8.5 C2/C4).
  */
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -93,7 +93,7 @@ function entry(overrides: Record<string, unknown> = {}): Record<string, unknown>
     id: "R1",
     title: "Finding title",
     severity: "low",
-    source: "QC-#1 qc1.md F-001 @ <review-range>",
+    source: "QC-#1 qc1.md F-101 @ <review-range>",
     scope: "src/example.ts",
     decision: "defer",
     owner: "@fullstack-dev",
@@ -124,7 +124,7 @@ function doc(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   };
 }
 
-/** Valid v2 status document (plan Task 3 — `{ version: 2, updated_at, workflows[] }`). */
+/** Valid v2 status document ( — `{ version: 2, updated_at, workflows[] }`). */
 function v2doc(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     version: 2,
@@ -245,8 +245,8 @@ describe("validatePlanRow", () => {
   });
 
   test("empty-string id / plan_id are violations (non-empty required)", () => {
-    // Spec: qc2 F-010 — id/plan_id must be non-empty strings, same as
-    // title/file (validateNonEmptyString).
+ // Spec: — id/plan_id must be non-empty strings, same as
+ // title/file (validateNonEmptyString).
     violationCodes("status.plan-row.invalid-id")(validatePlanRow(row({ id: "  " })));
     violationCodes("status.plan-row.invalid-plan-id")(validatePlanRow(row({ plan_id: "" })));
     const { id: _drop, ...rest } = row({ plan_id: "" });
@@ -255,8 +255,8 @@ describe("validatePlanRow", () => {
   });
 
   test("cross-field invariant: status Done must not carry an execution_lease", () => {
-    // Spec: qc2 F-010 — the lease protocol says Done-with-lease never exists;
-    // the Done authority deletes the lease in the same update as status Done.
+ // Spec: — the lease protocol says Done-with-lease never exists;
+ // the Done authority deletes the lease in the same update as status Done.
     const gate = validatePlanRow(
       row({ status: "Done", execution_lease: { holder: "h", claimed_at: "2026-08-08", worktree_path: "/wt", working_branch: "b" } }),
     );
@@ -272,8 +272,8 @@ describe("validateResidual", () => {
   });
 
   test("non-object residual entry is rejected (string / number / null / array)", () => {
-    // Locks existing fail-loud behavior (status.ts:266-268) — no silent
-    // pass-through for entries that cannot even be inspected.
+ // Locks existing fail-loud behavior (status.ts:266-268) — no silent
+ // pass-through for entries that cannot even be inspected.
     for (const value of ["R1", 42, null, ["R1"]]) {
       const result = validateResidual(value);
       expect(result.ok).toBe(false);
@@ -324,7 +324,7 @@ describe("validateResidual", () => {
     ).toEqual([]);
   });
 
-  test("closed_at format is enforced even when lifecycle is present (qc2 F-009)", () => {
+  test("closed_at format is enforced even when lifecycle is present ", () => {
     violationCodes("status.residual.invalid-closed-at")(
       validateResidual(entry({ lifecycle: "resolved", closed_at: "not-a-date", closure_note: "x" })),
     );
@@ -334,8 +334,8 @@ describe("validateResidual", () => {
   });
 
   test("closed lifecycles require closed_at + closure_note (status-and-residuals.md § lifecycle)", () => {
-    // Spec: "On close: set closed_at (YYYY-MM-DD) and closure_note" — every
-    // closed lifecycle (resolved/waived/superseded/duplicate) must be complete.
+ // Spec: "On close: set closed_at (YYYY-MM-DD) and closure_note" — every
+ // closed lifecycle (resolved/waived/superseded/duplicate) must be complete.
     for (const lifecycle of ["resolved", "waived", "superseded", "duplicate"]) {
       const incomplete = validateResidual(entry({ lifecycle }));
       expect(incomplete.ok).toBe(false);
@@ -345,7 +345,7 @@ describe("validateResidual", () => {
     const closedWithAtOnly = validateResidual(entry({ lifecycle: "resolved", closed_at: "2026-08-07" }));
     expect(violationsOf(closedWithAtOnly)).toContain("status.residual.closed-missing-closure-note");
     expect(violationsOf(closedWithAtOnly)).not.toContain("status.residual.closed-missing-closed-at");
-    // An open entry never needs close fields.
+ // An open entry never needs close fields.
     expect(validateResidual(entry({ lifecycle: "open" })).ok).toBe(true);
   });
 });
@@ -385,16 +385,16 @@ describe("validateStatusV2", () => {
     expect(violationsOf(result)).toContain("status.migration-required");
   });
 
-  test("v1-shaped input (root residual_findings) errors MIGRATION_REQUIRED even with version: 2 (QC wave-1 W-C)", () => {
-    // The v1-disguise hole: a v2 doc carrying the other v1 root surface —
-    // residual_findings (keyed by plan id, arrays of entries) — must fail
-    // closed like root plans[], not pass as "migrated".
+  test("v1-shaped input (root residual_findings) errors MIGRATION_REQUIRED even with version: 2 ", () => {
+ // The v1-disguise hole: a v2 doc carrying the other v1 root surface —
+ // residual_findings (keyed by plan id, arrays of entries) — must fail
+ // closed like root plans[], not pass as "migrated".
     const withEntries = validateStatusV2(v2doc({ residual_findings: { "plan-a": [{ id: "R1" }] } }));
     expect(withEntries.ok).toBe(false);
     expect(violationsOf(withEntries)).toContain("status.migration-required");
     expect(withEntries.violations.map((v) => v.message).join(" ")).toContain("mstar migrate");
-    // Presence of the key at all is v1-shaped (v1 init template carries
-    // `residual_findings: {}`), even when empty.
+ // Presence of the key at all is v1-shaped (v1 init template carries
+ // `residual_findings: {}`), even when empty.
     const empty = validateStatusV2(v2doc({ residual_findings: {} }));
     expect(empty.ok).toBe(false);
     expect(violationsOf(empty)).toContain("status.migration-required");
@@ -490,7 +490,7 @@ describe("validateStatusV2", () => {
       }
     });
 
-    test("root entry type/started_at are cross-checked against the snapshot (QC wave-1 S-c)", async () => {
+    test("root entry type/started_at are cross-checked against the snapshot ", async () => {
       const dir = harnessRoot("status-v2-mismatch-");
       try {
         await writeRunningSnapshot(dir, "wf-1"); // snapshot type plan, started_at 2026-08-19T08:00:00Z
@@ -522,13 +522,13 @@ describe("validateStatusV2", () => {
       }
     });
 
-    test("path input: listed entry whose snapshot is a symlink escaping the harness is a violation (QC wave-1 S-f)", async () => {
+    test("path input: listed entry whose snapshot is a symlink escaping the harness is a violation ", async () => {
       const dir = harnessRoot("status-v2-symlink-escape-");
       const outside = harnessRoot("status-v2-symlink-outside-");
       try {
-        // Real snapshot physically OUTSIDE the harness; `workflows/wf-1` is
-        // a symlink to it. The lexical path is harness-relative and exists,
-        // but the resolved path escapes the harness — fail closed.
+ // Real snapshot physically OUTSIDE the harness; `workflows/wf-1` is
+ // a symlink to it. The lexical path is harness-relative and exists,
+ // but the resolved path escapes the harness — fail closed.
         await writeRunningSnapshot(outside, "wf-1");
         mkdirSync(join(dir, "workflows"));
         symlinkSync(join(outside, "workflows", "wf-1"), join(dir, "workflows", "wf-1"), "dir");
@@ -545,10 +545,10 @@ describe("validateStatusV2", () => {
     test("path input: a symlink resolving INSIDE the harness still validates clean (location, not symlink presence, is the invariant)", async () => {
       const dir = harnessRoot("status-v2-symlink-inside-");
       try {
-        // `workflows/wf-1` is a symlink to `workflows/real-wf-1` — the
-        // resolved snapshot still physically lives under the harness, so
-        // the invariant holds (the check is location-based, not
-        // symlink-presence-based).
+ // `workflows/wf-1` is a symlink to `workflows/real-wf-1` — the
+ // resolved snapshot still physically lives under the harness, so
+ // the invariant holds (the check is location-based, not
+ // symlink-presence-based).
         await writeRunningSnapshot(dir, "real-wf-1");
         symlinkSync(join(dir, "workflows", "real-wf-1"), join(dir, "workflows", "wf-1"), "dir");
         const statusPath = join(dir, "status.json");
@@ -609,10 +609,10 @@ describe("registerWorkflow / unregisterWorkflow (root writers under the root-fil
     const dir = await harnessWithRunningSnapshot("status-register-locked-");
     try {
       const statusPath = join(dir, "status.json");
-      // Locking is the CALLER's duty (registerWorkflow and the audit
-      // promote path hold the root lock); the helper performs the same
-      // idempotent upsert + validation as registerWorkflow — missing root
-      // initialized, entry appended, doc validated, atomic write.
+ // Locking is the CALLER's duty (registerWorkflow and the audit
+ // promote path hold the root lock); the helper performs the same
+ // idempotent upsert + validation as registerWorkflow — missing root
+ // initialized, entry appended, doc validated, atomic write.
       const doc = await withStatusWriteLock(statusPath, () => registerWorkflowEntryLocked(statusPath, entry));
       expect(doc.version).toBe(2);
       expect(doc.workflows).toEqual([entry]);
@@ -631,9 +631,9 @@ describe("registerWorkflow / unregisterWorkflow (root writers under the root-fil
     try {
       const statusPath = join(dir, "status.json");
       await registerWorkflow(statusPath, entry);
-      // Re-registering the same id must not duplicate. Fields that mirror
-      // the snapshot (type/started_at — QC wave-1 S-c cross-check) cannot
-      // drift in a root update, so the upsert carries the identical entry.
+ // Re-registering the same id must not duplicate. Fields that mirror
+ // the snapshot (type/started_at cross-check) cannot
+ // drift in a root update, so the upsert carries the identical entry.
       await registerWorkflow(statusPath, { ...entry });
       const onDisk = readJson(statusPath);
       expect((onDisk.workflows as unknown[]).length).toBe(1);
@@ -717,7 +717,7 @@ describe("registerWorkflow / unregisterWorkflow (root writers under the root-fil
       rmSync(dir, { recursive: true, force: true });
     }
   });
-  test("registerWorkflow fails loud when the root file lies outside the store root (qc3 F-201); nothing written", async () => {
+  test("registerWorkflow fails loud when the root file lies outside the store root ; nothing written", async () => {
     const root = tmpRoot("status-register-outside-");
     const other = tmpRoot("status-outside-");
     setArtifactStore(createFsStore(root));
@@ -733,7 +733,7 @@ describe("registerWorkflow / unregisterWorkflow (root writers under the root-fil
     }
   });
 
-  test("unregisterWorkflow fails loud when the root file lies outside the store root (qc3 F-201); nothing written", async () => {
+  test("unregisterWorkflow fails loud when the root file lies outside the store root ; nothing written", async () => {
     const root = tmpRoot("status-unregister-outside-");
     const other = tmpRoot("status-outside-");
     setArtifactStore(createFsStore(root));
@@ -750,7 +750,7 @@ describe("registerWorkflow / unregisterWorkflow (root writers under the root-fil
   });
 });
 
-describe("findingsCleanupGate — project register input (v3 relocation, QC wave-1 W-E array schema)", () => {
+describe("findingsCleanupGate — project register input (array schema)", () => {
   function register(entries: Record<string, unknown[]>): Record<string, unknown> {
     return { entries };
   }
@@ -811,12 +811,12 @@ describe("findingsCleanupGate — project register input (v3 relocation, QC wave
     expect(result.violations).toEqual([]);
   });
 
-  test("a non-array entry value fails closed with a violation — never a TypeError (QC wave-1 S-006)", () => {
-    // Malformed register (pre-wave schema holdover / hand-edited doc): the
-    // plan-id key maps to an object instead of an array. The gate must
-    // return the same invalid-entry-list violation as the register
-    // validator — not throw `entries is not iterable` (`.length` on an
-    // object is undefined, so the old length-0 guard did not intercept).
+  test("a non-array entry value fails closed with a violation — never a TypeError ", () => {
+ // Malformed register (pre-wave schema holdover / hand-edited doc): the
+ // plan-id key maps to an object instead of an array. The gate must
+ // return the same invalid-entry-list violation as the register
+ // validator — not throw `entries is not iterable` (`.length` on an
+ // object is undefined, so the old length-0 guard did not intercept).
     const reg = { entries: { "plan-a": { id: "RAN-1", decision: "accept" } } };
     const result = findingsCleanupGate(reg as Parameters<typeof findingsCleanupGate>[0], "plan-a");
     expect(result.ok).toBe(false);
@@ -824,9 +824,9 @@ describe("findingsCleanupGate — project register input (v3 relocation, QC wave
   });
 
   test("every open entry of a plan is checked (array schema — one bad entry fails the plan)", () => {
-    // W-E array semantics: a plan can hold 2+ residuals; each open entry is
-    // evaluated, so a single fixable finding blocks zero-residual even when
-    // a sibling is a true blocker-defer.
+ // W-E array semantics: a plan can hold 2+ residuals; each open entry is
+ // evaluated, so a single fixable finding blocks zero-residual even when
+ // a sibling is a true blocker-defer.
     const reg = register({
       "plan-a": [
         entry({ id: "R1", decision: "defer", target: "next iteration" }),
@@ -838,8 +838,8 @@ describe("findingsCleanupGate — project register input (v3 relocation, QC wave
       mode: "zero-residual",
     });
     expect(result.ok).toBe(false);
-    // The fixable R2 is flagged; the true blocker-defer R1 and the closed
-    // R3 contribute no violation.
+ // The fixable R2 is flagged; the true blocker-defer R1 and the closed
+ // R3 contribute no violation.
     expect(violationsOf(result)).toContain("findings.zero-residual-open-fixable");
     expect(result.violations.map((v) => v.message).join(" ")).toContain("R#R2");
     expect(result.violations.map((v) => v.message).join(" ")).not.toContain("R#R1");
@@ -858,8 +858,8 @@ describe("findingsCleanupGate — project register input (v3 relocation, QC wave
   });
 });
 
-describe("techDebtRollup — project register aggregation (v3 relocation, QC wave-1 W-E array schema)", () => {
-  /** Write `projects/<id>/residuals.json` with an ARRAY of entries per plan-id key. */
+describe("techDebtRollup — project register aggregation (array schema)", () => {
+ /** Write `projects/<id>/residuals.json` with an ARRAY of entries per plan-id key. */
   function writeRegister(projectDir: string, projectId: string, entries: Record<string, unknown[]>): void {
     const dir = join(projectDir, projectId);
     mkdirSync(dir, { recursive: true });
@@ -940,10 +940,10 @@ describe("techDebtRollup — project register aggregation (v3 relocation, QC wav
   });
 
   test("v1 stored-summary drift check deleted: stored is always null, checks all DRIFT, overall DRIFT", () => {
-    // The v1 `metadata.tech_debt_summary` cache is a v1 dead path — the
-    // project register is the source of truth. The retained
-    // stored/checks/overall fields keep the exported TechDebtRollup shape
-    // (compile-compat for the P2 CLI cutover) and always report DRIFT.
+ // The v1 `metadata.tech_debt_summary` cache is a v1 dead path — the
+ // project register is the source of truth. The retained
+ // stored/checks/overall fields keep the exported TechDebtRollup shape
+ // (compile-compat for the P2 CLI cutover) and always report DRIFT.
     const dir = harnessRoot("status-rollup-drift-");
     try {
       writeRegister(dir, "_default", { "plan-a": [entry()] });
@@ -969,12 +969,12 @@ describe("techDebtRollup — project register aggregation (v3 relocation, QC wav
 });
 
 describe("resolveCompassEnforcement — repo compass enforcement: hard (Slice 5, roadmap §8.5 D2)", () => {
-  // Spec: roadmap §8.5 C4/D2 — hard gates are enabled per Assignment/compass;
-  // compass frontmatter `enforcement: hard` hardens the status-write gate in
-  // that repo, but ONLY for compasses still steering it (`status: active` or
-  // `status: locked`) — a COMPLETED iteration's hard compass must not keep
-  // the repo hardened (qc1 F-001 / qc2 F-002); no counting compass / non-hard
-  // value → warn-only (flag inert).
+ // Spec: roadmap §8.5 C4/D2 — hard gates are enabled per Assignment/compass;
+ // compass frontmatter `enforcement: hard` hardens the status-write gate in
+ // that repo, but ONLY for compasses still steering it (`status: active` or
+ // `status: locked`) — a COMPLETED iteration's hard compass must not keep
+ // the repo hardened ; no counting compass / non-hard
+ // value → warn-only (flag inert).
   const makeCompass = (harnessDir: string, iterationId: string, frontmatter: string): string => {
     const dir = join(harnessDir, "iterations", iterationId);
     mkdirSync(dir, { recursive: true });
@@ -1047,8 +1047,8 @@ describe("resolveCompassEnforcement — repo compass enforcement: hard (Slice 5,
     try {
       const harness = join(root, "h");
       mkdirSync(harness, { recursive: true });
-      // A COMPLETED iteration declaring hard must NOT harden by itself —
-      // the active iteration's flag is the only one that counts (qc1 F-001).
+ // A COMPLETED iteration declaring hard must NOT harden by itself —
+ // the active iteration's flag is the only one that counts.
       makeCompass(harness, "20260701-a", "iteration_id: 20260701-a\nstatus: completed\nenforcement: hard\n");
       makeCompass(harness, "20260808-b", "iteration_id: 20260808-b\nstatus: active\nenforcement: hard\n");
       expect(resolveCompassEnforcement(harness)).toEqual({ hard: true, source: "compass" });
@@ -1181,12 +1181,12 @@ describe("resolveMstarcEnforcement / resolveRepoEnforcement — `.mstarc` [confi
         "---\niteration_id: 20260808-demo\nstatus: active\nenforcement: hard\n---\n",
         "utf8",
       );
-      // No .mstarc → the hard compass hardens.
+ // No .mstarc → the hard compass hardens.
       expect(resolveRepoEnforcement(harness)).toEqual({ hard: true, source: "compass" });
-      // .mstarc soft rolls the hard compass back.
+ // .mstarc soft rolls the hard compass back.
       writeFileSync(join(root, ".mstarc"), "[config]\nenforcement=soft\n");
       expect(resolveRepoEnforcement(harness)).toEqual({ hard: false, source: "mstarc" });
-      // .mstarc hard hardens without any compass.
+ // .mstarc hard hardens without any compass.
       writeFileSync(join(root, ".mstarc"), "[config]\nenforcement=hard\n");
       expect(resolveRepoEnforcement(harness)).toEqual({ hard: true, source: "mstarc" });
     } finally {

@@ -1,11 +1,8 @@
 /**
- * Harness-rules system-prompt injection (plan `20260816-dsh-nb1-systemprompt`
- * Task 2): the root session's ONE `mstar:harness-rules` pointer section plus
- * the `mstar:engine-status` runtime-context summary, both registered on the
- * GLOBAL prompt layer — visible to the root session AND every dispatched
+ * Harness-rules system-prompt injection (visible to the root session AND every dispatched
  * child — on their own names and layers (the child persona rides the NATIVE
  * subagent persona channel since plan
- * `20260831-dsh-alpha2-optional-fallbacks` Task 3 — no child-scoped
+ *   Task 3 — no child-scoped
  * `mstar:role-persona` section exists anymore; duplicate-name throws remain
  * per name per layer, verified `scope/src/store.ts`).
  *
@@ -18,13 +15,13 @@
  *   interpolation and throws on unknown/malformed/undefined references
  *   (`interpolate` in `@deepseek-ai/dsh-system-prompt`), so every injected
  *   string must carry no complete group. The mechanism is LIVE, not static
- *   (plan QC fix wave W-1): every operator-controlled value embedded below
+ *   : every operator-controlled value embedded below
  *   (harness dir, plan ids, iteration id, lease fields, direction prose)
  *   is passed through `stripInterpolationHazard` — complete `{{…}}` groups
  *   are screened so a hostile value can never break prompt assembly, while
  *   a lone `{{` stays literal prose.
  * - The harness dir is resolved PER ASSEMBLY from the assembly context's
- *   agent (plan QC fix wave W-2 — the catalog pre-step precedent): the
+ *   agent : the
  *   session cwd of the agent whose prompt is being assembled, via
  *   `resolver.forAgent`, with the boot value (`forWorkspace(undefined)`,
  *   the explicit config or null) as the fallback when the assembly carries
@@ -39,13 +36,12 @@
  *   re-registration, in zero-config and explicit-config deployments alike.
  * - The context provider reuses the catalog's unified machine-summary
  *   source (`buildCatalogSources` — the SAME builder the engine-status
- *   pre-step catalog row uses) and projects the SLIM digest (plan
- *   `20260820-dsh-engine-status-slim` Task 2): the version watermark
+ *   pre-step catalog row uses) and projects the SLIM digest: the version watermark
  *   ALWAYS, plus ONE `workflow … | plans: …` line only when the active set
  *   selects a lifecycle (`state.selection.kind === 'active'`). Harness dir
  *   and enforcement live in `mstar:harness-rules`; residuals / leases /
  *   direction / iteration-gate detail stay exclusive to the pre-step row.
- *   v3 (plan `20260819-workflow-dsh-viz` Task 3): the
+ *   v3 : the
  *   digest reads ONLY the catalog row (`state` — itself aggregated from the
  *   SELECTED workflow snapshot + project registers) — no direct
  *   status.json / snapshot file reads to change. The build is TTL-memoized
@@ -64,7 +60,7 @@
  * - Registration is deferred through `ctx.inject(['systemPrompt'], …)`
  *   (HMR-safe re-apply): the `section()`/`context()` calls run on the
  *   inject child, and the exact disposers they return are collected on
- *   that child via `systemPromptCtx.effect` (plan QC fix wave W-HMR) — the
+ *   that child via `systemPromptCtx.effect`  — the
  *   registrations therefore unwind with THIS plugin's apply by explicit
  *   ownership, so a re-apply disposes the old registrations before
  *   registering fresh ones (no duplicate-name throw, no stale closure from
@@ -150,7 +146,7 @@ interface SystemPromptView {
 /**
  * The harness dir for ONE assembly: resolved from the assembly context's
  * agent (the session cwd → `resolver.forAgent`, the catalog pre-step
- * precedent — plan QC fix wave W-2), with the boot value as the fallback
+ * precedent —), with the boot value as the fallback
  * when the assembly carries no agent. Zero-config deployments (no explicit
  * `harnessDir` config) therefore render per session workspace instead of a
  * permanent `none`. Never throws: a resolver failure degrades to the boot
@@ -210,8 +206,7 @@ export function registerHarnessPrompt(ctx: Context, options: { resolver: Harness
   // plugin's apply (HMR-safe re-apply; see the module doc). The exact
   // disposers `section()`/`context()` return are additionally collected on
   // the inject child via `systemPromptCtx.effect` — explicit ownership that
-  // does not depend on the cordis traceable-proxy `this.ctx` rebind (plan QC
-  // fix wave W-HMR): on a re-apply the child fiber disposal runs the
+  // does not depend on the cordis traceable-proxy `this.ctx` rebind : on a re-apply the child fiber disposal runs the
   // disposers FIRST, so the fresh apply registers without a duplicate-name
   // throw and no stale closure (old resolver/harness dir) lingers.
   ctx.inject(['systemPrompt'], (systemPromptCtx) => {
@@ -292,8 +287,7 @@ function harnessRulesText(harnessDir: string | null, enforcement: EnforcementFla
  * The apply-scoped engine-status provider: a TTL-memoized bounded projection
  * over `buildCatalogSources` (the catalog's unified machine-summary builder
  * — same source as the pre-step engine-status row). The harness dir resolves
- * PER ASSEMBLY from the assembly context's agent (plan QC fix wave W-2 — the
- * zero-config default), and the memo is keyed by the resolved harness dir so
+ * PER ASSEMBLY from the assembly context's agent , and the memo is keyed by the resolved harness dir so
  * distinct session workspaces keep independent bounded rows instead of
  * sharing one stale boot row. The memo keeps one bounded disk read per
  * `DEFAULT_CATALOG_TTL_MS` per resolved dir instead of a status.json /
@@ -320,20 +314,17 @@ function engineStatusProvider(ctx: Context, resolver: HarnessResolver, bootHarne
 
 /**
  * Cap on non-Done plan rows joined into the `mstar:engine-status` digest
- * (plan `20260820-dsh-engine-status-slim` Task 2 — retained from plan
- * `20260820-dsh-digest-bounds` Task 1, now applied to the non-Done-filtered
- * join of the active workflow's plans). Module-level and intentionally NOT
+ * . Module-level and intentionally NOT
  * re-exported — `catalog.ts` must not import it (a reverse import would
  * close a `system-prompt.ts ↔ catalog.ts` cycle). The sibling catalog state
  * lines cap with their OWN constant (`CATALOG_STATE_JOIN_LIMIT`,
- * plan `20260830-dsh-catalog-cap`); the shared `joinCapped` implementation
+ *); the shared `joinCapped` implementation
  * now lives in `_shared.ts`.
  */
 const DIGEST_PLAN_CAP = 8
 
 /**
- * The slim `mstar:engine-status` digest (plan `20260820-dsh-engine-status-slim`
- * Task 2): the version watermark is ALWAYS injected, plus — only when the
+ * The slim `mstar:engine-status` digest (only when the
  * session's workspace has an active workflow
  * (`source.state.selection.kind === 'active'`) — ONE compact
  * `workflow <id> (<type>) <status> | plans: <id>(<status>) …` line. Idle
@@ -349,7 +340,7 @@ const DIGEST_PLAN_CAP = 8
  * leases / direction / harness dir / enforcement / the iteration-gate
  * detail all stay exclusive to the pre-step catalog row.
  *
- * STRICT-interpolation safety (plan QC fix wave W-1): every operator-
+ * STRICT-interpolation safety : every operator-
  * controlled value (workflow id, workflow type/status, plan ids, plan
  * statuses) is screened through `stripInterpolationHazard` before embedding
  * — a hostile `{{…}}` in any of them can never throw the renderer.
@@ -384,7 +375,7 @@ function log(level: HarnessPromptLogLevel, message: string): void {
   try {
     harnessPromptLogSink(level, message)
   } catch {
-    // Never-throws invariant (plan QC F-002): a throwing log
+    // Never-throws invariant : a throwing log
     // sink must not escape the registration path — boot is never affected.
   }
 }

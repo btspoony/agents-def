@@ -20,4 +20,4 @@ Before any Task/subagent call (if I somehow forget the preamble):
 
 If blocked, report: `## Blocked — recursive dispatch refused (<which NEVER or reason>)`
 
-Full NEVER/DO NOT list → **`mstar-dispatch-gates` SKILL.md**「承接方反递归红线」.
+Full NEVER/DO NOT list → **`mstar-roles/references/_shared/leaf-executor-core.md`**「Shared anti-recursion NEVER」; dispatch-specific DO NOTs → **`mstar-dispatch-gates` SKILL.md**「承接方反递归红线」.

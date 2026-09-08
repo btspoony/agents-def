@@ -1,6 +1,6 @@
 /**
  * Task 3 fix round — the CONTINUABLE persona surface (plan
- * `20260831-dsh-alpha2-optional-fallbacks`): the native persona channel
+ * ): the native persona channel
  * wraps BOTH start surfaces. Opt-in `backgroundMode: 'continuable'`
  * dispatches (tool-subagent `Config.backgroundMode`) route through
  * `SubagentRuntime.startContinuable({ provider, label, request, signal })`,

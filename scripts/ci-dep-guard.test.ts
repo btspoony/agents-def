@@ -1,6 +1,5 @@
 /**
- * scripts/ci-dep-guard.ts — dep-tree guard semantics (qc2 F-004).
- *
+ * scripts/ci-dep-guard.ts — dep-tree guard semantics. *
  * The CI workflow pipes `npm ls --workspace @mstar-harness/opencode
  * --omit=dev` into `bun run ci:dep-guard`; this test pins the pattern
  * against realistic `npm ls` output lines — scoped `@inquirer/*` packages
@@ -10,7 +9,7 @@
 import { describe, expect, test } from "bun:test";
 import { findForbiddenDeps } from "./ci-dep-guard.ts";
 
-describe("ci-dep-guard — opencode dep-tree forbidden packages (qc2 F-004)", () => {
+describe("ci-dep-guard — opencode dep-tree forbidden packages ", () => {
   test("scoped @inquirer/* packages are caught (the slice-3 gap)", () => {
     const tree = `@mstar-harness/opencode@1.8.8 /repo/packages/opencode
 └── @inquirer/prompts@8.4.2

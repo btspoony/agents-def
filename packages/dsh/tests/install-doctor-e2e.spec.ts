@@ -1,6 +1,5 @@
 /**
- * Task 2 — capability three-state closure e2e (plan `20260817-dsh-roles-e2e`):
- * the REAL CLI install/doctor loop across the three install-surface states —
+ * Task 2 — capability three-state closure e2e  * the REAL CLI install/doctor loop across the three install-surface states —
  * `uninstalled` / `disabled` / `mounted` — plus the dsh-plugin degradation
  * semantics per cell. Reuses the Task 1 patterns: skip-guard, temp
  * `DSH_HOME`, real CLI subprocesses, the `--no-fallbacks` install form, the
@@ -220,7 +219,7 @@ afterEach(async () => {
   hostCopyRoot = undefined
 })
 
-describe.skipIf(skipReason !== undefined)('install-surface doctor three-state e2e (plan 20260817-dsh-roles-e2e Task 2)', () => {
+describe.skipIf(skipReason !== undefined)('install-surface doctor three-state e2e ', () => {
   test('real CLI doctor: uninstalled (--no-fallbacks) / disabled (cordis.patch.yml) / mounted + dsh-side degradation', async () => {
     console.log('install-doctor-e2e: skip-guard probe ok (dsh bin + registry reachable)')
 

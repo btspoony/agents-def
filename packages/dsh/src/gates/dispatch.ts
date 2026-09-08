@@ -1,6 +1,6 @@
 /**
  * Dispatch gate — subagent delegation gating on `tools/pre-execute` (plan
- * `20260810-dsh-entry-split` §11 extraction).
+ *   §11 extraction).
  *
  * The `tools/pre-execute` listener (`preExecuteListener`, registered by the
  * entry `apply` with `prepend`) runs the engine's SINGLE dispatch-gate
@@ -50,7 +50,7 @@ import type { Config } from './_shared.ts'
 // terminal-mtime fallback stays catalog-read-only.
 import { resolveActiveWorkflow } from './workflow-selection.ts'
 // The P-a/P-c policy + cache + the SHARED name normalization (plan
-// `20260815-dsh-workflow-gate` Task 2 — the SINGLE four-tier decision point;
+//   Task 2 — the SINGLE four-tier decision point;
 // this module maps the verdict to the PreToolDecision refusal vocabulary).
 // `normalizeWorkflowName` is the Task 5 congruence fold-in: the gate composes
 // `metaName` through the SAME function the run-start observation keys the
@@ -79,15 +79,14 @@ export const DISPATCH_LOGGER = 'mstar/dispatch-gate'
  * default id + its fork sibling — roadmap §9 W-B1: fork dispatches carry the
  * same Assignment-shaped `{ description, prompt }` args and must be gated
  * like `subagent`). Exported SHARED with the agent-flow settle pairing
- * (`registerSettleListener` matches the same tool set — plan
- * `20260811-panel-f4-timeliness` Task 1) so the default cannot drift between
+ * (`registerSettleListener` matches the same tool set) so the default cannot drift between
  * the gate and the settle seam.
  */
 export const DEFAULT_DISPATCH_TOOLS = ['subagent', 'subagent_fork'] as const
 
 /**
  * The fixed workflow/ralph tool names the workflow gate matches (plan
- * `20260815-dsh-workflow-gate` — architect-verified): the workflow tool
+ *   — architect-verified): the workflow tool
  * registers under Config-default name `'workflow'` and is RENAMEABLE per
  * instance (`toolName`, `tool-workflow/src/index.ts:41`); `ralph` is a
  * fixed name (`tool-ralph/src/index.ts:413`). A renamed instance is out
@@ -129,7 +128,7 @@ export interface DispatchGateAdvisory {
  * stay silent — no false-positive warnings. Callers MUST pass the engine
  * `assignmentHeaderRegion` slice: a `## Assignment` heading or
  * field line quoted in the task body must not shape a non-assignment prompt.
- * Exported for the agent-flow ledger's shape guard (qc2 F-2 — the shared
+ * Exported for the agent-flow ledger's shape guard — the shared
  * `DshHostAdapter.dispatchGate` core applies the SAME guard on both dispatch
  * surfaces, so the exec-less host-hook path records nothing for
  * non-Assignment text either).
@@ -229,7 +228,7 @@ function assignmentHeaderValues(headerRegion: string, label: string): string[] {
   return values
 }
 
-/** A header value that means "no value" (placeholder conventions). Type guard so callers narrow to `string`. Shared with the agent-flow ledger (qc1 F-003 — one grammar, no copy-paste drift). */
+/** A header value that means "no value" (placeholder conventions). Type guard so callers narrow to `string`. Shared with the agent-flow ledger  (one grammar, no copy-paste drift). */
 export function isNaValue(value: string | undefined): value is undefined {
   return value === undefined || /^(?:n\/?a|none)$/i.test(value)
 }
@@ -281,7 +280,7 @@ export function sessionIdOf(exec: ToolExecution): string | undefined {
  * whose plan row is `InProgress`.
  *
  * Contract (status-and-residuals.md § Pre-dispatch re-verify; v3
- * relocation — plan `20260819-workflow-dsh-viz` Task 3): before any
+ * relocation —): before any
  * writable implement dispatch, reread the ACTIVE workflow snapshot
  * (`workflows/<id>/snapshot.json` — the v1 root `plans[]` home is gone; the
  * root v2 `status.json` supplies the active `workflows[]`) and confirm
@@ -495,7 +494,7 @@ function worktreeL2Violations(header: string): ValidationResult[] {
 
 /**
  * One active-workflow snapshot read (the v3 status.json consumer — plan
- * `20260819-workflow-dsh-viz` Task 3 re-points every dispatch-side read
+ *   Task 3 re-points every dispatch-side read
  * from the root `plans[]` to the ACTIVE workflow snapshot rows): the plan
  * rows + the snapshot's first-class `control_worktree_path`. The active-set
  * resolver (`resolveActiveWorkflow`) is the ONLY selection this module
@@ -590,9 +589,7 @@ function worktreeL1Violations(harnessDir: string | null, header: string): Valida
 }
 
 /**
- * P-b lease attribution for the workflow/ralph gate (plan
- * `20260815-dsh-workflow-gate` Task 3; v3 relocation — plan
- * `20260819-workflow-dsh-viz` Task 3): the calling workspace's ACTIVE
+ * P-b lease attribution for the workflow/ralph gate: the calling workspace's ACTIVE
  * workflow snapshot has any plan `InProgress` LACKING matching
  * `execution_lease` coverage. Iterates ALL snapshot plan rows (no
  * Assignment header exists on the workflow/ralph branch — unlike
@@ -611,7 +608,7 @@ function worktreeL1Violations(harnessDir: string | null, header: string): Valida
  * read must not brick fan-out, plan Clarify; P-a/P-c still run on the name
  * axis, which has no status dependency). A PARSEABLE-but-shape-invalid
  * snapshot (`plans` missing / non-array — e.g. a hand-edited `{}` or
- * `{"plans": {}}`) is `unreadable` TOO (qc3 F-301): the caller's ONE warn
+ * `{"plans": {}}`) is `unreadable` TOO : the caller's ONE warn
  * gives it the same loudness as the throwing read, so a corrupt-but-parseable
  * snapshot cannot silently disable the P-b red line while looking like a
  * healthy read-only workspace. Fail-open is preserved in every case — P-b
@@ -689,8 +686,7 @@ export function dispatchGateCore(
 
 /**
  * The workflow-gate input composed from one `workflow`/`ralph` tool call
- * (plan `20260815-dsh-workflow-gate` Task 1 — consumed by the Task 2 P-a /
- * P-c and Task 3 P-b policies): the tool name + the structural reads of
+ * : the tool name + the structural reads of
  * `meta` (workflow) / `objective` (ralph) + the in-flight call.
  */
 export interface WorkflowGateInput {
@@ -703,7 +699,7 @@ export interface WorkflowGateInput {
   /** The in-flight tool call — Task 3 P-b lease attribution reads the calling agent/session off it. */
   exec: ToolExecution
   /**
-   * P-b lease attribution (plan Task 3): the calling workspace's first
+   * P-b lease attribution: the calling workspace's first
    * `InProgress` plan lacking `execution_lease` coverage (computed by
    * {@link writableFanOutUncovered} from the status.json read through the
    * contained resolver path — `preExecuteListener` already resolved the
@@ -717,7 +713,7 @@ export interface WorkflowGateInput {
 /**
  * Compose the {@link WorkflowGateInput} from one workflow/ralph tool call's
  * arguments — structural reads, NEVER throws (plan
- * `20260815-dsh-workflow-gate` Task 1; args shapes architect-verified:
+ *   Task 1; args shapes architect-verified:
  * workflow `{ script, meta: { name, description, whenToUse?, phases? },
  * args? }` (`tool-workflow/src/index.ts:152-161`); ralph
  * `{ objective, maxRounds?, maxHandoffChars? }`
@@ -727,7 +723,7 @@ export interface WorkflowGateInput {
  *
  * `meta.name` is NORMALIZED through {@link normalizeWorkflowName} (control
  * chars stripped) BEFORE the empty check — the P-c cache-key congruence
- * fold-in (plan Task 5): the run-start observation (workflow-ledger.ts)
+ * fold-in: the run-start observation (workflow-ledger.ts)
  * keys the ask cache with the SAME normalized name, so a control-char name
  * (`au\u0000dit`) asks once and observes under one key instead of re-asking
  * forever. The length is NEVER capped here (the gate's identity axis is
@@ -753,10 +749,7 @@ export function workflowGateInputOf(exec: ToolExecution): WorkflowGateInput | un
 }
 
 /**
- * The workflow/ralph gate branch (plan `20260815-dsh-workflow-gate`
- * Tasks 2–3 — the args-shape branch placed BEFORE the subagent prompt
- * branch in {@link gateDispatch}).
- *
+ * The workflow/ralph gate branch. *
  * Name guard on the FIXED tool names ({@link DEFAULT_WORKFLOW_TOOLS}).
  * Non-workflow tools return undefined — the subagent branch owns them,
  * semantics unchanged.
@@ -773,7 +766,7 @@ export function workflowGateInputOf(exec: ToolExecution): WorkflowGateInput | un
  * and runs the policy ({@link workflowPolicy} — the SINGLE four-tier
  * decision point: P-b lease attribution + P-a name allowlist + P-c
  * first-seen ask). EVERY policy decision records ONE durable
- * `workflow-verdict` ledger row (Task 4 — verdict + metaName/objective +
+ * `workflow-verdict` ledger row (verdict + metaName/objective +
  * mode, via the ledger plan's record path through
  * {@link DshHostAdapter.recordWorkflowVerdict}; the record is fully
  * contained and skipped when no harness dir resolved). The verdict maps to
@@ -783,7 +776,7 @@ export function workflowGateInputOf(exec: ToolExecution): WorkflowGateInput | un
  *   pass under any mode) + an `ok` verdict row.
  * - `warn` (default) → allowed WITH an advisory verdict row — the
  *   `mstar/dispatch-gate` advisory (the existing dispatch record path) +
- *   one warn (Task 1 behavior, now centralized in the policy) + an
+ *   one warn (now centralized in the policy) + an
  *   `advisory` durable verdict row.
  * - `ask` → `{kind:'ask', reason}` returned WITHOUT `next()` (terminal —
  *   the registry services it through the approval waterfall; fail-closed
@@ -821,12 +814,12 @@ function gateWorkflow(
     )
     return undefined
   }
-  // P-b lease attribution (Task 3): the status read through the contained
+  // P-b lease attribution : the status read through the contained
   // resolver path — `harnessDir` was already resolved from the calling
   // agent's session workspace by `preExecuteListener`.
   const pb = writableFanOutUncovered(harnessDir)
   if (pb.unreadable) {
-    // Fail-open + ONE warn (plan Task 3 Step 3 / Clarify — a broken status
+    // Fail-open + ONE warn ( Step 3 / Clarify — a broken status
     // read must not brick fan-out): P-b is degraded for this call only;
     // P-a/P-c (name-based, no status dependency) still run below.
     const statusLabel = harnessDir === null ? STATUS_FILE : join(harnessDir, STATUS_FILE)
@@ -838,7 +831,7 @@ function gateWorkflow(
     ...input,
     ...(pb.uncoveredPlanId !== undefined ? { uncoveredPlanId: pb.uncoveredPlanId } : {}),
   })
-  // Task 4 — ONE durable verdict row per gated call (the ledger plan's
+  // — ONE durable verdict row per gated call (the ledger plan's
   // record path, routed through the adapter so dispatch.ts keeps no runtime
   // agent-flow edge; the record is fully contained — a failing ledger write
   // never reaches the gate). The fail-open paths above (malformed args /
@@ -863,9 +856,9 @@ function gateWorkflow(
       recordVerdict('ok')
       return undefined
     case 'warn':
-      // Advisory + ONE warn (Task 1 behavior, decision now centralized in
+      // Advisory + ONE warn (decision now centralized in
       // the policy). The advisory reuses the existing dispatch record path
-      // (the durable verdict row is the Task 4 wiring). The violation code
+      // (the durable verdict row wiring). The violation code
       // comes from the verdict — the gate never guesses which policy fired
       // (P-a `workflow.name.unknown` vs P-b `workflow.lease.uncovered`).
       ctx.logger(DISPATCH_LOGGER).warn(
@@ -917,8 +910,7 @@ function gateDispatch(
   exec: ToolExecution,
 ): PreToolDecision | undefined {
   const toolName = exec.name
-  // WORKFLOW/RALPH BRANCH — BEFORE the subagent prompt branch (plan
-  // `20260815-dsh-workflow-gate` Task 1): `workflow`/`ralph` carry no
+  // WORKFLOW/RALPH BRANCH — BEFORE the subagent prompt branch: `workflow`/`ralph` carry no
   // `args.prompt`, so the prompt guard below would pass them through even
   // if the names were added to the dispatch-tool match list (W4 double
   // no-op). Keyed on the FIXED tool names — the workflow tools are gated
@@ -938,8 +930,8 @@ function gateDispatch(
   // The adapter owns the shared dispatch-gate core; the exec context is
   // passed so the lease gate (session-id bound — see leaseGateViolations)
   // joins the SAME verdict as the field/branch/anti-recursion checks.
-  // `hard` resolves ONCE per dispatch (qc1 F-002 / qc2 F-3 / qc3 F-002 —
-  // fix-wave): the adapter's record block and this gate decision share the
+  // `hard` resolves ONCE per dispatch (
+  // : the adapter's record block and this gate decision share the
   // single resolution instead of each re-reading the compass.
   const hard = resolveDispatchHard(harnessDir, config, prompt)
   const result = adapter.dispatchGate(prompt, exec, hard)

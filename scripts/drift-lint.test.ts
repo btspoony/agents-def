@@ -1,37 +1,43 @@
 /**
- * scripts/drift-lint.ts — guard semantics (QC fix wave: W-1/F-001, W-2,
- * S-1/F-002). Pins the committed guard behavior that previously had zero
+ * scripts/drift-lint.ts — guard semantics. Pins the committed guard behavior that previously had zero
  * automated coverage:
  * - checkBilingualPairing (guard 2 pairing logic) — all four change sets.
  * - evaluateBilingualGuard — the CI fail-loudly contract (GITHUB_ACTIONS
- *   env injection): a null range fails in CI, skips locally; an empty range
- *   (direct-to-main push) skips by design; a non-empty range runs the check.
+ * env injection): a null range fails in CI, skips locally; an empty range
+ * (direct-to-main push) skips by design; a non-empty range runs the check.
  * - extractCategoryRowTokens (guard 1) — the docs/cli.md `<category>` row
- *   yields exactly AUDIT_CATEGORIES; fabricated tokens are kept for the
- *   membership check; `Category` / `<category>` placeholders are filtered.
+ * yields exactly AUDIT_CATEGORIES; fabricated tokens are kept for the
+ * membership check; `Category` / `<category>` placeholders are filtered.
  * - citesKnowledgeConventions (W-2) — the exemption is anchored to the
- *   cited token itself (the citation path starts with `conventions/`);
- *   proximity alone no longer exempts unrelated citations.
+ * cited token itself (the citation path starts with `conventions/`);
+ * proximity alone no longer exempts unrelated citations.
  * - checkFiveQuestionCorpus (guard 5) — five-question runtime smoke over
- *   the shipped `mstar-*` corpus: the real corpus passes runtime-mode
- *   lint; deleting an alias-covered heading (mstar-audit `## Output
- *   format`) or a Step-3 aligned heading (mstar-sdd `## Progress ledger`)
- *   fails; non-corpus files are ignored (load-bearing per plan Step 7).
+ * the shipped `mstar-*` corpus: the real corpus passes runtime-mode
+ * lint; deleting an alias-covered heading (mstar-audit `## Output
+ * format`) or a Step-3 aligned heading (mstar-sdd `## Progress ledger`)
+ * fails; non-corpus files are ignored (load-bearing per plan Step 7).
+ * Classifier wiring: the
+ * runtime corpus is selected by the shared Engine classifier and agrees
+ * row for row with the canonical fixture table consumed by the Engine,
+ * CLI and dsh suites. Task 3 red probes (isolated injection): an
+ * intentionally mismatched classification (core hub body under a
+ * runtime identity) fails the corpus, and removing a real load-order
+ * heading fails it — each restored to green through the same seam.
  * - checkRolesCorpus (guard 4) — roles/load-order corpus smoke: the real
- *   corpus passes load-order lint + role mapping (19 skills, 0 mapping
- *   violations); deleting a Load Order section
- *   (roles.loadorder.section.missing) or losing the core mention
- *   (roles.loadorder.core.missing) fails; a roles dir missing mapped
- *   reference files fails (roles.mapping.reference.missing); non-corpus
- *   files are ignored (load-bearing per plan Step 3).
+ * corpus passes load-order lint + role mapping (19 skills, 0 mapping
+ * violations); deleting a Load Order section
+ * (roles.loadorder.section.missing) or losing the core mention
+ * (roles.loadorder.core.missing) fails; a roles dir missing mapped
+ * reference files fails (roles.mapping.reference.missing); non-corpus
+ * files are ignored (load-bearing per plan Step 3).
  * - readDeclaredBins (F-S2) — Guard 1's manifest read is guard-or-clear:
- *   missing / corrupt / bin-less manifests each return one explicit
- *   failure row (never a silent skip that would flood every citation).
+ * missing / corrupt / bin-less manifests each return one explicit
+ * failure row (never a silent skip that would flood every citation).
  * - checkEngineCallouts real-corpus pin (F-S3) — the shipped skills corpus
- *   yields exactly 45 Engine-check callouts / 43 CLI citations against the
- *   live CLI inventory + declared bins (4 lease/seats callouts consolidated
- *   to canonical pointers by plan 20260822-skill-pointer-hygiene Task 2);
- *   corpus drift goes red.
+ * yields exactly 45 Engine-check callouts / 43 CLI citations against the
+ * live CLI inventory + declared bins (4 lease/seats callouts consolidated
+ * to canonical pointers);
+ * corpus drift goes red.
  */
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -127,7 +133,7 @@ describe("checkBilingualContentParity — README changed-set mirroring (S-f)", (
   });
 });
 
-describe("evaluateBilingualGuard — CI fail-loudly vs local skip (W-1/F-001)", () => {
+describe("evaluateBilingualGuard — CI fail-loudly vs local skip", () => {
   test("null range + GITHUB_ACTIONS fails loudly with a fetch-depth hint", () => {
     const out = evaluateBilingualGuard(null, { ci: true });
     if (out.status !== "failed") throw new Error(`expected failed, got ${out.status}`);
@@ -194,8 +200,8 @@ describe("extractCategoryRowTokens — docs/cli.md `<category>` row (guard 1)", 
 
 describe("checkEngineCallouts — Guard 1 CLI citation binary-prefix check", () => {
   /** Declared bin names from the manifest — the guard's SSOT (a rename in
-   * packages/cli/package.json must move this pin with it, mirroring the
-   * manifest test from plan Task 1). */
+ * packages/cli/package.json must move this pin with it, mirroring the
+ * manifest test from . */
   const declaredBins = () => {
     const manifest = JSON.parse(
       readFileSync(join(import.meta.dir, "..", "packages", "cli", "package.json"), "utf8"),
@@ -203,7 +209,7 @@ describe("checkEngineCallouts — Guard 1 CLI citation binary-prefix check", () 
     return Object.keys(manifest.bin ?? {});
   };
 
-  /** One Engine-check callout blockquote with `body` as its content. */
+ /** One Engine-check callout blockquote with `body` as its content. */
   const callout = (body: string) =>
     `> **Engine check (when available):** ${body}\n> On \`fail\` -> do not proceed.`;
 
@@ -269,9 +275,9 @@ describe("checkEngineCallouts — Guard 1 CLI citation binary-prefix check", () 
     const SKILLS_ROOT = join(REPO_ROOT, "skills");
 
     /** Every `.md` file under skills/ with the repo-relative `rel` Guard 1
-     * sees in main — the 46/44 counts are a regression pin: adding or
-     * removing a backticked CLI citation inside an Engine-check callout
-     * (or adding a callout) fails this test loudly. */
+ * sees in main — the 46/44 counts are a regression pin: adding or
+ * removing a backticked CLI citation inside an Engine-check callout
+ * (or adding a callout) fails this test loudly. */
     const realCorpus = () => {
       const files: string[] = [];
       const walk = (dir: string) => {
@@ -357,8 +363,8 @@ describe("buildCliCommandInventory — enumerated .argument composites (SP3 fix 
   });
 });
 
-describe("checkCalloutDuplication — Guard 6 Engine-check callout dedup (plan 20260822-skill-pointer-hygiene Task 2)", () => {
-  /** One Engine-check callout blockquote with `body` as its content. */
+describe("checkCalloutDuplication — Guard 6 Engine-check callout dedup", () => {
+ /** One Engine-check callout blockquote with `body` as its content. */
   const callout = (body: string) =>
     `> **Engine check (when available):** ${body}\n> On \`fail\` -> do not proceed; fix and re-run. Skill text below remains authoritative when the runtime is absent.`;
 
@@ -502,9 +508,9 @@ describe("citesKnowledgeConventions — anchored exemption (W-2)", () => {
   });
 
   test("nearby unrelated token is no longer swallowed by a prior conventions/ mention", () => {
-    // The old 60-char proximity window exempted `missing.md` here because
-    // "conventions/" appeared within 60 chars before it; the anchored check
-    // exempts only the token immediately preceded by "conventions/".
+ // The old 60-char proximity window exempted `missing.md` here because
+ // "conventions/" appeared within 60 chars before it; the anchored check
+ // exempts only the token immediately preceded by "conventions/".
     const text = "knowledge `conventions/real-doc.md`\n\nspec: typo'd missing.md on an adjacent line";
     expect(citesKnowledgeConventions(text, idxOf(text, "missing.md"))).toBe(false);
   });
@@ -519,8 +525,8 @@ describe("checkFiveQuestionCorpus — Guard 5 five-question runtime smoke", () =
   const SKILLS_ROOT = join(import.meta.dir, "..", "skills");
 
   /** The real shipped corpus as the guard sees it: every
-   * `skills/mstar-*` SKILL.md, with the repo-relative `rel` the guard
-   * filters on. */
+ * `skills/mstar-*` SKILL.md, with the repo-relative `rel` the guard
+ * filters on. */
   const realCorpus = () =>
     readdirSync(SKILLS_ROOT, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name.startsWith("mstar-"))
@@ -530,7 +536,7 @@ describe("checkFiveQuestionCorpus — Guard 5 five-question runtime smoke", () =
       }));
 
   /** Corpus fixture with every heading line matching `pattern` dropped
-   * from the entry at `rel` — simulates a Step-3 heading being removed. */
+ * from the entry at `rel` — simulates a Step-3 heading being removed. */
   const dropHeading = (corpus: Array<{ rel: string; text: string }>, rel: string, pattern: RegExp) =>
     corpus.map((entry) =>
       entry.rel === rel
@@ -540,10 +546,10 @@ describe("checkFiveQuestionCorpus — Guard 5 five-question runtime smoke", () =
 
   test("real corpus passes runtime-mode five-question lint (count derived from readdir)", () => {
     const { checked, failures } = checkFiveQuestionCorpus(realCorpus());
-    // 20 mstar-* skill dirs minus the two exempt (mstar-harness-core,
-    // mstar-skill-authoring) — count derived from readdir so adding a
-    // properly-aligned skill never forces a multi-site pin update; a new
-    // unaligned skill still fails this test via the failures array.
+ // 20 mstar-* skill dirs minus the two exempt (mstar-harness-core,
+ // mstar-skill-authoring) — count derived from readdir so adding a
+ // properly-aligned skill never forces a multi-site pin update; a new
+ // unaligned skill still fails this test via the failures array.
     const mstarSkillCount = readdirSync(SKILLS_ROOT, { withFileTypes: true }).filter(
       (entry) => entry.isDirectory() && entry.name.startsWith("mstar-"),
     ).length;
@@ -591,6 +597,106 @@ describe("checkFiveQuestionCorpus — Guard 5 five-question runtime smoke", () =
     expect(checked).toBe(0);
     expect(failures).toEqual([]);
   });
+
+  test("canonical fixture corpus: the classifier selects exactly the runtime rows (spec A4 parity)", () => {
+ // The same canonical rows the Engine, CLI and dsh suites consume —
+ // Guard5's corpus selection must agree row for row (plan
+ // 20260907-skill-lint-parity Task 2, cross-consumer decision parity).
+    type FixtureRow = {
+      id: string;
+      skillId: string | null;
+      doc: string;
+      expectedKind: "core" | "runtime" | "authoring";
+      expectedFiveQuestionCodes: string[] | null;
+    };
+    const fixtures = JSON.parse(
+      readFileSync(
+        join(import.meta.dir, "..", "packages", "engine", "test", "fixtures", "skill-lint-profiles.json"),
+        "utf8",
+      ),
+    ) as { schemaVersion: number; rows: FixtureRow[] };
+    const codeOf = (failureRow: string) =>
+      failureRow.match(/ five-question runtime smoke ([\w.-]+) - /)?.[1] ?? "";
+
+ // Runtime rows: guard checks them and reports exactly the expected codes.
+    for (const row of fixtures.rows.filter((r) => r.expectedKind === "runtime")) {
+      const single = checkFiveQuestionCorpus([
+        { rel: `skills/${row.skillId}/SKILL.md`, text: row.doc },
+      ]);
+      expect(single.checked).toBe(1);
+      expect(single.failures.map(codeOf)).toEqual(row.expectedFiveQuestionCodes ?? []);
+    }
+
+ // Non-runtime rows (core exemption + standard-bearing authoring + strict
+ // defaults) never enter the runtime corpus, regardless of their bodies —
+ // the fence/alias bodies that would fail authoring produce no guard rows.
+    for (const row of fixtures.rows.filter((r) => r.expectedKind !== "runtime")) {
+      const single = checkFiveQuestionCorpus([
+        { rel: `skills/${row.skillId ?? "unparented-skill"}/SKILL.md`, text: row.doc },
+      ]);
+      expect(single).toEqual({ checked: 0, failures: [] });
+    }
+
+ // Aggregate over the full table: checked = runtime rows only; the only
+ // expected failure is the fence-only workflow gap on the shared fixture
+ // identity (load-bearing: the corpus decision is the fixture decision).
+    const all = checkFiveQuestionCorpus(
+      fixtures.rows.map((row) => ({
+        rel: `skills/${row.skillId ?? "unparented-skill"}/SKILL.md`,
+        text: row.doc,
+      })),
+    );
+    expect(all.checked).toBe(fixtures.rows.filter((r) => r.expectedKind === "runtime").length);
+    expect(all.failures).toHaveLength(1);
+    expect(all.failures[0]).toContain("skills/mstar-topic-fixture/SKILL.md");
+    expect(codeOf(all.failures[0])).toBe("skill-authoring.five-question.workflow");
+  });
+
+  test("red probe: intentionally mismatched classification fails the corpus; restore passes", () => {
+ // Inject the core hub body under mstar-audit's runtime identity: the
+ // classifier still selects runtime for the rel basename, but the
+ // injected content does not answer the runtime corpus contract — the
+ // guard must go RED (spec A4 / AC5: the drift guard rejects an
+ // intentionally mismatched classification). Isolated test injection
+ // only — no shipped file and no production rule is touched.
+    const corpus = realCorpus();
+    const core = corpus.find((e) => e.rel === "skills/mstar-harness-core/SKILL.md");
+    const audit = corpus.find((e) => e.rel === "skills/mstar-audit/SKILL.md");
+    expect(core).toBeDefined();
+    expect(audit).toBeDefined();
+    const mismatched = corpus.map((e) =>
+      e.rel === "skills/mstar-audit/SKILL.md" ? { ...e, text: core!.text } : e,
+    );
+    const red = checkFiveQuestionCorpus(mismatched);
+    expect(red.checked).toBe(corpus.length - 2); // runtime corpus selection unchanged
+ // The thinned hub body answers none of the five runtime alias rows, so
+ // under injection every runtime question is uncovered: load-order,
+ // workflow, decision-rules, evidence, references all go red.
+    expect(red.failures).toHaveLength(5);
+    expect(red.failures.every((row) => row.includes("skills/mstar-audit/SKILL.md"))).toBe(true);
+ // Restore the real shipped content through the same seam — green again.
+    expect(checkFiveQuestionCorpus(corpus)).toEqual({ checked: corpus.length - 2, failures: [] });
+  });
+
+  test("red probe: removing a real heading (mstar-branch-worktree Load order) fails the corpus; restore passes", () => {
+ // load-order has no alias row, so the
+ // single real `Load order` heading is the only cover — dropping it must
+ // flip the guard red for exactly that question. In-memory drop only;
+ // the shipped file is never modified.
+    const rel = "skills/mstar-branch-worktree/SKILL.md";
+    const corpus = realCorpus();
+    const sample = corpus.find((e) => e.rel === rel);
+    expect(sample).toBeDefined();
+    expect(sample!.text).toMatch(/^#{1,6}\s+Load order/m);
+    const gapped = dropHeading(corpus, rel, /^#{1,6}\s+Load order\b.*$/);
+    const red = checkFiveQuestionCorpus(gapped);
+    expect(red.checked).toBe(corpus.length - 2);
+    expect(red.failures).toHaveLength(1);
+    expect(red.failures[0]).toContain(rel);
+    expect(red.failures[0]).toContain("five-question.load-order");
+ // Restore: the untouched corpus is green through the same seam.
+    expect(checkFiveQuestionCorpus(corpus).failures).toEqual([]);
+  });
 });
 
 describe("checkRolesCorpus — Guard 4 roles/load-order corpus", () => {
@@ -598,8 +704,8 @@ describe("checkRolesCorpus — Guard 4 roles/load-order corpus", () => {
   const ROLES_DIR = join(SKILLS_ROOT, "mstar-roles");
 
   /** The real shipped corpus as the guard sees it: every
-   * `skills/mstar-*` SKILL.md, with the repo-relative `rel` the guard
-   * filters on. */
+ * `skills/mstar-*` SKILL.md, with the repo-relative `rel` the guard
+ * filters on. */
   const realCorpus = () =>
     readdirSync(SKILLS_ROOT, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name.startsWith("mstar-"))
@@ -608,12 +714,12 @@ describe("checkRolesCorpus — Guard 4 roles/load-order corpus", () => {
         text: readFileSync(join(SKILLS_ROOT, entry.name, "SKILL.md"), "utf8"),
       }));
 
-  /** Same heading contract as engine lintLoadOrder. */
+ /** Same heading contract as engine lintLoadOrder. */
   const LOAD_ORDER_HEADING = /^#{1,6}\s+[^\r\n]*\b(?:load[\s-]*order|first\s+action)\b[^\r\n]*$/i;
 
   /** Replace the first Load Order / First action section of the entry at
-   * `rel` with `replacement` lines (empty array deletes the section) —
-   * simulates a skill losing its load-order declaration. */
+ * `rel` with `replacement` lines (empty array deletes the section) —
+ * simulates a skill losing its load-order declaration. */
   const replaceLoadOrderSection = (
     corpus: Array<{ rel: string; text: string }>,
     rel: string,
@@ -634,10 +740,10 @@ describe("checkRolesCorpus — Guard 4 roles/load-order corpus", () => {
       realCorpus(),
       ROLES_DIR,
     );
-    // Count derived from readdir: mstar-* skill dirs minus mstar-harness-core
-    // (exempt inside the engine's lintLoadOrder) — a new mstar-* skill must
-    // declare its load order or fail the guard loudly (no multi-site pin to
-    // sync when a properly-declared skill is added).
+ // Count derived from readdir: mstar-* skill dirs minus mstar-harness-core
+ // (exempt inside the engine's lintLoadOrder) — a new mstar-* skill must
+ // declare its load order or fail the guard loudly (no multi-site pin to
+ // sync when a properly-declared skill is added).
     const mstarSkillCount = readdirSync(SKILLS_ROOT, { withFileTypes: true }).filter(
       (entry) => entry.isDirectory() && entry.name.startsWith("mstar-"),
     ).length;
@@ -707,9 +813,9 @@ describe("checkRolesCorpus — Guard 4 roles/load-order corpus", () => {
   test("unreadable SKILL.md becomes an explicit roles: read row, not a crash (guard-or-clear-error)", () => {
     const dir = mkdtempSync(join(tmpdir(), "drift-roles-read-"));
     try {
-      // A directory named SKILL.md makes readFileSync throw EISDIR
-      // deterministically (same trick as the CLI best-effort test) — the
-      // guard must surface a clear row and keep scanning, never raw-stack.
+ // A directory named SKILL.md makes readFileSync throw EISDIR
+ // deterministically (same trick as the CLI best-effort test) — the
+ // guard must surface a clear row and keep scanning, never raw-stack.
       mkdirSync(join(dir, "mstar-foo", "SKILL.md"), { recursive: true });
       const { entries, readFailures } = readRolesCorpus([join(dir, "mstar-foo", "SKILL.md")], dir);
       expect(entries).toEqual([]);

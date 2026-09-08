@@ -1,6 +1,6 @@
 /**
  * Zero-config seed declaration for the OPTIONAL `dsh-llm-fallbacks` plugin
- * (plan `20260816-dsh-b4-seeds` Task 2): when the `llm-fallbacks` service is
+ * : when the `llm-fallbacks` service is
  * applied, this module declares the 13 `mode: subagent` mstar roles into the
  * fallbacks seed registry — persona = mirror `description` (verbatim, the
  * SSOT stays `mstar-roles`) + one mandatory-load guide line.
@@ -185,7 +185,7 @@ export async function declareMstarSeeds(
   }
   // 6. Declare (replacement semantics upstream). A rejection propagates —
   //    the entry wiring's terminal `.catch` absorbs it (never out of apply).
-  //    Empty-batch guard (plan QC fix wave S-empty): upstream declare is
+  //    Empty-batch guard (empty): upstream declare is
   //    REPLACEMENT semantics — its no-delta check compares against the
   //    PREVIOUS batch, so an empty batch differs and COMMITS an empty
   //    registry, stripping any annotations a concurrent declarer (the preset

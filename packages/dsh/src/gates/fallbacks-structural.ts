@@ -1,6 +1,6 @@
 /**
  * Local structural mirrors of the consumed `dsh-llm-fallbacks` surface
- * (plan `20260831-dsh-alpha2-optional-fallbacks` Task 2). dsh natively
+ * . dsh natively
  * covers subagent customization, so the fallbacks
  * plugin is an OPTIONAL capability activated by the unchanged two-command
  * install contract — and a dev-time-only dependency of this package (type

@@ -1,19 +1,19 @@
 /**
- * Engine audit static checks — plan 20260826-audit-static-checks Task 2.
+ * Engine audit static checks.
  *
  * Completes the Task 2 test contract beyond the fix-round suites already
  * living in audit.test.ts (never-commit `.env*` glob, credential-named files,
  * Actions env-map plaintext, unpinned-action comment tolerance):
- *   1. every provider key shape from security-review.md §6 hits via
- *      `scanSecrets` on its own synthetic file;
- *   2. safe-placeholder exclusions are individually asserted — each probed
- *      line WOULD fire absent the guard (checked against the SSOT tables);
- *   3. remaining CI/IaC leak shapes each get a dedicated positive case
- *      (`actions-secret-echo`, `dockerfile-credential-env`,
- *      `terraform-hardcoded-password`) plus targeted negatives;
- *   4. never-commit filenames not yet individually pinned (`.pem`, `.key`);
- *   5. `supplyChainChecks` runs each of its four finding kinds isolated in a
- *      fresh temp repo root, plus a clean-repo `ok: true` baseline.
+ * 1. every provider key shape from security-review.md §6 hits via
+ * `scanSecrets` on its own synthetic file;
+ * 2. safe-placeholder exclusions are individually asserted — each probed
+ * line WOULD fire absent the guard (checked against the SSOT tables);
+ * 3. remaining CI/IaC leak shapes each get a dedicated positive case
+ * (`actions-secret-echo`, `dockerfile-credential-env`,
+ * `terraform-hardcoded-password`) plus targeted negatives;
+ * 4. never-commit filenames not yet individually pinned (`.pem`, `.key`);
+ * 5. `supplyChainChecks` runs each of its four finding kinds isolated in a
+ * fresh temp repo root, plus a clean-repo `ok: true` baseline.
  * Fixtures are deterministic synthetic tokens assembled from inert fillers —
  * never real credentials.
  */
@@ -33,22 +33,22 @@ import { scanSecrets, supplyChainChecks, WHOLE_MATCH_PATTERNS } from "../src/aud
 /** One synthetic file per provider shape; bare-token body keeps exactly one
  * SSOT-table reader firing per line (no assignment context beside it). */
 const PROVIDER_SHAPES: readonly { name: string; body: string; type: string }[] = [
-  // AWS access key id: AKIA + 16 alnum uppercase/digits.
+ // AWS access key id: AKIA + 16 alnum uppercase/digits.
   { name: "aws.txt", body: "AKIA" + "IOSFODNN7EXAMPLE", type: "aws-access-key" },
-  // Anthropic keys have no dedicated engine row — caught by the generic
-  // `sk-` row (D-2 SSOT documents the reconcile): flag type api-secret-key.
+ // Anthropic keys have no dedicated engine row — caught by the generic
+ // `sk-` row (D-2 SSOT documents the reconcile): flag type api-secret-key.
   {
     name: "anthropic.txt",
     body: "sk-ant-" + "api03-" + "AAAAAAAAAAAAAAAAAAAA",
     type: "api-secret-key",
   },
-  // GitHub classic PAT: ghp_ + 36 alnum (pattern floor).
+ // GitHub classic PAT: ghp_ + 36 alnum (pattern floor).
   { name: "github.txt", body: "ghp_" + "w".repeat(36), type: "github-token" },
-  // GitHub fine-grained PAT: github_pat_ + 40+ [A-Za-z0-9_].
+ // GitHub fine-grained PAT: github_pat_ + 40+ [A-Za-z0-9_].
   { name: "github-pat.txt", body: "github_pat_" + "B".repeat(46), type: "github-pat" },
-  // Stripe LIVE secret key: sk_live_ + 16+ alnum.
+ // Stripe LIVE secret key: sk_live_ + 16+ alnum.
   { name: "stripe.txt", body: "sk_live_" + "C".repeat(24), type: "stripe-live-key" },
-  // Generic sk- shaped secret (OpenAI-style): sk- + 20+ alnum/hyphen.
+ // Generic sk- shaped secret (OpenAI-style): sk- + 20+ alnum/hyphen.
   { name: "openai-style.txt", body: "sk-" + "D".repeat(34), type: "api-secret-key" },
 ];
 
@@ -60,7 +60,7 @@ describe("scanSecrets provider key shapes", () => {
   const tmp = mkdtempSync(join(tmpdir(), "engine-audit-static-providers-"));
   afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
-  /** Write content into tmp and return the path. */
+ /** Write content into tmp and return the path. */
   function fixture(name: string, body: string): string {
     const p = join(tmp, name);
     writeFileSync(p, `${body}\n`);
@@ -121,12 +121,12 @@ describe("scanSecrets provider key shapes", () => {
     const row = WHOLE_MATCH_PATTERNS.find((p) => p.type === "private-key");
     expect(row).toBeDefined();
     const pem = createOpenSshPrivateKey();
-    // Not a *.pem/*.key basename: the never-commit filename list must not
-    // add a private-key-file finding on top of the content detection.
+ // Not a *.pem/*.key basename: the never-commit filename list must not
+ // add a private-key-file finding on top of the content detection.
     const file = fixture("ssot-key.txt", pem);
-    // The table row is the single authority: it matches the whole block
-    // exactly once, and the scan reports precisely that row's type at the
-    // header line — no second copy of the pattern to drift.
+ // The table row is the single authority: it matches the whole block
+ // exactly once, and the scan reports precisely that row's type at the
+ // header line — no second copy of the pattern to drift.
     expect([...pem.matchAll(row!.re)]).toHaveLength(1);
     expect(scanSecrets([file]).findings).toEqual([{ file, line: 1, type: row!.type }]);
   });
@@ -135,9 +135,9 @@ describe("scanSecrets provider key shapes", () => {
 // ---------------------------------------------------------------------------
 // scanSecrets — safe-placeholder exclusions (§6 "do NOT flag"), each probed
 // line chosen so the SSOT tables WOULD fire without the guard:
-//  - `secret: "${ENV_VAR}"` → quoted 8+ literal hits VALUE_PATTERNS
-//  - `token = process.env.…` → unquoted 16+ dotted run hits VALUE_PATTERNS
-//  - `apiKey = "your-api-key-here"` / `"<YOUR_API_KEY>"` → quoted literals
+// - `secret: "${ENV_VAR}"` → quoted 8+ literal hits VALUE_PATTERNS
+// - `token = process.env.…` → unquoted 16+ dotted run hits VALUE_PATTERNS
+// - `apiKey = "your-api-key-here"` / `"<YOUR_API_KEY>"` → quoted literals
 // Each file therefore asserts an EMPTY result, proving the guard fired.
 // ---------------------------------------------------------------------------
 
@@ -145,7 +145,7 @@ describe("scanSecrets safe-placeholder exclusions", () => {
   const tmp = mkdtempSync(join(tmpdir(), "engine-audit-static-placeholders-"));
   afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
-  /** Write one probe line into its own file; expect zero findings. */
+ /** Write one probe line into its own file; expect zero findings. */
   function expectSafe(name: string, line: string): void {
     const p = join(tmp, name);
     writeFileSync(p, `${line}\n`);
@@ -167,7 +167,7 @@ describe("scanSecrets safe-placeholder exclusions", () => {
   test("<YOUR_API_KEY> placeholder is not reported", () => {
     expectSafe("placeholder-angle.txt", `API_KEY = "<YOUR_API_KEY>"`);
   });
-  /** Write content into the mixed-line tmp dir and return the path. */
+ /** Write content into the mixed-line tmp dir and return the path. */
   function fixture(name: string, body: string): string {
     const p = join(tmp, name);
     writeFileSync(p, `${body}\n`);
@@ -175,9 +175,9 @@ describe("scanSecrets safe-placeholder exclusions", () => {
   }
 
 
-  // Mixed lines (qc2 F-001): the safe-placeholder vocab must exempt only the
-  // value region it appears in — a literal key sharing the line MUST still be
-  // flagged.
+ // Mixed lines : the safe-placeholder vocab must exempt only the
+ // value region it appears in — a literal key sharing the line MUST still be
+ // flagged.
   const LEAK = "sk_live_" + "Z9y8X7W6V5U4T3S2R1Q0P9O8N7";
 
   test("process.env reference beside a literal stripe key still flags the key", () => {
@@ -264,8 +264,8 @@ describe("scanSecrets CI/IaC leak shapes", () => {
   });
 
   test("terraform-hardcoded-password flagged alongside the generic kv hit", () => {
-    // layering visible instead of hiding it behind one type. A random value
-    // keeps the fixture disposable while still matching the literal shape.
+ // layering visible instead of hiding it behind one type. A random value
+ // keeps the fixture disposable while still matching the literal shape.
     const TERRAFORM_PASSWORD = randomBytes(16).toString("hex");
     const p = fixture("main.tf", [`resource "random_password" "db" {`, `  password = "${TERRAFORM_PASSWORD}"`, `}`, ""].join("\n"));
     const types = scanSecrets([p])
@@ -327,15 +327,15 @@ describe("supplyChainChecks — tracked-state lockfile + verbose prt (fix wave)"
     }
   });
 
-  test("gitignored root lockfile still reports lockfile-missing (qc1 W-005)", () => {
+  test("gitignored root lockfile still reports lockfile-missing ", () => {
     const root = mkdtempSync(join(tmpdir(), "engine-supply-ignored-lock-"));
     try {
       execFileSync("git", ["init", "-q"], { cwd: root });
       writeFileSync(join(root, "bun.lock"), "{}\n");
       writeFileSync(join(root, ".gitignore"), "bun.lock\n");
       execFileSync("git", ["add", "-A"], { cwd: root });
-      // bun.lock is present on disk but NOT tracked — the authoritative
-      // install input is missing.
+ // bun.lock is present on disk but NOT tracked — the authoritative
+ // install input is missing.
       const r = supplyChainChecks(root);
       expect(r.findings).toEqual([{ kind: "lockfile-missing", file: root }]);
       expect(r.violations.map((v) => v.code)).toEqual(["audit.supply.lockfile-missing"]);
@@ -344,7 +344,7 @@ describe("supplyChainChecks — tracked-state lockfile + verbose prt (fix wave)"
     }
   });
 
-  test("tracked root lockfile in a non-git dir falls back to filesystem presence (qc1 W-005)", () => {
+  test("tracked root lockfile in a non-git dir falls back to filesystem presence ", () => {
     const root = mkdtempSync(join(tmpdir(), "engine-supply-nogit-lock-"));
     try {
       writeFileSync(join(root, "package-lock.json"), "{}");
@@ -355,7 +355,7 @@ describe("supplyChainChecks — tracked-state lockfile + verbose prt (fix wave)"
     }
   });
 
-  test("verbose pull_request_target with-map checkout still flagged beyond 6 lines (qc2 F-002)", () => {
+  test("verbose pull_request_target with-map checkout still flagged beyond 6 lines ", () => {
     const root = mkdtempSync(join(tmpdir(), "engine-supply-prt-verbose-"));
     try {
       mkdirSync(join(root, ".github", "workflows"), { recursive: true });
@@ -421,8 +421,8 @@ describe("supplyChainChecks — isolated kinds", () => {
       writeFileSync(join(root, "yarn.lock"), "# yarn lockfile v1");
       const r = supplyChainChecks(root);
       expect(r.ok).toBe(false);
-      // File list follows readdirSync order (unspecified) — assert on set
-      // membership, not exact concatenation.
+ // File list follows readdirSync order (unspecified) — assert on set
+ // membership, not exact concatenation.
       expect(r.findings.length).toBe(1);
       expect(r.findings[0]?.kind).toBe("lockfile-duplicate");
       const listed = (r.findings[0]?.file ?? "").split(", ");
@@ -458,8 +458,8 @@ describe("supplyChainChecks — isolated kinds", () => {
     try {
       mkdirSync(join(root, ".github", "workflows"), { recursive: true });
       writeFileSync(join(root, "package-lock.json"), "{}");
-      // Checkout pins @v4 (version pin → not unpinned); the PR-head ref two
-      // lines below is what trips the dangerous-combination check.
+ // Checkout pins @v4 (version pin → not unpinned); the PR-head ref two
+ // lines below is what trips the dangerous-combination check.
       writeFileSync(
         join(root, ".github", "workflows", "risk.yml"),
         [

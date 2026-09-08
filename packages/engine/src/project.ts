@@ -1,42 +1,42 @@
 /**
  * Engine project module — project layer (conventions:
  * mstar-conventions/references/artifact-storage-paths.md § project layer;
- * compass v3.0.0 § Scope "Project layer"): roadmap frontmatter
+ * roadmap frontmatter
  * validator + project register validator. This module is the only register
  * validator; the register re-hosts the residual entry schema from `status.ts`
  * via import — no copy.
  *
  * Spec sources (each export cites the plan/compass section it enforces):
  * - Roadmap frontmatter schema `{ project_id, title, status:
- *   active|paused|completed, created_at, milestones[]?, residuals_ref }`
- *   (plan Task 4; compass-style frontmatter + engine validator, machine-
- *   checkable). Frontmatter parsing reuses the shared flat-subset parser
- *   `parseCompassFrontmatterText` (iteration.ts) — no new parser dependency.
+ * active|paused|completed, created_at, milestones[]?, residuals_ref }`
+ * (; compass-style frontmatter + engine validator, machine-
+ * checkable). Frontmatter parsing reuses the shared flat-subset parser
+ * `parseCompassFrontmatterText` (iteration.ts) — no new parser dependency.
  * - Goal-item body conventions are documented conventions surfaced as
- *   validator **warnings only** — not a hard gate (compass Non-Goal /
- *   AC-P1). No residual-to-goal-item auto-link this iteration (compass
- *   ruling 2).
+ * validator **warnings only** — not a hard gate (compass Non-Goal /
+ * AC-P1). No residual-to-goal-item auto-link this iteration (compass
+ * ruling 2).
  * - Register file `projects/<id>/residuals.json` shape
- *   `{ entries: { [key]: (ResidualEntry & { source_plan, registered_at,
- *   lifecycle_id? })[] } }` (plan Task 4 + QC wave-1 W-E) — entries keyed by
- *   plan id, each value an ARRAY of entries (v1 `residual_findings[plan-id]`
- *   semantics preserved verbatim: a plan may hold 2+ open residuals); entry
- *   validation delegates verbatim to `validateResidual` (status.ts), so the
- *   severity enum + lifecycle semantics are preserved at the new address.
+ * `{ entries: { [key]: (ResidualEntry & { source_plan, registered_at,
+ * lifecycle_id? })[] } }` ( ) — entries keyed by
+ * plan id, each value an ARRAY of entries (v1 `residual_findings[plan-id]`
+ * semantics preserved verbatim: a plan may hold 2+ open residuals); entry
+ * validation delegates verbatim to `validateResidual` (status.ts), so the
+ * severity enum + lifecycle semantics are preserved at the new address.
  * - `_DEFAULT_PROJECT` fallback for project-less flows (compass ruling 2).
  * - Theme-scoped research corpus `projects/<id>/references/` (plan
- *   20260820-project-research-corpus Task 1; compass ruling 1): engine owns
- *   `PROJECT_REFERENCES_DIR` + `listProjectReferenceFiles` — directory
- *   metadata only (`readdirSync` with `withFileTypes`), never file bodies,
- *   never a markdown schema; placement semantics are skills prose, not
- *   engine validation.
- * - Project-register consumers (QC wave-1 W-D relocation): `findingsCleanupGate`
- *   (findings-cleanup modes; status-and-residuals.md § Findings cleanup
- *   modes) and `techDebtRollup` (the `metadata.tech_debt_summary` rollup
- *   computed over project registers) live HERE — they operate on project
- *   artifacts, and relocating them breaks the former status.ts ↔ project.ts
- *   module cycle (status.ts no longer imports this module; public names stay
- *   exported from the package index for compile compatibility).
+ * 20260820-project-research-corpus Task 1): engine owns
+ * `PROJECT_REFERENCES_DIR` + `listProjectReferenceFiles` — directory
+ * metadata only (`readdirSync` with `withFileTypes`), never file bodies,
+ * never a markdown schema; placement semantics are skills prose, not
+ * engine validation.
+ * - Project-register consumers: `findingsCleanupGate`
+ * (findings-cleanup modes; status-and-residuals.md § Findings cleanup
+ * modes) and `techDebtRollup` (the `metadata.tech_debt_summary` rollup
+ * computed over project registers) live HERE — they operate on project
+ * artifacts, and relocating them breaks the former status.ts ↔ project.ts
+ * module cycle (status.ts no longer imports this module; public names stay
+ * exported from the package index for compile compatibility).
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, type Dirent } from "node:fs";
 import { basename, join, resolve } from "node:path";
@@ -46,25 +46,25 @@ import { withStatusWriteLock } from "./lease.js";
 import { assertFsStorePath, getArtifactStore } from "./store.js";
 import { isOpenResidual, normalizeSeverity, validateResidual, type ResidualEntry } from "./status.js";
 
-/** Roadmap file name inside `projects/<id>/` (plan Task 4 — writer contract). */
+/** Roadmap file name inside `projects/<id>/` ( — writer contract). */
 export const PROJECT_ROADMAP_FILE = "roadmap.md";
 
-/** Theme-scoped research directory name inside `projects/<id>/` (plan 20260820-project-research-corpus Task 1 — compass ruling 1). */
+/** Theme-scoped research directory name inside `projects/<id>/`. */
 export const PROJECT_REFERENCES_DIR = "references";
 
-/** Project register file name inside `projects/<id>/` (plan Task 4). */
+/** Project register file name inside `projects/<id>/` (). */
 export const PROJECT_REGISTER_FILE = "residuals.json";
 
-/** Fallback project id for project-less flows (plan Task 4 — compass ruling 2). */
+/** Fallback project id for project-less flows ( — compass ruling 2). */
 export const _DEFAULT_PROJECT = "_default";
 
-/** Roadmap status enum (plan Task 4 — frontmatter schema). */
+/** Roadmap status enum ( — frontmatter schema). */
 export const ROADMAP_STATUSES = ["active", "paused", "completed"] as const;
 
 export type RoadmapStatus = (typeof ROADMAP_STATUSES)[number];
 
 /**
- * Roadmap frontmatter (plan Task 4): machine-checkable subset. All fields
+ * Roadmap frontmatter (): machine-checkable subset. All fields
  * are `unknown` because documents come from YAML at runtime; the validator
  * narrows them. `milestones` / `residuals_ref` are optional; goal-item body
  * conventions are warnings only.
@@ -87,8 +87,8 @@ export type ProjectRegisterEntry = ResidualEntry & {
 };
 
 /**
- * Register document shape (`projects/<id>/residuals.json`, plan Task 4;
- * QC wave-1 W-E): `entries` keyed by plan id, each value an ARRAY of
+ * Register document shape (`projects/<id>/residuals.json`(;
+ * `entries` keyed by plan id, each value an ARRAY of
  * register entries — v1 `residual_findings[plan-id] = entries[]`
  * multi-finding semantics preserved verbatim (a plan can hold 2+ open
  * residuals). `migration_notes[]` (the old single-entry collapse record)
@@ -101,7 +101,7 @@ export type ProjectRegisterDoc = {
 
 /**
  * Roadmap validation result: schema violations decide `ok`; body-convention
- * findings are collected as `warnings` and never flip `ok` (plan Task 4 —
+ * findings are collected as `warnings` and never flip `ok` ( —
  * goal-item body is not a hard gate).
  */
 export type RoadmapValidation = GateResult & { warnings: ValidationResult[] };
@@ -169,7 +169,7 @@ function validateNonEmptyString(
 }
 
 /**
- * Validate a roadmap.md file (plan Task 4): parse the frontmatter with the
+ * Validate a roadmap.md file (): parse the frontmatter with the
  * shared flat-subset parser and check the schema
  * `{ project_id, title, status: active|paused|completed, created_at,
  * milestones[]?, residuals_ref? }`. A roadmap file whose body follows the
@@ -226,8 +226,8 @@ export function validateRoadmap(filePath: string): RoadmapValidation {
     violations.push(violation("medium", "project.roadmap.invalid-created-at", "created_at must be YYYY-MM-DD"));
   }
 
-  // milestones is optional; an empty `milestones:` parses as null (same as
-  // absent). Otherwise it must be a list of non-empty strings.
+ // milestones is optional; an empty `milestones:` parses as null (same as
+ // absent). Otherwise it must be a list of non-empty strings.
   if (doc.milestones !== undefined && doc.milestones !== null) {
     if (!Array.isArray(doc.milestones)) {
       violations.push(violation("medium", "project.roadmap.invalid-milestones", "milestones must be a list of milestone names"));
@@ -249,11 +249,11 @@ export function validateRoadmap(filePath: string): RoadmapValidation {
     }
   }
 
-  // Body conventions (plan Task 4 — documented, warning-only, never a hard
-  // gate): the body SHOULD state the direction in a `## Direction` section
-  // and list goal items as markdown task-list items (`- [ ]` planned /
-  // in-flight, `- [x]` delivered). No residual-to-goal auto-link this
-  // iteration — goal items carry no register ids.
+ // Body conventions ( — documented, warning-only, never a hard
+ // gate): the body SHOULD state the direction in a `## Direction` section
+ // and list goal items as markdown task-list items (`- [ ]` planned /
+ // in-flight, `- [x]` delivered). No residual-to-goal auto-link this
+ // iteration — goal items carry no register ids.
   const warnings: ValidationResult[] = [];
   const fenceEnd = linesIndexOfClosingFence(content);
   const body = content.split(/\r?\n/).slice(fenceEnd + 1).join("\n");
@@ -287,7 +287,7 @@ function linesIndexOfClosingFence(content: string): number {
 
 /**
  * Validate a project register document (`projects/<id>/residuals.json`,
- * plan Task 4; QC wave-1 W-E): `{ entries: { [key]: entry[] } }` keyed by
+ *  `{ entries: { [key]: entry[] } }` keyed by
  * plan id, each value an ARRAY of entries (v1 `residual_findings[plan-id]`
  * multi-finding semantics preserved — a plan may hold 2+ open residuals).
  * Each entry is validated by the v1 `validateResidual` verbatim (severity
@@ -325,8 +325,8 @@ export function validateProjectRegister(doc: unknown): GateResult {
         continue;
       }
       for (const entry of entries) {
-        // Residual entry shape/semantics verbatim (severity enum + lifecycle
-        // states — the register re-hosts them at the new address).
+ // Residual entry shape/semantics verbatim (severity enum + lifecycle
+ // states — the register re-hosts them at the new address).
         violations.push(...validateResidual(entry).violations);
         if (!isPlainObject(entry)) continue;
 
@@ -345,8 +345,8 @@ export function validateProjectRegister(doc: unknown): GateResult {
         if (entry.lifecycle_id !== undefined && (typeof entry.lifecycle_id !== "string" || entry.lifecycle_id.trim() === "")) {
           violations.push(violation("medium", "project.register.invalid-lifecycle-id", "lifecycle_id must be a non-empty string"));
         }
-        // The register is keyed by plan id (plan Task 4), so a mismatched
-        // source_plan is corrupted provenance.
+ // The register is keyed by plan id (), so a mismatched
+ // source_plan is corrupted provenance.
         if (typeof entry.source_plan === "string" && entry.source_plan.trim() !== "" && entry.source_plan !== key) {
           violations.push(
             violation(
@@ -363,36 +363,35 @@ export function validateProjectRegister(doc: unknown): GateResult {
   return { ok: violations.length === 0, violations };
 }
 
-/** Options for `appendProjectRegisterEntries` (plan 20260826-backlog-register-cli Task 1 + B-9). */
+/** Options for `appendProjectRegisterEntries`. */
 export type AppendProjectRegisterEntriesOpts = {
-  /** Absolute path to the per-project directory (`<harness>/projects/<id>`; `_default` for project-less flows). */
+ /** Absolute path to the per-project directory (`<harness>/projects/<id>`; `_default` for project-less flows). */
   projectDir: string;
   /**
-   * Base entries key (`<plan-id>`), e.g. `pr-deep-review-2026-08-26`. The
-   * first free same-day key (`basePlanKey`, `basePlanKey-2`, `-3`, …) is
-   * selected INSIDE the status write lock — a caller-computed key would be a
-   * cross-lock TOCTOU (B-9 correction ①).
-   */
+ * Base entries key (`<plan-id>`), e.g. `pr-deep-review-2026-08-26`. The
+ * first free same-day key (`basePlanKey`, `basePlanKey-2`, `-3`, …) is
+ * selected INSIDE the status write lock — a caller-computed key would be a
+ * cross-lock TOCTOU (B-9 correction ①).
+ */
   basePlanKey: string;
-  /** Residual entries to append — nine required fields + provenance. `source_plan` is overwritten with the used key; `registered_at` is required and must be set by the caller. */
+ /** Residual entries to append — nine required fields + provenance. `source_plan` is overwritten with the used key; `registered_at` is required and must be set by the caller. */
   entries: ResidualEntry[];
 };
 
-/** Options for `closeProjectRegisterEntry` (plan 20260826-backlog-register-cli Task 1). */
+/** Options for `closeProjectRegisterEntry`. */
 export type CloseProjectRegisterEntryOpts = {
-  /** Absolute path to the per-project directory (`<harness>/projects/<id>`; `_default` for project-less flows). */
+ /** Absolute path to the per-project directory (`<harness>/projects/<id>`; `_default` for project-less flows). */
   projectDir: string;
-  /** Entries key (`<plan-id>`) holding the entry to close. */
+ /** Entries key (`<plan-id>`) holding the entry to close. */
   planKey: string;
-  /** `id` of the entry to close (absent → throw). */
+ /** `id` of the entry to close (absent → throw). */
   entryId: string;
-  /** Closure note written verbatim; `closed_at` is today's local date. */
+ /** Closure note written verbatim; `closed_at` is today's local date. */
   closureNote: string;
 };
 
 /**
- * Append residual entries to a project register (plan 20260826-backlog-register-cli
- * Task 1 + B-9): resolve `<projectDir>/residuals.json` and run the WHOLE
+ * Append residual entries to a project register: resolve `<projectDir>/residuals.json` and run the WHOLE
  * critical section inside `withStatusWriteLock(registerPath, ...)` (lease.ts —
  * the `<register dir>/.status-write.lockdir/` lock is reused, never
  * reimplemented). Read the register (absent → empty doc), select the first
@@ -405,7 +404,7 @@ export type CloseProjectRegisterEntryOpts = {
  * key beforehand), append preserving every other key, validate the whole
  * register with `validateProjectRegister`, then `ArtifactStore.put`
  * (FsStore uses `writeJson` — atomic temp+rename; never `open(w)`).
- * Fails loud (qc3 F-201) when the active FsStore would resolve a register
+ * Fails loud when the active FsStore would resolve a register
  * path other than `<projectDir>/residuals.json` — callers whose target root
  * differs from the active store's root MUST
  * `setArtifactStore(createFsStore(root))` first. Fail-loud: any validation
@@ -414,27 +413,27 @@ export type CloseProjectRegisterEntryOpts = {
 export async function appendProjectRegisterEntries(
   opts: AppendProjectRegisterEntriesOpts,
 ): Promise<{ ok: true; key: string }> {
-  // An empty batch is a caller error — fail loud instead of writing an empty
-  // key that would pass validateProjectRegister (Task-1 review minor 3).
+ // An empty batch is a caller error — fail loud instead of writing an empty
+ // key that would pass validateProjectRegister (Task-1 review minor 3).
   if (opts.entries.length === 0) {
     throw new Error("refusing to append residual entries: entries must not be empty");
   }
   const registerPath = resolve(join(opts.projectDir, PROJECT_REGISTER_FILE));
   const projectKey = basename(resolve(opts.projectDir));
   const store = getArtifactStore();
-  // Fail-loud path agreement (qc3 F-201): the lockdir serializes
-  // `registerPath`; the store put must land on that same file. A divergence
-  // throws before the project dir or lockdir is created.
+ // Fail-loud path agreement : the lockdir serializes
+ // `registerPath`; the store put must land on that same file. A divergence
+ // throws before the project dir or lockdir is created.
   assertFsStorePath(store, { kind: "residuals", key: projectKey }, registerPath);
-  // The lockdir lands inside the project dir (dirname of the register); create
-  // it up front (mirrors writeWorkflowSnapshot) so a first-time project dir
-  // does not fail the lock acquisition with ENOENT.
+ // The lockdir lands inside the project dir (dirname of the register); create
+ // it up front (mirrors writeWorkflowSnapshot) so a first-time project dir
+ // does not fail the lock acquisition with ENOENT.
   mkdirSync(opts.projectDir, { recursive: true });
   return withStatusWriteLock(registerPath, async () => {
     const doc = readJson(registerPath) as ProjectRegisterDoc;
     const entriesMap = doc.entries ?? {};
-    // Port of the python next-free-key loop (pr-review.md): first free
-    // same-day key — basePlanKey, then basePlanKey-2, basePlanKey-3, …
+ // Port of the python next-free-key loop (pr-review.md): first free
+ // same-day key — basePlanKey, then basePlanKey-2, basePlanKey-3, …
     let key = opts.basePlanKey;
     for (let i = 2; Object.hasOwn(entriesMap, key); i += 1) {
       key = `${opts.basePlanKey}-${i}`;
@@ -447,13 +446,13 @@ export async function appendProjectRegisterEntries(
         );
       }
     }
-    // Entry ids must be unique within the selected key (B-9 correction ②):
-    // validateResidual is per-entry and validateProjectRegister has no
-    // duplicate-id detection.
+ // Entry ids must be unique within the selected key (B-9 correction ②):
+ // validateResidual is per-entry and validateProjectRegister has no
+ // duplicate-id detection.
     const seen = new Set<string>();
-    // Seed from the selected key's existing entries (Task-1 review minor 3) —
-    // the occupancy loop guarantees a free key today, but the seed keeps the
-    // check correct if occupancy is ever relaxed to append into an existing key.
+ // Seed from the selected key's existing entries (Task-1 review minor 3) —
+ // the occupancy loop guarantees a free key today, but the seed keeps the
+ // check correct if occupancy is ever relaxed to append into an existing key.
     for (const existing of Object.hasOwn(entriesMap, key) ? (entriesMap[key] ?? []) : []) {
       if (typeof existing.id === "string") seen.add(existing.id);
     }
@@ -467,8 +466,8 @@ export async function appendProjectRegisterEntries(
         seen.add(entry.id);
       }
     }
-    // source_plan must match the entries key (validateProjectRegister); the
-    // caller cannot know the bumped key, so it is set here (pr-review.md).
+ // source_plan must match the entries key (validateProjectRegister); the
+ // caller cannot know the bumped key, so it is set here (pr-review.md).
     const appended = opts.entries.map((entry) => ({ ...entry, source_plan: key })) as ProjectRegisterEntry[];
     const register: ProjectRegisterDoc = {
       ...doc,
@@ -486,13 +485,12 @@ export async function appendProjectRegisterEntries(
 }
 
 /**
- * Close one project-register entry in place (plan 20260826-backlog-register-cli
- * Task 1): under `withStatusWriteLock(registerPath, ...)`, find `entryId` in
+ * Close one project-register entry in place under `withStatusWriteLock(registerPath, ...)`, find `entryId` in
  * `entries[planKey]` (absent → throw), set `lifecycle: resolved` +
  * `closed_at: <today YYYY-MM-DD>` + `closure_note`, validate the whole
  * register with `validateProjectRegister`, then `ArtifactStore.put`
  * (FsStore uses `writeJson` — atomic temp+rename).
- * Fails loud (qc3 F-201) when the active FsStore would resolve a register
+ * Fails loud when the active FsStore would resolve a register
  * path other than `<projectDir>/residuals.json`. Fail-loud: an invalid
  * register throws and nothing is written.
  */
@@ -500,9 +498,9 @@ export async function closeProjectRegisterEntry(opts: CloseProjectRegisterEntryO
   const registerPath = resolve(join(opts.projectDir, PROJECT_REGISTER_FILE));
   const projectKey = basename(resolve(opts.projectDir));
   const store = getArtifactStore();
-  // Fail-loud path agreement (qc3 F-201): see appendProjectRegisterEntries.
+ // Fail-loud path agreement : see appendProjectRegisterEntries.
   assertFsStorePath(store, { kind: "residuals", key: projectKey }, registerPath);
-  // See appendProjectRegisterEntries — the lockdir needs its parent to exist.
+ // See appendProjectRegisterEntries — the lockdir needs its parent to exist.
   mkdirSync(opts.projectDir, { recursive: true });
   return withStatusWriteLock(registerPath, async () => {
     const doc = readJson(registerPath) as ProjectRegisterDoc;
@@ -541,7 +539,7 @@ export async function closeProjectRegisterEntry(opts: CloseProjectRegisterEntryO
 
 /**
  * Findings cleanup gate (status-and-residuals.md § Findings cleanup modes;
- * QC wave-1 W-D relocation — the input is the project register
+ * The input is the project register
  * `projects/<id>/residuals.json`, entries keyed by plan id with an ARRAY of
  * residuals per plan, and the plan id links the register entries to the
  * snapshot's plan row). Every OPEN entry of the plan is checked.
@@ -561,14 +559,14 @@ export function findingsCleanupGate(
   const violations: ValidationResult[] = [];
   const entries = isPlainObject(register.entries) ? register.entries[planId] : undefined;
   if (entries === undefined) {
-    // No register entries for this plan → no open residuals; the gate passes.
+ // No register entries for this plan → no open residuals; the gate passes.
     return { ok: true, violations };
   }
   if (!Array.isArray(entries)) {
-    // QC wave-1 S-006: a non-array entry value fails closed — same violation
-    // code as validateProjectRegister. `.length` on an object is undefined,
-    // so the old length-0 guard did not intercept and `for…of` threw a
-    // TypeError; a malformed register must never crash nor pass silently.
+ // A non-array entry value fails closed — same violation
+ // code as validateProjectRegister. `.length` on an object is undefined,
+ // so the old length-0 guard did not intercept and `for…of` threw a
+ // TypeError; a malformed register must never crash nor pass silently.
     violations.push(
       violation(
         "high",
@@ -583,7 +581,7 @@ export function findingsCleanupGate(
   }
 
   for (const entry of entries) {
-    // Closed entries are not open residuals — they pass every mode.
+ // Closed entries are not open residuals — they pass every mode.
     if (!isOpenResidual(entry)) continue;
 
     const id = typeof entry.id === "string" ? entry.id : "<unnamed>";
@@ -642,8 +640,8 @@ export function findingsCleanupGate(
 function groupCount(values: unknown[]): Record<string, number> {
   const counts = new Map<string, number>();
   for (const value of values) {
-    // jq group_by sorts by element value; TS map keys are strings — equivalent
-    // for string targets (the fixture contract); mixed numbers would differ.
+ // jq group_by sorts by element value; TS map keys are strings — equivalent
+ // for string targets (the fixture contract); mixed numbers would differ.
     const key = typeof value === "string" ? value : String(value);
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
@@ -651,7 +649,7 @@ function groupCount(values: unknown[]): Record<string, number> {
 }
 
 /**
- * Compute the tech-debt rollup over the project registers (QC wave-1 W-D
+ * Compute the tech-debt rollup over the project registers
  * relocation — status-and-residuals.md § `metadata.tech_debt_summary`
  * semantics preserved at the project layer): `total_open` / `by_severity` /
  * `by_target` / `by_plan` over open entries of every

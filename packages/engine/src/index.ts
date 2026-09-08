@@ -25,7 +25,11 @@
  */
 export type { GateResult, Severity, ValidationResult } from "./core.js";
 export { SEVERITY_ORDER, applyEnforcement, readHarnessVersion, readJson, resolveProjectRoot, writeJson } from "./core.js";
-export type { HarnessKind, ResolveHarnessDirOptions, ResolveSpecsDirOptions } from "./path.js";
+export type {
+  HarnessKind,
+  ResolveHarnessDirOptions,
+  ResolveSpecsDirOptions,
+} from "./path.js";
 export type { MstarcConfig } from "./mstarc.js";
 export {
   MSTARC_FILE,
@@ -38,6 +42,7 @@ export {
 } from "./mstarc.js";
 export {
   assertPlanWritingPath,
+  canonicalizeNearestExisting,
   detectHarnessKind,
   emitGitignoreSnippet,
   resolveHarnessDir,
@@ -151,6 +156,9 @@ export {
 export type {
   ImplementerSessionLedger,
   ReviewPackageOptions,
+  SddAction,
+  SddActionKind,
+  SddExecutionContext,
   SddWorkspaceOptions,
   StickyRulesInput,
   StickyRulesResult,
@@ -160,9 +168,12 @@ export {
   GIT_CAPTURE_MAX_BYTES,
   SddScriptError,
   assertBaseSha,
+  checkSddAction,
   implementerSessionStickyRules,
   readProgressLedger,
+  resolveSddExecutionContext,
   reviewPackage,
+  runInSddContext,
   sddWorkspace,
   taskBrief,
   taskReportExists,
@@ -318,8 +329,9 @@ export {
 } from "./roles.js";
 export type { DetectResult, HostAdapter, HostId, SkillRootPaths, ToolSignal } from "./host.js";
 export { detectHost, resolveSkillRoot } from "./host.js";
-export type { FiveQuestionMode, FiveQuestionSection } from "./skill-authoring.js";
+export type { FiveQuestionMode, FiveQuestionSection, SkillLintKind, SkillLintProfile } from "./skill-authoring.js";
 export {
+  classifySkillLint,
   FIVE_QUESTION_SECTIONS,
   RUNTIME_HEADING_ALIASES,
   lintFiveQuestion,

@@ -30,23 +30,23 @@ import { validateExecutionLease, validateIntegrationMergeLease, withStatusWriteL
 import { validatePlanRow, type PlanRow } from "./status.js";
 import { assertFsStorePath, getArtifactStore } from "./store.js";
 
-/** Snapshot file name inside `workflows/<id>/` (plan Task 2 — writer contract). */
+/** Snapshot file name inside `workflows/<id>/` ( — writer contract). */
 export const WORKFLOW_SNAPSHOT_FILE = "snapshot.json";
 
-/** Lifecycle status enum (plan Task 2 — terminal set = completed|failed|stopped). */
+/** Lifecycle status enum ( — terminal set = completed|failed|stopped). */
 export const WORKFLOW_LIFECYCLE_STATUSES = ["running", "paused", "completed", "failed", "stopped"] as const;
 
 /** Terminal statuses: snapshot must carry `ended_at` and no dangling leases. */
 export const WORKFLOW_TERMINAL_STATUSES = ["completed", "failed", "stopped"] as const;
 
-/** Lifecycle type enum (plan Task 2 — id reuses the orchestration id). */
+/** Lifecycle type enum ( — id reuses the orchestration id). */
 export const WORKFLOW_LIFECYCLE_TYPES = ["plan", "iteration"] as const;
 
 export type WorkflowLifecycleStatus = (typeof WORKFLOW_LIFECYCLE_STATUSES)[number];
 export type WorkflowLifecycleType = (typeof WORKFLOW_LIFECYCLE_TYPES)[number];
 
 /**
- * First-class lifecycle execution policy (plan Task 2 — keys copied from root
+ * First-class lifecycle execution policy ( — keys copied from root
  * `metadata` at migrate; values accepted-but-opaque this iteration, no
  * semantic gate).
  */
@@ -56,7 +56,7 @@ export type WorkflowExecutionPolicy = {
   push_policy?: unknown;
 };
 
-/** Iteration branch anchors (plan Task 2 — from root metadata anchors). */
+/** Iteration branch anchors ( — from root metadata anchors). */
 export type WorkflowBranchAnchors = {
   base?: string;
   integration?: string;
@@ -65,11 +65,11 @@ export type WorkflowBranchAnchors = {
 
 /**
  * v3 workflow snapshot (`workflows/<id>/snapshot.json`) — final schema
- * (plan Task 2). `plans[]` rows are the legacy PlanRow shape verbatim;
+ * (). `plans[]` rows are the legacy PlanRow shape verbatim;
  * per-row `execution_lease` stays on the row, `integration_merge_lease` is
  * top-level.
  *
- * Notes dual-home SSOT (qc wave-1 S-e): a plan row's `notes` array is the
+ * Notes dual-home SSOT: a plan row's `notes` array is the
  * LEGACY VERBATIM copy preserved at migrate time — the RUNTIME ledger is
  * `notes.jsonl` in the workflow dir (`migrate.ts` NOTES_LEDGER_FILE). New
  * notes append to the ledger only; row `notes` is read-only legacy and is
@@ -116,7 +116,7 @@ function validateNonEmptyString(
 }
 
 /**
- * Validate a v3 workflow snapshot document (plan Task 2 — final schema):
+ * Validate a v3 workflow snapshot document ( — final schema):
  * enum/type/id checks, `schema_version: 1`, required timestamps, `plans[]`
  * rows validated by the legacy `validatePlanRow` with row-level
  * `execution_lease` shape delegated to `validateExecutionLease`,
@@ -147,7 +147,7 @@ export function validateWorkflowSnapshot(doc: unknown): GateResult {
     );
   }
 
-  // QC wave-1 S-a: a top-level `version` key is reserved for the root
+  // a top-level `version` key is reserved for the root
   // status.json discriminator and must never appear on a snapshot — reject
   // it outright (defense-in-depth: the plan reserves `version`; snapshots
   // use `schema_version`).
@@ -260,7 +260,7 @@ export function validateWorkflowSnapshot(doc: unknown): GateResult {
     );
   }
 
-  // Terminal invariants (plan Task 2): ended_at present, no dangling leases.
+  // Terminal invariants (): ended_at present, no dangling leases.
   const terminal = typeof doc.status === "string" && (WORKFLOW_TERMINAL_STATUSES as readonly string[]).includes(doc.status);
   if (terminal) {
     if (doc.ended_at === undefined) {
@@ -301,16 +301,16 @@ export function validateWorkflowSnapshot(doc: unknown): GateResult {
 
 /**
  * Write a workflow snapshot as a whole-rewrite of `dir/snapshot.json` under
- * `withStatusWriteLock(snapshotPath)` (plan Task 2 — the `.status-write.lockdir`
+ * `withStatusWriteLock(snapshotPath)` ( — the `.status-write.lockdir`
  * lands inside `workflows/<id>/`, dirname of the snapshot; no harness-root
  * pollution). The snapshot is validated first — an invalid snapshot throws
  * and nothing is written. `dir` is created recursively. The durable write
- * routes through the active `ArtifactStore` (spec SP2: snapshot →
+ * routes through the active `ArtifactStore` (the store contract: snapshot →
  * `{ kind: "snapshot", key: <workflow id> }`) inside the existing lock — the
  * default FsStore resolves `{WORKFLOW_DIR}/<key>/snapshot.json`, identical
  * to `join(dir, WORKFLOW_SNAPSHOT_FILE)` for canonical callers. The write
  * fails loud when the active FsStore would resolve a different path than
- * the caller's `join(dir, WORKFLOW_SNAPSHOT_FILE)` (qc3 F-201) — callers
+ * the caller's `join(dir, WORKFLOW_SNAPSHOT_FILE)`  — callers
  * whose target root differs from the active store's root MUST
  * `setArtifactStore(createFsStore(root))` first.
  */
@@ -321,7 +321,7 @@ export async function writeWorkflowSnapshot(snapshot: WorkflowSnapshot, dir: str
     throw new Error(`refusing to write invalid workflow snapshot: ${detail}`);
   }
   const snapshotPath = join(dir, WORKFLOW_SNAPSHOT_FILE);
-  // Fail-loud path agreement (qc3 F-201): the lockdir serializes
+  // Fail-loud path agreement : the lockdir serializes
   // `snapshotPath`; the store put must land on that same file. A divergence
   // (caller target outside the active FsStore root) throws before the dir or
   // lockdir is created — nothing is written anywhere.

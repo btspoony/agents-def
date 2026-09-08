@@ -1,6 +1,5 @@
 /**
- * Task 4 — warn-only adoption advisory (plan `20260815-dsh-fallbacks-personas`):
- * when fallbacks is mounted, ONE advisory pass per apply structurally reads the
+ * Task 4 — warn-only adoption advisory  * when fallbacks is mounted, ONE advisory pass per apply structurally reads the
  * deployment's fallbacks row config from the loader entry (`entry.options.config`
  * — architect-verified field: `EntryOptions.config` "Config passed to the
  * plugin", the same value the plugin's `apply()` receives) and warns (bounded:
@@ -574,7 +573,7 @@ describe('fallbacks adoption advisory — mounted, warn-only, bounded', () => {
   })
 })
 
-describe('fallbacks adoption advisory — seeds-aware effective state (service present, plan 20260816-dsh-b4-seeds Task 3)', () => {
+describe('fallbacks adoption advisory — seeds-aware effective state (service present)', () => {
   /** All three fixture mstar roles seeded at their defaults (clean effective state). */
   function seededReadback(): EffectiveRolesReadback {
     return {

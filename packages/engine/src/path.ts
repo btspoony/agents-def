@@ -45,25 +45,25 @@ import { _DEFAULT_PROJECT, PROJECT_REGISTER_FILE, PROJECT_ROADMAP_FILE } from ".
  */
 export type ResolveHarnessDirOptions = {
   /**
-   * Explicit harness root. Resolved against `startDir` when relative.
-   * Takes precedence over `MSTAR_HARNESS_DIR` and over default probing.
-   * Authoritative: the path is returned even when it does not exist yet
-   * (the caller may scaffold it).
-   */
+ * Explicit harness root. Resolved against `startDir` when relative.
+ * Takes precedence over `MSTAR_HARNESS_DIR` and over default probing.
+ * Authoritative: the path is returned even when it does not exist yet
+ * (the caller may scaffold it).
+ */
   harnessDir?: string;
   /**
-   * Workspace-root stop boundary (roadmap §7c / plan
-   * 20260810-harness-root-boundary). The upward probe keeps walking only
-   * while `dir` is at or below this root — a harness dir above it is never
-   * returned (the `~/.mstar` global-collision defect is the special case).
-   * Resolved against `startDir` when relative. When omitted, the default
-   * boundary is the git top-level of `startDir` (sync `git rev-parse
-   * --show-cdup`; on failure / non-git start it falls back to
-   * `startDir` itself — a non-git start probes only itself, never upward;
-   * deliberate tightening). The boundary is an explicit caller value: the
-   * engine git-probes only for this default resolution, never during the
-   * walk.
-   */
+ * Workspace-root stop boundary (roadmap §7c / plan
+ * 20260810-harness-root-boundary). The upward probe keeps walking only
+ * while `dir` is at or below this root — a harness dir above it is never
+ * returned (the `~/.mstar` global-collision defect is the special case).
+ * Resolved against `startDir` when relative. When omitted, the default
+ * boundary is the git top-level of `startDir` (sync `git rev-parse
+ * --show-cdup`; on failure / non-git start it falls back to
+ * `startDir` itself — a non-git start probes only itself, never upward;
+ * deliberate tightening). The boundary is an explicit caller value: the
+ * engine git-probes only for this default resolution, never during the
+ * walk.
+ */
   workspaceRoot?: string;
 };
 
@@ -96,7 +96,7 @@ export function resolveHarnessDir(
   if (rc !== null && rc.config.harnessDir) return resolve(rc.dir, rc.config.harnessDir);
   let dir = start;
   for (;;) {
-    // Stop boundary: never probe a harness dir above the workspace root.
+ // Stop boundary: never probe a harness dir above the workspace root.
     if (!isAtOrBelow(dir, boundary)) return null;
     for (const candidate of [join(dir, ".mstar"), join(dir, ".agents"), join(dir, ".plans"), join(dir, "plans")]) {
       if (isDirectory(candidate)) return candidate;
@@ -131,15 +131,15 @@ function defaultWorkspaceRoot(startDir: string): string {
     }).trim();
     if (!cdup) return startDir; // already at the git top-level
     let boundary = startDir;
-    // Windows-normalized separator split — defensive only: this repo has no
-    // Windows target, and git emits "/" here (backslashes never occur), so
-    // the regex just guards a future caller from feeding `\` separators.
+ // Windows-normalized separator split — defensive only: this repo has no
+ // Windows target, and git emits "/" here (backslashes never occur), so
+ // the regex just guards a future caller from feeding `\` separators.
     for (const segment of cdup.split(/[\\/]/)) {
       if (segment && segment !== ".") boundary = dirname(boundary);
     }
     return resolve(boundary);
   } catch {
-    // not a git work tree (or git unavailable) — fall through to startDir
+ // not a git work tree (or git unavailable) — fall through to startDir
   }
   return startDir;
 }
@@ -170,10 +170,10 @@ function mstarcDirOverride(harnessDir: string, key: keyof MstarcConfig): string 
  */
 export type ResolveSpecsDirOptions = {
   /**
-   * Default true: when every candidate is absent or empty, create
-   * `{HARNESS_DIR}/specs/` (plan-conventions § 创建默认). Read-only callers
-   * (e.g. `mstar path resolve`) pass `false` to skip the side effect.
-   */
+ * Default true: when every candidate is absent or empty, create
+ * `{HARNESS_DIR}/specs/` (plan-conventions § 创建默认). Read-only callers
+ * (e.g. `mstar path resolve`) pass `false` to skip the side effect.
+ */
   create?: boolean;
 };
 
@@ -203,8 +203,8 @@ export function resolveSpecsDir(harnessDir: string, opts: ResolveSpecsDirOptions
     join(harness, "specs"),
     join(repoRoot, "docs", "specs"),
     join(repoRoot, "specs"),
-    // Legacy 兼容读 (plan-conventions § {SPECS_DIR} 解析 Legacy): read-only —
-    // init must NOT create designs/; same empty-dir-as-absent rule applies.
+ // Legacy 兼容读 (plan-conventions § {SPECS_DIR} 解析 Legacy): read-only —
+ // init must NOT create designs/; same empty-dir-as-absent rule applies.
     join(harness, "designs"),
     join(repoRoot, "designs"),
   ];
@@ -234,7 +234,7 @@ export function resolvePlanDir(harnessDir: string): string {
 
 /**
  * Single safe path component for per-plan path composition
- * (qc2 F-001 — path traversal guard): rejects `""`, `.`, `..`, and any
+ * (path traversal guard): rejects `""`, `.`, `..`, and any
  * `/` or `\`; allows `[A-Za-z0-9._-]+` only. Throws with a clear message so
  * callers interpolating a plan id into a path (archive files, SDD dirs)
  * can never escape the intended parent directory.
@@ -244,6 +244,35 @@ export function assertSafePathComponent(value: string, what: string): void {
     throw new Error(
       `${what} must be a single safe path component ([A-Za-z0-9._-]+; not "", ".", "..", or containing "/" or "\\") \u2014 got ${JSON.stringify(value)}`,
     );
+  }
+}
+
+/**
+ * Canonicalize `path` for containment checks when the leaf may not exist
+ * (A3 nonexistent-leaf rule): canonicalize the nearest existing ancestor
+ * (realpath — resolves macOS `/var` → `/private/var` and any symlinked
+ * ancestors) and append the not-yet-existing remaining segments lexically.
+ * `..`/`.` segments are collapsed lexically by `resolve` before the walk,
+ * so the result is the path a later write would actually land at. Pure
+ * read-only (stat/realpath only — never creates anything). When nothing up
+ * to the filesystem root exists, the lexically resolved input is returned.
+ */
+export function canonicalizeNearestExisting(path: string): string {
+  const abs = resolve(path);
+  let dir = abs;
+  const tail: string[] = [];
+  for (;;) {
+    if (existsSync(dir)) {
+      try {
+        return join(realpathSync(dir), ...tail);
+      } catch {
+        return abs;
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir) return abs; // reached the filesystem root
+    tail.unshift(basename(dir));
+    dir = parent;
   }
 }
 
@@ -320,7 +349,7 @@ function resolveHarnessSubdir(
  * the config file's directory). The dir need not exist — writers
  * (`writeWorkflowSnapshot` / register paths) create it on demand.
  *
- * Deferred-by-design (qc1 S-3): the startDir-first signature is asymmetric
+ * Deferred-by-design : the startDir-first signature is asymmetric
  * with the harnessDir-first sibling resolvers — brief-mandated for the CLI
  * consumer (it probes from the cwd). Revisit with a harness-dir-first
  * variant when a third v3 subdir resolver appears.
@@ -337,8 +366,7 @@ export function resolveWorkflowDir(
  * layer: roadmap.md + residuals register per project id). A `.mstarc`
  * `[config] project_dir` declaration wins (resolved against the config
  * file's directory). Same deferred-by-design signature asymmetry as
- * `resolveWorkflowDir` (qc1 S-3).
- */
+ * `resolveWorkflowDir`. */
 export function resolveProjectDir(
   startDir: string = process.cwd(),
   opts: ResolveHarnessDirOptions = {},
@@ -349,7 +377,7 @@ export function resolveProjectDir(
 /**
  * Empty status.json template — embedded copy of
  * `skills/mstar-artifacts/templates/status.empty.json`
- * (plan-conventions § 初始化 Plan 目录). Plan Task 3 ruling: the template is
+ * (plan-conventions § 初始化 Plan 目录). Ruling: the template is
  * the **v2 shape** (`version: 2`, `updated_at`, `workflows: []`) so
  * `scaffoldHarness` never emits an un-migrated (v1) tree. Kept as a constant
  * so the engine has no runtime dependency on skill files.
@@ -444,12 +472,12 @@ export function scaffoldHarness(root: string): string {
   const { harnessDir, projectDir } = resolveScaffoldDirs(root);
   for (const dir of SCAFFOLD_DIRS) mkdirSync(join(harnessDir, dir), { recursive: true });
   const statusPath = join(harnessDir, "status.json");
-  // readJson treats a missing file as `{}`, so a missing (or empty) status.json
-  // is replaced with the empty template; anything with content is preserved.
+ // readJson treats a missing file as `{}`, so a missing (or empty) status.json
+ // is replaced with the empty template; anything with content is preserved.
   if (Object.keys(readJson(statusPath)).length === 0) writeJson(statusPath, EMPTY_STATUS_TEMPLATE);
-  // v3 project layer: `projects/_default/` is scaffolded (the fallback
-  // project for project-less flows); other project ids and `workflows/`
-  // stay on-demand (engine writers create them).
+ // v3 project layer: `projects/_default/` is scaffolded (the fallback
+ // project for project-less flows); other project ids and `workflows/`
+ // stay on-demand (engine writers create them).
   const defaultProjectDir = join(projectDir, _DEFAULT_PROJECT);
   mkdirSync(defaultProjectDir, { recursive: true });
   const roadmapPath = join(defaultProjectDir, PROJECT_ROADMAP_FILE);
@@ -577,8 +605,8 @@ export function validateGitignore(root: string): ValidationResult {
     missing = mstarMissing;
     label = ".mstar/ set";
   } else {
-    // Unknown kind — either complete set passes; report the set needing the
-    // fewest additions (completing either one clears the gate).
+ // Unknown kind — either complete set passes; report the set needing the
+ // fewest additions (completing either one clears the gate).
     label = "either .mstar/ or .agents/ set";
     missing =
       mstarMissing.length === 0 || agentsMissing.length === 0
@@ -643,12 +671,12 @@ export function assertPlanWritingPath(planPath: string, harnessDir: string | nul
       fix: `write the plan under ${planDir}`,
     };
   }
-  // Canonical check for an existing plan file: a symlink whose realpath
-  // leaves {PLAN_DIR} is an escape even though the lexical path is inside.
-  // The plans dir itself may legitimately be a symlink (whole-dir layout),
-  // so compare canonical file against canonical plan dir. Missing file
-  // (first write) stays lexical-only; unexpected fs errors degrade to the
-  // lexical verdict — the gate must never throw.
+ // Canonical check for an existing plan file: a symlink whose realpath
+ // leaves {PLAN_DIR} is an escape even though the lexical path is inside.
+ // The plans dir itself may legitimately be a symlink (whole-dir layout),
+ // so compare canonical file against canonical plan dir. Missing file
+ // (first write) stays lexical-only; unexpected fs errors degrade to the
+ // lexical verdict — the gate must never throw.
   if (existsSync(planAbs)) {
     try {
       const canonicalPlan = realpathSync(planAbs);
@@ -666,8 +694,8 @@ export function assertPlanWritingPath(planPath: string, harnessDir: string | nul
         };
       }
     } catch {
-      // ENOENT raced between existsSync and realpathSync, or an unexpected
-      // fs error (EACCES etc.): keep the lexical verdict, never throw.
+ // ENOENT raced between existsSync and realpathSync, or an unexpected
+ // fs error (EACCES etc.): keep the lexical verdict, never throw.
     }
   }
   return {

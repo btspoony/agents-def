@@ -1,5 +1,5 @@
 /**
- * CLI `mstar pr-review` Task-3 commands (plan 20260826-prreview-execution):
+ * CLI `mstar pr-review` commands:
  * `post` (gh-dependent — planning-path only when gh is absent), `worktree-setup`
  * / `worktree-cleanup` (sidecar + exactly-recorded-branch contract), `size`
  * (band boundaries + file watch), `seat-prompt` (ingredient spot checks), and
@@ -20,7 +20,7 @@ import { join, resolve } from "node:path";
 const CLI_ROOT = resolve(import.meta.dir, "..");
 const SRC_ENTRY = join(CLI_ROOT, "src/index.ts");
 
-/** Spawn env with ambient harness env vars pinned out (qc3 F-4). */
+/** Spawn env with ambient harness env vars pinned out. */
 function cliEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {

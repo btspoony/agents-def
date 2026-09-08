@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "description": "Canonical skill-lint profile fixtures (spec A4). Each row pins one classification decision and its expected violation codes. `skillId` is the resolved target directory basename — the identity source at CLI and dsh configured skill-root boundaries — never the doc's YAML `name` alone. Expected columns: `expectedKind` (core|runtime|authoring), `expectedMode` (runtime|authoring|null; null = five-question skipped, core exemption only), `expectedFiveQuestionCodes` (exact violation codes; null = check skipped, [] = ran and passed), `expectedFrontmatterCodes` (exact codes; the frontmatter check stays active in every row). Rows are consumed by the Engine, CLI and dsh tests; the profile policy lives only in packages/engine/src/skill-authoring.ts (classifySkillLint).",
+  "rows": [
+    {
+      "id": "runtime-alias-pass",
+      "note": "Shipped mstar-* runtime topic profile: alias headings pass runtime-mode five-question; frontmatter clean.",
+      "skillId": "mstar-topic-fixture",
+      "doc": "---\nname: mstar-topic-fixture\ndescription: Use when a canonical fixture must exercise the runtime profile with alias headings.\n---\n# Skill Title\n\n## Load Order\n\nRead mstar-harness-core first.\n\n## Process\n\n1. Parse the frontmatter.\n2. Check the body sections.\n\n## Hard Rules\n\nNever weaken genuine authoring checks.\n\n## Output format\n\nA passing lint gate with zero violations.\n\n## Dependencies\n\nOpen references/skillsbench-authoring.md when a full loop is needed.\n",
+      "expectedKind": "runtime",
+      "expectedMode": "runtime",
+      "expectedFiveQuestionCodes": [],
+      "expectedFrontmatterCodes": []
+    },
+    {
+      "id": "strict-third-party-miss",
+      "note": "Non-mstar identity stays strict authoring: partial canonical body fails with exactly the uncovered-question codes.",
+      "skillId": "third-party-tool",
+      "doc": "---\nname: third-party-tool\ndescription: Use when a third-party skill with partial canonical sections must stay strict authoring.\n---\n# Third-Party Tool\n\n## Load Order\n\nRead the tool manual first.\n\n## Workflow\n\n1. Install the tool.\n2. Run the tool.\n",
+      "expectedKind": "authoring",
+      "expectedMode": "authoring",
+      "expectedFiveQuestionCodes": [
+        "skill-authoring.five-question.decision-rules",
+        "skill-authoring.five-question.evidence",
+        "skill-authoring.five-question.references"
+      ],
+      "expectedFrontmatterCodes": []
+    },
+    {
+      "id": "core-exempt-frontmatter-stays",
+      "note": "Exact mstar-harness-core identity: five-question skipped (mode null — the heading-less body would fail, so the skip is the exemption at work) while the frontmatter check still reports its violation.",
+      "skillId": "mstar-harness-core",
+      "doc": "---\nname: Mstar-Harness-Core\ndescription: Use when the core hub document is linted and the five-question exemption must hold.\n---\n# Morning Star Harness Core\n\nThis hub is the single global entry and adjudication layer for the harness. It defines the state machine, the Done permission, and the topic skill index that every role loads first.\n",
+      "expectedKind": "core",
+      "expectedMode": null,
+      "expectedFiveQuestionCodes": null,
+      "expectedFrontmatterCodes": ["lint.frontmatter.name.format"]
+    },
+    {
+      "id": "malformed-frontmatter-fails-separately",
+      "note": "Runtime identity with malformed frontmatter: the body passes runtime five-question yet the frontmatter violation still fires — frontmatter is independent of classification.",
+      "skillId": "mstar-topic-fixture",
+      "doc": "---\nname: Mstar-Topic-Fixture\ndescription: Use when malformed frontmatter must fail independently of the body profile.\n---\n# Skill Title\n\n## Load Order\n\nRead mstar-harness-core first.\n\n## Workflow\n\n1. Parse the frontmatter.\n2. Check the body sections.\n\n## Decision Rules\n\nNever flag prose-only skills; keep heuristics conservative.\n\n## Evidence\n\nA passing lint gate with zero violations.\n\n## References\n\nOpen references/skillsbench-authoring.md when a full authoring loop is needed.\n",
+      "expectedKind": "runtime",
+      "expectedMode": "runtime",
+      "expectedFiveQuestionCodes": [],
+      "expectedFrontmatterCodes": ["lint.frontmatter.name.format"]
+    },
+    {
+      "id": "fence-only-headings-fail",
+      "note": "A Workflow line only inside a code fence never satisfies coverage — runtime aliases do not rescue it either.",
+      "skillId": "mstar-topic-fixture",
+      "doc": "---\nname: mstar-topic-fixture\ndescription: Use when headings appear only inside code fences and must never satisfy coverage.\n---\n# Skill Title\n\n## Load Order\n\nRead mstar-harness-core first.\n\n## Decision Rules\n\nNever break the gates.\n\n## Evidence\n\nA report.\n\n## References\n\nOpen refs.\n\n```gitignore\n# Workflow: run the pipeline in order.\n```\n",
+      "expectedKind": "runtime",
+      "expectedMode": "runtime",
+      "expectedFiveQuestionCodes": ["skill-authoring.five-question.workflow"],
+      "expectedFrontmatterCodes": []
+    },
+    {
+      "id": "misleading-yaml-core-third-party",
+      "note": "YAML `name: mstar-harness-core` under a third-party target basename stays authoring — the classifier consumes the resolved identity, never the frontmatter name; alias headings do not cover in authoring mode.",
+      "skillId": "third-party-tool",
+      "doc": "---\nname: mstar-harness-core\ndescription: Use when a misleading YAML name must not select a looser lint profile.\n---\n# Skill Title\n\n## Load Order\n\nRead mstar-harness-core first.\n\n## Process\n\n1. Parse the frontmatter.\n2. Check the body sections.\n\n## Hard Rules\n\nNever weaken genuine authoring checks.\n\n## Output format\n\nA passing lint gate with zero violations.\n\n## Dependencies\n\nOpen references/skillsbench-authoring.md when a full loop is needed.\n",
+      "expectedKind": "authoring",
+      "expectedMode": "authoring",
+      "expectedFiveQuestionCodes": [
+        "skill-authoring.five-question.workflow",
+        "skill-authoring.five-question.decision-rules",
+        "skill-authoring.five-question.evidence",
+        "skill-authoring.five-question.references"
+      ],
+      "expectedFrontmatterCodes": []
+    },
+    {
+      "id": "standard-authoring-strict",
+      "note": "Exact mstar-skill-authoring identity stays strict authoring despite the mstar- prefix: alias headings do not cover.",
+      "skillId": "mstar-skill-authoring",
+      "doc": "---\nname: mstar-skill-authoring\ndescription: Use when the standard-bearing authoring skill must stay strict despite its prefix.\n---\n# Skill Title\n\n## Load Order\n\nRead mstar-harness-core first.\n\n## Process\n\n1. Parse the frontmatter.\n2. Check the body sections.\n\n## Hard Rules\n\nNever weaken genuine authoring checks.\n\n## Output format\n\nA passing lint gate with zero violations.\n\n## Dependencies\n\nOpen references/skillsbench-authoring.md when a full loop is needed.\n",
+      "expectedKind": "authoring",
+      "expectedMode": "authoring",
+      "expectedFiveQuestionCodes": [
+        "skill-authoring.five-question.workflow",
+        "skill-authoring.five-question.decision-rules",
+        "skill-authoring.five-question.evidence",
+        "skill-authoring.five-question.references"
+      ],
+      "expectedFrontmatterCodes": []
+    },
+    {
+      "id": "missing-identity-defaults-authoring",
+      "note": "Missing identity (null → undefined at the API) defaults to strict authoring: the alias body that would pass runtime fails.",
+      "skillId": null,
+      "doc": "---\nname: unparented-skill\ndescription: Use when identity is missing and the strict authoring default must apply.\n---\n# Skill Title\n\n## Load Order\n\nRead mstar-harness-core first.\n\n## Process\n\n1. Parse the frontmatter.\n2. Check the body sections.\n\n## Hard Rules\n\nNever weaken genuine authoring checks.\n\n## Output format\n\nA passing lint gate with zero violations.\n\n## Dependencies\n\nOpen references/skillsbench-authoring.md when a full loop is needed.\n",
+      "expectedKind": "authoring",
+      "expectedMode": "authoring",
+      "expectedFiveQuestionCodes": [
+        "skill-authoring.five-question.workflow",
+        "skill-authoring.five-question.decision-rules",
+        "skill-authoring.five-question.evidence",
+        "skill-authoring.five-question.references"
+      ],
+      "expectedFrontmatterCodes": []
+    }
+  ]
+}

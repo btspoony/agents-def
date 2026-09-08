@@ -1,6 +1,6 @@
 /**
- * Task 3 — status hard gate: `fs/write-intent` + `fs/edit-intent` on
- * `{HARNESS_DIR}/status.json` (plan 20260808-dsh-package-core).
+ * Status hard gate: `fs/write-intent` + `fs/edit-intent` on
+ * `{HARNESS_DIR}/status.json`.
  *
  * Harness approach: the dsh seam packages resolve from the npm registry, and the waterfalls
  * are simulated with a minimal typed harness — the same
@@ -11,7 +11,7 @@
  * seeds are written before each dispatch.
  *
  * Contract notes (full detail in task-3-report.md + qc-fix-report.md):
- * - The gate NEVER throws (qc3 F-1 / qc2 W-001): the intent waterfall carries
+ * - The gate NEVER throws : the intent waterfall carries
  *   no incoming content, so hard mode allows an ALREADY-invalid document as a
  *   repair escape (error-level log + repair advisory, `hard: true, repair:
  *   true`) — a veto there would deadlock the repairing write. Unexpected
@@ -146,11 +146,11 @@ describe('status gate — hard mode (Config enforcement: hard)', () => {
 
     const intent = await app.ctx.waterfall('fs/write-intent', statusTarget(app.harnessDir), {}, () => undefined)
 
-    // Repair escape (qc2 W-001): the document is ALREADY invalid, so this
+    // Repair escape : the document is ALREADY invalid, so this
     // write may be the repair — hard mode allows it with a loud advisory.
     expect(intent).toBeUndefined()
     expect(advisories).toHaveLength(1)
-    expect(advisories[0]!.hard).toBe(true) // the resolved hard flag is live again (qc2 S-005)
+    expect(advisories[0]!.hard).toBe(true) // the resolved hard flag is live again 
     expect(advisories[0]!.repair).toBe(true)
     expect(advisories[0]!.degraded).toBeUndefined()
     expect(advisories[0]!.result.hardBlocked).toBe(true) // GateResult.hardBlocked still honored
@@ -241,7 +241,7 @@ describe('status gate — hard mode (Config enforcement: hard)', () => {
   })
 })
 
-describe('status gate — error-containment envelope (qc3 F-1)', () => {
+describe('status gate — error-containment envelope ', () => {
   /** FsTarget violating the FsTarget contract (non-string displayPath). */
   const brokenTarget = (harnessDir: string): FsTarget => ({
     targetKey: join(harnessDir, 'status.json') as FsTarget['targetKey'],

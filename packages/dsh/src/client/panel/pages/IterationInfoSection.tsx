@@ -1,6 +1,6 @@
 /**
- * IterationInfoSection (spec panel-tabs §3, plan 20260812-panel-f5-design-system
- * Task 8 — the SHARED iteration info block, user 2026-08-12 feedback #4): the
+ * IterationInfoSection (spec panel-tabs §3
+ * — the SHARED iteration info block): the
  * Content Head — iteration summary (the collapsible toggle row) + the 5
  * horizontal iteration steps + the branches panel — rendered by BOTH tabs
  * from the SAME `view.iteration` data (the tasks tab inside IterationTaskPage
@@ -12,14 +12,13 @@
  *
  * - Content Head (spec §3): the iteration info (iterationId / gate verdict /
  *   status note) rides the summary row, which IS the toggle (a native button
- *   with aria-expanded + aria-controls pointing at the body — QC wave). The
+ *   with aria-expanded + aria-controls pointing at the body). The
  *   expanded body renders the Steps HORIZONTALLY as 5 EQUAL full-width unit
- *   blocks (plan 20260811-panel-f2-quickfix Item 1 — badge/phase/chip
+ *   blocks (badge/phase/chip
  *   centered, --mstar-space-* gap; no connector bars) with the current step
  *   highlighted on the block itself (the same honesty as the zone stepper:
  *   no "completed" checkmarks) plus the branch panel (rendered ONLY while the
- *   iteration is active, spec §3). Plan 20260811-panel-f4-iteration-zone
- *   Task 2 (spec panel-f4 §2.3 R8/R9): the expanded body is a LEFT-RIGHT
+ *   iteration is active, spec §3). Plan (spec panel-f4 §2.3 R8/R9): the expanded body is a LEFT-RIGHT
  *   SPLIT — branches (small half, DOM-first) + steps (large half), with the
  *   `data-iteration-head-split` container present only while branches render;
  *   each step reserves the fixed-height verdict seat (`data-step-verdict-seat`)
@@ -27,13 +26,12 @@
  *   verdict (`state === 'current' && verdict !== 'unknown'` — Phase 1 renders
  *   no badge), so the centered content groups align across steps.
  *
- * Collapse/expand (spec §3 / Task 2 brief): a local `useState` defaulted to
+ * Collapse/expand (spec §3): a local `useState` defaulted to
  * the iteration state — `active === false` → collapsed to a one-line summary
  * (iterationId/verdict + the muted "not started" note, expandable to the idle
  * 5-step skeleton); `active === true` → expanded. SSR-stable: the default is
  * data-derived, so `renderToStaticMarkup` renders a deterministic state per
- * row that tests can pin statically. Live re-sync (Task 2 review
- * Important-1): a useEffect re-expands the head when the SAME mounted
+ * row that tests can pin statically. Live re-sync: a useEffect re-expands the head when the SAME mounted
  * instance sees `active` flip false→true on a catalog update (started
  * iterations must show the expanded steps, spec §3); the transition is
  * one-way — user collapse while already active is never overridden.
@@ -56,7 +54,7 @@ export interface IterationInfoSectionProps {
 }
 
 /**
- * Activation re-sync (Task 2 review Important-1): the collapse/expand state
+ * Activation re-sync: the collapse/expand state
  * must follow a LIVE `active` flip on the SAME mounted instance — spec §3
  * says 启动迭代才展开 (an active iteration shows the expanded steps), and a
  * fresh catalog row can flip `iteration.active` false→true without a remount.
@@ -73,9 +71,9 @@ export function nextExpandedOnActivation(prev: boolean, prevActive: boolean, nex
   return !prevActive && nextActive ? true : prev
 }
 
-/** Step-state chip label seat (spec §3 + plan 20260812-panel-f5-iteration-zone-fix
- * Task 2 — current/next/done/idle, localized; `done` rides the projection's
- * explicit four-state machine, Task 1). */
+/** Step-state chip label seat (spec §3
+ * — current/next/done/idle, localized; `done` rides the projection's
+ * explicit four-state machine). */
 const STATE_LABEL = {
   current: 'zone.iteration.step.current',
   next: 'zone.iteration.step.next',
@@ -84,7 +82,7 @@ const STATE_LABEL = {
 } as const
 
 /**
- * The split-layout wrapper decision (spec panel-f4 §2.3 R8, plan f4.3 Task 2
+ * The split-layout wrapper decision (spec panel-f4 §2.3 R8
  * — exported pure for the render tests, the `nextExpandedOnActivation`
  * precedent): the `data-iteration-head-split` container renders ONLY while
  * the branch panel renders (`active && branches !== null`); otherwise the
@@ -115,7 +113,7 @@ export function IterationInfoSection({ iteration, t }: IterationInfoSectionProps
   // inactive → collapsed one-liner, active → expanded full steps. The initial
   // value is data-derived, so SSR renders a deterministic default per row.
   const [expanded, setExpanded] = useState(active)
-  // Activation re-sync (Task 2 review Important-1): a live catalog update can
+  // Activation re-sync: a live catalog update can
   // flip `active` false→true on the SAME mounted instance (e.g. the harness
   // row re-emitted after 迭代启动) — the head must then expand per spec §3.
   // The ref tracks the PREVIOUS prop (not the user state), so only the
@@ -138,7 +136,7 @@ export function IterationInfoSection({ iteration, t }: IterationInfoSectionProps
 
   // The horizontal steps row (spec §3) — shared by the split layout (steps
   // right) and the no-branches fallback (steps alone). Each step reserves the
-  // fixed-height verdict seat (spec panel-f4 §2.3 R9, plan f4.3 Task 2): the
+  // fixed-height verdict seat (spec panel-f4 §2.3 R9): the
   // conditional PASS/FAIL badge fills the seat on the current step only, so
   // every step item has the SAME children (badge/phase/chip/seat) and the
   // centered content groups align identically — the old in-flow badge (an
@@ -204,14 +202,13 @@ export function IterationInfoSection({ iteration, t }: IterationInfoSectionProps
 
       {expanded && (
         <div className={css.iterationHeadBody} id="iteration-head-body" data-iteration-head-body>
-          {/* Steps, HORIZONTAL (spec §3 + plan 20260811-panel-f2-quickfix
-              Item 1): PHASE_IDS order — 5 EQUAL full-width unit blocks
+          {/* Steps, HORIZONTAL (spec §3): PHASE_IDS order — 5 EQUAL full-width unit blocks
               (flex 1 1 0, centered content, --mstar-space-* gap; the old
               connector bars are removed, the gap replaces them), the
               current step highlighted on the block itself (honest — the
               schema knows only current/next/done/idle). */}
           {iterationSplitActive(active, iteration.branches) ? (
-            /* LEFT-RIGHT split (spec panel-f4 §2.3 R8, plan f4.3 Task 2):
+            /* LEFT-RIGHT split (spec panel-f4 §2.3 R8):
                branches LEFT (small half) + steps RIGHT (large half). DOM
                order: branches BEFORE steps — a plain flex row puts branches
                on the left. The split container exists ONLY while the

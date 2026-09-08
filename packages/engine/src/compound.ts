@@ -5,16 +5,16 @@
  *
  * Spec sources (all embedded as constants — no runtime skill-file reads):
  * - mstar-compound/references/schema.yaml: required/optional frontmatter
- *   fields, problem_type enum, severity enum, track rules (bug vs
- *   knowledge), resolution_type enum, tags max 8.
+ * fields, problem_type enum, severity enum, track rules (bug vs
+ * knowledge), resolution_type enum, tags max 8.
  * - mstar-compound/references/category-mapping.md: problem_type → category
- *   directory mapping (rule 1: category must match the directory name).
+ * directory mapping (rule 1: category must match the directory name).
  * - mstar-compound SKILL.md Phase 6: every doc gets a row in
- *   `{KNOWLEDGE_DIR}/README.md` (Document / Source Plan / Description /
- *   Status).
+ * `{KNOWLEDGE_DIR}/README.md` (Document / Source Plan / Description /
+ * Status).
  * - mstar-compound-refresh SKILL.md § 产物与操作路径 (scope SSOT): only
- *   `{HARNESS_DIR}/knowledge/**` + `*.md` files, `knowledge/README.md`,
- *   `<repo-root>/CONCEPTS.md` + `{HARNESS_DIR}/status.json`.
+ * `{HARNESS_DIR}/knowledge/**` + `*.md` files, `knowledge/README.md`,
+ * `<repo-root>/CONCEPTS.md` + `{HARNESS_DIR}/status.json`.
  */
 import { existsSync, readdirSync, readFileSync, type Dirent } from "node:fs";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -240,14 +240,14 @@ function parseYamlLite(text: string): Record<string, unknown> | null {
  * - `compound.schema.missing-frontmatter` — no `---` block
  * - `compound.schema.missing-field` — required field absent/empty
  * - `compound.schema.invalid-date` / `invalid-problem-type` /
- *   `invalid-severity` / `invalid-resolution-type`
+ * `invalid-severity` / `invalid-resolution-type`
  * - `compound.schema.category-mismatch` — category ≠ mapping for
- *   problem_type (category-mapping.md rule 1)
+ * problem_type (category-mapping.md rule 1)
  * - `compound.schema.missing-track-field` — bug track missing
- *   symptoms/root_cause/resolution_type
+ * symptoms/root_cause/resolution_type
  * - `compound.schema.invalid-symptoms` / `invalid-root-cause` /
- *   `invalid-applies-when` / `invalid-plan-id` / `invalid-tags` /
- *   `tags-too-many` / `invalid-last-updated` / `invalid-related-components`
+ * `invalid-applies-when` / `invalid-plan-id` / `invalid-tags` /
+ * `tags-too-many` / `invalid-last-updated` / `invalid-related-components`
  */
 export function validateSchemaYaml(frontmatterText: string): GateResult {
   const violations: ValidationResult[] = [];
@@ -279,9 +279,9 @@ export function validateSchemaYaml(frontmatterText: string): GateResult {
     if (!(field in doc) || doc[field] === "") missing(field);
   }
 
-  // Non-string values on enum/pattern fields are violations, not silent
-  // passes — YAML-lite parses `date: 20260808` as a number, which is not a
-  // valid date (qc3 F-003 / qc2 F-007).
+ // Non-string values on enum/pattern fields are violations, not silent
+ // passes — YAML-lite parses `date: 20260808` as a number, which is not a
+   // valid date.
   if (doc.date !== undefined && (!isStr(doc.date) || !DATE_RE.test(doc.date))) {
     violations.push(
       violation("medium", "compound.schema.invalid-date", `date "${String(doc.date)}" must be a YYYY-MM-DD string (schema.yaml required_fields.date)`, "use `YYYY-MM-DD`"),
@@ -416,13 +416,13 @@ const MAX_WALK_FILES = 5000;
  *
  * Backticked refs are classified conservatively:
  * - path-like refs (contain `/` or end in a known file extension) are
- *   resolved against `repoRoot` and must exist — `:line` suffixes and
- *   `#anchors` are stripped first; violation `compound.reference.missing-file`.
+ * resolved against `repoRoot` and must exist — `:line` suffixes and
+ * `#anchors` are stripped first; violation `compound.reference.missing-file`.
  * - `module.symbol` refs use a documented heuristic: a module file named
- *   `<module>.ts|tsx|js|jsx|mjs|cjs` must exist somewhere under `repoRoot`;
- *   violation `compound.reference.module-missing` (low severity — heuristic).
+ * `<module>.ts|tsx|js|jsx|mjs|cjs` must exist somewhere under `repoRoot`;
+ * violation `compound.reference.module-missing` (low severity — heuristic).
  * - URLs, `{PLACEHOLDER}` refs, globs, absolute paths, and bare symbols are
- *   skipped (not repo-relative, or not resolvable deterministically).
+ * skipped (not repo-relative, or not resolvable deterministically).
  * `checked` counts unique refs that verified.
  */
 export function referenceExists(repoRoot: string, docText: string): ReferenceCheckResult {
@@ -430,8 +430,8 @@ export function referenceExists(repoRoot: string, docText: string): ReferenceChe
   let checked = 0;
   const seen = new Set<string>();
 
-  // Collect every distinct backticked ref first, then resolve the distinct
-  // module names with ONE bounded walk (O(files) once, not per module).
+ // Collect every distinct backticked ref first, then resolve the distinct
+ // module names with ONE bounded walk (O(files) once, not per module).
   const moduleNames = new Set<string>();
   const refs: { ref: string; isSymbol: boolean; module?: string }[] = [];
   for (const match of docText.matchAll(/`([^`\n]+)`/g)) {
@@ -450,8 +450,8 @@ export function referenceExists(repoRoot: string, docText: string): ReferenceChe
       continue;
     }
     if (ref.includes("/") || REF_EXT_RE.test(ref)) {
-      // Path-shaped refs first (`core.ts` is a file path, not a
-      // `module.symbol` ref — same precedence as the pre-single-walk code).
+ // Path-shaped refs first (`core.ts` is a file path, not a
+ // `module.symbol` ref — same precedence as the pre-single-walk code).
       refs.push({ ref, isSymbol: false });
     } else if (SYMBOL_REF_RE.test(ref)) {
       const module = ref.split(".")[0];
@@ -462,8 +462,8 @@ export function referenceExists(repoRoot: string, docText: string): ReferenceChe
 
   const foundModules = new Set<string>();
   if (moduleNames.size > 0) {
-    // simplify: bounded walk (5000 entries) so symbol heuristics stay cheap on
-    // large repos; raise the cap if module resolution misses in monorepos.
+ // simplify: bounded walk (5000 entries) so symbol heuristics stay cheap on
+ // large repos; raise the cap if module resolution misses in monorepos.
     let walked = 0;
     const stack = [repoRoot];
     while (stack.length > 0 && walked < MAX_WALK_FILES) {

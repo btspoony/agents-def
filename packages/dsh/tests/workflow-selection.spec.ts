@@ -1,11 +1,11 @@
 /**
- * Plan `20260822-gate-fixes` Task 3 (f12) — terminalStatusCache eviction
+ * Plan  Task 3 (f12) — terminalStatusCache eviction
  * on file deletion.
  *
  * The terminal-mtime fallback (`resolveReadWorkflow`) walks every workflow
  * dir per catalog refresh; the module-level `terminalStatusCache` holds a
  * snapshot path → `{ mtimeMs, terminal }` verdict with a 64-entry cap.
- * The qc3 S-2 fix-wave capped the cache but never EVICTED a key whose
+ * The cache cap once left a key whose
  * target file was deleted: the `resolveReadWorkflow` loop short-circuits on
  * `!existsSync(snapshotPath)` and never reaches `terminalStatusOf`, so the
  * stale entry kept holding the cap while the dead workflow stayed

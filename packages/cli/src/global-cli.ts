@@ -99,7 +99,7 @@ export function ensureGlobalCli(opts: EnsureGlobalCliOpts): EnsureGlobalCliResul
 }
 
 /**
- * One-line doctor note about the mstar-harness CLI on PATH (SP1-AC6).
+ * One-line doctor note about the mstar-harness CLI on PATH.
  * Informational only: `runDoctor` prints it for every target without adding
  * it to doctor errors and without changing the exit code. Three states:
  * missing on PATH, present with a different version (both versions shown),

@@ -1,16 +1,16 @@
 /**
  * scripts/ascii-literal-utils.ts — commentMask guard semantics (QC fix wave 3:
- * qc1 F-001 + qc2 W-1/S-2 + qc3 F-1). Pins the shared comment-masking state
+ * regression pins. Pins the shared comment-masking state
  * machine that gates BOTH the src lint and the dist escaper:
  * - a `//` inside a string (URL) never opens a line comment;
  * - block comments span lines;
  * - the regex-vs-division heuristic: `/` after an adjacent `++`/`--` or after
- *   a regex literal is division, so a trailing `// 注释` still opens a line
- *   comment (qc3 F-1 false-positive regression: `i++ / 2 // 中文注释` used to
- *   report the comment text as code);
+ * a regex literal is division, so a trailing `// 注释` still opens a line
+ * comment (false-positive regression: `i++ / 2 // 中文注释` used to
+ * report the comment text as code);
  * - a quote inside a regex char class never opens a string;
  * - a `//` inside a template `${}` expression or template text is content,
- *   not a comment;
+ * not a comment;
  * - non-ASCII in real code (not comments) stays unmasked.
  */
 import { describe, expect, test } from "bun:test";
@@ -59,7 +59,7 @@ describe("commentMask — block comments", () => {
   });
 });
 
-describe("commentMask — regex vs division heuristic (qc3 F-1 regression)", () => {
+describe("commentMask — regex vs division heuristic (regression)", () => {
   test("division after i++ no longer swallows the trailing // comment", () => {
     const src = "i++ / 2 // 中文注释\n";
     expect(unmaskedNonAscii(src)).toBe("");

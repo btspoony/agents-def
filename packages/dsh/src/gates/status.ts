@@ -1,11 +1,6 @@
 /**
  * Status gate — `{HARNESS_DIR}` coordination-document fs-intent gating
- * (plan `20260810-dsh-entry-split` §8 extraction; v3 target set: the v2
- * root `status.json` + `workflows/<id>/snapshot.json` +
- * `projects/<id>/residuals.json`, each validated by its matching engine
- * validator — the P2-fixed shape synced from opencode's
- * `harnessDocKindOfTarget`).
- *
+ *. *
  * The gate runs on `fs/write-intent` / `fs/edit-intent` (registered by the
  * entry `apply` with `prepend`), sharing ONE validation code path with the
  * host adapter's `beforeStatusWrite` hook (`validateStatusValue` /

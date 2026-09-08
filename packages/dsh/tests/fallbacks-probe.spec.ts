@@ -1,5 +1,5 @@
 /**
- * Task 1 — probe foundation (plan `20260814-dsh-fallbacks-integration`): the
+ * Task 1 — probe foundation  the
  * capability probe distinguishes mounted / unmounted / disabled fallbacks
  * (service-first, loader-entries fallback).
  *

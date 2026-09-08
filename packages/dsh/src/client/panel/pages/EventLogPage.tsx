@@ -1,16 +1,16 @@
 /**
- * EventLogPage (spec panel-tabs §5, plan 20260811-panel-event-log Task 2) —
+ * EventLogPage (spec panel-tabs §5) —
  * the 事件记录 tab: a NON-canvas log page. Two partitions (spec §5):
  * Agent 流转事件 (`view.events` ≤50 latest-first — unexpected dispatches
  * fold in via the `expected` flag, NEVER double-appended; the unexpected
  * badge is DISPATCH-only — settle rows are completion records whose
  * projected `expected` is always false, they never flag as unexpected,
- * F-001) and 违规记录
+  * and 违规记录
  * (`view.violations`). Every row is an expandable native `<details>` (no-JS,
  * keyboard-accessible, SSR-stable) whose body shows the FULL catalog fields;
  * a missing field renders「—」— never a guessed value (spec §5/§8).
  *
- * Layout (plan 20260811-panel-f3-agent-general Task 2 — user feedback「左右
+ * Layout (user feedback「左右
  * 排两列 + 锁定一个高内部滚动」): the two partitions render side by side in a
  * locked-height two-column grid; the page never scrolls as a whole — each
  * partition pins its title and scrolls internally (`event-log.module.css`).
@@ -18,11 +18,11 @@
  * Dock migration decision (spec §5 — 无双份日志): the AgentEventDock is
  * REMOVED, not degraded. The dock's content (row layout + status chips)
  * moved into this page, and its host (the WorkflowCanvas canvas-corner)
- * died with the tabs-shell plan — a dock-side "jump to 事件记录" entry would
+ * is gone — a dock-side "jump to 事件记录" entry would
  * only duplicate the header TabNav, which already IS the jump to this tab.
- * Zero `data-agent-event-dock` anchors remain repo-wide (Task 2 完成判据).
+ * Zero `data-agent-event-dock` anchors remain repo-wide 
  *
- * Row data: `eventLogEntries(view)` (Task 1 — pure assembly; every field
+ * Row data: `eventLogEntries(view)` (pure assembly; every field
  * degrades individually). The `<details>` body backfills the FULL source
  * fields (planId / taskId / taskCategory — not carried by the floor
  * `EventLogEntry`) through a one-time id → `FlowEventView` map (T1-Min-3:
@@ -147,12 +147,12 @@ function EventDetailsBody({
       <DetailField
         field="expected"
         label={t('event-log.field.expected')}
-        // F-001 (QC wave): a SETTLE row is a completion record — the
+        // A SETTLE row is a completion record — the
         // expected-role seat is not applicable there (the projection always
         // sets `expected: false` on settles), so it renders「—」like the
         // `settled` seat (T2-Min-2 precedent); a WORKFLOW row is not a role
-        // dispatch either — same「—」(plan `20260815-dsh-workflow-ledger`
-        // Task 4); only a DISPATCH row renders the honest yes/no.
+        // dispatch either — same「—」(plan  
+        // ; only a DISPATCH row renders the honest yes/no.
         value={entry.eventKind === 'settle' || isWorkflowKind(entry.eventKind) ? '' : entry.expected ? t('event-log.yes') : t('event-log.no')}
       />
       <DetailField
@@ -161,12 +161,11 @@ function EventDetailsBody({
         // T2-Min-2: a SETTLE row IS the completion record — the field is not
         // applicable there, so it renders「—」like any missing value (a flat
         // 'no' would misread as "not settled"); a WORKFLOW row has no settle
-        // pairing either (plan `20260815-dsh-workflow-ledger` Task 4 — same
-        //「—」); a dispatch row renders the honest yes/no.
+        // pairing either ; a dispatch row renders the honest yes/no.
         value={entry.eventKind === 'settle' || isWorkflowKind(entry.eventKind) ? '' : entry.settled ? t('event-log.yes') : t('event-log.no')}
       />
       <DetailField field="duration" label={t('event-log.field.duration')} value={entry.durationMs === null ? '' : `${entry.durationMs}ms`} />
-      {/* Workflow run identity (plan `20260815-dsh-workflow-ledger` Task 4):
+      {/* Workflow run identity :
           name / member count / stopReason — the workflow-run row's face is
           the run; the end row's is the terminal reason; missing →「—». */}
       {isWorkflowKind(entry.eventKind) && (
@@ -192,7 +191,7 @@ function EventLogEventRow({
   t: TranslateNS<'mstar-panel'>
 }) {
   const time = formatEventTime(entry.ts)
-  // Workflow rows carry no role (plan `20260815-dsh-workflow-ledger` Task 4):
+  // Workflow rows carry no role :
   // the summary identity is the run — its name (agent/end rows resolve it via
   // the window lookup), falling back to the run id, then「未知」.
   const workflowIdentity = isWorkflowKind(entry.eventKind)
@@ -223,7 +222,7 @@ function EventLogEventRow({
           )}
           {entry.agent !== '' && <span className={css.eventAgent} data-event-log-agent={entry.agent}>{entry.agent}</span>}
           {entry.durationMs !== null && <span className={css.eventDuration} data-event-log-duration={entry.durationMs}>{entry.durationMs}ms</span>}
-          {/* F-001 (QC wave): the unexpected badge is a DISPATCH-only marker —
+          {/* the unexpected badge is a DISPATCH-only marker —
               a settle row is a completion record whose projected `expected`
               is always false (never flag as unexpected, spec §5). */}
           {entry.eventKind === 'dispatch' && !entry.expected && (

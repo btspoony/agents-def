@@ -1,6 +1,5 @@
 /**
- * Task 4 — preset/mstar seeds coexistence (plan `20260816-dsh-b4-seeds`):
- * the upstream `dsh-llm-fallbacks` package (0.1.6+) self-declares its 7
+ * Task 4 — preset/mstar seeds coexistence  * the upstream `dsh-llm-fallbacks` package (0.1.6+) self-declares its 7
  * bundled omp-style preset roles at ITS OWN apply. Under upstream
  * REPLACEMENT semantics (`declare` builds a new registry per batch — the
  * last declarer owns it; a non-preserved id keeps its config row but loses
@@ -170,7 +169,7 @@ function presetBatch(): SeedDeclaration[] {
   return PRESET_ROLE_IDS.map((id) => ({ id, persona: `Preset persona for ${id}` }))
 }
 
-describe('preset/mstar seeds coexistence — both boot orders converge to 20 seeded ids (plan 20260816-dsh-b4-seeds Task 4)', () => {
+describe('preset/mstar seeds coexistence — both boot orders converge to 20 seeded ids ', () => {
   it('the PRESET_ROLE_IDS constant matches the installed upstream presetRoles ids (drift anchor — 7 ids)', () => {
     const upstream = presetRoles.map((r) => r.id).sort()
     expect(upstream).toHaveLength(7)

@@ -1,6 +1,6 @@
 /**
  * Task 3 — persona defaults from the bundled `harness-agents/` mirror (plan
- * `20260815-dsh-fallbacks-personas`): `personaFor` is the persona channel's single
+ * ): `personaFor` is the persona channel's single
  * lookup — `Config.rolePersonas[role]` wins, then the mirror default (shell
  * file stem = role id; frontmatter `description` block scalar; the shell is
  * eligible when frontmatter `mode` is absent or `subagent`), with a
@@ -147,7 +147,7 @@ describe('subagentRoleIds — the mirror-derived taxonomy set honors the absent-
   })
 })
 
-describe('F-001 — hostile role ids never reach the filesystem', () => {
+describe('hostile role ids never reach the filesystem', () => {
   // A trap shell OUTSIDE the mirror (reachable via `../` join normalization):
   // if the traversal were honored, personaFor would resolve it — the role-id
   // guard must return undefined without ever stat/reading it.

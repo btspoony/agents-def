@@ -1,6 +1,5 @@
 /**
- * Role-persona defaults from the packaged `harness-agents/` mirror (plan
- * `20260815-dsh-fallbacks-personas` Task 3) — the native subagent persona
+ * Role-persona defaults from the packaged `harness-agents/` mirror — the native subagent persona
  * channel's single lookup surface.
  *
  * Lookup chain: `Config.rolePersonas[roleId]` wins; a mirror shell whose
@@ -100,8 +99,7 @@ export function personaFor(roleId: string, lookup: PersonaLookup, warn?: Persona
  * The mstar role-id set for one mirror: the file stems of the shells
  * eligible as subagent role defaults (`mode` absent-or-`subagent` — a
  * `primary` shell like `project-manager` is excluded), sorted for
- * deterministic warn listings. The adoption advisory (plan
- * `20260815-dsh-fallbacks-personas` Task 4) derives its taxonomy reference
+ * deterministic warn listings. The adoption advisory derives its taxonomy reference
  * from here — never hardcoded. Reads the mirror directory + each shell's
  * frontmatter once per call (the advisory invokes it once per apply — no
  * cache needed). Returns `[]` for an unreadable/absent mirror directory.
@@ -139,7 +137,7 @@ export function subagentRoleIds(agentsDir: string): string[] {
  * shell changes.
  */
 function defaultFromMirror(agentsDir: string, roleId: string, warn: PersonaWarnSink | undefined): string | undefined {
-  // F-001: the role id is attacker-influenced (the child's Assignment header)
+  // The role id is attacker-influenced (the child's Assignment header)
   // and flows into a filesystem path — reject any id outside the upstream
   // ROLE_ID_PATTERN shape before the join. A hostile id is a SILENT skip
   // (mirror-present misses stay silent like an absent shell) — never a
@@ -183,7 +181,7 @@ function extractShellPersona(content: string, roleId: string, warn: PersonaWarnS
   const parsed = parseShellFrontmatter(content)
   const description = parsed.description
   if (description === undefined || description.trim() === '') return undefined
-  // S-001 mode-gate strictness (plan Task 3 case (f)): eligible ONLY when
+  // S-001 mode-gate strictness ( case (f)): eligible ONLY when
   // `mode` is absent or exactly `subagent` — a `primary` shell or any
   // other/typo'd value is never offered as a subagent persona default.
   // Excluded silently (no hazard warn).

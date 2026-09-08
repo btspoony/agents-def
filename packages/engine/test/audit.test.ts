@@ -211,9 +211,9 @@ describe("redactSecrets", () => {
     expect(types.has("password")).toBe(true);
     expect(types.has("api-key")).toBe(true);
     expect(types.has("private-key")).toBe(true);
-    // Every finding carries a 1-based line number.
+ // Every finding carries a 1-based line number.
     expect(result.findings.every((f) => f.line >= 1)).toBe(true);
-    // The redacted text never contains the raw secrets.
+ // The redacted text never contains the raw secrets.
     for (const secret of [AWS_KEY, GH_TOKEN, SLACK_TOKEN, JWT_TOKEN, OPENAI_KEY, API_KEY, PASSWORD]) {
       expect(result.text).not.toContain(secret);
     }
@@ -286,7 +286,7 @@ describe("redactSecrets non-leakage invariants", () => {
       const input = `line one\n${value}\nline three\n`;
       const result = redactSecrets(input);
       expect(result.text).not.toContain(value);
-      // The probe must actually have been redacted — not a no-op pass.
+ // The probe must actually have been redacted — not a no-op pass.
       expect(result.findings.some((f) => f.type === type)).toBe(true);
     }
   });
@@ -312,13 +312,13 @@ describe("redactSecrets non-leakage invariants", () => {
     const result = redactSecrets(input);
     const keys = result.findings.map((f) => `${f.line}:${f.type}`);
     expect(new Set(keys).size).toBe(keys.length);
-    // Same type on two distinct lines stays two findings.
+ // Same type on two distinct lines stays two findings.
     expect(result.findings.filter((f) => f.type === "aws-access-key")).toHaveLength(2);
   });
 
-  // qc1 W-004: every CI/IaC shape scanSecrets detects must also be
-  // redactable — a finding accepted by the scanner can appear in scaffolded
-  // evidence and must not survive into artifacts with its value intact.
+  // every CI/IaC shape scanSecrets detects must also be
+ // redactable — a finding accepted by the scanner can appear in scaffolded
+ // evidence and must not survive into artifacts with its value intact.
   test("redacts each CI/IaC shape family (detector/redactor parity)", () => {
     const docker = `ENV API_TOKEN=${PASSWORD}`;
     const arg = `ARG GITHUB_TOKEN=${PASSWORD}`;
@@ -330,7 +330,7 @@ describe("redactSecrets non-leakage invariants", () => {
     ] as const) {
       const result = redactSecrets(text);
       expect(result.findings.map((f) => f.type)).toContain(type);
-      // The matched line region is replaced by the marker, not left as-is.
+ // The matched line region is replaced by the marker, not left as-is.
       expect(result.text).not.toBe(text);
       expect(result.text).not.toContain(PASSWORD);
     }
@@ -338,10 +338,10 @@ describe("redactSecrets non-leakage invariants", () => {
     expect(argResult.text).not.toContain(PASSWORD);
   });
 
-  // qc3 W-2: the CI/IaC shapes anchor with ^/$ and must fire per LINE of a
-  // multi-line evidence text — a shape `scanSecrets` detects on line 2, 3,
-  // or N must never survive redaction with its value intact.
-  test("redacts CI/IaC shapes mid-string on multi-line text (qc3 W-2)", () => {
+  // the CI/IaC shapes anchor with ^/$ and must fire per LINE of a
+ // multi-line evidence text — a shape `scanSecrets` detects on line 2, 3,
+ // or N must never survive redaction with its value intact.
+  test("redacts CI/IaC shapes mid-string on multi-line text ", () => {
     const multi = [
       "line0: ordinary",
       `env: API_TOKEN="${PASSWORD}"`,
@@ -355,7 +355,7 @@ describe("redactSecrets non-leakage invariants", () => {
     expect(result.text).toContain("[REDACTED actions-plaintext-env@2]");
     expect(result.text).toContain("[REDACTED dockerfile-credential-env@4]");
     expect(result.text).toContain("[REDACTED terraform-hardcoded-password@5]");
-    // Non-credential lines stay intact.
+ // Non-credential lines stay intact.
     expect(result.text).toContain("line0: ordinary");
     expect(result.text).toContain("FROM node");
     expect(result.text).toContain("line5: ordinary");
@@ -366,15 +366,15 @@ describe("redactSecrets non-leakage invariants", () => {
     ]);
   });
 
-  // qc3 W-3: overlapping spans must be merged (longest per overlap group)
-  // before the text is rebuilt — applying ORIGINAL-length replacements
-  // against already-modified text produced `[REDACTED …@1]@1]"` garbage.
-  // A fresh provider-shaped value exercises whole-match and line-match overlap.
+  // overlapping spans must be merged (longest per overlap group)
+ // before the text is rebuilt — applying ORIGINAL-length replacements
+ // against already-modified text produced `[REDACTED …@1]@1]"` garbage.
+ // A fresh provider-shaped value exercises whole-match and line-match overlap.
   const stripeLive = `sk_live_${randomBytes(12).toString("hex")}`;
   test.each([
-    // env line containing a stripe whole-match token
+ // env line containing a stripe whole-match token
     [`env: API_TOKEN="${stripeLive}"`, "[REDACTED actions-plaintext-env@1]"],
-    // dockerfile env line containing a stripe whole-match token
+ // dockerfile env line containing a stripe whole-match token
     [`ENV API_TOKEN=${stripeLive}\nRUN echo hi`, "[REDACTED dockerfile-credential-env@1]\nRUN echo hi"],
     [`password = "${PASSWORD}"\n`, "[REDACTED terraform-hardcoded-password@1]\n"],
   ])("overlapping spans merge to a single clean marker: %j", (input, expected) => {
@@ -389,14 +389,14 @@ describe("redactSecrets non-leakage invariants", () => {
     const pem = OPENSSH_PRIVATE_KEY;
     const result = redactSecrets(pem);
     expect(result.findings.filter((f) => f.type === "private-key").length).toBeGreaterThanOrEqual(1);
-    // Header alone is not enough: the base64 body must be gone too.
+ // Header alone is not enough: the base64 body must be gone too.
     expect(result.text).not.toContain(pem.split("\n")[1]);
     expect(result.text).toContain("[REDACTED private-key@");
   });
 
-  // qc3 W-3: a PEM block whose body lines match other patterns — the
-  // whole-block span absorbs them into ONE private-key marker.
-  test("private-key span absorbs overlapping matches inside its body (qc3 W-3)", () => {
+  // a PEM block whose body lines match other patterns — the
+ // whole-block span absorbs them into ONE private-key marker.
+  test("private-key span absorbs overlapping matches inside its body ", () => {
     const pem = RSA_PRIVATE_KEY.replace("\n", `\npassword = "${PASSWORD}"\n${SLACK_TOKEN}\n`);
     const result = redactSecrets(pem);
     const markers = result.text.match(/\[REDACTED [^\]]+@\d+\]/g) ?? [];
@@ -464,7 +464,7 @@ describe("scaffoldAuditPlan", () => {
     expect(plan1).toContain("src/orders.ts:42");
     expect(plan1).toContain("Batch the order items into one query.");
     expect(plan1).toContain("bun test test/orders.test.ts");
-    // no placeholder tokens in plan files (plan-quality-bar)
+ // no placeholder tokens in plan files (plan-quality-bar)
     expect(/\b(TODO|TBD|TBA)\b/i.test(plan1)).toBe(false);
 
     const readme = readFileSync(join(out, "README.md"), "utf8");
@@ -482,11 +482,11 @@ describe("scaffoldAuditPlan", () => {
       `# Earlier plan\n\n## Status\n- **Priority**: P2\n- **Effort**: S\n- **Risk**: LOW\n- **Depends on**: none\n- **Category**: tests\n- **Planned at**: commit \`deadbee\`, 2026-08-01\n`,
     );
     const result = scaffoldAuditPlan(out, findings, { date: "2026-08-09" });
-    // prior 001 stays; new batch starts at 002/003
+ // prior 001 stays; new batch starts at 002/003
     expect(result.files).toEqual(["002-fix-n-1-query-in-order-list.md", "003-rotate-leaked-aws-keys.md"]);
     expect(result.nextNumber).toBe(4);
     expect(readFileSync(join(out, "001-earlier-plan.md"), "utf8")).toContain("# Earlier plan");
-    // rebuilt index includes the pre-existing plan row
+ // rebuilt index includes the pre-existing plan row
     const readme = readFileSync(join(out, "README.md"), "utf8");
     expect(readme).toContain("| 001 | Earlier plan |");
     expect(readme).toContain("| 002 | Fix N+1 query in order list |");
@@ -506,11 +506,11 @@ describe("scaffoldAuditPlan", () => {
     };
     scaffoldAuditPlan(out, [finding], { date: "2026-08-27" });
     expect(readFileSync(join(out, "README.md"), "utf8")).toContain("| 001 | Fix N+1 query | P1 | S | none | TODO |");
-    // Same title re-scaffolded with a re-triaged priority: numbering is
-    // monotonic (001 is never rewritten), so the NEW batch's row must
-    // carry the NEW value — finding-authoritative from the redacted
-    // finding, not a parse artifact of a previous Status block — while
-    // the preserved 001 row keeps its own priority.
+ // Same title re-scaffolded with a re-triaged priority: numbering is
+ // monotonic (001 is never rewritten), so the NEW batch's row must
+ // carry the NEW value — finding-authoritative from the redacted
+ // finding, not a parse artifact of a previous Status block — while
+ // the preserved 001 row keeps its own priority.
     scaffoldAuditPlan(out, [{ ...finding, priority: "P2" as const }], { date: "2026-08-27" });
     const readme = readFileSync(join(out, "README.md"), "utf8");
     expect(readme).toContain("| 002 | Fix N+1 query | P2 | S | none | TODO |");
@@ -564,10 +564,10 @@ describe("scaffoldAuditPlan", () => {
       { date: "2026-08-13" },
     );
     expect(result.files).toEqual(["001-fix-n-1-query.md", "002-fix-n-1-query-2.md", "003-fix-n-1-query-3.md"]);
-    // every finding's plan file exists and keeps its own content
+ // every finding's plan file exists and keeps its own content
     expect(readFileSync(join(out, "002-fix-n-1-query-2.md"), "utf8")).toContain("# Fix N+1 query!");
     expect(readFileSync(join(out, "003-fix-n-1-query-3.md"), "utf8")).toContain("# Fix N+1 query??");
-    // index rows are unique per file (no silent loss)
+ // index rows are unique per file (no silent loss)
     const readme = readFileSync(join(out, "README.md"), "utf8");
     expect(readme).toContain("| 001 | Fix N+1 query |");
     expect(readme).toContain("| 002 | Fix N+1 query! |");
@@ -582,8 +582,8 @@ describe("scaffoldAuditPlan", () => {
         { title: "Fix N+1 query in order list", category: "perf" as const, impact: "Queries explode.", effort: "M" as const, risk: "MED" as const, confidence: "HIGH" as const, evidence: ["src/orders.ts:42"], priority: "P1" as const, dependsOn: "plans/002-*.md" },
         { title: "Rotate leaked AWS keys", category: "security" as const, impact: "Credentials in git history.", effort: "S" as const, risk: "HIGH" as const, confidence: "HIGH" as const, evidence: [], priority: "P1" as const },
       ],
-      // no plannedAt / repoShortSha — commit falls back to "unknown", the
-      // documented non-git-repo default that the validator accepts
+ // no plannedAt / repoShortSha — commit falls back to "unknown", the
+ // documented non-git-repo default that the validator accepts
       { date: "2026-08-12" },
     );
     expect(result.files).toHaveLength(2);
@@ -629,7 +629,7 @@ describe("scaffoldAuditPlan", () => {
     expect(readme).toContain("## Hardening & checked notes");
     expect(readme).toContain("- Hardening: no CSP header - framework middleware already escapes all output");
     expect(readme).toContain("- Checked and clean: orders SQL sink parameterized end to end");
-    // section order matches the documented template
+ // section order matches the documented template
     const nv = readme.indexOf("## Needs verification");
     const hc = readme.indexOf("## Hardening & checked notes");
     const dir = readme.indexOf("## Direction");
@@ -651,9 +651,9 @@ describe("scaffoldAuditPlan", () => {
         { kind: "Checked and clean", text: "sink z cleared" },
       ],
     });
-    // re-run with no disposition options — every entry must survive the
-    // rebuild (regression: the carry-over regex used to stop after the
-    // first entry of each section)
+ // re-run with no disposition options — every entry must survive the
+ // rebuild (regression: the carry-over regex used to stop after the
+ // first entry of each section)
     scaffoldAuditPlan(out, [{ title: "Second batch plan", category: "tests" as const, impact: "b", effort: "S" as const, risk: "LOW" as const, confidence: "HIGH" as const, evidence: [], priority: "P2" as const }], { date: "2026-08-18" });
     const readme = readFileSync(join(out, "README.md"), "utf8");
     expect(readme).toContain("- lead one: check x");
@@ -661,7 +661,7 @@ describe("scaffoldAuditPlan", () => {
     expect(readme).toContain("- Hardening: gap one");
     expect(readme).toContain("- Checked and clean: sink y cleared");
     expect(readme).toContain("- Checked and clean: sink z cleared");
-    // section entry counts preserved exactly
+ // section entry counts preserved exactly
     const nvBlock = /## Needs verification\n\n([\s\S]*?)\n\n## Hardening/.exec(readme)?.[1] ?? "";
     expect(nvBlock.split("\n").filter((l) => l.startsWith("- "))).toHaveLength(2);
     const hcBlock = /## Hardening & checked notes\n\n([\s\S]*?)\n\n## Execution order/.exec(readme)?.[1] ?? "";
@@ -678,9 +678,9 @@ describe("scaffoldAuditPlan", () => {
         { lead: "kept lead", how: "check keep" },
       ],
     });
-    // rerun supplies the current truth: stale lead resolved, kept kept,
-    // fresh added — omission would have carried all three, supplying
-    // replaces with exactly this set (resolved entries CAN be removed)
+ // rerun supplies the current truth: stale lead resolved, kept kept,
+ // fresh added — omission would have carried all three, supplying
+ // replaces with exactly this set (resolved entries CAN be removed)
     scaffoldAuditPlan(out, [], {
       date: "2026-08-20",
       needsVerification: [
@@ -697,8 +697,8 @@ describe("scaffoldAuditPlan", () => {
   test("carry-over tolerates hand-edited headings: case, CRLF, spacing, blank lines", () => {
     const out = join(tmp, "audit-2026-08-21");
     scaffoldAuditPlan(out, findings, { date: "2026-08-21" });
-    // simulate a hand-edited index: CRLF endings, different heading case,
-    // trailing spaces in the heading, no blank line before the body
+ // simulate a hand-edited index: CRLF endings, different heading case,
+ // trailing spaces in the heading, no blank line before the body
     const handEdited = [
       "# Audit Report \u2014 repo @ abc1234 (2026-08-21)",
       "",
@@ -745,19 +745,19 @@ describe("scaffoldAuditPlan", () => {
     expect(result.files).toEqual(["001-rotate-the-leaked-stripe-live-key.md"]);
     for (const file of [...result.files, "README.md"]) {
       const text = readFileSync(join(out, file), "utf8");
-      // No raw credential value anywhere in the scaffolded artifact...
+ // No raw credential value anywhere in the scaffolded artifact...
       expect(text).not.toContain("sk_live_" + "A1b2C3d4E5f6G7h8I9j0K1l2");
-      // ...but the redaction marker and the non-secret context survive.
+ // ...but the redaction marker and the non-secret context survive.
       expect(text).toContain("[REDACTED stripe-live-key@");
       expect(text).toContain("src/config.ts:12");
     }
     const planFile = readFileSync(join(out, result.files[0]!), "utf8");
-    // Fix sketch survives redaction too (plan file only — the README
-    // index does not render fix sketches).
+ // Fix sketch survives redaction too (plan file only — the README
+ // index does not render fix sketches).
     expect(planFile).toContain("Rotate the key ([REDACTED stripe-live-key@1]), then scrub history.");
   });
 
-  test("D-1: rejected findings + needsVerification/hardeningChecked are redacted in the README (qc1 W-003)", () => {
+  test("D-1: rejected findings + needsVerification/hardeningChecked are redacted in the README ", () => {
     const out = join(tmp, "audit-2026-08-26");
     const leak = "sk_live_" + "B7c8D9e0F1a2B3c4D5e6F7g8";
     scaffoldAuditPlan(
@@ -771,7 +771,7 @@ describe("scaffoldAuditPlan", () => {
       },
     );
     const readme = readFileSync(join(out, "README.md"), "utf8");
-    // No raw value may reach the index through ANY channel.
+ // No raw value may reach the index through ANY channel.
     expect(readme).not.toContain(leak);
     expect(readme).toContain("[REDACTED stripe-live-key@");
   });
@@ -791,15 +791,15 @@ describe("promoteAuditPlans", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
   /** Per-test harness root with the active ArtifactStore pointed at it (Task
-   * 2: the promote path's root upsert persists via `registerWorkflowEntryLocked`
-   * → `getArtifactStore().put`; the store must resolve to this harness). */
+ * 2: the promote path's root upsert persists via `registerWorkflowEntryLocked`
+ * → `getArtifactStore().put`; the store must resolve to this harness). */
   function promoteHarnessDir(name: string): string {
     const harnessDir = join(tmp, name);
     setArtifactStore(createFsStore(harnessDir));
     return harnessDir;
   }
 
-  /** Scaffold the standard 2-plan audit dir used by the error-path tests. */
+ /** Scaffold the standard 2-plan audit dir used by the error-path tests. */
   function mkPlanAudit(outDir: string, date: string): void {
     scaffoldAuditPlan(
       outDir,
@@ -864,7 +864,7 @@ describe("promoteAuditPlans", () => {
     expect(workflowId).toBe("audit-2026-08-08");
     expect(result.snapshotPath).toBe(join(harnessDir, "workflows", workflowId, WORKFLOW_SNAPSHOT_FILE));
 
-    // (a) snapshot exists with exactly the selected plan row (Todo)
+ // (a) snapshot exists with exactly the selected plan row (Todo)
     const snapshotPath = join(harnessDir, "workflows", workflowId, WORKFLOW_SNAPSHOT_FILE);
     expect(existsSync(snapshotPath)).toBe(true);
     const snapshot = readJson(snapshotPath);
@@ -883,7 +883,7 @@ describe("promoteAuditPlans", () => {
       status: "Todo",
     });
 
-    // (b) root status.json has the workflow entry, type plan, matching started_at
+ // (b) root status.json has the workflow entry, type plan, matching started_at
     const statusPath = join(harnessDir, "status.json");
     const status = readJson(statusPath);
     expect(status.version).toBe(2);
@@ -896,10 +896,10 @@ describe("promoteAuditPlans", () => {
     });
     expect(entry?.started_at).toBe(snapshot.started_at);
 
-    // (c) validateStatus passes on the status path
+ // (c) validateStatus passes on the status path
     expect(validateStatus(statusPath).ok).toBe(true);
 
-    // (d) validateWorkflowSnapshot passes on the snapshot
+ // (d) validateWorkflowSnapshot passes on the snapshot
     expect(validateWorkflowSnapshot(readJson(snapshotPath)).ok).toBe(true);
   });
 
@@ -938,12 +938,12 @@ describe("promoteAuditPlans", () => {
     const snapshotPath = join(harnessDir, "workflows", workflowId, WORKFLOW_SNAPSHOT_FILE);
     const before = readJson(snapshotPath);
 
-    // A second promote of the same audit dir (different subset) must refuse,
-    // naming the existing snapshot path — not silently whole-rewrite and drop
-    // the previously promoted 001 Todo row.
+ // A second promote of the same audit dir (different subset) must refuse,
+ // naming the existing snapshot path — not silently whole-rewrite and drop
+ // the previously promoted 001 Todo row.
     await expect(promoteAuditPlans(outDir, ["002"], { harnessDir })).rejects.toThrow(snapshotPath);
 
-    // First rows intact: same started_at, still exactly the 001 Todo row.
+ // First rows intact: same started_at, still exactly the 001 Todo row.
     const after = readJson(snapshotPath);
     expect(after.started_at).toBe(before.started_at);
     expect((after.plans as Array<Record<string, unknown>>)).toHaveLength(1);
@@ -953,7 +953,7 @@ describe("promoteAuditPlans", () => {
       status: "Todo",
     });
 
-    // Root registration unchanged.
+ // Root registration unchanged.
     const status = readJson(join(harnessDir, "status.json"));
     const entry = (status.workflows as Array<Record<string, unknown>>).find((w) => w.id === workflowId);
     expect(entry?.started_at).toBe(before.started_at);
@@ -965,48 +965,48 @@ describe("promoteAuditPlans", () => {
     const outDir = join(harnessDir, "plans", "audit-2026-08-12");
     mkPlanAudit(outDir, "2026-08-12");
 
-    // Reproduce the cross-process TOCTOU window in-process: hold the
-    // SNAPSHOT-dir write lock (`.status-write.lockdir` inside
-    // `workflows/<id>/` — the serialization point of the pre-fix
-    // writeWorkflowSnapshot) BEFORE either promote runs. Both promotes then
-    // pass the re-promote guard (no snapshot exists yet) and queue at the
-    // snapshot lock. Releasing it lets the pre-fix code run BOTH promotes to
-    // completion — the later writer whole-rewrites the snapshot and upserts
-    // the root, silently dropping the earlier rows. The fixed code
-    // serializes guard + snapshot write + root registration on the ROOT
-    // status.json lock instead, so only the first promote may complete and
-    // the second re-checks under the lock and refuses. (Both promotes settle
-    // synchronously up to their first await, so no wall-clock delay is
-    // needed to know they have reached their blocking point.)
+ // Reproduce the cross-process TOCTOU window in-process: hold the
+ // SNAPSHOT-dir write lock (`.status-write.lockdir` inside
+ // `workflows/<id>/` — the serialization point of the pre-fix
+ // writeWorkflowSnapshot) BEFORE either promote runs. Both promotes then
+ // pass the re-promote guard (no snapshot exists yet) and queue at the
+ // snapshot lock. Releasing it lets the pre-fix code run BOTH promotes to
+ // completion — the later writer whole-rewrites the snapshot and upserts
+ // the root, silently dropping the earlier rows. The fixed code
+ // serializes guard + snapshot write + root registration on the ROOT
+ // status.json lock instead, so only the first promote may complete and
+ // the second re-checks under the lock and refuses. (Both promotes settle
+ // synchronously up to their first await, so no wall-clock delay is
+ // needed to know they have reached their blocking point.)
     const workflowId = "audit-2026-08-12";
     const snapshotLockDir = join(harnessDir, "workflows", workflowId, ".status-write.lockdir");
     mkdirSync(snapshotLockDir, { recursive: true });
 
     const promoteA = promoteAuditPlans(outDir, ["001"], { harnessDir });
     const promoteB = promoteAuditPlans(outDir, ["002"], { harnessDir });
-    // Attach settlement handlers in the SAME tick the promises are created —
-    // a rejected promote must never surface as an unhandled rejection while
-    // the interleaving below runs.
+ // Attach settlement handlers in the SAME tick the promises are created —
+ // a rejected promote must never surface as an unhandled rejection while
+ // the interleaving below runs.
     const settled = Promise.allSettled([promoteA, promoteB]);
-    // Genuine delay required (integration test): the engine's cross-process
-    // lockdir polling cannot be driven with deterministic timers, and both
-    // promotes must reach their blocking point on the snapshot lockdir the
-    // test holds before it is released — reproducing the cross-process
-    // interleaving where two writers are past the re-promote guard, queued
-    // on the snapshot lock (same rationale as the suite's migrate/lease
-    // concurrency tests).
+ // Genuine delay required (integration test): the engine's cross-process
+ // lockdir polling cannot be driven with deterministic timers, and both
+ // promotes must reach their blocking point on the snapshot lockdir the
+ // test holds before it is released — reproducing the cross-process
+ // interleaving where two writers are past the re-promote guard, queued
+ // on the snapshot lock (same rationale as the suite's migrate/lease
+ // concurrency tests).
     await Bun.sleep(150);
-    // Release the snapshot lock the test held (the fixed code never takes
-    // it; the pre-fix code removes it on release — force/recursive is safe).
+ // Release the snapshot lock the test held (the fixed code never takes
+ // it; the pre-fix code removes it on release — force/recursive is safe).
     rmSync(snapshotLockDir, { recursive: true, force: true });
     const [a, b] = await settled;
     rmSync(snapshotLockDir, { recursive: true, force: true });
 
     const fulfilled = [a, b].filter((r) => r.status === "fulfilled");
     const rejected = [a, b].filter((r) => r.status === "rejected");
-    // The root lock serializes guard+write+register — exactly one promote
-    // may win; the other must refuse. (Pre-fix, BOTH fulfill: the TOCTOU
-    // loser's whole-rewrite silently replaces the winner's rows.)
+ // The root lock serializes guard+write+register — exactly one promote
+ // may win; the other must refuse. (Pre-fix, BOTH fulfill: the TOCTOU
+ // loser's whole-rewrite silently replaces the winner's rows.)
     expect(fulfilled).toHaveLength(1);
     expect(rejected).toHaveLength(1);
     expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(Error);
@@ -1014,9 +1014,9 @@ describe("promoteAuditPlans", () => {
     expect(refuseError.message).toContain("refusing to promote");
     expect(refuseError.message).toContain(join(harnessDir, "workflows", workflowId, WORKFLOW_SNAPSHOT_FILE));
 
-    // First rows intact: the winner's snapshot is exactly its single Todo
-    // row, never clobbered by the loser's selection (001 vs 002 — a TOCTOU
-    // loser would have whole-rewritten it with its own selection).
+ // First rows intact: the winner's snapshot is exactly its single Todo
+ // row, never clobbered by the loser's selection (001 vs 002 — a TOCTOU
+ // loser would have whole-rewritten it with its own selection).
     const snapshotPath = join(harnessDir, "workflows", workflowId, WORKFLOW_SNAPSHOT_FILE);
     const snapshot = readJson(snapshotPath);
     const plans = snapshot.plans as Array<Record<string, unknown>>;
@@ -1024,7 +1024,7 @@ describe("promoteAuditPlans", () => {
     expect(plans[0]?.id).toBe("001-fix-n-1-query-in-order-list");
     expect(plans[0]).toMatchObject({ status: "Todo" });
 
-    // Root registration intact and valid; the entry mirrors the snapshot.
+ // Root registration intact and valid; the entry mirrors the snapshot.
     const statusPath = join(harnessDir, "status.json");
     expect(validateStatus(statusPath).ok).toBe(true);
     const status = readJson(statusPath);
@@ -1039,11 +1039,11 @@ describe("promoteAuditPlans", () => {
     const outDir = join(harnessDir, "plans", "audit-2026-08-10");
     mkPlanAudit(outDir, "2026-08-10");
 
-    // Conflicting root state: a second workflow row whose snapshot is missing
-    // makes validateStatusV2 fail for the WHOLE document, so registerWorkflow
-    // throws only AFTER promoteAuditPlans has already written this workflow's
-    // snapshot. Simulates a concurrent root writer / validation failure that
-    // the promote path cannot predict before its snapshot write.
+ // Conflicting root state: a second workflow row whose snapshot is missing
+ // makes validateStatusV2 fail for the WHOLE document, so registerWorkflow
+ // throws only AFTER promoteAuditPlans has already written this workflow's
+ // snapshot. Simulates a concurrent root writer / validation failure that
+ // the promote path cannot predict before its snapshot write.
     const statusPath = join(harnessDir, "status.json");
     const staleRoot = {
       version: 2,
@@ -1057,17 +1057,17 @@ describe("promoteAuditPlans", () => {
 
     await expect(promoteAuditPlans(outDir, ["001"], { harnessDir })).rejects.toThrow(/invalid status\.json/);
 
-    // Rollback: the snapshot written before the failed register is removed,
-    // so the fix-1 re-promote guard no longer blocks a retry.
+ // Rollback: the snapshot written before the failed register is removed,
+ // so the fix-1 re-promote guard no longer blocks a retry.
     const workflowDir = join(harnessDir, "workflows", "audit-2026-08-10");
     expect(existsSync(join(workflowDir, WORKFLOW_SNAPSHOT_FILE))).toBe(false);
     expect(existsSync(workflowDir)).toBe(false);
 
-    // Root untouched: the conflicting root bytes survive the failed promote.
+ // Root untouched: the conflicting root bytes survive the failed promote.
     const after = readFileSync(statusPath, "utf8");
     expect(after).toBe(JSON.stringify(staleRoot, null, 2));
 
-    // Retry after the root conflict is resolved converges end-to-end.
+ // Retry after the root conflict is resolved converges end-to-end.
     writeFileSync(statusPath, JSON.stringify({ version: 2, updated_at: "2026-08-09", workflows: [] }, null, 2));
     const retry = await promoteAuditPlans(outDir, ["001"], { harnessDir });
     expect(existsSync(join(harnessDir, "workflows", retry.workflowId, WORKFLOW_SNAPSHOT_FILE))).toBe(true);
@@ -1083,7 +1083,7 @@ describe("promoteAuditPlans", () => {
     const snapshot = readJson(join(harnessDir, "workflows", result.workflowId, WORKFLOW_SNAPSHOT_FILE));
     const plans = snapshot.plans as Array<Record<string, unknown>>;
     expect(plans).toHaveLength(2);
-    // Row order follows the selection order, not the directory order.
+ // Row order follows the selection order, not the directory order.
     expect(plans[0].id).toBe("002-rotate-leaked-aws-keys");
     expect(plans[1].id).toBe("001-fix-n-1-query-in-order-list");
     expect(validateStatus(join(harnessDir, "status.json")).ok).toBe(true);
@@ -1091,9 +1091,9 @@ describe("promoteAuditPlans", () => {
   });
 
   test("duplicate numeric prefix resolves to the FIRST (lowest) filename (S-03)", async () => {
-    // Manual duplicate `001-*.md` files: selecting bare `001` must promote
-    // the lowest filename (`001-a.md`), never the highest — the pre-fix
-    // `byNum.set` loop let later entries overwrite earlier ones.
+ // Manual duplicate `001-*.md` files: selecting bare `001` must promote
+ // the lowest filename (`001-a.md`), never the highest — the pre-fix
+ // `byNum.set` loop let later entries overwrite earlier ones.
     const harnessDir = promoteHarnessDir("harness-dup-prefix");
     const outDir = join(harnessDir, "plans", "audit-2026-08-22");
     mkdirSync(outDir, { recursive: true });
@@ -1104,7 +1104,7 @@ describe("promoteAuditPlans", () => {
     const snapshot = readJson(join(harnessDir, "workflows", result.workflowId, WORKFLOW_SNAPSHOT_FILE));
     const plans = snapshot.plans as Array<Record<string, unknown>>;
     expect(plans).toHaveLength(1);
-    // S-03: lowest filename wins for the shared numeric prefix.
+ // S-03: lowest filename wins for the shared numeric prefix.
     expect(plans[0]).toMatchObject({
       id: "001-a",
       title: "Plan A",
@@ -1120,18 +1120,18 @@ describe("promoteAuditPlans", () => {
     const outDir = join(harnessDir, "plans", "audit-2026-08-11");
     mkPlanAudit(outDir, "2026-08-11");
 
-    // Empty selection is a usage error before any write.
+ // Empty selection is a usage error before any write.
     await expect(promoteAuditPlans(outDir, [], { harnessDir })).rejects.toThrow(/at least one plan id/);
-    // Missing harnessDir is rejected before any write (no harness, no workflow dir).
+ // Missing harnessDir is rejected before any write (no harness, no workflow dir).
     await expect(promoteAuditPlans(outDir, ["001"], { harnessDir: "" })).rejects.toThrow(/harnessDir is required/);
-    // Unknown plan id names the offending id and does not promote a subset.
+ // Unknown plan id names the offending id and does not promote a subset.
     await expect(promoteAuditPlans(outDir, ["999"], { harnessDir })).rejects.toThrow(/999/);
-    // Hostile workflow id (path traversal) is refused by the path-component
-    // guard, never resolved into a workflow path.
+ // Hostile workflow id (path traversal) is refused by the path-component
+ // guard, never resolved into a workflow path.
     await expect(promoteAuditPlans(outDir, ["001"], { harnessDir, workflowId: "../x" })).rejects.toThrow(
       /safe path component/,
     );
-    // All failures left the harness untouched (no snapshot, no status.json).
+ // All failures left the harness untouched (no snapshot, no status.json).
     expect(existsSync(join(harnessDir, "workflows"))).toBe(false);
     expect(existsSync(join(harnessDir, "status.json"))).toBe(false);
   });
@@ -1145,9 +1145,9 @@ describe("promoteAuditPlans", () => {
 
 describe("engine barrel hides redactSecrets (f11)", () => {
   test("importing redactSecrets from the barrel resolves to undefined", async () => {
-    // Dynamic import: this test intentionally exercises the module loading
-    // boundary — the assertion is that the barrel's runtime namespace lacks
-    // the removed export, which a static named import could not express.
+ // Dynamic import: this test intentionally exercises the module loading
+ // boundary — the assertion is that the barrel's runtime namespace lacks
+ // the removed export, which a static named import could not express.
     const barrel = await import("../src/index.js");
     expect((barrel as Record<string, unknown>).redactSecrets).toBeUndefined();
   });
@@ -1160,7 +1160,7 @@ describe("engine barrel hides redactSecrets (f11)", () => {
 // ---------------------------------------------------------------------------
 // Fix round — review findings on the Task 1 static checks:
 // 1. NEVER_COMMIT_FILENAMES implements `.env*` prefix glob + missing names
-//    (`.envrc`, `credentials.json`, `service-account.json`, git-credentials)
+// (`.envrc`, `credentials.json`, `service-account.json`, git-credentials)
 // 2. CI_IAC_LEAK_SHAPES `actions-plaintext-env` hits canonical YAML `env:` maps
 // 3. `action-unpinned` tolerates trailing comments (`uses: a/b@main # c`)
 // ---------------------------------------------------------------------------
@@ -1169,14 +1169,14 @@ describe("scanSecrets never-commit filenames (fix round)", () => {
   const tmp = mkdtempSync(join(tmpdir(), "engine-audit-fix-"));
   afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
-  /** Write an empty file and return its path for scanning. */
+ /** Write an empty file and return its path for scanning. */
   function touch(name: string): string {
     const p = join(tmp, name);
     writeFileSync(p, "");
     return p;
   }
 
-  // `.env*` prefix glob: basename STARTS with `.env`.
+ // `.env*` prefix glob: basename STARTS with `.env`.
   test("flags .env prefix variants", () => {
     for (const name of [".env", ".env.production", ".env.local.j2", ".envrc"]) {
       const findings = scanSecrets([touch(name)]).findings.filter((f) => f.type === "env-file");
@@ -1239,9 +1239,9 @@ describe("scanSecrets actions-plaintext-env YAML env: map (fix round)", () => {
       const wfPath = join(tmp, "wf.yml");
       writeFileSync(wfPath, workflow);
       const hits = scanSecrets([wfPath]).findings.filter((f) => f.type === "actions-plaintext-env");
-      // Lines 9-10 are plaintext literals inside the first env: map;
-      // line 14 is `${{ }}`-indirect and stays safe; line 15 (OTHER_KEY,
-      // 8-char literal) is credential-shaped and MUST be flagged.
+ // Lines 9-10 are plaintext literals inside the first env: map;
+ // line 14 is `${{ }}`-indirect and stays safe; line 15 (OTHER_KEY,
+ // 8-char literal) is credential-shaped and MUST be flagged.
       expect(hits.map((h) => h.line)).toEqual([9, 10, 15]);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
@@ -1265,7 +1265,7 @@ describe("supplyChainChecks action-unpinned trailing comment (fix round)", () =>
   const tmp = mkdtempSync(join(tmpdir(), "engine-audit-pin-"));
   afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
-  /** Write one workflow under a temp repo root and run the gate. */
+ /** Write one workflow under a temp repo root and run the gate. */
   function check(workflow: string): { kinds: { kind: string; line?: number }[] } {
     mkdirSync(join(tmp, ".github", "workflows"), { recursive: true });
     writeFileSync(join(tmp, ".github", "workflows", "ci.yml"), workflow);

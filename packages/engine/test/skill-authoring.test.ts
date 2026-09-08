@@ -5,22 +5,23 @@
  * Spec sources (each test cites the skill/reference section it enforces;
  * roadmap §8.5 C2 — engine unit tests cite the source section as spec):
  * - Frontmatter contract: `mstar-skill-authoring` SKILL.md § Frontmatter
- *   Contract — `name` stable lowercase-hyphen; `description` is the trigger
- *   contract (not a workflow summary), third person. The frontmatter lint
- *   reuses `lint.lintSkillFrontmatter` (same heuristics, single parser).
+ * Contract — `name` stable lowercase-hyphen; `description` is the trigger
+ * contract (not a workflow summary), third person. The frontmatter lint
+ * reuses `lint.lintSkillFrontmatter` (same heuristics, single parser).
  * - 5-question body: `mstar-skill-authoring` SKILL.md § Body 必须回答的 5 问
- *   (when to load / execution order / constraints / success criteria /
- *   extra resources) + § 默认 Body 结构 (Load Order, Scope, Workflow,
- *   Decision Rules, Evidence, References).
+ * (when to load / execution order / constraints / success criteria /
+ * extra resources) + § 默认 Body 结构 (Load Order, Scope, Workflow,
+ * Decision Rules, Evidence, References).
  * - Asset paths: `mstar-skill-authoring` SKILL.md § Skill-relative script
- *   and asset paths ("skill `my-skill` → scripts/do-thing"; never a literal
- *   `skills/<name>/...` path from a consumer cwd) + `mstar-host` SKILL.md
- *   § Resolve loaded skill root.
+ * and asset paths ("skill `my-skill` → scripts/do-thing"; never a literal
+ * `skills/<name>/...` path from a consumer cwd) + `mstar-host` SKILL.md
+ * § Resolve loaded skill root.
  */
 import { describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
+  classifySkillLint,
   lintFiveQuestion,
   lintFrontmatter,
   resolveAssetPath,
@@ -373,10 +374,10 @@ describe("lintFiveQuestion", () => {
   });
 
   test("fenced fake headings never count as coverage (fence-aware, both modes)", () => {
-    // A gitignore-style fence containing a `# Workflow ...` comment line must
-    // not satisfy the workflow question — in either mode. The only in-fence
-    // "heading" in the corpus was exactly this shape (mstar-conventions
-    // gitignore snippet) and previously produced a false green.
+ // A gitignore-style fence containing a `# Workflow ...` comment line must
+ // not satisfy the workflow question — in either mode. The only in-fence
+ // "heading" in the corpus was exactly this shape (mstar-conventions
+ // gitignore snippet) and previously produced a false green.
     const body = `# Skill Title
 
 ## Load Order
@@ -450,11 +451,11 @@ Open refs.
   });
 
   test("default mode is authoring (canonical-only, unchanged 1-arg callers)", () => {
-    // Runtime alias headings must NOT satisfy the default mode…
+ // Runtime alias headings must NOT satisfy the default mode…
     expect(lintFiveQuestion(BODY_RUNTIME_ALIASES).ok).toBe(false);
-    // …and must fail identically when passed explicitly.
+ // …and must fail identically when passed explicitly.
     expect(lintFiveQuestion(BODY_RUNTIME_ALIASES, "authoring").ok).toBe(false);
-    // Canonical headings satisfy both modes.
+ // Canonical headings satisfy both modes.
     expect(lintFiveQuestion(BODY_COMPLETE, "authoring").ok).toBe(true);
     expect(lintFiveQuestion(BODY_COMPLETE, "runtime").ok).toBe(true);
   });
@@ -473,16 +474,16 @@ Open refs.
   });
 
   test("greenfield body without canonical headings still fails in BOTH modes", () => {
-    // BODY_NO_EVIDENCE lacks Evidence and carries no alias heading for it:
-    // authoring fails (canonical missing), runtime fails (no alias covers it).
+ // BODY_NO_EVIDENCE lacks Evidence and carries no alias heading for it:
+ // authoring fails (canonical missing), runtime fails (no alias covers it).
     const authoring = lintFiveQuestion(BODY_NO_EVIDENCE, "authoring");
     const runtime = lintFiveQuestion(BODY_NO_EVIDENCE, "runtime");
     expect(authoring.ok).toBe(false);
     expect(runtime.ok).toBe(false);
     expect(runtime.violations.map((v) => v.code)).toContain("skill-authoring.five-question.evidence");
-    // A canonical-less greenfield body (no canonical / no alias headings at
-    // all) fails every question in runtime mode too — aliases do not weaken
-    // "section present" into "any heading exists".
+ // A canonical-less greenfield body (no canonical / no alias headings at
+ // all) fails every question in runtime mode too — aliases do not weaken
+ // "section present" into "any heading exists".
     const bare = "# Skill Title\n\n## Scope\n\nCovers lint checks.\n";
     const bareRuntime = lintFiveQuestion(bare, "runtime");
     expect(bareRuntime.ok).toBe(false);
@@ -496,8 +497,8 @@ Open refs.
   });
 
   test("runtime mode does not skip load-order (no alias exists for it)", () => {
-    // Workflow/decision-rules/evidence/references covered by aliases, but
-    // load-order has no alias row — the question stays uncovered.
+ // Workflow/decision-rules/evidence/references covered by aliases, but
+ // load-order has no alias row — the question stays uncovered.
     const body = `# Skill Title
 
 ## Workflow
@@ -541,6 +542,142 @@ Open references/x.md.
       }
     }
     expect(failures).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// classifySkillLint — one profile policy (spec A4). Semantics preserve the CLI `skill lint` selection verbatim.
+// ---------------------------------------------------------------------------
+
+describe("classifySkillLint", () => {
+  test("exact mstar-harness-core → core / null (five-question exempt by design)", () => {
+    expect(classifySkillLint("mstar-harness-core")).toEqual({ kind: "core", mode: null });
+  });
+
+  test("exact mstar-skill-authoring → authoring (strict despite the mstar- prefix)", () => {
+    expect(classifySkillLint("mstar-skill-authoring")).toEqual({ kind: "authoring", mode: "authoring" });
+  });
+
+  test("other mstar-* → runtime (locked alias table applies)", () => {
+    expect(classifySkillLint("mstar-dispatch-gates")).toEqual({ kind: "runtime", mode: "runtime" });
+    expect(classifySkillLint("mstar-x")).toEqual({ kind: "runtime", mode: "runtime" });
+  });
+
+  test("core matching is exact — mstar-harness-core-* is runtime, not core", () => {
+    expect(classifySkillLint("mstar-harness-core-extra")).toEqual({ kind: "runtime", mode: "runtime" });
+  });
+
+  test("non-mstar and empty identities → authoring", () => {
+    expect(classifySkillLint("third-party-tool")).toEqual({ kind: "authoring", mode: "authoring" });
+    expect(classifySkillLint("")).toEqual({ kind: "authoring", mode: "authoring" });
+  });
+
+  test("missing identity defaults to authoring (undefined)", () => {
+    expect(classifySkillLint(undefined)).toEqual({ kind: "authoring", mode: "authoring" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Canonical fixture corpus — packages/engine/test/fixtures/skill-lint-
+// profiles.json (spec A4: shared fixture table consumed by Engine/CLI/dsh
+// tests; profile policy lives only in Engine source).
+// ---------------------------------------------------------------------------
+
+type ProfileFixtureRow = {
+  id: string;
+  note: string;
+  skillId: string | null;
+  doc: string;
+  expectedKind: "core" | "runtime" | "authoring";
+  expectedMode: "runtime" | "authoring" | null;
+  expectedFiveQuestionCodes: string[] | null;
+  expectedFrontmatterCodes: string[];
+};
+
+const PROFILE_FIXTURES: { schemaVersion: number; description: string; rows: ProfileFixtureRow[] } = JSON.parse(
+  readFileSync(join(import.meta.dir, "fixtures", "skill-lint-profiles.json"), "utf8"),
+);
+
+describe("canonical fixture corpus (skill-lint-profiles.json)", () => {
+  test("fixture table loads at the current schema with rows", () => {
+    expect(PROFILE_FIXTURES.schemaVersion).toBe(1);
+    expect(PROFILE_FIXTURES.rows.length).toBeGreaterThan(0);
+  });
+
+  for (const row of PROFILE_FIXTURES.rows) {
+    test(`row ${row.id}: classification and violation codes match`, () => {
+ // Classification is identity-driven: the classifier consumes the
+ // resolved target basename (null row identity → undefined at the API),
+ // never the doc's YAML name.
+      const profile = classifySkillLint(row.skillId ?? undefined);
+      expect(profile.kind).toBe(row.expectedKind);
+      expect(profile.mode).toBe(row.expectedMode);
+
+ // Five-question decision per profile mode. `null` mode = the caller
+ // skips the check (core exemption only); the contrast lint proves the
+ // exemption is doing real work — the body genuinely lacks coverage.
+      if (row.expectedMode === null) {
+        expect(row.expectedFiveQuestionCodes).toBeNull();
+        expect(lintFiveQuestion(stripFrontmatter(row.doc), "authoring").ok).toBe(false);
+      } else {
+        const result = lintFiveQuestion(stripFrontmatter(row.doc), row.expectedMode);
+        expect(result.violations.map((v) => v.code)).toEqual(row.expectedFiveQuestionCodes);
+      }
+
+ // Frontmatter stays independent of classification in every row.
+      const fm = lintFrontmatter(row.doc);
+      expect(fm.violations.map((v) => v.code)).toEqual(row.expectedFrontmatterCodes);
+    });
+  }
+
+  test("the misleading-YAML row keeps its intent (core name under a non-mstar basename)", () => {
+    const row = PROFILE_FIXTURES.rows.find((r) => r.id === "misleading-yaml-core-third-party");
+    expect(row).toBeDefined();
+    expect(row?.doc).toContain("name: mstar-harness-core");
+    expect(row?.skillId?.startsWith("mstar-")).toBe(false);
+    expect(row?.expectedKind).toBe("authoring");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Real corpus parity — before/after lint decisions (spec A4). The pre-fix dsh gate classified every
+// document as authoring (`lintFiveQuestion` without a mode) while the CLI
+// selected runtime for shipped `mstar-*` topics — conflicting judgments on
+// identical files. These probes pin both decisions on the real shipped
+// corpus, isolated to test injection: no production rule or shipped file
+// is modified.
+// ---------------------------------------------------------------------------
+
+describe("real corpus parity — before/after lint decisions (Task 3, spec A4)", () => {
+  test("before: the pre-fix authoring classification is RED on real runtime bodies (the dsh mis-judgment)", () => {
+ // Baseline capture (commit 9ec66785, disposable worktree probe): the
+ // pre-fix dsh gate failed 15/20 shipped mstar skills — 14 of the 18
+ // runtime-corpus skills — while the CLI passed them in runtime mode.
+    const beforeFails: string[] = [];
+    for (const { name, body } of runtimeCorpus()) {
+      if (!lintFiveQuestion(body, "authoring").ok) beforeFails.push(name);
+    }
+    expect(beforeFails).toContain("mstar-branch-worktree");
+    expect(beforeFails).toContain("mstar-audit");
+  });
+
+  test("after: the shared classifier's runtime mode is GREEN on the same unchanged bodies (dsh/CLI parity decision)", () => {
+    for (const { name, body } of runtimeCorpus()) {
+      const profile = classifySkillLint(name);
+      expect(profile).toEqual({ kind: "runtime", mode: "runtime" });
+      expect(lintFiveQuestion(body, profile.mode!).ok).toBe(true);
+    }
+  });
+
+  test("red probe: mismatched classification is never silently green (runtime body under the standard-bearing strict identity)", () => {
+    const sample = runtimeCorpus().find((s) => s.name === "mstar-branch-worktree");
+    expect(sample).toBeDefined();
+ // The standard's own identity stays strict authoring…
+    expect(classifySkillLint("mstar-skill-authoring")).toEqual({ kind: "authoring", mode: "authoring" });
+ // …so the injected runtime body mismatches and fails there…
+    expect(lintFiveQuestion(sample!.body, "authoring").ok).toBe(false);
+ // …while its true identity keeps it green (restore = classify correctly).
+    expect(lintFiveQuestion(sample!.body, "runtime").ok).toBe(true);
   });
 });
 

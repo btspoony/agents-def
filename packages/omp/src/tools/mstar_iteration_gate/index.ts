@@ -11,7 +11,7 @@
  * engine.
  *
  * `workflowId` is a single safe path component (parity with the CLI
- * `--workflow <id>` and the sibling snapshot-consuming tools, fix-wave
+ * `--workflow <id>` and the sibling snapshot-consuming tools,
  * S-b / W-A): it is resolved to
  * `{WORKFLOW_DIR}/<workflowId>/snapshot.json` from the session cwd with
  * the traversal guard — a full path is NOT accepted. The workflow dir
@@ -24,11 +24,11 @@
  *
  * Missing files are explicit isError results — the engine `readJson` would
  * otherwise read a missing snapshot as `{}` and the gate would report a
- * false "gate ok" on nothing (qc2 F-001). `parseCompassFrontmatter` is
+ * false "gate ok" on nothing . `parseCompassFrontmatter` is
  * imported DYNAMICALLY so the tool stays loadable against published engine
  * versions that predate the export (2.0.2): a missing parser is a clear
  * upgrade error instead of a module-load failure that silently drops the
- * tool (qc3 F-001). `resolveWorkflowDir` is likewise P1-only: it is
+ * tool . `resolveWorkflowDir` is likewise P1-only: it is
  * loaded dynamically and a stale engine (or a resolver failure) falls
  * back to the DEFAULT `workflows` name (same degrade as
  * `mstar_status_validate`).
@@ -53,7 +53,7 @@ function result(text: string, details: unknown, isError: boolean): AgentToolResu
   return out;
 }
 
-/** Workflow-id guard (fix-wave S-b / W-A parity): reject "", ".", "..", separators. */
+/** Workflow-id guard (parity): reject "", ".", "..", separators. */
 function assertSafeWorkflowId(workflowId: string): string | null {
   if (workflowId === "" || workflowId === "." || workflowId === ".." || workflowId.includes("/") || workflowId.includes("\\")) {
     return `mstar_iteration_gate: invalid workflowId ${JSON.stringify(workflowId)}`;
@@ -140,10 +140,10 @@ export default function mstarIterationGate(pi: CustomToolAPI): CustomTool {
             true,
           );
         }
-        // Dynamic engine import (qc3 F-001): published engine 2.0.2 lacks
-        // parseCompassFrontmatter — a static named import would fail at
-        // module link and silently drop the tool from /extensions. The
-        // runtime check degrades to an explicit upgrade error instead.
+ // Dynamic engine import : published engine 2.0.2 lacks
+ // parseCompassFrontmatter — a static named import would fail at
+ // module link and silently drop the tool from /extensions. The
+ // runtime check degrades to an explicit upgrade error instead.
         const engine = await import("@mstar-harness/engine");
         const parseCompassFrontmatter = engine.parseCompassFrontmatter;
         if (typeof parseCompassFrontmatter !== "function") {

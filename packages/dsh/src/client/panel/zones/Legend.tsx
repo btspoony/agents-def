@@ -1,9 +1,9 @@
 /**
- * Legend (spec panel-tabs §4/§6.2, plan 20260811-panel-agent-canvas Task 3):
+ * Legend (spec panel-tabs §4/§6.2):
  * mounted on the AgentCanvasPage (the zone-dashboard footer legend is gone
  * with the WorkflowCanvas — spec §6.1). Describes ONLY the role-card status
  * treatments of the agent canvas — plan
- * 20260813-panel-agent-canvas-legend-layout Task 1 (图例精简): the 7
+ *  Task 1 (图例精简): the 7
  * collaboration-edge / layout entries (flow-actual / port / group /
  * sub-bucket / supervise / on-demand / unknown) are REMOVED — the legend is
  * the 3 entity card treatments (running glow, settled = the standalone GREEN
@@ -21,12 +21,11 @@ export interface LegendProps {
 
 export function Legend({ t }: LegendProps) {
   const items: { key: string; swatch: string; label: string }[] = [
-    // Entity statuses (plan 20260811-panel-agent-canvas Task 3 + plan
-    // 20260812-panel-f5-design-system Task 8): the card treatments — running
+    // Entity statuses : the card treatments — running
     // (business glow ring), settled (the standalone GREEN done frame + ✓ —
-    // never on off-tier roles, user 2026-08-12 feedback #1/#3) and idle
+    // never on off-tier roles) and idle
     // (dashed muted card). The 7 collaboration-edge / layout entries are
-    // REMOVED (plan 20260813-panel-agent-canvas-legend-layout Task 1 — the
+    // REMOVED (the
     // legend is the role-card status description only; the canvas itself
     // keeps the edges / ports / partitions, only the legend copy drops them).
     { key: 'agent-running', swatch: css.swatchAgentRunning, label: t('zone.legend.agent-running') },

@@ -115,8 +115,7 @@ export interface HarnessPlanView {
   readonly doneAt: string | null
   /**
    * The `status.json` plan row `metadata.iteration_refs` (array of iteration
-   * ids the plan is registered under). ALWAYS-present array (plan
-   * `20260813-panel-quick-fixes` Task 2): a missing/non-array value projects
+   * ids the plan is registered under). ALWAYS-present array: a missing/non-array value projects
    * to `[]` — the empty default, never an omitted field (lossless JSON).
    */
   readonly iterationRefs: string[]
@@ -217,8 +216,7 @@ export interface MstarHarnessState {
    * projected loose (`string`) like `HarnessPlanView.status`. ALWAYS-present
    * nullable scalar (lossless JSON, never omitted): missing/empty → `null`;
    * `null` on selection error (no snapshot read). Added for the slim
-   * `mstar:engine-status` digest (plan `20260820-dsh-engine-status-slim`).
-   */
+   * `mstar:engine-status` digest.   */
   readonly workflowType: string | null
   /**
    * The selected workflow snapshot's top-level lifecycle `status`
@@ -280,8 +278,7 @@ export interface MstarHarnessState {
 
 /**
  * One agent-flow ledger event in the catalog view. Optional fields (dispatch/
- * settle + the W-B2 `workflow-*` kinds — plan `20260815-dsh-workflow-ledger`
- * Task 2) are OMITTED (never `undefined`-valued properties — `Session.append`
+ * settle + the W-B2 `workflow-*` kinds — plan  ) are OMITTED (never `undefined`-valued properties — `Session.append`
  * rejects non-lossless JSON) using the `iterationViolationView` omit pattern.
  */
 export interface AgentFlowEventView {
@@ -303,7 +300,7 @@ export interface AgentFlowEventView {
   /** Settle duration in ms (settle events only, when recorded). */
   readonly durationMs?: number | null
   /**
-   * Settle rows only (plan `20260811-panel-f4-timeliness` Task 1): true when
+   * Settle rows only : true when
    * the settle carries the PAIRED dispatch's identity (`role`/`planId`/
    * `taskId` — same fields + semantics as the dispatch event) — the client
    * pairs exactly on that identity. ABSENT on unpaired (legacy) settles →

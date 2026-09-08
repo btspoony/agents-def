@@ -1,5 +1,5 @@
 /**
- * Task 1 — installed-deployment e2e (plan `20260817-dsh-roles-e2e`): the
+ * Task 1 — installed-deployment e2e  the
  * REAL user install loop, closed end to end.
  *
  * Pipeline:
@@ -203,7 +203,7 @@ afterEach(async () => {
   hostCopyRoot = undefined
 })
 
-describe.skipIf(skipReason !== undefined)('installed-deployment e2e (plan 20260817-dsh-roles-e2e Task 1)', () => {
+describe.skipIf(skipReason !== undefined)('installed-deployment e2e ', () => {
   test('CLI install → installed-artifact boot → 13 mstar roles seeded (AC-3)', async () => {
     // 1. skip-guard reason (module scope already probed; the describe is
     //    skipped when it failed — printing here keeps the output explicit).

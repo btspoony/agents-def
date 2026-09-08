@@ -1,5 +1,5 @@
 /**
- * Task 1 — sdd + iteration tool wrappers (plan 20260808-dsh-seams-bundle):
+ * Task 1 — sdd + iteration tool wrappers :
  * `mstar_sdd_workspace` / `mstar_sdd_task_brief` / `mstar_iteration_gate`
  * registered on `ctx.tools` via the dsh-tools `defineTool` contract, running
  * the engine in-app against control-path artifacts.

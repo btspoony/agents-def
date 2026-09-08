@@ -30,7 +30,7 @@ import {
 } from "../src/lease-verify";
 
 /**
- * Spawn env with ambient MSTAR_HARNESS_DIR pinned out (qc3 F-4): the CLI
+ * Spawn env with ambient MSTAR_HARNESS_DIR pinned out: the CLI
  * resolves harness dirs from that env var ahead of probing, so an ambient
  * value would redirect every fixture to the env dir and fail spuriously.
  */
@@ -91,7 +91,7 @@ function makeHarnessWithSnapshot(snapshot: Record<string, unknown>, workflowId: 
   return dir;
 }
 
-describe("CLI lease-verify wrapper (qc1 F-001)", () => {
+describe("CLI lease-verify wrapper", () => {
   test("re-exports the engine gate unchanged (thin wrapper, no CLI-side logic)", () => {
     expect(cliVerify).toBe(verifyPlanExecutionLease);
     expect(cliLocations).toBe(planExecutionLeaseLocations);

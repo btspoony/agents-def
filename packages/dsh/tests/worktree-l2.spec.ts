@@ -1,14 +1,12 @@
 /**
  * Task 2 — iteration gate at agent/pre-step + worktree L1/L2 dispatch check
- * (plan 20260808-dsh-seams-bundle).
- *
+ *. *
  * Two seams under test:
  *
  * (a) agent/pre-step iteration gate — the existing engine-status catalog
  * listener ALSO appends one `mstar-iteration-gate` catalog row (engine
  * `evaluatePhaseGate` against the control-path status.json + the steering
- * delivery-compass.md; Task 1 tool result shape), cached at BOOT (qc3
- * W-002 discipline — no per-step disk I/O; a mid-session status/compass
+ * delivery-compass.md), cached at BOOT (no per-step disk I/O; a mid-session status/compass
  * change does not re-watermark until a config reload re-runs apply()).
  * Advisory contract: calls `next()`, never vetoes, never replaces the
  * delegated messages. No status.json + steering compass at boot → the row
@@ -110,9 +108,9 @@ async function seedIteration(root: string, plans: unknown[], compass: string): P
   const harnessDir = join(root, 'harness')
   await mkdir(harnessDir, { recursive: true })
   await seedHarness(harnessDir, {
-    'status.json': v2Root([v2WorkflowEntry('iter-20260808-wt', 'iteration')]),
-    'workflows/iter-20260808-wt/snapshot.json': v2Snapshot('iter-20260808-wt', { type: 'iteration', plans }),
-    'iterations/iter-20260808-wt/delivery-compass.md': compass,
+    'status.json': v2Root([v2WorkflowEntry('iter-00000808-wt', 'iteration')]),
+    'workflows/iter-00000808-wt/snapshot.json': v2Snapshot('iter-00000808-wt', { type: 'iteration', plans }),
+    'iterations/iter-00000808-wt/delivery-compass.md': compass,
   })
 }
 
@@ -222,9 +220,9 @@ describe('pre-step iteration gate — catalog composition (REAL-composition boot
     expect(source).toBeDefined()
     if (source === undefined || source.kind !== 'mstar-engine-status') return
     expect(source.iteration).toMatchObject({
-      iterationId: 'iter-20260808-wt',
-      statusPath: join(app.harnessDir, 'workflows/iter-20260808-wt/snapshot.json'),
-      compassPath: join(app.harnessDir, 'iterations/iter-20260808-wt/delivery-compass.md'),
+      iterationId: 'iter-00000808-wt',
+      statusPath: join(app.harnessDir, 'workflows/iter-00000808-wt/snapshot.json'),
+      compassPath: join(app.harnessDir, 'iterations/iter-00000808-wt/delivery-compass.md'),
     })
     // The cached view reuses the Task 1 tool result shape (transition /
     // all_plans_done / ok / entry / exit / violations).
@@ -246,7 +244,7 @@ describe('pre-step iteration gate — catalog composition (REAL-composition boot
     expect(row?.content[0]?.type).toBe('text')
     const text = row?.content[0]?.type === 'text' ? row.content[0].text : ''
     expect(text).toContain('<mstar_engine_status>')
-    expect(text).toContain('iteration: iter-20260808-wt')
+    expect(text).toContain('iteration: iter-00000808-wt')
     expect(text).toContain('transition: phase-2-execute')
     expect(text).toContain('all plans done: false')
     expect(text).toContain('gate: PASS')
@@ -313,7 +311,7 @@ describe('pre-step iteration gate — catalog composition (REAL-composition boot
     expect(decision).toEqual({ kind: 'enter', messages: [] })
   })
 
-  it('process-stability (qc3 W-002): gate result cached at boot — seeding status/compass AFTER boot does not add the row, no per-step I/O', async () => {
+  it('process-stability : gate result cached at boot — seeding status/compass AFTER boot does not add the row, no per-step I/O', async () => {
     const app = booted = await bootApp()
     const inbox = [inboxMessage()]
 
@@ -327,9 +325,9 @@ describe('pre-step iteration gate — catalog composition (REAL-composition boot
     // the agent-loop hot path between refreshes; a change lands after
     // `catalogTtlMs` expires — Config `catalogTtlMs`, default 60000).
     await seedHarness(app.harnessDir, {
-      'status.json': v2Root([v2WorkflowEntry('iter-20260808-wt', 'iteration')]),
-      'workflows/iter-20260808-wt/snapshot.json': v2Snapshot('iter-20260808-wt', { type: 'iteration', plans: [PLAN_TODO] }),
-      'iterations/iter-20260808-wt/delivery-compass.md': COMPASS_ACTIVE,
+      'status.json': v2Root([v2WorkflowEntry('iter-00000808-wt', 'iteration')]),
+      'workflows/iter-00000808-wt/snapshot.json': v2Snapshot('iter-00000808-wt', { type: 'iteration', plans: [PLAN_TODO] }),
+      'iterations/iter-00000808-wt/delivery-compass.md': COMPASS_ACTIVE,
     })
     const after = await app.ctx.waterfall('agent/pre-step', stepPayload(inbox, 2), defaultEnter(inbox))
     expect(after.kind === 'enter' && after.messages.length).toBe(inbox.length + 1)
@@ -343,7 +341,7 @@ describe('pre-step iteration gate — catalog composition (REAL-composition boot
     await mkdir(harnessDir, { recursive: true })
     await seedHarness(harnessDir, {
       'status.json': 'not json {{{',
-      'iterations/iter-20260808-wt/delivery-compass.md': COMPASS_ACTIVE,
+      'iterations/iter-00000808-wt/delivery-compass.md': COMPASS_ACTIVE,
     })
     const app = booted = await bootApp({ root })
 
@@ -640,7 +638,7 @@ describe('dispatch gate — worktree hostile inputs + header-region scoping', ()
     const advisories = captureAdvisories(app.ctx)
     // ONE header track + a second track quoted in the task body — the body
     // entry must not pair into an L2 declaration (the engine header boundary
-    // is the single grammar, qc1 F-001 / qc2 F-001).
+    // is the single grammar).
     const prompt = `## Assignment
 
 **Execute as**: fullstack-dev

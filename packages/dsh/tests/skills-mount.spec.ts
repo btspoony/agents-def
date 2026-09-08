@@ -1,6 +1,6 @@
 /**
  * Task 3 — skills mounting via skill-filesystem (single canonical mount) (plan
- * 20260808-dsh-host-adapter).
+ * ).
  *
  * Dev-time reality: the dsh seam packages resolve from the npm registry, so the plugin's
  * registration call is implemented against the CONTRACT —
@@ -166,7 +166,7 @@ describe('resolvePackagedSkillsDir — dual-depth direct resolution (qc N-2 / S-
     // First candidate at source depth is `src/harness-skills` — a NON-canonical
     // path (`bundle-assets` only ever generates the mirror at
     // `packages/dsh/harness-skills`); the probe must skip it and land on
-    // `../../harness-skills` (qc3 S-8 shallow-first semantics; a stale
+    // `../../harness-skills` (shallow-first semantics; a stale
     // `src/harness-skills` would fail this guard loudly).
     expect(dir).not.toBe(join(PKG_DIR, 'src', 'harness-skills'))
     if (existsSync(CANONICAL_MIRROR)) {

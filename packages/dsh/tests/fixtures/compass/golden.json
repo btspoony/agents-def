@@ -7,7 +7,7 @@
     "iteration_base_branch": "main",
     "target_branch": "main",
     "owner": "some one",
-    "plans": ["plan-20260808-dsh-seams-bundle", "plan-20260808-other"]
+    "plans": ["plan-00000808-dsh-seams-bundle", "plan-00000808-other"]
   },
   "flow-plans.md": {
     "iteration_id": "v9.9.9",

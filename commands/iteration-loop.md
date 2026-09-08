@@ -16,7 +16,7 @@ Run a **full** Morning Star iteration with minimal human intervention. **Done = 
 | `iteration-drive` | Phase 2→5 re-entry / resume on an already locked iteration |
 | **`iteration-loop`** | Phase 1→5 end-to-end; **autonomous** direction lock |
 
-Phase gate SSOT → **`mstar-iteration`** §1–§5. This command is a **consumer**; it does not redefine skill semantics.
+Phase route + gate SSOT → **`mstar-iteration`** **Phase route map** + **Phase transition gates** table. This command is a **consumer**; it does not redefine skill semantics.
 
 ## Args（最多 2 个）
 
@@ -29,7 +29,7 @@ Phase gate SSOT → **`mstar-iteration`** §1–§5. This command is a **consume
 | `direction` | Iteration direction / feedback constraint (free text) | Code-first research → **auto-lock recommended** |
 | `scale` | `S` \| `M` \| `L` \| `XL` | **`M`** |
 
-**Scale budget**（写入 compass；约束 **业务** plan 数量）→ **`mstar-iteration`** §1.2 + `references/autonomous-direction-lock.md`：
+**Scale budget**（写入 compass；约束 **业务** plan 数量）→ **`mstar-iteration/references/phase-1-prepare.md`** §1.2 + `references/autonomous-direction-lock.md`：
 
 - **S** → 1 business plan
 - **M** → 2–3 business plans
@@ -52,7 +52,7 @@ Execute **`mstar-iteration` §2.6**（Continuous execution SSOT）+ **`mstar-ite
 
 ## Boot
 
-按 **`mstar-iteration`** Load order 加载（`mstar-harness-core` → `mstar-roles` → `references/project-manager.md` → `mstar-iteration` § Phase 1–5 + `command-shared-invariants.md` → `mstar-dispatch-gates` → `mstar-phase-gates` → `mstar-conventions` / `mstar-artifacts` → `mstar-host` → `mstar-compound`（Phase 3 前）→ **`mstar-sdd`**（first implement 前）→ `mstar-review-qc`（first QC 前）→ `mstar-branch-worktree` → **`mstar-iteration/references/phase-2-worktree-lease.md`**）。完整 load list → **`mstar-roles`**。
+按 **`mstar-iteration`** Load order 加载（`mstar-harness-core` → `mstar-roles` → `references/project-manager.md` → `mstar-iteration`（按当前 Phase 查 route map，只加载一行 detail）+ `command-shared-invariants.md` → `mstar-dispatch-gates` → `mstar-phase-gates` → `mstar-conventions` / `mstar-artifacts` → `mstar-host` → `mstar-compound`（Phase 3 前）→ **`mstar-sdd`**（first implement 前）→ `mstar-review-qc`（first QC 前）→ `mstar-branch-worktree` → **`mstar-iteration/references/phase-2-worktree-lease.md`**）。完整 load list → **`mstar-roles`**。
 
 **Session todos（loop 专属；Phase 2–5 共享 rows → `command-shared-invariants.md`）**：
 
@@ -62,7 +62,7 @@ Execute **`mstar-iteration` §2.6**（Continuous execution SSOT）+ **`mstar-ite
 
 ## Phase 1: Autonomous start
 
-Execute **`mstar-iteration` § Phase 1**（**autonomous** direction lock + scale budget + branch resolve SSOT → `references/autonomous-direction-lock.md`）：
+Execute **`mstar-iteration/references/phase-1-prepare.md`**（§1.1–§1.6；**autonomous** direction lock + scale budget + branch resolve SSOT → `references/autonomous-direction-lock.md`）：
 
 ### 1–4. Research → Explore → Lock → Write
 
@@ -70,7 +70,7 @@ Survey structured harness dirs（`{HARNESS_DIR}/status.json`、`{ITERATION_DIR}/
 
 ### 5. Review & Edit Chain（HARD GATE）
 
-Execute **`mstar-iteration` §1.6**：`product-manager` → `architect` → `writing-specialist` 顺序 invoke（**禁止** `{KNOWLEDGE_DIR}/` 新增；corpus hygiene）→ PM lock。**Assignment preflight** per **`command-shared-invariants.md`**。
+Execute **`mstar-iteration/references/phase-1-prepare.md` §1.6**：`product-manager` → `architect` → `writing-specialist` 顺序 invoke（**禁止** `{KNOWLEDGE_DIR}/` 新增；corpus hygiene）→ PM lock。**Assignment preflight** per **`command-shared-invariants.md`**。
 
 **Pre-commit checklist**（print before §6；all `[x]`）：
 
@@ -84,7 +84,7 @@ Execute **`mstar-iteration` §1.6**：`product-manager` → `architect` → `wri
 
 ### 6. Integration Branch
 
-Per **`mstar-iteration` §2.3**（create from `iteration_base_branch`；register branch fields；commit docs；push）。**STOP** if base/target missing。**Immediately** print `## Phase 2: Autonomous Execute` → continue（勾掉 `phase-1-autonomous-start`）。
+Per **`mstar-iteration/references/phase-2-worktree-lease.md` §2.3**（create from `iteration_base_branch`；register branch fields；commit docs；push）。**STOP** if base/target missing。**Immediately** print `## Phase 2: Autonomous Execute` → continue（勾掉 `phase-1-autonomous-start`）。
 
 ---
 
@@ -92,7 +92,7 @@ Per **`mstar-iteration` §2.3**（create from `iteration_base_branch`；register
 
 Delegate to **`iteration-drive`**（Phase 2 → §2、Phase 3 → §3 + `references/phase-3-iteration-close.md`、Phase 4/5 → §4–§5 + `references/phase-4-5-pr-delivery.md`、Phase 5 helper discovery → `phase5-helper-discovery.md`）。**Assignment preflight** per **`command-shared-invariants.md`**。
 
-**Loop 特有**：Phase 5 push cadence（HARD）→ **`mstar-iteration` §5.1a**；exit checklist → §5.2（`references/phase-4-5-pr-delivery.md`）。
+**Loop 特有**：Phase 5 push cadence（HARD）→ **`mstar-iteration/references/phase-4-5-pr-delivery.md`** §5.1a；exit checklist → §5.2（同 reference）。
 
 **Then** report: iteration id, locked direction + scale, plans completed, compound summary, PR link, merge-ready evidence。
 

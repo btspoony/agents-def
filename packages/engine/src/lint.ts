@@ -9,27 +9,27 @@
  *
  * Spec sources (each function cites the source section):
  * - simplify:/temporary markers: `mstar-coding-behavior` SKILL.md § Simplicity
- *   First → "Simplification markers": a deliberate shortcut with a known
- *   ceiling is marked with a `simplify:` comment naming the ceiling and the
- *   upgrade path; a workaround is labeled `simplify:` / `temporary`, explains
- *   why, and records the removal path in the plan/status artifact before the
- *   task is claimed complete.
+ * First → "Simplification markers": a deliberate shortcut with a known
+ * ceiling is marked with a `simplify:` comment naming the ceiling and the
+ * upgrade path; a workaround is labeled `simplify:` / `temporary`, explains
+ * why, and records the removal path in the plan/status artifact before the
+ * task is claimed complete.
  * - SDD TDD triple: `mstar-coding-behavior` SKILL.md § Integration Notes —
- *   completion evidence must include the TDD triple (test file(s), command,
- *   output) in `task-N-report.md`; `mstar-sdd/references/file-handoffs.md` —
- *   fix subagents append covering test file(s), command run, output.
+ * completion evidence must include the TDD triple (test file(s), command,
+ * output) in `task-N-report.md`; `mstar-sdd/references/file-handoffs.md` —
+ * fix subagents append covering test file(s), command run, output.
  * - Plan quality bar: `mstar-artifacts/references/plan-quality-bar.md`
- *   § Quality checklist + `templates/plan.main.md` self-review
- *   ("Placeholder scan: no TBD").
+ * § Quality checklist + `templates/plan.main.md` self-review
+ * ("Placeholder scan: no TBD").
  * - Skill frontmatter contract: `mstar-skill-authoring` SKILL.md § Frontmatter
- *   Contract — `name` stable lowercase-hyphen; `description` is the trigger
- *   contract (not a workflow summary), third person.
+ * Contract — `name` stable lowercase-hyphen; `description` is the trigger
+ * contract (not a workflow summary), third person.
  * - STRATEGY.md structure: `mstar-strategy` SKILL.md § STRATEGY.md structure —
- *   six required sections.
+ * six required sections.
  * - Ephemeral citations: knowledge `conventions/skill-content-porting-discipline.md`
- *   §3 ("No ephemeral citations in durable skill text") + session evaluation
- *   2026-08-16 discrimination contract — concrete task-artifact references
- *   and SDD deeplinks are ephemeral; placeholder forms are not.
+ * §3 ("No ephemeral citations in durable skill text") + session evaluation
+ * 2026-08-16 discrimination contract — concrete task-artifact references
+ * and SDD deeplinks are ephemeral; placeholder forms are not.
  *
  * Enforcement depth: roadmap §8.5 C4 — v1 lints are non-blocking
  * `ValidationResult`s; callers surface them as warnings.
@@ -104,7 +104,7 @@ export type TemporaryMarkerResult = GateResult & { markers: TemporaryMarker[] };
  * 2. `R#<n>` (residual entry)
  * 3. the word `residual` (residual tracker / notes)
  * 4. a `plans/<file>` path (e.g. `plans/20260808-x.md`)
- * 5. a dated plan id ("plan 20260808-slice2")
+ * 5. a dated plan id ("plan 20991231-example-plan")
  * 6. "tracked/recorded/logged/scheduled/listed/noted in <artifact>"
  * 7. an explicit "removal path: <artifact>" label
  */
@@ -163,7 +163,7 @@ export function findTemporaryMarkers(fileText: string): TemporaryMarkerResult {
           "medium",
           "lint.temporary.no-removal-path",
           `temporary marker at line ${i + 1} records no removal path (plan/status artifact reference) \u2014 record one before claiming the task complete (mstar-coding-behavior \u00a7 Simplification markers)`,
-          'add a plan/status reference to the marker, e.g. "removal tracked in status.json" or "plan 20260808-slice2 removes this"',
+          'add a plan/status reference to the marker, e.g. "removal tracked in status.json" or "plan 20991231-example-plan removes this"',
         ),
       );
     }
@@ -180,13 +180,13 @@ export function findTemporaryMarkers(fileText: string): TemporaryMarkerResult {
  * in-repo artifacts only).
  */
 export type EphemeralCitation = {
-  /** 1-based line number of the citation. */
+ /** 1-based line number of the citation. */
   line: number;
-  /** The matched citation token (artifact name or deeplink prefix). */
+ /** The matched citation token (artifact name or deeplink prefix). */
   match: string;
   /** `task-artifact`: `task-<digits>-(brief|report|fix-report|diff)`;
-   * `sdd-deeplink`: `.mstar/sdd/` / `.agents/sdd/` + a concrete first
-   * segment. */
+ * `sdd-deeplink`: `.mstar/sdd/` / `.agents/sdd/` + a concrete first
+ * segment. */
   kind: "task-artifact" | "sdd-deeplink";
 };
 
@@ -211,12 +211,12 @@ const SDD_DEEPLINK_RE = /\.(?:mstar|agents)\/sdd\/([^\s/<>{}\[\]"'\*\?]+)/g;
  *
  * Discrimination (HARD — zero false positives on the skills corpus):
  * - `task-<digits>-(brief|report|fix-report|diff)` with 1+ digits is a
- *   concrete instance → reported (`task-2-report`, `task-1.diff`).
- *   Placeholders (`task-N-brief`, `task-N-report`, `<plan-id>`,
- *   `{SDD_DIR}/task-N-report.md`) never match.
+ * concrete instance → reported (`task-2-report`, `task-1.diff`).
+ * Placeholders (`task-N-brief`, `task-N-report`, `<plan-id>`,
+ * `{SDD_DIR}/task-N-report.md`) never match.
  * - `.mstar/sdd/<segment>` / `.agents/sdd/<segment>` with a concrete first
- *   segment (`20260815-x`) → reported; `<plan-id>` / `{SDD_DIR}` segments
- *   are template forms → never match.
+ * segment (`20260815-x`) → reported; `<plan-id>` / `{SDD_DIR}` segments
+ * are template forms → never match.
  *
  * Discovery only — a finder returning an array, same shape as
  * `findSimplifyMarkers`, NOT a GateResult; callers wrap findings into
@@ -260,8 +260,7 @@ const RUNNER_RE =
 /** Output evidence: check marks, PASS/FAIL tokens, result counts ("12
  * pass", "0 fail", "23 tests passed"), `N ok` / TAP `ok N` / "all ok"
  * verdicts, or exit-code statements. Bare `OK`/`ERROR` prose ("OK, moving
- * on") deliberately does NOT count — output-shaped forms only (qc2 F-004). */
-const OUTPUT_TOKEN_RE =
+ * on") deliberately does NOT count — output-shaped forms only */const OUTPUT_TOKEN_RE =
   /[\u2713\u2714\u2717\u2718]|\b(?:PASS|FAIL)\b|\b\d+\s+(?:pass(?:es|ed)?|fail(?:s|ed|ing)?|skipped|tests?|ok)\b|\bok\s+\d+\b|\ball\s+ok\b|exit(?:ed)?\s+(?:with\s+)?(?:code\s+)?\d+/i;
 
 /**
@@ -278,17 +277,17 @@ const OUTPUT_TOKEN_RE =
  *
  * Heuristics (documented, conservative — tuned so prose alone never counts):
  * - tests: a `.test.<ext>` / `.spec.<ext>` path, or the phrase "test file(s)"
- *   (the handoff template's exact header). "I added tests" without a file or
- *   the phrase does not count.
+ * (the handoff template's exact header). "I added tests" without a file or
+ * the phrase does not count.
  * - command: a `$`-prefixed line, or a known runner invocation (bun/pnpm/
- *   npm/yarn/npx/bunx test|run|exec, npx/bunx exec, tsc/vitest/jest/mocha/
- *   pytest/go test/cargo test). Prose "run the tests" names no runner and
- *   does not count (plan-quality-bar marks it a weak step anyway).
+ * npm/yarn/npx/bunx test|run|exec, npx/bunx exec, tsc/vitest/jest/mocha/
+ * pytest/go test/cargo test). Prose "run the tests" names no runner and
+ * does not count (plan-quality-bar marks it a weak step anyway).
  * - output: check marks, PASS/FAIL tokens, counts ("12 pass"), `N ok` /
- *   TAP `ok N` / "all ok" verdicts, exit-code statements. Bare prose
- *   `OK`/`ERROR` ("OK, moving on") does NOT count — output evidence must
- *   look like output. Line-based and fence-insensitive: real output usually
- *   lives in fenced blocks, so fence content is scanned too.
+ * TAP `ok N` / "all ok" verdicts, exit-code statements. Bare prose
+ * `OK`/`ERROR` ("OK, moving on") does NOT count — output evidence must
+ * look like output. Line-based and fence-insensitive: real output usually
+ * lives in fenced blocks, so fence content is scanned too.
  */
 export function assertSddTddTriple(reportText: string): GateResult {
   const violations: ValidationResult[] = [];
@@ -339,11 +338,11 @@ export function assertSddTddTriple(reportText: string): GateResult {
  * One placeholder occurrence found by `planQualityBar`.
  */
 export type PlanQualityFinding = {
-  /** Normalized token: `TBD`, `TODO`, `TBA`, or `...`. */
+ /** Normalized token: `TBD`, `TODO`, `TBA`, or `...`. */
   token: string;
-  /** 1-based line number. */
+ /** 1-based line number. */
   line: number;
-  /** Trimmed source line. */
+ /** Trimmed source line. */
   text: string;
 };
 
@@ -378,16 +377,16 @@ function stripInlineCode(line: string): string {
  *
  * Heuristic (documented, conservative):
  * - tokens: `TBD`, `TODO`, `TBA` (case-insensitive, word-boundary, plural
- *   forms included) and the prose ellipsis `...`. One finding per line per
- *   token (a line with two TBDs yields one finding).
+ * forms included) and the prose ellipsis `...`. One finding per line per
+ * token (a line with two TBDs yields one finding).
  * - negation guard: a token preceded by a negation word (`no/not/without/
- *   none`) in the same segment (split at `(`/`[`/`{`/`.`/`;`/`,`/line
- *   start) is an absence assertion ("no TBD/placeholder/TODO" states the
- *   rule), not a placeholder — not flagged.
+ * none`) in the same segment (split at `(`/`[`/`{`/`.`/`;`/`,`/line
+ * start) is an absence assertion ("no TBD/placeholder/TODO" states the
+ * rule), not a placeholder — not flagged.
  * - exemptions: fenced code blocks (```` ``` ```` / `~~~`) and inline code
- *   spans are skipped — `...` in a file-list or example is not a placeholder.
+ * spans are skipped — `...` in a file-list or example is not a placeholder.
  * - out of scope (judgment stays prompt): "add tests" without code, and
- *   `FIXME`/`XXX` code markers.
+ * `FIXME`/`XXX` code markers.
  */
 export function planQualityBar(planText: string): PlanQualityResult {
   const findings: PlanQualityFinding[] = [];
@@ -402,11 +401,11 @@ export function planQualityBar(planText: string): PlanQualityResult {
     }
     if (inFence) continue;
     const stripped = stripInlineCode(lines[i]);
-    // Negation guard: "no TBD/placeholder/TODO" asserts absence (a mention
-    // of the rule), not a placeholder. A negation word earlier in the same
-    // segment (split at `(`/`[`/`{`/`.`/`;`/`,`/line start) suppresses the
-    // finding — the comma split keeps "no TBD yet, and TODO items remain"
-    // flagging TODO (qc2 F-005).
+ // Negation guard: "no TBD/placeholder/TODO" asserts absence (a mention
+ // of the rule), not a placeholder. A negation word earlier in the same
+ // segment (split at `(`/`[`/`{`/`.`/`;`/`,`/line start) suppresses the
+ // finding — the comma split keeps "no TBD yet, and TODO items remain"
+     // flagging TODO.
     const segmentStartBefore = (index: number) =>
       Math.max(
         stripped.lastIndexOf("(", index - 1),
@@ -416,8 +415,8 @@ export function planQualityBar(planText: string): PlanQualityResult {
         stripped.lastIndexOf(";", index - 1),
         stripped.lastIndexOf(",", index - 1),
       );
-    // Every placeholder on the line is checked — a negated first token must
-    // not hide a later unnegated one ("no TBD yet, and TODO remains").
+ // Every placeholder on the line is checked — a negated first token must
+ // not hide a later unnegated one ("no TBD yet, and TODO remains").
     let token: string | null = null;
     for (const wordMatch of stripped.matchAll(PLACEHOLDER_TOKEN_RE)) {
       if (wordMatch.index === undefined) continue;
@@ -457,7 +456,7 @@ const WORKFLOW_VERB_START_RE =
  * - `\bI\b(?!/)` — "I/O" is a technical term, not a pronoun;
  * - all-caps `US` (acronym) is skipped;
  * - quoted/code spans are stripped before matching (user utterances like
- *   "what should I improve" are quoted speech, not author voice). */
+ * "what should I improve" are quoted speech, not author voice). */
 const PRONOUN_RE = /\bI\b(?!\/)|\b(?:we|you|my|our|your|us)\b/gi;
 
 /**
@@ -475,7 +474,7 @@ const DESCRIPTION_MAX_WORDS = 120;
  * Frontmatter Contract:
  * - `name` — stable, lowercase-hyphen (`example-skill`);
  * - `description` — the trigger contract, third person, not a workflow
- *   summary.
+ * summary.
  *
  * Accepts a full document (leading `---`-fenced block is parsed) or a bare
  * frontmatter body (`name:`/`description:` lines at the start). Violations:
@@ -484,21 +483,21 @@ const DESCRIPTION_MAX_WORDS = 120;
  * - `lint.frontmatter.name.format` — `name` not lowercase-hyphen
  * - `lint.frontmatter.description.missing` — `description` absent/empty
  * - `lint.frontmatter.description.person` — first/second-person pronoun in
- *   the description (third-person heuristic, low severity)
+ * the description (third-person heuristic, low severity)
  * - `lint.frontmatter.description.workflow` — description reads as a
- *   workflow summary (verb-start or paragraph-length heuristic, low
- *   severity)
+ * workflow summary (verb-start or paragraph-length heuristic, low
+ * severity)
  *
  * Heuristics (documented, conservative; corpus regression tests in
  * lint.test.ts cover the 20 real skill frontmatters):
  * - pronouns: `I`/`we`/`you`/`my`/`our`/`your`/`us`, word-boundary,
- *   case-insensitive, after stripping quoted and backticked spans; `I/`
- *   (I/O) and all-caps `US` exempt.
+ * case-insensitive, after stripping quoted and backticked spans; `I/`
+ * (I/O) and all-caps `US` exempt.
  * - workflow shape: description starts with a workflow verb ("Explains how
- *   …", "Describes …") — the contract's own bad example — or exceeds 120
- *   words (corpus max 114). Bold/quote prefixes are stripped before the
- *   verb check. No content judgment (e.g. whether the trigger is narrow
- *   enough) — that stays prompt.
+ * …", "Describes …") — the contract's own bad example — or exceeds 120
+ * words (corpus max 114). Bold/quote prefixes are stripped before the
+ * verb check. No content judgment (e.g. whether the trigger is narrow
+ * enough) — that stays prompt.
  */
 export function lintSkillFrontmatter(frontmatterText: string): GateResult {
   const violations: ValidationResult[] = [];
@@ -614,7 +613,7 @@ function parseFrontmatter(text: string): Record<string, string> | null {
     if (keyMatch) {
       fields[keyMatch[1].toLowerCase()] = keyMatch[2].trim().replace(/^["']|["']$/g, "");
     } else if (inBlock && fields.description !== undefined) {
-      // indented continuation of the description value
+ // indented continuation of the description value
       fields.description = `${fields.description} ${line.trim()}`.trim();
     } else if (!inBlock && i >= 10) {
       break;

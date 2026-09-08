@@ -17,7 +17,7 @@
  *   the ONLY page-level scroller — the kanban is never compressed into a
  *   small box; sidebar is its own scroll container with a fixed bottom meta
  *   dock; zero bare hex/rgb in the panel + zones CSS;
- * - T4 theme audit (spec panel-zones §7): EVERY color-family declaration is a
+ * - theme audit (spec panel-zones §7): EVERY color-family declaration is a
  *   --dsw-* token (no bare color of any form), spacing/font ride the
  *   --mstar-space-* / --dsw-font-xxxs-11..xs-13 ramps, hover feedback sits in
  *   120–150ms (state switches ≤200ms), `prefers-reduced-motion` kills all
@@ -34,7 +34,7 @@
  * - plugin entry: `apply(ctx)` registers the `mstar-panel` dictionaries and
  *   the `conversation.view` tab (`id: 'mstar-workflow'`, `order: 20`,
  *   locale-following label thunk);
- * - T7 iteration-task page (spec panel-tabs §3, plan 20260811-panel-tabs-shell
+ * - iteration-task page (spec panel-tabs §3
  *   Task 2): the Content Head — `data-iteration-head-*` anchors pin the
  *   collapse/expand defaults (active → expanded, inactive → collapsed one-line
  *   summary with the muted "not started" note + toggle affordance), the
@@ -49,7 +49,7 @@
  *   projection layer stays unit-tested in client-graph-projection.spec.ts);
  *   the react-flow-era orange notes are asserted absent; zh labels;
  *   garbage-proof totality.
- * - F4.3 iteration zone (spec panel-f4 §2.3 R8/R9, plan 20260811-panel-f4-
+ * - iteration zone (spec panel-f4 §2.3 R8/R9
  *   iteration-zone Task 2): the expanded head body is a LEFT-RIGHT split —
  *   branches (small half, DOM-first) + steps (large half), the
  *   `data-iteration-head-split` container present only while branches render;
@@ -57,15 +57,15 @@
  *   verdict (Phase 1 → Step 1 current, verdict unknown → NO badge) and every
  *   step reserves the fixed-height `data-step-verdict-seat` so the centered
  *   groups align (no `align-self` skew, no block shift).
- * - T6 tabs-shell (spec panel-tabs §2/§6.1): the panel is re-laid-out as
+ * - tabs-shell (spec panel-tabs §2/§6.1): the panel is re-laid-out as
  *   Tabs + Content — resident right sidebar (all tabs share it), fixed
  *   header nav (TabNav, 3 MenuTabs) + per-tab content; `data-mstar-graph`
  *   now anchors the CONTENT container; default tab = 任务迭代 (D1); tab
  *   switching content assertions ride the exported TabNav + PanelContent;
  *   the agents tab renders the draggable AgentCanvasPage and the events tab
  *   the real EventLogPage (`data-mstar-page-*` + the `data-event-log-*`
- *   anchor family — plan 20260811-panel-event-log Task 2).
- * - T9 event-log page (spec panel-tabs §5, plan 20260811-panel-event-log
+ *   anchor family).
+ * - event-log page (spec panel-tabs §5
  *   Task 2): the 事件记录 tab is a non-canvas log page — the Agent 流转事件 /
  *   违规记录 partitions (`data-event-log-section`), per-row expandable
  *   `<details>` rows (`data-event-log-details` / `data-event-log-field`
@@ -75,7 +75,7 @@
  *   (`data-event-log-expected="false"` badge, never double-appended), and
  *   the AgentEventDock removal (zero `data-agent-event-dock` anchors —
  *   无双份日志 decision, spec §5).
- * - T8 agent canvas (spec panel-tabs §4/§6.2, plan 20260811-panel-agent-canvas
+ * - agent canvas (spec panel-tabs §4/§6.2
  *   Task 2): the agents tab is the draggable canvas page — `data-canvas-pan`
  *   exposes the pan transform (pointer-event drag helpers unit-tested +
  *   the deterministic `initialPan` SSR seam), `data-agent-entity` covers the
@@ -163,9 +163,9 @@ const fullSource: MstarEngineStatusSource = {
   harnessDir: '/proj/.mstar',
   enforcement: { hard: true, source: 'iteration compass' as EnforcementSource },
   iteration: {
-    iterationId: 'iter-20260809-dsh-workflow-viz',
+    iterationId: 'iter-00000809-dsh-workflow-viz',
     statusPath: '/proj/.mstar/status.json',
-    compassPath: '/proj/.mstar/iterations/iter-20260809-dsh-workflow-viz/delivery-compass.md',
+    compassPath: '/proj/.mstar/iterations/iter-00000809-dsh-workflow-viz/delivery-compass.md',
     gate: {
       transition: 'phase-2-execute',
       all_plans_done: false,
@@ -173,37 +173,37 @@ const fullSource: MstarEngineStatusSource = {
       entry: { ok: true, violations: [] },
       exit: { ok: true, violations: [] },
       violations: [
-        { severity: 'medium', code: 'PLAN-3', message: 'plan 20260809-dsh-workflow-viz-panel not complete' },
+        { severity: 'medium', code: 'PLAN-3', message: 'plan  not complete' },
         { severity: 'low', code: 'EXIT-1', message: 'minor wording drift in the compass' },
       ],
     },
   },
   state: {
-    selection: { kind: 'active', workflowId: 'iter-20260809-dsh-workflow-viz', dir: 'workflows/iter-20260809-dsh-workflow-viz' },
+    selection: { kind: 'active', workflowId: 'iter-00000809-dsh-workflow-viz', dir: 'workflows/iter-00000809-dsh-workflow-viz' },
     workflowType: 'plan',
     workflowStatus: 'running',
     plans: [
-      { id: '20260809-dsh-workflow-viz-panel', status: 'InProgress', doneAt: null, iterationRefs: [] },
-      { id: '20260808-dsh-package-core', status: 'Done', doneAt: '2026-08-08', iterationRefs: [] },
+      { id: '00000809-dsh-workflow-viz-panel', status: 'InProgress', doneAt: null, iterationRefs: [] },
+      { id: '00000808-dsh-package-core', status: 'Done', doneAt: '2026-08-08', iterationRefs: [] },
     ],
     residuals: [
       { severity: 'high', count: 2 },
       { severity: 'medium', count: 1 },
     ],
     residualFindings: [
-      { planId: '20260808-dsh-package-core', id: 'R1', severity: 'high', title: 'doneAt passthrough untested' },
-      { planId: '20260809-dsh-workflow-viz-panel', id: 'R2', severity: 'medium', title: 'header removal doc drift' },
+      { planId: '00000808-dsh-package-core', id: 'R1', severity: 'high', title: 'doneAt passthrough untested' },
+      { planId: '00000809-dsh-workflow-viz-panel', id: 'R2', severity: 'medium', title: 'header removal doc drift' },
     ],
     project: { milestones: [], openResiduals: [] },
     iterationBaseBranch: 'dev-dsh',
     targetBranch: 'dev-dsh',
-    specIntegrationBranch: 'iteration/iter-20260809-dsh-workflow-viz',
+    specIntegrationBranch: 'iteration/iter-00000809-dsh-workflow-viz',
     pushPolicy: 'push authorized',
     worktreeMode: 'feature-worktree',
     controlWorktreePath: '/Users/bibi/workspace/ai/mstar-workflow',
     leases: [
       {
-        planId: '20260809-dsh-workflow-viz-panel',
+        planId: '00000809-dsh-workflow-viz-panel',
         holder: 'dsh-web-mstar-workflow',
         worktreePath: '/Users/bibi/workspace/ai/mstar-workflow/.worktrees/mstar-workflow-workflow-viz',
       },
@@ -238,7 +238,7 @@ const noGateSource: MstarEngineStatusSource = {
     selection: { kind: 'active', workflowId: 'wf-1', dir: 'workflows/wf-1' },
     workflowType: 'plan',
     workflowStatus: 'running',
-    plans: [{ id: '20260809-dsh-workflow-viz-panel', status: 'InProgress', doneAt: null, iterationRefs: [] }],
+    plans: [{ id: '00000809-dsh-workflow-viz-panel', status: 'InProgress', doneAt: null, iterationRefs: [] }],
     residuals: [],
     residualFindings: null,
     project: { milestones: [], openResiduals: [] },
@@ -375,7 +375,7 @@ function dispatchEvent(over: {
   }
 }
 
-/** One settle row as the T1 ledger view emits it (spec §2.2 — carries the PAIRED dispatch identity when `role` is given, plan `20260811-panel-f4-timeliness` Task 1). */
+/** One settle row as the T1 ledger view emits it (spec §2.2 — carries the PAIRED dispatch identity when `role` is given,). */
 function settleEvent(over: { ts: number; agent?: string; outcome?: 'ok' | 'error' | 'denied'; role?: string; planId?: string; taskId?: string }): AgentFlowEventView {
   return {
     ts: over.ts,
@@ -490,9 +490,9 @@ describe('workflow panel — full fixture renders every section (spec §2)', () 
   it('renders the state section: plans board, residual findings, policy (enforcement first), leases, knowledge, direction', () => {
     expect(html).toContain('data-mstar-section="state"')
     // Plan status board: id(status) rows.
-    expect(html).toContain('data-plan-id="20260809-dsh-workflow-viz-panel"')
+    expect(html).toContain('data-plan-id="00000809-dsh-workflow-viz-panel"')
     expect(html).toContain('data-plan-status="InProgress"')
-    expect(html).toContain('data-plan-id="20260808-dsh-package-core"')
+    expect(html).toContain('data-plan-id="00000808-dsh-package-core"')
     expect(html).toContain('data-plan-status="Done"')
     // Residual findings: R# id + severity chip + title/planId (spec §5).
     expect(html).toContain('data-residual-finding')
@@ -501,7 +501,7 @@ describe('workflow panel — full fixture renders every section (spec §2)', () 
     expect(html).toContain('data-residual-finding-severity="high"')
     expect(html).toContain('data-residual-finding-severity="medium"')
     expect(html).toContain('doneAt passthrough untested')
-    expect(html).toContain('data-residual-finding-plan="20260809-dsh-workflow-viz-panel"')
+    expect(html).toContain('data-residual-finding-plan="00000809-dsh-workflow-viz-panel"')
     // Policy anchors — enforcement FIRST (from source.enforcement, spec §2.1).
     expect(html).toContain('data-field="enforcement"')
     expect(html).toContain('hard (iteration compass)')
@@ -512,12 +512,12 @@ describe('workflow panel — full fixture renders every section (spec §2)', () 
     expect(html).toContain('feature-worktree')
     expect(html).toContain('data-field="control-worktree-path"')
     // Branches block removed from the sidebar (moved to the iteration zone,
-    // plan 20260810-panel-canvas-zones) — the branch anchors are gone.
+    //) — the branch anchors are gone.
     expect(html).not.toContain('data-field="iteration-base-branch"')
     expect(html).not.toContain('data-field="target-branch"')
     expect(html).not.toContain('data-field="spec-integration-branch"')
     // Lease anchors.
-    expect(html).toContain('data-lease-plan="20260809-dsh-workflow-viz-panel"')
+    expect(html).toContain('data-lease-plan="00000809-dsh-workflow-viz-panel"')
     expect(html).toContain('dsh-web-mstar-workflow')
     // Knowledge digest.
     expect(html).toContain('data-knowledge-docs="3"')
@@ -567,7 +567,7 @@ describe('workflow panel — empty states and degradation (spec §3, §2.4)', ()
     expect(html).not.toContain('data-graph-empty="no-compass"')
     expect(html).not.toContain('No steering compass / status.json')
     expect(html).toContain('data-mstar-section="state"')
-    expect(html).toContain('data-plan-id="20260809-dsh-workflow-viz-panel"')
+    expect(html).toContain('data-plan-id="00000809-dsh-workflow-viz-panel"')
     // Empty state lists degrade to "none" rather than crashing.
     expect(html).toContain('data-mstar-empty="no-residuals"')
     expect(html).toContain('data-mstar-empty="no-leases"')
@@ -800,10 +800,10 @@ describe('workflow panel — T1 layout: sidebar meta dock / main grid / full-tab
   it('sidebar renders the plans / residuals / knowledge / leases status areas + the fixed meta dock', () => {
     expect(html).toContain('data-mstar-sidebar')
     expect(html).toContain('data-mstar-sidebar-scroll')
-    expect(html).toContain('data-plan-id="20260809-dsh-workflow-viz-panel"')
+    expect(html).toContain('data-plan-id="00000809-dsh-workflow-viz-panel"')
     expect(html).toContain('data-residual-finding-severity="high"')
     expect(html).toContain('data-knowledge-docs="3"')
-    expect(html).toContain('data-lease-plan="20260809-dsh-workflow-viz-panel"')
+    expect(html).toContain('data-lease-plan="00000809-dsh-workflow-viz-panel"')
     // The digest content lives INSIDE the sidebar scroll region; the meta dock
     // follows it (data-plan-id also appears earlier in the graph node plan rows,
     // so order is pinned against the sidebar's own state section marker).
@@ -813,10 +813,10 @@ describe('workflow panel — T1 layout: sidebar meta dock / main grid / full-tab
     expect(html.indexOf('data-mstar-sidebar')).toBeLessThan(html.indexOf('data-mstar-watermark'))
   })
 
-  it('the selection seat renders the aggregated workflow — active / multi-active warning / terminal history / selection error (qc1 S-1)', () => {
+  it('the selection seat renders the aggregated workflow — active / multi-active warning / terminal history / selection error ', () => {
     // Active without warning (the full fixture).
     expect(html).toContain('data-selection-kind="active"')
-    expect(html).toContain('data-selection-workflow="iter-20260809-dsh-workflow-viz"')
+    expect(html).toContain('data-selection-workflow="iter-00000809-dsh-workflow-viz"')
     expect(html).not.toContain('data-selection-warning')
 
     // Multi-active → the structured warning is surfaced (no silent pick).
@@ -1068,7 +1068,7 @@ describe('workflow panel — T5 zones CSS audit: dock token styles + transition 
 
 /* ---------------------------------------------------------------------------
  * T5b agent-canvas page CSS audit (spec panel-tabs §4/§6.2, plan
- * 20260811-panel-agent-canvas Task 3): the canvas page css (grid / cards /
+ *  Task 3): the canvas page css (grid / cards /
  * edge animations) is new with this plan — the same contract as T4/T5:
  * zero bare colors of any form, transitions inside the 120–200ms window,
  * fonts on the ramp, keyframes + animation declarations present, and NO
@@ -1134,7 +1134,7 @@ describe('workflow panel — T5b agent-canvas page CSS audit (spec panel-tabs §
   })
 
   it('declares ONLY the running-card pulse animation (the next-edge dash flow is REMOVED with the next edge — T5); NO own reduced-motion block (root rule covers)', () => {
-    // The canvas ANIMATION (spec §6.2 + plan 20260812-panel-f5-design-system
+    // The canvas ANIMATION (spec §6.2
     // Task 5 — running glow pulse) is declared here — the single motion-kill
     // coverage point stays the panel ROOT rule (`* { animation: none
     // !important }` under prefers-reduced-motion: reduce, asserted in T5).
@@ -1149,7 +1149,7 @@ describe('workflow panel — T5b agent-canvas page CSS audit (spec panel-tabs §
     expect(cssText).not.toContain('data-ds-dark-theme')
   })
 
-  it('arrowhead fills target the marker <path> itself — no descendant selector (QC S-002)', () => {
+  it('arrowhead fills target the marker <path> itself — no descendant selector', () => {
     // The marker defs put the class ON the <path> element (AgentCanvasPage.tsx
     // `canvas-arrow-*` markers), so a `.canvasArrowX path` descendant selector
     // can never match — the SVG default (black) fill would win and the lit
@@ -1166,8 +1166,8 @@ describe('workflow panel — T5b agent-canvas page CSS audit (spec panel-tabs §
     expect(arrowRule('canvasArrowSuperviseLit')).toContain('fill: var(--dsw-alias-state-business-primary)')
   })
 
-  it('evidenced supervise line renders SOLID — the lit rule RESETS the base dasharray (qc1 W-001 cascade outcome)', () => {
-    // qc1 W-001 (plan QC tri): `.canvasEdgeSupervise` declares
+  it('evidenced supervise line renders SOLID — the lit rule RESETS the base dasharray (cascade outcome)', () => {
+    // qc1 W-001 : `.canvasEdgeSupervise` declares
     // `stroke-dasharray: 5 4` and `.canvasEdgeSuperviseLit` overrides only
     // `stroke` — both single-class specificity (0,1,0), so the dash
     // survived into the evidenced lit state (the design doc §2.7 requires a
@@ -1297,7 +1297,7 @@ describe('workflow panel — T1 panel rename: "MStar 工作流" / "MStar Workflo
 })
 
 /* ---------------------------------------------------------------------------
- * T7 iteration-task page (spec panel-tabs §3, plan 20260811-panel-tabs-shell
+ * T7 iteration-task page (spec panel-tabs §3
  * Task 2): the tasks tab renders the IterationTaskPage — Content Head
  * (collapsible iteration summary + HORIZONTAL Step 1–5 row + branches) above
  * the full-width standard kanban (the reused TaskBoard). The WorkflowCanvas
@@ -1315,13 +1315,13 @@ describe('workflow panel — T7 iteration-task page: content head collapse/expan
     expect(html).toContain('data-iteration-head-active="true"')
     expect(html).toContain('data-iteration-head-expanded="true"')
     // Summary row: iteration id + verdict + n/5 status — PURE NUMBER, no
-    // "Step" wording (plan 20260811-panel-f2-quickfix Item 1 — user F2).
-    expect(html).toContain('data-iteration-head-id="iter-20260809-dsh-workflow-viz"')
+    // "Step" wording.
+    expect(html).toContain('data-iteration-head-id="iter-00000809-dsh-workflow-viz"')
     expect(html).toContain('data-iteration-head-verdict="pass"')
     expect(html).toContain('2/5')
     expect(html).not.toContain('Step ')
     // The horizontal 5-step row: PHASE_IDS order, one done + one current +
-    // one next + two idle (plan 20260812-panel-f5-iteration-zone-fix T1: the
+    // one next + two idle (the
     // completed Step 1 before current projects `done`, not idle).
     expect(html).toContain('data-iteration-head-steps')
     for (const n of [1, 2, 3, 4, 5]) expect(html).toContain(`data-step="${n}"`)
@@ -1341,7 +1341,7 @@ describe('workflow panel — T7 iteration-task page: content head collapse/expan
     expect(html).toContain('PR Delivery')
     expect(html).toContain('Merge Ready')
     // State chips (localized labels) — all four states render (plan
-    // 20260812-panel-f5-iteration-zone-fix T2: the done chip label added —
+    // The done chip label added —
     // en value follows the status-id-lowercase convention, like current/
     // next/idle).
     expect(html).toContain('current')
@@ -1363,7 +1363,7 @@ describe('workflow panel — T7 iteration-task page: content head collapse/expan
     expect(html).toContain('data-branch="target"')
     expect(html).toContain('data-branch="spec-integration"')
     expect(html).toContain('dev-dsh')
-    expect(html).toContain('iteration/iter-20260809-dsh-workflow-viz')
+    expect(html).toContain('iteration/iter-00000809-dsh-workflow-viz')
   })
 
   it('LIVE activation re-sync (Task 2 review Important-1): the head expands when the SAME mounted instance sees active flip false→true; user collapse while already active is never overridden', () => {
@@ -1465,7 +1465,7 @@ describe('workflow panel — T7 iteration-task page: content head collapse/expan
     const cols = [...html.matchAll(/data-kanban-column="([^"]+)"/g)].map((m) => m[1]!)
     expect(cols).toEqual(['Todo', 'InProgress', 'InReview', 'Done', 'blocked-unknown'])
     expect(html).toContain('data-tasks-total="2"')
-    expect(html).toContain('data-plan-id="20260809-dsh-workflow-viz-panel"')
+    expect(html).toContain('data-plan-id="00000809-dsh-workflow-viz-panel"')
     expect(html).toContain('data-plan-status="InProgress"')
     // The tasks page never mounts the WorkflowCanvas-era surfaces.
     expect(html).not.toContain('data-mstar-canvas')
@@ -1521,7 +1521,7 @@ describe('workflow panel — T7 iteration-task page: content head collapse/expan
 })
 
 /* ---------------------------------------------------------------------------
- * F4.3 iteration zone (spec panel-f4 §2.3 R8/R9, plan 20260811-panel-f4-
+ * F4.3 iteration zone (spec panel-f4 §2.3 R8/R9
  * iteration-zone Task 2): the expanded head body becomes a LEFT-RIGHT split —
  * branches (`data-iteration-head-branches`) LEFT small half + steps
  * (`data-iteration-head-steps`) RIGHT large half, DOM order branches BEFORE
@@ -1560,7 +1560,7 @@ describe('workflow panel — F4.3 iteration zone: split layout + verdict badge s
     expect(g).not.toContain('data-branch=')
   })
 
-  it('expanded head without the split → the steps-row-alone fallback: 5 verdict seats, 0 badges, no split/branches (qc2 F-004 / qc3 F-003)', () => {
+  it('expanded head without the split → the steps-row-alone fallback: 5 verdict seats, 0 badges, no split/branches ', () => {
     // The user-visible case (a manually EXPANDED inactive head) is
     // SSR-unreachable in this suite — `expanded` is seeded from `active`
     // (`useState(active)`), and effects/clicks cannot run under
@@ -1639,7 +1639,7 @@ describe('workflow panel — F4.3 iteration zone: split layout + verdict badge s
     const cssText = readFileSync(new URL('../src/client/panel/panel.module.css', import.meta.url), 'utf8')
     // Split container: a flex row with a ramp gap (spec R8).
     expect(cssText).toMatch(/\.iterationHeadSplit\s*\{[\s\S]*?display:\s*flex[\s\S]*?gap:\s*var\(--mstar-space-/)
-    // Width contract (plan 20260812-panel-f5-iteration-zone-fix Task 2):
+    // Width contract :
     // branches are width-CAPPED (flex-basis 260px, max-width 280px — branch
     // info never stretches with the container), the steps row absorbs ALL
     // remaining width (flex 1 1 0).
@@ -1650,7 +1650,7 @@ describe('workflow panel — F4.3 iteration zone: split layout + verdict badge s
     // 260px HEIGHT in the stack, so the cap is lifted for the column axis).
     expect(cssText).toMatch(/@media\s*\(max-width:\s*860px\)\s*\{[\s\S]*?\.iterationHeadSplit\s*\{[\s\S]*?flex-direction:\s*column/)
     expect(cssText).toMatch(/@media\s*\(max-width:\s*860px\)\s*\{[\s\S]*?\.iterationHeadSplit\s*>\s*\.iterationBranches\s*\{[\s\S]*?max-width:\s*none/)
-    // Regression guard (plan QC W-001/F-001): the ≤860px column stack must
+    // Regression guard : the ≤860px column stack must
     // NEVER see the row-mode cap. The cap is scoped inside a SINGLE
     // `@media (min-width: 861px)` block — at ≤860px only the content-height
     // reset above exists, so no cascade competition remains (an earlier
@@ -1785,7 +1785,7 @@ describe('workflow panel — T7 data projection integration (spec panel-tabs §3
     expect(html).toContain('mstar 2.0.4')
     expect(html).toContain('harness: /proj/.mstar')
     // Sidebar plan board rows = state.plans verbatim.
-    expect(html).toContain('data-plan-id="20260809-dsh-workflow-viz-panel"')
+    expect(html).toContain('data-plan-id="00000809-dsh-workflow-viz-panel"')
     expect(html).toContain('data-plan-status="InProgress"')
     // The tasks page renders from the same row: the head verdict from
     // iteration.gate.ok + the sidebar-visible plan row in the kanban.
@@ -1828,7 +1828,7 @@ describe('workflow panel — T7 data projection integration (spec panel-tabs §3
     expect(noIteration).toContain('data-iteration-head-active="false"')
     expect(noIteration).not.toContain('data-graph-empty="no-compass"')
     expect(noIteration).toContain('data-mstar-sidebar')
-    expect(noIteration).toContain('data-plan-id="20260809-dsh-workflow-viz-panel"')
+    expect(noIteration).toContain('data-plan-id="00000809-dsh-workflow-viz-panel"')
 
     const garbageIteration = panelHtml({ ...fullSource, iteration: 'not-an-object' } as unknown as MstarEngineStatusSource)
     expect(garbageIteration).toContain('data-mstar-meta')
@@ -1840,7 +1840,7 @@ describe('workflow panel — T7 data projection integration (spec panel-tabs §3
 })
 
 /* ---------------------------------------------------------------------------
- * T4 task board kanban (spec panel-zones §3/§8, plan 20260813-panel-quick-fixes
+ * T4 task board kanban (spec panel-zones §3/§8
  * Task 1): the 5 PLAN_STATE_IDS columns with localized headers + count badges,
  * plan cards (data-plan-id / data-plan-status — the anchors shared with the
  * sidebar), the dim inter-column flow arrows (chain + Blocked ⇄ docking at the
@@ -1909,7 +1909,7 @@ describe('workflow panel — T4 task board kanban: 5 columns + counts + cards + 
     expect(ip).toContain('data-plan-status="InProgress"')
     expect(ip).not.toContain('data-plan-id="plan-todo-1"')
     // Blocked AND the non-5-state status (Paused) both land in the merged
-    // blocked-unknown column (plan 20260813-panel-quick-fixes Task 1).
+    // blockeded-unknown column.
     const merged = columnSlice(html, 'blocked-unknown')
     expect(merged).toContain('data-plan-id="plan-blocked-1"')
     expect(merged).toContain('data-plan-status="Blocked"')
@@ -1954,13 +1954,13 @@ describe('workflow panel — T4 task board kanban: 5 columns + counts + cards + 
       state: {
         ...fullSource.state!,
         plans: [
-          { id: '20260807-plan', status: 'Done', doneAt: '2026-08-07', iterationRefs: [] },
-          { id: '20260806-plan', status: 'Done', doneAt: '2026-08-06', iterationRefs: [] },
-          { id: '20260805-plan', status: 'Done', doneAt: '2026-08-05', iterationRefs: [] },
-          { id: '20260804-plan', status: 'Done', doneAt: '2026-08-04', iterationRefs: [] },
-          { id: '20260803-plan', status: 'Done', doneAt: '2026-08-03', iterationRefs: [] },
-          { id: '20260802-plan', status: 'Done', doneAt: '2026-08-02', iterationRefs: [] },
-          { id: '20260801-plan', status: 'Done', doneAt: '2026-08-01', iterationRefs: [] },
+          { id: '00000807-plan', status: 'Done', doneAt: '2026-08-07', iterationRefs: [] },
+          { id: '00000806-plan', status: 'Done', doneAt: '2026-08-06', iterationRefs: [] },
+          { id: '00000805-plan', status: 'Done', doneAt: '2026-08-05', iterationRefs: [] },
+          { id: '00000804-plan', status: 'Done', doneAt: '2026-08-04', iterationRefs: [] },
+          { id: '00000803-plan', status: 'Done', doneAt: '2026-08-03', iterationRefs: [] },
+          { id: '00000802-plan', status: 'Done', doneAt: '2026-08-02', iterationRefs: [] },
+          { id: '00000801-plan', status: 'Done', doneAt: '2026-08-01', iterationRefs: [] },
         ],
       },
     }
@@ -1970,15 +1970,15 @@ describe('workflow panel — T4 task board kanban: 5 columns + counts + cards + 
     expect(done).toContain('data-kanban-count="7"')
     expect(done.match(/data-plan-id="/g)).toHaveLength(5)
     // Plan-sort order (shared key, projection-side): doneAt digitized DESC.
-    expect(done.indexOf('data-plan-id="20260807-plan"')).toBeLessThan(done.indexOf('data-plan-id="20260806-plan"'))
-    expect(done.indexOf('data-plan-id="20260806-plan"')).toBeLessThan(done.indexOf('data-plan-id="20260803-plan"'))
+    expect(done.indexOf('data-plan-id="00000807-plan"')).toBeLessThan(done.indexOf('data-plan-id="00000806-plan"'))
+    expect(done.indexOf('data-plan-id="00000806-plan"')).toBeLessThan(done.indexOf('data-plan-id="00000803-plan"'))
     // Overflow: a real <button> with the data-kanban-more anchor + the
     // localized +N more wording; the hidden rows are not rendered yet.
     expect(done).toContain('<button')
     expect(done).toContain('data-kanban-more="expand"')
     expect(done).toContain('+2 more')
-    expect(done).not.toContain('data-plan-id="20260802-plan"')
-    expect(done).not.toContain('data-plan-id="20260801-plan"')
+    expect(done).not.toContain('data-plan-id="00000802-plan"')
+    expect(done).not.toContain('data-plan-id="00000801-plan"')
     // The projection-level assertions stay independent (Risk Register) — this
     // pins the RENDER of the capped column only.
   })
@@ -2037,7 +2037,7 @@ describe('workflow panel — T4 task board kanban: 5 columns + counts + cards + 
   })
 })
 
-describe('workflow panel — Task 1 「更多」 interaction (plan 20260813-panel-quick-fixes)', () => {
+describe('workflow panel — 「更多」 interaction ', () => {
   it('visibleKanbanPlans truncates to PLAN_CAP by default and reveals ALL rows when expanded', () => {
     const v = projectGraph({
       ...fullSource,
@@ -2066,7 +2066,7 @@ describe('workflow panel — Task 1 「更多」 interaction (plan 20260813-pane
 })
 
 /* ---------------------------------------------------------------------------
- * T6 tabs-shell Task 1 (spec panel-tabs §2/§6.1, plan 20260811-panel-tabs-
+ * T6 tabs-shell Task 1 (spec panel-tabs §2/§6.1
  * shell): the panel is re-laid-out as Tabs + Content — a resident right
  * sidebar shared by every tab, a fixed header nav (TabNav) with the 3
  * MenuTabs (任务迭代 / 代理执行 / 事件记录) and a content region that
@@ -2119,8 +2119,8 @@ describe('workflow panel — T6 tabs-shell: resident sidebar + header nav + cont
     expect(tasks).toContain('data-iteration-head')
     expect(tasks).toContain('data-zone="tasks"')
     expect(tasks).not.toContain('data-mstar-canvas')
-    // agents → the draggable canvas page (plan 20260811-panel-agent-canvas
-    // Task 2): data-mstar-page + the pan anchor + full-roster entity cards.
+    // agents → the draggable canvas page: data-mstar-page + the pan anchor +
+    // full-roster entity cards.
     const agents = renderToStaticMarkup(createElement(PanelContent, { tab: 'agents', source: fullSource, t }))
     expect(agents).toContain('data-mstar-page="agents"')
     expect(agents).toContain('data-canvas-viewport')
@@ -2128,7 +2128,7 @@ describe('workflow panel — T6 tabs-shell: resident sidebar + header nav + cont
     expect(agents).toContain('data-agent-entity=')
     expect(agents).not.toContain('data-mstar-page-note')
     expect(agents).not.toContain('data-zone=')
-    // events → the real log page (plan 20260811-panel-event-log Task 2):
+    // events → the real log page :
     // the two partitions + expandable rows + muted empty states (the muted
     // placeholder note is gone — its copy landed in this page).
     const events = renderToStaticMarkup(createElement(PanelContent, { tab: 'events', source: fullSource, t }))
@@ -2188,7 +2188,7 @@ describe('workflow panel — T6 tabs-shell: resident sidebar + header nav + cont
 })
 
 /* ---------------------------------------------------------------------------
- * T9 event-log page (spec panel-tabs §5, plan 20260811-panel-event-log
+ * T9 event-log page (spec panel-tabs §5
  * Task 2): the 事件记录 tab is a NON-canvas log page — the Agent 流转事件 /
  * 违规记录 partitions (`data-event-log-section` + counts), per-row
  * expandable native `<details>` rows (`data-event-log-details` — the summary
@@ -2198,10 +2198,10 @@ describe('workflow panel — T6 tabs-shell: resident sidebar + header nav + cont
  * `data-event-log-empty-section` mixed — never an orange warn frame), the
  * unexpected-dispatch fold-in (`data-event-log-expected="false"` + the
  * `flow.unexpected` badge, DISPATCH-only — settle rows never flag as
- * unexpected, qc2/qc3 F-001), the out-of-Date-range ts degrade (qc2 F-002),
+ * unexpected), the out-of-Date-range ts degrade,
  * the dock migration
  * (zero `data-agent-event-dock` anchors — 无双份日志, spec §5) and the zh
- * copy. Row data rides the Task 1 `eventLogEntries` assembly.
+ * copy. Row data rides the `eventLogEntries` assembly.
  * ------------------------------------------------------------------------- */
 
 describe('workflow panel — T9 event-log page: partitions + rows + details + empty states (spec panel-tabs §5, plan event-log Task 2)', () => {
@@ -2268,7 +2268,7 @@ describe('workflow panel — T9 event-log page: partitions + rows + details + em
     expect(html).toContain('data-event-log-field="severity"')
     expect(html).toContain('data-event-log-field="code"')
     expect(html).toContain('data-event-log-field="message"')
-    expect(html).toContain('plan 20260809-dsh-workflow-viz-panel not complete')
+    expect(html).toContain('plan  not complete')
   })
 
   it('missing fields degrade to 「—」 in the detail body — never fabricated (T1-Min-2 ts)', () => {
@@ -2298,7 +2298,7 @@ describe('workflow panel — T9 event-log page: partitions + rows + details + em
     expect(settleField).toContain('data-event-log-missing="true"')
     expect(settleField).toContain('>—</span>')
     // The settle row's detail body: 7 not-applicable fields (role/stage/
-    // plan/task/category/settled/expected — F-001: the expected-role seat is
+    // plan/task/category/settled/expected — the expected-role seat is
     // not applicable on a completion record); agent/time/kind/status/duration
     // render their honest values.
     expect(html.match(/data-event-log-missing="true"/g)).toHaveLength(7)
@@ -2391,10 +2391,10 @@ describe('workflow panel — T9 event-log page: partitions + rows + details + em
     expect(html).toContain('Unexpected roles')
   })
 
-  it('settle rows NEVER render the unexpected badge — dispatch-only marker (qc2/qc3 F-001)', () => {
+  it('settle rows NEVER render the unexpected badge — dispatch-only marker ', () => {
     // A normal dispatch→settle pair: the settle row's projected `expected`
     // is always false, but it is a completion record — no badge and no
-    // "not-applicable" expected seat in its detail body (F-001).
+    // "not-applicable" expected seat in its detail body.
     const html = eventsHtml(flowSource([
       { ts: 3_000, kind: 'settle', role: '', planId: null, taskId: null, taskCategory: null, agent: 'a-1', outcome: 'ok', durationMs: 1234 },
       { ts: 2_000, kind: 'dispatch', role: 'fullstack-dev', planId: 'plan-x', taskId: 'T1', taskCategory: 'logic', agent: 'a-1', verdict: 'advisory' },
@@ -2411,7 +2411,7 @@ describe('workflow panel — T9 event-log page: partitions + rows + details + em
     expect(unexpectedHtml).toContain('Unexpected roles')
   })
 
-  it('a finite but out-of-Date-range ts degrades to「—」— never throws (qc2 F-002)', () => {
+  it('a finite but out-of-Date-range ts degrades to「—」— never throws ', () => {
     // ts = 1e18 is finite (guards.count passes it through the projection)
     // but outside the ECMAScript Date range (±8.64e15 ms): the old
     // formatEventTime threw RangeError and crashed the whole events tab.
@@ -2453,7 +2453,7 @@ describe('workflow panel — T9 event-log page: partitions + rows + details + em
 })
 
 /* ---------------------------------------------------------------------------
- * T8 agent canvas (spec panel-tabs §4/§6.2, plan 20260811-panel-agent-canvas
+ * T8 agent canvas (spec panel-tabs §4/§6.2
  * Task 2): the draggable agents tab — pointer-event pan with the
  * `data-canvas-pan` transform anchor, full-roster entity cards (idle muted),
  * and the expected/actual/next AgentEdge lines. The drag math is the exported
@@ -2462,9 +2462,9 @@ describe('workflow panel — T9 event-log page: partitions + rows + details + em
  * SSR-level change assertion.
  * ------------------------------------------------------------------------- */
 
-describe('workflow panel — agent canvas page (spec panel-tabs §4/§6.2, plan 20260811-panel-f3-agent-general)', () => {
+describe('workflow panel — agent canvas page (spec panel-tabs §4/§6.2)', () => {
   /** Evidence fixture: 3 dispatches across 3 stages + one settle — lit cards
-   * (role-keyed). NOTE (plan 20260812-panel-f5-design-system Task 5 — design
+   * (role-keyed). NOTE (design
    * doc §2.2): the same-plan adjacent pairs involve the general bucket
    * (generalPurpose), so the general-endpoint filter drops EVERY actual edge
    * in this fixture — the handoff-render tests live in
@@ -2541,7 +2541,7 @@ describe('workflow panel — agent canvas page (spec panel-tabs §4/§6.2, plan 
     expect(html).toContain('data-agent-summary-pending="0"')
   })
 
-  it('empty ledger → data-canvas-note="empty"; settle-only ledger → the restored data-canvas-note="settle-only" (review T2-Imp-2; F-002 note is projected)', () => {
+  it('empty ledger → data-canvas-note="empty"; settle-only ledger → the restored data-canvas-note="settle-only" (the canvas note is projected)', () => {
     // 0 events → the `empty` anchor (spec §8).
     const emptyHtml = agentsHtml(flowSource([]))
     expect(emptyHtml).toContain('data-canvas-note="empty"')
@@ -2557,7 +2557,7 @@ describe('workflow panel — agent canvas page (spec panel-tabs §4/§6.2, plan 
     expect(settleOnly).toContain('Settle records only (no dispatch evidence)')
     expect(settleOnly).not.toContain('data-canvas-note="empty"')
     expect(settleOnly).not.toContain('data-canvas-note="degraded"')
-    // F-002: the note rides PROJECTED metadata — a garbage-only ledger
+    // The note rides PROJECTED metadata — a garbage-only ledger
     // (no dispatch evidence) renders settle-only; an anonymous dispatch row
     // IS dispatch evidence, so no note (the old allIdle heuristic would
     // have mislabeled both as settle-only).
@@ -2570,7 +2570,7 @@ describe('workflow panel — agent canvas page (spec panel-tabs §4/§6.2, plan 
     expect(anonymousDispatch).toContain('data-agent-summary-executing="1"')
   })
 
-  it('mounts the Legend on the agents page: ONLY the 3 role-card status entries; the collaboration-edge / layout swatches are gone (plan 20260813-panel-agent-canvas-legend-layout T1)', () => {
+  it('mounts the Legend on the agents page: ONLY the 3 role-card status entries; the collaboration-edge / layout swatches are gone ', () => {
     const html = agentsHtml(evidenceSource)
     expect(html).toContain('data-mstar-legend')
     // Task 1 (图例精简): exactly the 3 entity-status entries — the 7
@@ -2609,15 +2609,14 @@ describe('workflow panel — agent canvas page (spec panel-tabs §4/§6.2, plan 
 
   it('draws the AgentEdge bezier paths: actual handoffs (general endpoints filtered) + the supervise line — NO expected/next edges (plan f5 T2 + design-system T5)', () => {
     const html = agentsHtml(evidenceSource)
-    // Task 5 (design doc §2.2 — user 2026-08-12 feedback #1/#5): the
+    // (design doc §2.2): the
     // expected skeleton + the next animation edge are REMOVED — no anchors
     // and no marker defs survive.
     expect(html).not.toContain('data-agent-edge-expected')
     expect(html).not.toContain('data-agent-edge-next')
     expect(html).not.toContain('canvas-arrow-expected')
     expect(html).not.toContain('canvas-arrow-next')
-    // The SDD loop back-edge (sdd-implement → general) is GONE (plan
-    // 20260811-panel-f4-agent-view Task 1, user F4.2), so no
+    // The SDD loop back-edge (sdd-implement → general) is GONE, so no
     // `data-agent-edge-loop` anchor renders.
     expect(html).not.toContain('data-agent-edge-loop')
     // actual: same-plan ts-adjacent dispatch pairs, ROLE-keyed, general
@@ -2761,7 +2760,7 @@ describe('workflow panel — agent canvas page (spec panel-tabs §4/§6.2, plan 
     }
   })
 
-  it('F-001: a non-roster session id is only a record field — the ROLE keys the card, ONE card per key, honest summary', () => {
+  it('a non-roster session id is only a record field — the ROLE keys the card, ONE card per key, honest summary', () => {
     // dispatch agent = 'explore' (session id, no longer a roster id) with role
     // 'fullstack-dev' — the card is keyed by the ROLE; the session id rides
     // the record line. 1 lit + 13 idle = 14 unique entities (roster 14 — plan
@@ -2787,7 +2786,7 @@ describe('workflow panel — agent canvas page (spec panel-tabs §4/§6.2, plan 
 
   it('renders the unknown SUB-PARTITION at the bottom of the last column — NO standalone unknown column; sub-bucket + on-demand-badge anchors ride the cards (plan f5 Task 2 + T5)', () => {
     const html = agentsHtml(fullSource) // degraded → full idle roster
-    // FOUR columns (plan f5 Task 5 — user 2026-08-12 feedback #3); the
+    // FOUR columns; the
     // rightmost catch-all COLUMN is gone — `data-canvas-column` never carries
     // the 'unknown' / 'on-demand' / 'general' values; the general bucket
     // renders in the last column's bottom sub-partition instead.
@@ -2839,14 +2838,13 @@ describe('workflow panel — agent canvas page (spec panel-tabs §4/§6.2, plan 
 })
 
 /* ---------------------------------------------------------------------------
- * T8 shared iteration info section (plan 20260812-panel-f5-design-system
- * Task 8, user 2026-08-12 feedback #4): the agents tab renders the SAME
+ * Shared iteration info section: the agents tab renders the SAME
  * IterationInfoSection the tasks tab renders, from the SAME `view.iteration`
  * data — 两个 tab 显示同一迭代信息块 (one implementation, two mounts; the
  * `data-iteration-*` anchor family is unchanged on both).
  * ------------------------------------------------------------------------- */
 
-describe('workflow panel — shared iteration info section (plan 20260812-panel-f5-design-system T8, user feedback #4)', () => {
+describe('workflow panel — shared iteration info section ', () => {
   /** Render one tab's content through the real PanelContent mapping. */
   function tabHtml(tab: 'tasks' | 'agents', source: MstarEngineStatusSource): string {
     const locale = newLocale()
@@ -2867,11 +2865,11 @@ describe('workflow panel — shared iteration info section (plan 20260812-panel-
     expect(agents).toContain('data-iteration-head-branches')
     // SAME data as the tasks tab: identical id / verdict / step row / branches.
     for (const anchor of [
-      'data-iteration-head-id="iter-20260809-dsh-workflow-viz"',
+      'data-iteration-head-id="iter-00000809-dsh-workflow-viz"',
       'data-iteration-head-verdict="pass"',
       'data-step-state="current"',
       'data-branch="spec-integration"',
-      'iteration/iter-20260809-dsh-workflow-viz',
+      'iteration/iter-00000809-dsh-workflow-viz',
     ]) {
       expect(tasks).toContain(anchor)
       expect(agents).toContain(anchor)

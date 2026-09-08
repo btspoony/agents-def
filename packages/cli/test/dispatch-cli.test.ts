@@ -7,10 +7,10 @@
  * Exit codes: 0 = OK, 1 = violations / file errors, 2 = usage (missing
  * <assignment-file> arg, slice-2 in-handler convention). The default-branch
  * gate branch is DERIVED FROM THE ASSIGNMENT (create-form name / Working
- * branch / Branch policy branch — qc2 W-1 / qc3 F-2); `--branch` and
+ * branch / Branch policy branch — qc2 W-1 ); `--branch` and
  * `$MSTAR_WORKING_BRANCH` are context fallbacks for assignments without a
  * branch form. Read-only roles (scout/explore) skip both branch gates
- * (qc3 F-1 / qc2 S-5). A well-formed `Branch policy: direct on <branch> —
+ * . A well-formed `Branch policy: direct on <branch> —
  * <reason>` exception is honored only when its branch matches the checked
  * branch.
  *
@@ -26,7 +26,7 @@ const CLI_ROOT = resolve(import.meta.dir, "..");
 const SRC_ENTRY = join(CLI_ROOT, "src/index.ts");
 
 /**
- * Spawn env with ambient harness env vars pinned out (qc3 F-4): the CLI
+ * Spawn env with ambient harness env vars pinned out: the CLI
  * resolves harness dirs from MSTAR_HARNESS_DIR ahead of probing, and
  * `dispatch validate` reads the branch from MSTAR_WORKING_BRANCH — an
  * ambient value would redirect every fixture spuriously.
@@ -131,7 +131,7 @@ describe("mstar dispatch validate — Assignment field + default-branch gate", (
     });
   });
 
-  test("dangling create form 'create feature/x from' → assignment.field.branch-missing-base, exit 1 (qc2 S-1)", () => {
+  test("dangling create form 'create feature/x from' → assignment.field.branch-missing-base, exit 1", () => {
     withAssignment(assignment({ "Working branch": "create feature/x from" }), (file) => {
       const result = runCli(["dispatch", "validate", file]);
       expect(result.exitCode).toBe(1);
@@ -139,7 +139,7 @@ describe("mstar dispatch validate — Assignment field + default-branch gate", (
     });
   });
 
-  // --- gate-branch derivation (qc2 W-1 / qc3 F-2): the checked branch comes
+  // --- gate-branch derivation : the checked branch comes
   // from the Assignment's own branch forms ---
 
   test("Working branch: main (no exception) → dispatch.default-branch.protected, exit 1 — derived from the Assignment", () => {
@@ -254,7 +254,7 @@ describe("mstar dispatch validate — Assignment field + default-branch gate", (
     });
   });
 
-  // --- read-only roles (qc3 F-1 / qc2 S-5): scout/explore skip both branch
+  // --- read-only roles : scout/explore skip both branch
   // gates, so the preflight passes read-only Assignments without branch forms
 
   test("scout assignment without Working branch → exit 0 (read-only skips the branch gates)", () => {

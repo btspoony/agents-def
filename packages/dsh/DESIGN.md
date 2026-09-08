@@ -121,13 +121,11 @@ canvas:
 # 代理画布设计系统（Agent Canvas Design System）
 
 > **Canonical package-level design contract** — promoted from the iteration
-> spec `agent-canvas-design-system.md` (iter-20260812-sync-v211-panel-f5,
-> plan `20260812-panel-f5-design-system` Task 1; user-reviewed v3, finalized
-> 2026-08-12) to `packages/dsh/DESIGN.md` by plan Task 7 (2026-08-12), then
-> updated to **v4** by plan Task 8 (user 2026-08-12 feedback round 4:
+> spec `agent-canvas-design-system.md` (user-reviewed v3, finalized) to
+> `packages/dsh/DESIGN.md`, then
+> updated to **v4** (feedback round 4:
 > Phase 1/2 groups + current-plan annotation / settled done frame + ✓ with
-> the off-tier exclusion / shared iteration info section). The iteration
-> snapshot remains in the iteration specs/ — this file is the single
+> the off-tier exclusion / shared iteration info section). This file is the single
 > canonical source (single-source principle, AGENTS.md). Consumers:
 > `@frontend-dev` / `@fullstack-dev` implement styled panel UI; `@qc-specialist`
 > verifies alignment; `@qa-engineer` verifies visual output.

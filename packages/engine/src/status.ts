@@ -3,7 +3,7 @@
  * normalization, residual lifecycle (open → archived), and the root-file
  * v2 writers.
  *
- * QC wave-1 W-D relocation: `findingsCleanupGate` and `techDebtRollup`
+ * `findingsCleanupGate` and `techDebtRollup`
  * moved to `project.ts` (they operate on project-register artifacts) —
  * this module no longer imports `./project.js`, breaking the former
  * `status.ts ↔ project.ts` module cycle. Public names remain exported via
@@ -11,26 +11,26 @@
  *
  * Spec sources (each export cites the skill/reference section it enforces):
  * - status.json schema + required fields + root-only `residual_findings`:
- *   `mstar-artifacts/references/status-and-residuals.md`
- *   § Basic structure + § General constraints ("Init with `residual_findings`:
- *   {}; no dual-write with legacy side") + § Compatibility (read: accept `id`
- *   or `plan_id`; write: one canonical key, prefer `id`).
+ * `mstar-artifacts/references/status-and-residuals.md`
+ * § Basic structure + § General constraints ("Init with `residual_findings`:
+ * {}; no dual-write with legacy side") + § Compatibility (read: accept `id`
+ * or `plan_id`; write: one canonical key, prefer `id`).
  * - Severity enum + legacy `"warning"` → `low`: § "Residual findings:
- *   `severity` (SSOT, machine field)" — allowed values
- *   `critical|high|medium|low|nit`; `warning`/`Major`/non-English forbidden in
- *   JSON; legacy `"severity": "warning"` is read and rolled up as `low`.
- *   `null`/`""` → `medium` (rollup `norm_sev` semantics).
+ * `severity` (SSOT, machine field)" — allowed values
+ * `critical|high|medium|low|nit`; `warning`/`Major`/non-English forbidden in
+ * JSON; legacy `"severity": "warning"` is read and rolled up as `low`.
+ * `null`/`""` → `medium` (rollup `norm_sev` semantics).
  * - Residual required fields + lifecycle + archive shape:
- *   § Basic structure (entry fields), § Residual findings lifecycle
- *   ("Recommended: archive to `archived/residuals/<plan-id>.json`":
- *   `plan_id`/`schema_version`/`entries[]` with `archived_at`, remove from
- *   open list, update root `updated_at`), § General constraints ("Empty
- *   `plan-id` key: … delete the key … no `"plan-id": []`").
+ * § Basic structure (entry fields), § Residual findings lifecycle
+ * ("Recommended: archive to `archived/residuals/<plan-id>.json`":
+ * `plan_id`/`schema_version`/`entries[]` with `archived_at`, remove from
+ * open list, update root `updated_at`), § General constraints ("Empty
+ * `plan-id` key: … delete the key … no `"plan-id": []`").
  * - v2 root + migration detection: v1-shaped documents — root `plans[]` OR
- *   root `residual_findings` (QC wave-1 W-C: v1-disguise hole) — fail
- *   closed with `status.migration-required` even when `version: 2`.
+ * root `residual_findings` (v1-disguise hole) — fail
+ * closed with `status.migration-required` even when `version: 2`.
  * - Rollup aggregates: canonical compute is `techDebtRollup` in `project.ts`
- *   (CLI form: `mstar status tech-debt [path]`).
+ * (CLI form: `mstar status tech-debt [path]`).
  */
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
@@ -64,7 +64,7 @@ export type StatusDoc = {
 };
 
 /**
- * v2 root status document (`{HARNESS_DIR}/status.json`, plan Task 3 — hard
+ * v2 root status document (`{HARNESS_DIR}/status.json`( — hard
  * cutover): `version`, `updated_at`, `workflows[]` only. The list holds
  * ACTIVE (non-terminal) lifecycles; terminal writers unregister AFTER the
  * snapshot write (removal-at-terminal).
@@ -80,7 +80,7 @@ export type WorkflowEntry = {
   id: string;
   type: WorkflowLifecycleType;
   started_at: string;
-  /** Harness-relative snapshot dir (e.g. `workflows/<id>`), never absolute. */
+ /** Harness-relative snapshot dir (e.g. `workflows/<id>`), never absolute. */
   dir: string;
 };
 
@@ -197,8 +197,8 @@ export function validatePlanRow(row: unknown): GateResult {
   if (id === undefined && planId === undefined) {
     violations.push(violation("high", "status.plan-row.missing-id", "missing required field: id (or legacy plan_id)"));
   } else {
-    // Non-empty check applies to whichever key(s) are present — the absent-key
-    // case is the missing-id violation above (legacy plan_id-only rows pass).
+ // Non-empty check applies to whichever key(s) are present — the absent-key
+ // case is the missing-id violation above (legacy plan_id-only rows pass).
     if (id !== undefined) {
       validateNonEmptyString(violations, id, "id", "status.plan-row.missing-id", "status.plan-row.invalid-id");
     }
@@ -326,9 +326,9 @@ export function validateResidual(entry: unknown): GateResult {
     violations.push(violation("medium", "status.residual.invalid-detail-doc", "detail_doc must be a string or null"));
   }
 
-  // closed_at format is enforced whenever the field is present, regardless of
-  // lifecycle (status-and-residuals.md § Residual findings lifecycle — the
-  // close protocol sets `closed_at` (YYYY-MM-DD) + `closure_note`).
+ // closed_at format is enforced whenever the field is present, regardless of
+ // lifecycle (status-and-residuals.md § Residual findings lifecycle — the
+ // close protocol sets `closed_at` (YYYY-MM-DD) + `closure_note`).
   if (closed_at !== undefined && (typeof closed_at !== "string" || !DATE_RE.test(closed_at))) {
     violations.push(violation("medium", "status.residual.invalid-closed-at", "closed_at must be YYYY-MM-DD"));
   }
@@ -343,9 +343,9 @@ export function validateResidual(entry: unknown): GateResult {
         ),
       );
     } else if (lifecycle !== "open") {
-      // Closed-lifecycle completeness (status-and-residuals.md § Residual
-      // findings lifecycle: "On close: set closed_at (YYYY-MM-DD) and
-      // closure_note; recommend closure_evidence").
+ // Closed-lifecycle completeness (status-and-residuals.md § Residual
+ // findings lifecycle: "On close: set closed_at (YYYY-MM-DD) and
+ // closure_note; recommend closure_evidence").
       if (closed_at === undefined) {
         violations.push(
           violation(
@@ -385,7 +385,7 @@ function isHarnessRelativePath(dir: string): boolean {
 }
 
 /**
- * Validate one v2 root `workflows[]` entry (plan Task 3): required `id`,
+ * Validate one v2 root `workflows[]` entry (): required `id`,
  * `type` (plan | iteration), `started_at`, `dir` — harness-relative, never
  * absolute and never containing `..`. The removal-at-terminal invariant
  * (snapshot exists and is non-terminal) is checked at document level by
@@ -440,7 +440,7 @@ export function validateWorkflowEntry(entry: unknown): GateResult {
 }
 
 /**
- * Validate a v2 status.json document (plan Task 3 — hard cutover). Accepts a
+ * Validate a v2 status.json document ( — hard cutover). Accepts a
  * parsed document or a file path (malformed JSON yields a
  * `status.invalid-json` violation, never a throw). v1 or unknown-version
  * inputs — including v1-shaped documents carrying a root `plans[]` — fail
@@ -458,7 +458,7 @@ export function validateWorkflowEntry(entry: unknown): GateResult {
  * root holds active lifecycles only, and terminal writers unregister AFTER
  * the snapshot write. The snapshot must also PHYSICALLY live under the
  * harness: a symlinked `workflows/<id>/` (or snapshot file) resolving
- * outside the harness dir is rejected fail-closed (QC wave-1 S-f). Doc
+ * outside the harness dir is rejected fail-closed . Doc
  * input without a harness dir is structure-only.
  */
 export function validateStatusV2(
@@ -485,10 +485,10 @@ export function validateStatusV2(
     return { ok: false, violations: [violation("high", "status.invalid-doc", "status document must be an object")] };
   }
 
-  // Hard cutover (plan Task 3): a root file with `version !== 2` is the
-  // migration-detection input — fail closed, never a silent pass or a dual
-  // read. v1-shaped documents (root `plans[]`) are rejected the same way
-  // even when the version field is missing or already says 2.
+ // Hard cutover (): a root file with `version !== 2` is the
+ // migration-detection input — fail closed, never a silent pass or a dual
+ // read. v1-shaped documents (root `plans[]`) are rejected the same way
+ // even when the version field is missing or already says 2.
   if (doc.version !== 2) {
     return {
       ok: false,
@@ -515,11 +515,11 @@ export function validateStatusV2(
       ],
     };
   }
-  // QC wave-1 W-C: the v1-disguise check covers `plans[]` AND the other v1
-  // root surface — `residual_findings` (keyed by plan id, arrays of
-  // entries). A `version: 2` doc carrying it is stale v1 data masquerading
-  // as migrated (the v2 root holds `workflows[]` only); presence of the key
-  // at all — even `{}` — is v1-shaped (v1 init template), so fail closed.
+ // the v1-disguise check covers `plans[]` AND the other v1
+ // root surface — `residual_findings` (keyed by plan id, arrays of
+ // entries). A `version: 2` doc carrying it is stale v1 data masquerading
+ // as migrated (the v2 root holds `workflows[]` only); presence of the key
+ // at all — even `{}` — is v1-shaped (v1 init template), so fail closed.
   if (doc.residual_findings !== undefined) {
     return {
       ok: false,
@@ -561,31 +561,31 @@ export function validateStatusV2(
     }
   }
 
-  // Removal-at-terminal invariant (plan Task 3): the list holds active
-  // lifecycles only — no listed id may resolve to a terminal or missing
-  // snapshot. Skipped when no harness dir is known (structure-only input).
+ // Removal-at-terminal invariant (): the list holds active
+ // lifecycles only — no listed id may resolve to a terminal or missing
+ // snapshot. Skipped when no harness dir is known (structure-only input).
   if (harnessDir !== undefined && Array.isArray(doc.workflows)) {
-    // QC wave-1 S-f (qc2 F-005): symlink hardening — the invariant must
-    // read a snapshot that PHYSICALLY lives under the harness. The lexical
-    // path is harness-relative, but a symlinked `workflows/<id>/` (or
-    // snapshot file) can point outside; `realpathSync` resolves the chain
-    // and the resolved path must stay under the resolved harness root.
-    // Resolving the harness root once also normalizes the comparison when
-    // the harness dir itself is reached through a symlink (e.g. /tmp).
+ // Symlink hardening — the invariant must
+ // read a snapshot that PHYSICALLY lives under the harness. The lexical
+ // path is harness-relative, but a symlinked `workflows/<id>/` (or
+ // snapshot file) can point outside; `realpathSync` resolves the chain
+ // and the resolved path must stay under the resolved harness root.
+ // Resolving the harness root once also normalizes the comparison when
+ // the harness dir itself is reached through a symlink (e.g. /tmp).
     let realHarnessDir: string | null = null;
     try {
       realHarnessDir = realpathSync(harnessDir);
     } catch {
-      // Harness dir missing — every snapshot check below reports missing;
-      // the physical-location check is moot.
+ // Harness dir missing — every snapshot check below reports missing;
+ // the physical-location check is moot.
     }
     for (const entry of doc.workflows) {
       if (!isPlainObject(entry) || typeof entry.dir !== "string") continue;
       const relSnapshot = join(entry.dir, WORKFLOW_SNAPSHOT_FILE);
       const snapshotPath = join(harnessDir, relSnapshot);
       const label = typeof entry.id === "string" ? entry.id : relSnapshot;
-      // realpathSync doubles as the existence probe (a missing file or a
-      // dangling symlink throws) and the physical-location probe.
+ // realpathSync doubles as the existence probe (a missing file or a
+ // dangling symlink throws) and the physical-location probe.
       let physical: string;
       try {
         physical = realpathSync(snapshotPath);
@@ -631,9 +631,9 @@ export function validateStatusV2(
           ),
         );
       }
-      // QC wave-1 S-c: the root entry denormalizes `type`/`started_at` from
-      // the snapshot — cross-check them when the harness dir is known so a
-      // stale root copy cannot drift silently from its snapshot.
+ // the root entry denormalizes `type`/`started_at` from
+ // the snapshot — cross-check them when the harness dir is known so a
+ // stale root copy cannot drift silently from its snapshot.
       if (typeof entry.type === "string" && typeof snapshot.type === "string" && entry.type !== snapshot.type) {
         violations.push(
           violation(
@@ -659,7 +659,7 @@ export function validateStatusV2(
 }
 
 /**
- * Relocated v2 root validator (plan Task 3 — hard cutover, no dual path):
+ * Relocated v2 root validator ( — hard cutover, no dual path):
  * the v1 `validateStatus` implementation was deleted in the same task that
  * introduced the v2 surface; the public export name survives so external
  * consumers (CLI, host hooks — cut over in P2) keep compiling and now fail
@@ -689,21 +689,21 @@ export const validateStatus = validateStatusV2;
  * Async-only (architect-locked 2026-08-27): the durable write goes through
  * `getArtifactStore().put({ kind: "status", key: "root", ... })` inside the
  * caller's lock — the store is the persist backend, never a second lock.
- * Fails loud (qc3 F-201) when the active FsStore would resolve its
+ * Fails loud when the active FsStore would resolve its
  * `status.json` to a path other than `statusPath` — callers whose root
  * differs from the active store's root MUST
  * `setArtifactStore(createFsStore(root))` first.
  */
 export async function registerWorkflowEntryLocked(statusPath: string, entry: WorkflowEntry): Promise<StatusV2Doc> {
-  // simplify: full-doc validation (incl. per-snapshot reads of the whole
-  // active set) under the root lock is O(active workflows) per root write.
-  // Realistic active-set size is 1–3 (microseconds); correctness-preserving.
-  // Upgrade path: scope the on-disk invariant to the touched entry (qc3 S-002).
+ // simplify: full-doc validation (incl. per-snapshot reads of the whole
+ // active set) under the root lock is O(active workflows) per root write.
+ // Realistic active-set size is 1–3 (microseconds); correctness-preserving.
+   // Upgrade path: scope the on-disk invariant to the touched entry.
   const harnessDir = dirname(statusPath);
   const store = getArtifactStore();
-  // Fail-loud path agreement (qc3 F-201): the caller's lock serializes
-  // `statusPath`; the store put must land on that same file. A divergence
-  // throws before any read-modify-write — nothing is written anywhere.
+ // Fail-loud path agreement : the caller's lock serializes
+ // `statusPath`; the store put must land on that same file. A divergence
+ // throws before any read-modify-write — nothing is written anywhere.
   assertFsStorePath(store, { kind: "status", key: "root" }, statusPath);
   const current = readJson(statusPath) as Record<string, unknown>;
   const fresh = Object.keys(current).length === 0;
@@ -731,7 +731,7 @@ export async function registerWorkflowEntryLocked(statusPath: string, entry: Wor
 }
 
 /**
- * Register one active workflow entry in the v2 root file (plan Task 3).
+ * Register one active workflow entry in the v2 root file ().
  * Idempotent upsert by entry `id` under the root-file `withStatusWriteLock`,
  * bumping root `updated_at`. A missing/empty root file is initialized from
  * the v2 template (never a v1 tree); a v1 root is refused with the
@@ -754,7 +754,7 @@ export async function registerWorkflow(root: string, entry: WorkflowEntry): Prom
 }
 
 /**
- * Remove one workflow entry from the v2 root file (plan Task 3). Idempotent:
+ * Remove one workflow entry from the v2 root file (). Idempotent:
  * removing an absent id is a no-op with no write; a missing/empty root file
  * is a no-op that never creates the file. Runs under the root-file
  * `withStatusWriteLock`, bumping root `updated_at` only when an entry was
@@ -762,7 +762,7 @@ export async function registerWorkflow(root: string, entry: WorkflowEntry): Prom
  * invariant included) before the write — a v1 root is refused with the
  * `mstar migrate` hint.
  *
- * Fails loud (qc3 F-201) when the active FsStore would resolve its
+ * Fails loud when the active FsStore would resolve its
  * `status.json` to a path other than the caller's root — the no-op branches
  * below never mask a store/path mismatch.
  */
@@ -772,16 +772,16 @@ export async function unregisterWorkflow(root: string, id: string): Promise<Stat
   }
   const statusPath = resolve(root);
   const store = getArtifactStore();
-  // Fail-loud path agreement (qc3 F-201): the lockdir serializes
-  // `statusPath`; the store put must land on that same file. A divergence
-  // throws before the lockdir is created — nothing is written anywhere.
+ // Fail-loud path agreement : the lockdir serializes
+ // `statusPath`; the store put must land on that same file. A divergence
+ // throws before the lockdir is created — nothing is written anywhere.
   assertFsStorePath(store, { kind: "status", key: "root" }, statusPath);
   const harnessDir = dirname(statusPath);
   return withStatusWriteLock(statusPath, async () => {
-    // simplify: same O(active) full-doc validation as registerWorkflow (qc3 S-002).
+     // simplify: same O(active) full-doc validation as registerWorkflow.
     const current = readJson(statusPath) as Record<string, unknown>;
     if (Object.keys(current).length === 0) {
-      // Nothing to remove — return the empty v2 shape without touching the file.
+ // Nothing to remove — return the empty v2 shape without touching the file.
       return { version: 2, updated_at: todayString(), workflows: [] };
     }
     const doc = current as StatusV2Doc;
@@ -813,8 +813,7 @@ export async function unregisterWorkflow(root: string, id: string): Promise<Stat
  * frontmatter declares `enforcement: hard` hardens the gate in this repo.
  * A COMPLETED (or status-less/archived) iteration's compass NEVER hardens:
  * D2 rollback = unset the flag in the ACTIVE compass, and that must work
- * while older completed compasses still declare hard (qc1 F-001 / qc2 F-002).
- * A counting compass declaring a non-hard value, or no compass at all,
+ * while older completed compasses still declare hard. * A counting compass declaring a non-hard value, or no compass at all,
  * leaves the flag unset (`source: none`) — hard gates are never the default
  * and the flag is inert when the engine is absent. Frontmatter is
  * `---`-fenced; hard declarations in the compass BODY do not count (the
@@ -839,13 +838,13 @@ export function resolveCompassEnforcement(harnessDir: string): EnforcementFlag {
     } catch {
       continue;
     }
-    // Frontmatter only: leading `---` fence through the closing fence.
+ // Frontmatter only: leading `---` fence through the closing fence.
     const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
     const fm = frontmatter !== null ? frontmatter[1]! : "";
-    // Sticky-hard guard (qc1 F-001 / qc2 F-002): only `status: active` /
-    // `status: locked` compasses count toward hardening. Completed and
-    // status-less compasses are skipped — fail-soft (an archive must never
-    // keep the repo hardened).
+ // Sticky-hard guard : only `status: active` /
+ // `status: locked` compasses count toward hardening. Completed and
+ // status-less compasses are skipped — fail-soft (an archive must never
+ // keep the repo hardened).
     if (!/^status[ \t]*:[ \t]*(?:active|locked)[ \t]*$/m.test(fm)) continue;
     const flag = parseEnforcementFlag(fm);
     if (flag.hard) return flag;
