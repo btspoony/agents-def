@@ -132,7 +132,7 @@ describe("formatZcodePluginVersionDoctorNote", () => {
 
   test("CLI newer: prompt the plugin update", () => {
     expect(formatZcodePluginVersionDoctorNote("3.8.0", "3.7.0")).toBe(
-      "CLI 3.8.0 is newer than installed plugin 3.7.0 \u2014 update the Morning Star plugin in ZCode (Plugin Management \u2192 update from the mstar-local marketplace).",
+      "CLI 3.8.0 is newer than installed plugin 3.7.0 \u2014 update the Morning Star plugin in ZCode (Settings \u2192 Plugin Management \u2192 update from the mstar-local marketplace).",
     );
   });
 

@@ -41,7 +41,11 @@ const ZCODE_PLUGINS_CACHE_ROOT = path.join(ZCODE_PLUGINS_ROOT, "cache");
 /** Manifest locations inside a cache version dir, in preference order. */
 const PLUGIN_MANIFEST_PATHS = [".zcode-plugin/plugin.json", "plugin.json"];
 /** Reportable version shape: anchored `X.Y.Z` with optional `-prerelease`.
- * Cache dirs only carry this shape; anything else (temp dirs) is skipped. */
+ * Cache dirs only carry this shape; anything else (temp dirs) is skipped.
+ * Deliberately looser than the §9-strict `RELEASE_VERSION_RE` release gate in
+ * `scripts/release-surfaces.ts` (this accepts leading-zero prerelease
+ * numerics): discovery only needs a stable `X.Y.Z[-pre]` shape for semver
+ * ordering, not release validation. */
 const PLUGIN_VERSION_SHAPE_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 
 type GithubSource = { source: "github"; repo: string; ref?: string };
@@ -269,7 +273,7 @@ export function formatZcodePluginVersionDoctorNote(cliVersion: string, installed
   const diff = compareSemver(cliVersion, installed);
   if (diff === 0) return `Plugin/CLI versions aligned (${installed}).`;
   if (diff > 0) {
-    return `CLI ${cliVersion} is newer than installed plugin ${installed} \u2014 update the Morning Star plugin in ZCode (Plugin Management \u2192 update from the mstar-local marketplace).`;
+    return `CLI ${cliVersion} is newer than installed plugin ${installed} \u2014 update the Morning Star plugin in ZCode (Settings \u2192 Plugin Management \u2192 update from the mstar-local marketplace).`;
   }
   return `Installed plugin ${installed} is newer than CLI ${cliVersion} \u2014 update the global CLI: npm i -g @mstar-harness/cli@latest (or @${installed}).`;
 }
