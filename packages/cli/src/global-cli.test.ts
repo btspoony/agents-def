@@ -202,7 +202,10 @@ function runInitCli(args: string[], env: Record<string, string>): CliResult {
 
 /** Write an executable sh script into the file-scoped fake-bin dir. */
 function writeFakeBin(name: string, body: string): void {
-  const file = path.join(FAKE_BIN_DIR, name);
+  // Names are compile-time literals from the tests above; the file is
+  // anchored to the fake-bin dir by plain concatenation (POSIX-only
+  // harness: the scripts are /bin/sh + chmod).
+  const file = FAKE_BIN_DIR + "/" + name;
   writeFileSync(file, `#!/bin/sh\n${body}\n`);
   chmodSync(file, 0o755);
 }

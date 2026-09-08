@@ -22,7 +22,7 @@
  * synthetic adapter (fake spawn, scripted events.jsonl / final.md). They
  * prove parser/scheduler/report correctness only — never behavioral success
  * of a real model (Spec A1 runner/efficacy gate separation). The only test
- * spawning a real process targets defaultSpawnFn's timeout/exit plumbing
+ * spawning a real process targets defaultLaunchFn's timeout/exit plumbing
  * with /bin/sleep and is named accordingly.
  */
 import { createHash } from "node:crypto";
@@ -32,6 +32,7 @@ import { tmpdir } from "node:os";
 import { describe, expect, test } from "bun:test";
 import {
   canonicalRunId,
+  canonicalJson,
   DEV_CASES_PER_ROUTE,
   HELDOUT_CASES_PER_ROUTE,
   makeGitSourceTreeReader,
@@ -56,13 +57,13 @@ import {
   assertResumeAllowed,
   buildFirstTurnArgv,
   buildResumeArgv,
-  defaultSpawnFn,
+  defaultLaunchFn,
   findToolReadRecord,
   parseEventLines,
   recordedTurn1Identity,
   rejectForbiddenFlags,
   ResumeRejectionError,
-  runManifest,
+  executeManifest,
   scanEventRecords,
   scheduleOrder,
   scanEventStream,
@@ -722,13 +723,65 @@ async function preparedRunDir(): Promise<{ io: ReturnType<typeof memoryRunnerIo>
   return { io, manifest: result.manifest };
 }
 
+describe("canonicalJson pin (cross-version byte stability)", () => {
+  // Reference implementation = the ORIGINAL canonicalJson body (default
+  // .sort() ordering). The current insertion-sort implementation must be
+  // byte-identical to it for every input below.
+  function referenceCanonical(value: unknown): string {
+    if (value === null || typeof value !== "object") return JSON.stringify(value);
+    if (Array.isArray(value)) return `[${value.map(referenceCanonical).join(",")}]`;
+    const obj = value as Record<string, unknown>;
+    const keys = Object.keys(obj).sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${referenceCanonical(obj[k])}`).join(",")}}`;
+  }
+
+  // Fixed nested key set, deliberately inserted in NON-sorted order; covers
+  // nested objects, arrays (element order preserved), empty objects,
+  // numbers/booleans/null, and non-ASCII keys. HeldoutDigest and configHash
+  // are sha256 digests over this serialization — its bytes are a contract.
+  const nested = {
+    zeta: { b: 1, a: [3, 2, { y: null, x: true }] },
+    alpha: "s",
+    mid: {},
+    Num: 4,
+    "ünï": false,
+  };
+  const expectedBytes = '{"Num":4,"alpha":"s","mid":{},"zeta":{"a":[3,2,{"x":true,"y":null}],"b":1},"ünï":false}';
+  const expectedDigest = "742fa01380e81458e1df9f72b486728dfe0afb19fde4f8759ffd81feed0e050b";
+
+  test("serializes to exact bytes independent of input key order", () => {
+    // Same members, different insertion order → identical bytes.
+    const reordered = {
+      "ünï": false,
+      Num: 4,
+      mid: {},
+      alpha: "s",
+      zeta: { a: [3, 2, { y: null, x: true }], b: 1 },
+    };
+    expect(canonicalJson(nested)).toBe(expectedBytes);
+    expect(canonicalJson(reordered)).toBe(expectedBytes);
+  });
+
+  test("digest is pinned: heldoutDigest/configHash byte contract", () => {
+    expect(sha256Hex(canonicalJson(nested))).toBe(expectedDigest);
+  });
+
+  test("byte-identical to the original default-sort implementation", () => {
+    expect(canonicalJson(nested)).toBe(referenceCanonical(nested));
+    expect(canonicalJson([])).toBe(referenceCanonical([]));
+    expect(canonicalJson({})).toBe(referenceCanonical({}));
+    expect(canonicalJson(null)).toBe(referenceCanonical(null));
+    expect(canonicalJson([1, "a", null, { k: [true] }])).toBe(referenceCanonical([1, "a", null, { k: [true] }]));
+  });
+});
+
 function runSmoke(
   io: RunnerIo,
   manifest: EvalManifest,
-  spawnFn: SpawnFn,
-  overrides: Partial<Parameters<typeof runManifest>[0]> = {},
+  launchFn: SpawnFn,
+  overrides: Partial<Parameters<typeof executeManifest>[0]> = {},
 ) {
-  return runManifest({ manifestPath: RUN_MANIFEST_PATH, split: "smoke", variants: ["baseline"], repeats: 1, io, spawnFn, ...overrides });
+  return executeManifest({ manifestPath: RUN_MANIFEST_PATH, split: "smoke", variants: ["baseline"], repeats: 1, io, launchFn, ...overrides });
 }
 
 function readState(io: RunnerIo): SchedulerState {
@@ -986,13 +1039,13 @@ describe("Task 2: run request validation (zero spawns)", () => {
     const durableCopy = resolve(REPO_ROOT, "eval-durable", "manifest.json");
     io.writeText(durableCopy, io.readText(RUN_MANIFEST_PATH));
     const outsideSpawn = syntheticSpawn(io, () => ({}));
-    const outsideRun = await runManifest({
+    const outsideRun = await executeManifest({
       manifestPath: durableCopy,
       split: "smoke",
       variants: ["baseline"],
       repeats: 1,
       io,
-      spawnFn: outsideSpawn,
+      launchFn: outsideSpawn,
     });
     expect(outsideRun.exit).toBe(2);
     expect(outsideRun.errors.join(" ")).toContain("disposable");
@@ -1009,14 +1062,14 @@ describe("Task 2: run request validation (zero spawns)", () => {
  // rejected by the shape check before anything is read or written.
     const elsewhere = resolve("/elsewhere", "run", "manifest.json");
     io.writeText(elsewhere, io.readText(RUN_MANIFEST_PATH));
-    const shapeRun = await runManifest({
+    const shapeRun = await executeManifest({
       manifestPath: elsewhere,
       split: "smoke",
       variants: ["baseline"],
       repeats: 1,
       repoRoot: REPO_ROOT,
       io,
-      spawnFn: syntheticSpawn(io, () => ({})),
+      launchFn: syntheticSpawn(io, () => ({})),
     });
     expect(shapeRun.exit).toBe(2);
     expect(shapeRun.errors.join(" ")).toContain("unsafe output target");
@@ -1408,7 +1461,7 @@ describe("Task 2: runner on synthetic adapter (smoke selection, 3 units)", () =>
 // default spawn — REAL child process (tagged non-synthetic)
 // ---------------------------------------------------------------------------
 
-describe("Task 2: defaultSpawnFn with a real child process (non-synthetic)", () => {
+describe("Task 2: defaultLaunchFn with a real child process (non-synthetic)", () => {
   const sleep = "/bin/sleep";
 
   test.skipIf(!existsSync(sleep))("preserves normal exit codes and terminates timed-out children", async () => {
@@ -1419,7 +1472,7 @@ describe("Task 2: defaultSpawnFn with a real child process (non-synthetic)", () 
       const stderrFile = join(dir, "stderr.txt");
       writeFileSync(stdinFile, "prompt\n");
 
-      const ok = await defaultSpawnFn({
+      const ok = await defaultLaunchFn({
         file: sleep,
         argv: ["0.05"],
         cwd: dir,
@@ -1430,7 +1483,7 @@ describe("Task 2: defaultSpawnFn with a real child process (non-synthetic)", () 
       });
       expect(ok).toEqual({ code: 0, signal: null, timedOut: false, spawnError: null });
 
-      const slow = await defaultSpawnFn({
+      const slow = await defaultLaunchFn({
         file: sleep,
         argv: ["30"],
         cwd: dir,
@@ -1443,7 +1496,7 @@ describe("Task 2: defaultSpawnFn with a real child process (non-synthetic)", () 
       expect(slow.code).toBeNull();
       expect(["SIGTERM", "SIGKILL"]).toContain(slow.signal ?? "");
 
-      const missing = await defaultSpawnFn({
+      const missing = await defaultLaunchFn({
         file: join(dir, "no-such-binary"),
         argv: [],
         cwd: dir,

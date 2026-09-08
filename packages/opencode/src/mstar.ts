@@ -63,7 +63,6 @@ import {
 } from "@mstar-harness/engine";
 import type { EnforcementFlag, GateResult, StatusV2Doc } from "@mstar-harness/engine";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -168,13 +167,15 @@ ${content}
 </${BOOTSTRAP_MARKER}>`;
 };
 
-const normalizePath = (inputPath: string | undefined, homeDir: string): string | null => {
-  if (!inputPath || typeof inputPath !== "string") return null;
-  let normalized = inputPath.trim();
-  if (!normalized) return null;
-  if (normalized === "~") normalized = homeDir;
-  if (normalized.startsWith("~/")) normalized = path.join(homeDir, normalized.slice(2));
-  return path.resolve(normalized);
+/** Join a readdir-derived entry name under the bundled directory it was
+ * listed from; refuses a result that resolves outside that directory. */
+const joinBundledEntry = (dir: string, name: string): string => {
+  const base = path.resolve(dir);
+  const resolved = path.resolve(base, name);
+  if (resolved !== base && !resolved.startsWith(base + path.sep)) {
+    throw new Error(`bundled entry escapes ${base}: ${name}`);
+  }
+  return resolved;
 };
 
 const loadAgentsFromDir = (agentsDirPath: string): Record<string, JsonObject> => {
@@ -187,7 +188,7 @@ const loadAgentsFromDir = (agentsDirPath: string): Record<string, JsonObject> =>
 
   const result: Record<string, JsonObject> = {};
   for (const file of files) {
-    const filePath = path.join(agentsDirPath, file);
+    const filePath = joinBundledEntry(agentsDirPath, file);
     const content = fs.readFileSync(filePath, "utf8");
     const { frontmatter, body } = extractFrontmatterAndBody(content);
     const parsed = parseSimpleFrontmatter(frontmatter);
@@ -215,7 +216,7 @@ const loadBundledCommands = (): Record<string, JsonObject> => {
 
   const result: Record<string, JsonObject> = {};
   for (const file of files) {
-    const filePath = path.join(bundledCommandsDir, file);
+    const filePath = joinBundledEntry(bundledCommandsDir, file);
     const content = fs.readFileSync(filePath, "utf8");
     const { frontmatter, body } = extractFrontmatterAndBody(content);
     const parsed = parseSimpleFrontmatter(frontmatter);
@@ -725,15 +726,8 @@ export function validateDispatchAssignment(
 }
 
 export const MorningStarHarnessPlugin: Plugin = async () => {
-  const homeDir = os.homedir();
-  const envConfigDir = normalizePath(process.env.OPENCODE_CONFIG_DIR, homeDir);
-  const configDir = envConfigDir || path.join(homeDir, ".config/opencode");
-  const isEnabledForProject = !!configDir;
-
   return {
     config: async (config: JsonObject) => {
-      if (!isEnabledForProject) return;
-
       const runtimeConfig = config as JsonObject & {
         skills?: { paths?: string[] };
         agent?: Record<string, JsonObject>;

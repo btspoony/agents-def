@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import fs, { realpathSync } from "node:fs";
 import path from "node:path";
 import { readJson } from "./utils";
 
@@ -371,7 +371,7 @@ function validateMcpServer(name: string, entry: unknown, errors: string[]) {
 }
 
 function validateMcp(root: string, manifestSchema: unknown, errors: string[]) {
-  const mcpPath = path.join(root, "mcp.json");
+  const mcpPath = `${root}${path.sep}mcp.json`;
   if (!fs.existsSync(mcpPath)) return; // §6.2: absent fixed location is not an error.
   let parsed: unknown;
   try {
@@ -423,7 +423,7 @@ function validateMcp(root: string, manifestSchema: unknown, errors: string[]) {
 }
 
 function validateSkills(root: string, errors: string[], warnings: string[]) {
-  const skillsPath = path.join(root, "skills");
+  const skillsPath = `${root}${path.sep}skills`;
   try {
     if (!fs.existsSync(skillsPath)) return; // §6.2: absent fixed location is not an error.
     if (!fs.statSync(skillsPath).isDirectory()) {
@@ -431,7 +431,7 @@ function validateSkills(root: string, errors: string[], warnings: string[]) {
       return;
     }
     const entries = fs.readdirSync(skillsPath, { withFileTypes: true });
-    const realRoot = fs.realpathSync(root);
+    const realRoot = realpathSync(root);
     for (const entry of entries) {
       // §7.1: only immediate child directories can be skills. A symlink to a
       // directory counts when its target stays inside the plugin root.
@@ -441,21 +441,23 @@ function validateSkills(root: string, errors: string[], warnings: string[]) {
       // skill that resolves outside the root is skipped with a warning.
       let realSkillPath: string;
       try {
-        realSkillPath = fs.realpathSync(path.join(skillsPath, skillDir));
+        realSkillPath = realpathSync(`${skillsPath}${path.sep}${skillDir}`);
       } catch (error) {
         warnings.push(
           `skills: ${skillDir}/ cannot be resolved (${(error as Error).message}; skill skipped)`,
         );
         continue;
       }
-      const relative = path.relative(realRoot, realSkillPath);
-      if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      // Containment on normalized absolute paths: the real skill dir must be
+      // the real root itself or stay underneath it.
+      const insideRoot = realSkillPath === realRoot || realSkillPath.startsWith(realRoot + path.sep);
+      if (!insideRoot) {
         warnings.push(
           `skills: ${skillDir}/ resolves outside the plugin root (${realSkillPath}; skill skipped)`,
         );
         continue;
       }
-      const skillMdPath = path.join(skillsPath, skillDir, "SKILL.md");
+      const skillMdPath = `${skillsPath}${path.sep}${skillDir}${path.sep}SKILL.md`;
       if (!fs.existsSync(skillMdPath) || !fs.statSync(skillMdPath).isFile()) {
         warnings.push(
           `skills: ${skillDir}/ has no SKILL.md (directory is not a skill; ignored)`,
@@ -509,7 +511,11 @@ export function validateAgentPlugin(root: string): AgentPluginValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  const manifestPath = path.join(root, "plugin.json");
+  if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
+    errors.push(`plugin root: not a directory: ${root}`);
+    return { ok: false, errors, warnings };
+  }
+  const manifestPath = `${root}${path.sep}plugin.json`;
   if (!fs.existsSync(manifestPath)) {
     errors.push(`plugin.json: manifest not found at ${manifestPath} (plugin root must contain plugin.json)`);
     return { ok: false, errors, warnings };

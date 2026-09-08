@@ -485,7 +485,7 @@ export function taskIdOf(prompt: string): string | undefined {
   return `T${match[1]!}`
 }
 
-/** Derive the ledger event's optional `agent` from the exec (structural read). */
+/** Ledger event's optional agent id, derived from the exec record (structural read). */
 function agentOfExec(exec: unknown): string | undefined {
   if (exec === undefined) return undefined
   return sessionIdOf(exec as ToolExecution)
@@ -732,9 +732,10 @@ function appendEvent(workflowDir: string, event: AgentFlowEvent): void {
  * phantom dispatch. An exec-less record (host-hook path) has no callId → no
  * pairing. The pairing sub-path has its OWN catch scope: a `Map.set` throw must not log "record
  * failed" after the dispatch was already appended.
- * @param input - harness dir + exec (agent id) + Assignment text + the gate's
- * violations + the hard-enforcement resolution + the apply-scoped pairing
- * store (the adapter passes its own; direct callers may omit it).
+ * @param input - the harness dir; the dispatching exec's agent id; the
+ * Assignment text; the gate's violations; the hard-enforcement resolution;
+ * the apply-scoped pairing store (the adapter passes its own; direct callers
+ * may omit it).
  */
 export function recordDispatch(input: {
   harnessDir: string

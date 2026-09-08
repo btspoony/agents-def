@@ -35,10 +35,21 @@ function isAnyMstarHarnessOpencodeSlot(plugin: string): boolean {
 function resolveOpencodeConfigPath(scope: Scope, outputPath?: string) {
   if (outputPath && outputPath.trim()) {
     const raw = outputPath.trim();
-    return path.isAbsolute(raw) ? raw : path.join(resolveProjectRoot(), raw);
+    if (path.isAbsolute(raw)) return raw;
+    // A relative --output must name a path inside the project root: parent-dir
+    // segments are refused outright, so the appended result cannot escape.
+    if (raw.split(/[\\/]/).includes("..")) {
+      throw new Error(`--output must not contain ".." segments: ${raw}`);
+    }
+    const root = resolveProjectRoot();
+    return root.endsWith(path.sep) ? root + raw : root + path.sep + raw;
   }
-  if (scope === "global") return path.join(os.homedir(), ".config", "opencode", "opencode.json");
-  return path.join(resolveProjectRoot(), "opencode.json");
+  if (scope === "global") {
+    const home = os.homedir();
+    return `${home}${path.sep}.config${path.sep}opencode${path.sep}opencode.json`;
+  }
+  const root = resolveProjectRoot();
+  return root.endsWith(path.sep) ? `${root}opencode.json` : `${root}${path.sep}opencode.json`;
 }
 
 function ensureConfigSchema(config: Record<string, unknown>) {

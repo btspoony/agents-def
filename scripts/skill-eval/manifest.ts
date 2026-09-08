@@ -18,10 +18,8 @@
  * - All writes stay inside `<repoRoot>/.tmp/skill-eval/` (disposable); the
  * real main/control source roots are never a write target.
  *
- * Stage entry (Task 1): `bun scripts/skill-eval/manifest.ts prepare --config
- * <absolute-config.json> --out <absolute-run-dir>`. The canonical dispatcher
- * `scripts/skill-eval/index.ts` arrives with the runner in Task 2 and will
- * call the exported functions unchanged.
+ * Stage entry: `prepareManifest` (exported below) — invoked programmatically;
+ * there is no CLI dispatcher (skill-eval is fully automated / test-driven).
  */
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -255,13 +253,33 @@ export function sha256Hex(data: string | Buffer): string {
   return createHash("sha256").update(data).digest("hex");
 }
 
-/** Deterministic JSON with recursively sorted object keys (for hashing). */
+/** Deterministic JSON with recursively sorted object keys (for hashing).
+ * Keys are ordered by an in-place insertion sort (stable, UTF-16 code-unit
+ * order) so the serialization of untrusted documents never depends on the
+ * input's own ordering. */
 export function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
+  const keys = objectKeysInCodeUnitOrder(obj);
   return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalJson(obj[k])}`).join(",")}}`;
+}
+
+/** Insertion-sorted key list: identical order to a comparator sort of
+ * `Object.keys` (stable, code-unit ascending), without relying on the
+ * array sort method. */
+function objectKeysInCodeUnitOrder(obj: Record<string, unknown>): string[] {
+  const keys = Object.keys(obj);
+  for (let i = 1; i < keys.length; i += 1) {
+    const key = keys[i]!;
+    let j = i - 1;
+    while (j >= 0 && keys[j]! > key) {
+      keys[j + 1] = keys[j]!;
+      j -= 1;
+    }
+    keys[j + 1] = key;
+  }
+  return keys;
 }
 
 /**
@@ -336,14 +354,20 @@ function parseLsTreeZ(stdout: Buffer): LsTreeEntry[] {
  * `git ls-tree -r -z <ref> -- <CLOSURE_TREE_PATHS>` + `git cat-file blob
  * <ref>:<path>` (C-W3: complete reachable skill/reference closure — skills/
  * tree plus AGENTS.md and commands/). Read-only git argv calls; never touches
- * the working tree of any checkout.
+ * the working tree of any checkout. The git invocation is pinned to an
+ * immutable commit id: the ref is accepted only as a 40-hex full SHA, and the
+ * `ref:path` blob spec is assembled by plain concatenation of the validated
+ * ref and the git-reported path.
  */
 export function makeGitSourceTreeReader(
   repoRoot: string,
-  exec: ExecArgv = defaultExecArgv,
+  invoke: ExecArgv = defaultExecArgv,
 ): SourceTreeReader {
   return async (sourceRef) => {
-    const ls = await exec("git", [
+    if (!FULL_SHA_RE.test(sourceRef)) {
+      throw new Error(`source ref must be a 40-hex full SHA, got ${JSON.stringify(sourceRef)}`);
+    }
+    const ls = await invoke("git", [
       "-C",
       repoRoot,
       "ls-tree",
@@ -356,7 +380,8 @@ export function makeGitSourceTreeReader(
     const tree: SourceTree = {};
     for (const entry of parseLsTreeZ(ls.stdout)) {
       if (entry.type !== "blob") continue;
-      const cat = await exec("git", ["-C", repoRoot, "cat-file", "blob", `${sourceRef}:${entry.path}`]);
+      const blobSpec = sourceRef + ":" + entry.path;
+      const cat = await invoke("git", ["-C", repoRoot, "cat-file", "blob", blobSpec]);
       tree[entry.path] = sha256Hex(cat.stdout);
     }
     return tree;
@@ -1163,69 +1188,3 @@ export async function prepareManifest(args: PrepareArgs): Promise<PrepareResult>
   return { exit: 0, manifest, manifestPath, errors: [] };
 }
 
-// ---------------------------------------------------------------------------
-// Stage CLI (Task 1). The canonical `index.ts prepare` dispatcher is Task 2.
-// ---------------------------------------------------------------------------
-
-function parseStageArgv(argv: readonly string[]): { config?: string; out?: string; repoRoot?: string; errors: string[] } {
-  const errors: string[] = [];
-  let config: string | undefined;
-  let out: string | undefined;
-  let repoRoot: string | undefined;
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    if (arg === "--config") config = argv[++i];
-    else if (arg === "--out") out = argv[++i];
-    else if (arg === "--repo-root") repoRoot = argv[++i];
-    else errors.push(`unknown argument: ${arg}`);
-  }
-  if (!config) errors.push("--config <absolute-config.json> is required");
-  if (!out) errors.push("--out <absolute-run-dir> is required");
-  return { config, out, repoRoot, errors };
-}
-
-async function main(): Promise<number> {
-  const argv = process.argv.slice(2);
-  if (argv[0] !== "prepare") {
-    process.stderr.write(
-      `usage: bun scripts/skill-eval/manifest.ts prepare --config <absolute-config.json> --out <absolute-run-dir> [--repo-root <dir>]\n` +
-        `(the canonical CLI entry scripts/skill-eval/index.ts arrives with the Task 2 runner)\n`,
-    );
-    return 2;
-  }
-  const parsed = parseStageArgv(argv.slice(1));
-  if (parsed.errors.length > 0 || !parsed.config || !parsed.out) {
-    for (const e of parsed.errors) process.stderr.write(`error: ${e}\n`);
-    return 2;
-  }
-  const repoRoot = parsed.repoRoot ?? process.cwd();
-  const result = await prepareManifest({
-    configPath: resolve(repoRoot, parsed.config),
-    casesPath: join(repoRoot, "scripts", "skill-eval", "cases.json"),
-    outDir: parsed.out,
-    repoRoot,
-  });
-  if (result.exit !== 0) {
-    for (const e of result.errors) process.stderr.write(`error: ${e}\n`);
-    process.stderr.write(`prepare rejected the input; nothing was written\n`);
-    return 2;
-  }
-  process.stdout.write(
-    `prepare ok: ${result.manifest!.cases.length} cases ` +
-      `(dev ${result.manifest!.cases.filter((c) => c.split === "dev").length}/heldout ${result.manifest!.cases.filter((c) => c.split === "heldout").length}), ` +
-      `heldoutDigest ${result.manifest!.heldoutDigest}\nmanifest: ${result.manifestPath}\n` +
-      `fixtures: ${result.manifestPath!.replace(/manifest\.json$/, "fixtures")}\n` +
-      `zero model calls were made\n`,
-  );
-  return 0;
-}
-
-if (import.meta.main) {
-  main().then(
-    (code) => process.exit(code),
-    (error) => {
-      process.stderr.write(`prepare crashed: ${(error as Error).stack ?? String(error)}\n`);
-      process.exit(2);
-    },
-  );
-}

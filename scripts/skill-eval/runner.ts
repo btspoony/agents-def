@@ -35,12 +35,9 @@
  * All model-facing behavior flows through the injected `SpawnFn` seam; the
  * bundled unit tests run entirely on synthetic adapters (tagged "synthetic").
  */
-import { spawn } from "node:child_process";
 import {
-  closeSync,
   copyFileSync,
   mkdirSync,
-  openSync,
   readdirSync,
   readFileSync,
   realpathSync,
@@ -49,7 +46,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import {
   canonicalJson,
   canonicalRunId,
@@ -84,9 +81,6 @@ export type UsageBasis = (typeof USAGE_BASES)[number];
 
 export const READ_EVIDENCE_KINDS = ["observed_tool_read", "declared_only", "unknown"] as const;
 export type ReadEvidence = (typeof READ_EVIDENCE_KINDS)[number];
-
-/** SIGKILL grace after SIGTERM for timed-out children. */
-const KILL_GRACE_MS = 5000;
 
 const AUTH_FAILURE_RE =
   /\b(unauthori[sz]ed|authentication|not logged in|invalid api key|api key|quota|rate limit|401|403)\b/i;
@@ -166,48 +160,7 @@ export interface SpawnResult {
 
 export type SpawnFn = (request: SpawnRequest) => Promise<SpawnResult>;
 
-/**
- * Default argv-array spawn: no shell, no string interpolation. stdout/stderr
- * stream straight into their evidence files; stdin reads the prompt file.
- * Timed-out children get SIGTERM, then SIGKILL after a grace period; the
- * observed exit code / signal / timedOut flag are preserved on the result.
- */
-export const defaultSpawnFn: SpawnFn = (request) =>
-  new Promise((resolveSpawn) => {
-    const stdinFd = openSync(request.stdinFile, "r");
-    const stdoutFd = openSync(request.stdoutFile, "a");
-    const stderrFd = openSync(request.stderrFile, "a");
- // Argv array + shell:false — nothing is routed through a shell.
-    const child = spawn(request.file, [...request.argv], {
-      cwd: request.cwd,
-      stdio: [stdinFd, stdoutFd, stderrFd],
-      shell: false,
-    });
-    let timedOut = false;
-    let killTimer: ReturnType<typeof setTimeout> | null = null;
-    const termTimer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-      killTimer = setTimeout(() => child.kill("SIGKILL"), KILL_GRACE_MS);
-    }, request.timeoutMs);
-    let settled = false;
-    const finish = (result: SpawnResult) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(termTimer);
-      if (killTimer) clearTimeout(killTimer);
-      closeSync(stdinFd);
-      closeSync(stdoutFd);
-      closeSync(stderrFd);
-      resolveSpawn(result);
-    };
-    child.on("error", (error) => {
-      finish({ code: null, signal: null, timedOut, spawnError: String(error) });
-    });
-    child.on("close", (code, signal) => {
-      finish({ code, signal, timedOut, spawnError: null });
-    });
-  });
+export { nodeLaunch as defaultLaunchFn } from "./node-launch.ts";
 
 // ---------------------------------------------------------------------------
 // Argv builders (Spec A1 shapes) + hard flag guards
@@ -1036,7 +989,7 @@ export interface RunArgs {
  */
   repoRoot?: string;
   io?: RunnerIo;
-  spawnFn?: SpawnFn;
+  launchFn: SpawnFn;
   now?: () => number;
 }
 
@@ -1151,12 +1104,12 @@ export function recordedTurn1Identity(io: RunnerIo, argvFile: string): { cwd: st
  * passes; 1 = completed assertion failures; 2 = infrastructure failure,
  * unverified required evidence, or pending (interrupted) units.
  */
-export async function runManifest(args: RunArgs): Promise<RunResult> {
+export async function executeManifest(args: RunArgs): Promise<RunResult> {
   const io = args.io ?? nodeRunnerIo;
-  const spawnFn = args.spawnFn ?? defaultSpawnFn;
+  const launch: SpawnFn = args.launchFn;
   const now = args.now ?? Date.now;
   const manifestPath = resolve(args.manifestPath);
-  const runDir = resolve(manifestPath, "..");
+  const runDir = `${dirname(manifestPath)}`;
   const statePath = join(runDir, "scheduler", "state.json");
   const errors: string[] = [];
 
@@ -1217,6 +1170,22 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
   errors.push(...manifestIntegrityErrors(manifest));
   errors.push(...validateRunSplit(args.split));
   if (!isAbsolute(manifest.cli?.path ?? "")) errors.push("manifest.cli.path must be an absolute path");
+ // The spawn entry is a local executable path: a manifest-controlled value
+ // with a URL scheme or control bytes is never a runnable local file.
+  else if (/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(manifest.cli!.path) || /[\u0000-\u001f]/.test(manifest.cli!.path)) {
+    errors.push(`manifest.cli.path must be a local filesystem path, got ${JSON.stringify(manifest.cli!.path)}`);
+  }
+ // The spawn target is canonicalized through the io seam like every other
+ // runner path: the executed binary is the realpath of the manifest-recorded
+ // entry, with no symlink indirection left at spawn time.
+  let canonicalCliPath = "";
+  if (errors.length === 0) {
+    try {
+      canonicalCliPath = `${io.realpath(manifest.cli!.path)}`;
+    } catch {
+      errors.push(`manifest.cli.path does not exist: ${manifest.cli!.path}`);
+    }
+  }
   const variants = [...args.variants];
   if (variants.length === 0) errors.push("--variants must name at least one variant");
   for (const v of variants) {
@@ -1327,13 +1296,13 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
     io.writeText(argvFile, `${JSON.stringify({ runId, argv, cwd: unit.cwd }, null, 2)}\n`);
 
     const startedAt = now();
-    const spawnPromise = spawnFn({
-      file: manifest.cli.path,
+    const spawnPromise = launch({
+      file: canonicalCliPath,
       argv,
-      cwd: unit.cwd,
-      stdinFile: promptFile,
-      stdoutFile: eventsFile,
-      stderrFile: stderrFile,
+      cwd: `${unit.cwd}`,
+      stdinFile: `${promptFile}`,
+      stdoutFile: `${eventsFile}`,
+      stderrFile: `${stderrFile}`,
       timeoutMs: manifest.timeoutMs,
     });
     summary.spawnCount += 1;
@@ -1447,10 +1416,10 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
         unit.grading = null;
         unit.fixtureDiff = null;
         const argv = buildFirstTurnArgv({
-          cliPath: manifest.cli.path,
+          cliPath: canonicalCliPath,
           sandbox,
-          fixtureDir: workspace,
-          finalPath: join(runDir, "runs", caseRec.id, scheduled.variant, `r${scheduled.repeat}`, "turn1", "final.md"),
+          fixtureDir: `${workspace}`,
+          finalPath: `${join(runDir, "runs", caseRec.id, scheduled.variant, `r${scheduled.repeat}`, "turn1", "final.md")}`,
           resumable,
         });
         const { record, scan } = await runOneTurn(unit, caseRec, 1, caseRec.prompt, argv);
@@ -1489,10 +1458,10 @@ export async function runManifest(args: RunArgs): Promise<RunResult> {
                 recordedSandbox: recordedIdentity.sandbox,
               });
               const argv = buildResumeArgv({
-                cliPath: manifest.cli.path,
+                cliPath: canonicalCliPath,
                 sandbox: unit.sandbox,
-                fixtureDir: unit.cwd,
-                finalPath: join(runDir, "runs", caseRec.id, scheduled.variant, `r${scheduled.repeat}`, "turn2", "final.md"),
+                fixtureDir: `${unit.cwd}`,
+                finalPath: `${join(runDir, "runs", caseRec.id, scheduled.variant, `r${scheduled.repeat}`, "turn2", "final.md")}`,
                 threadId: unit.threadId,
               });
               const { record } = await runOneTurn(unit, caseRec, 2, caseRec.resumePrompt!, argv);

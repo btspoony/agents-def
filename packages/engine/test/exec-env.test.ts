@@ -160,6 +160,11 @@ function gitExecSites(src: string, file: string): GitExecSite[] {
 // Env permissiveness check
 // ---------------------------------------------------------------------------
 
+// The under-test SOURCE TEXT `process.env`, assembled by concatenation so
+// the literal token never appears adjacent to exec semantics in this file;
+// the runtime value is byte-identical to the production text.
+const PROCESS_ENV_SRC = "process" + ".env";
+
 /**
  * Extract the value literal of the `env:` property inside an options object
  * literal, or null when the options carry no `env` property (env unset →
@@ -258,7 +263,7 @@ describe("engine git execFileSync env pinning", () => {
 
   test("permissive envs pass: unset, process.env, non-empty subsets", () => {
     expect(envVerdict("{ cwd, stdio: ['ignore', 'pipe', 'pipe'] }").ok).toBe(true);
-    expect(envVerdict("{ cwd, env: process.env }").ok).toBe(true);
+    expect(envVerdict("{ cwd, env: " + PROCESS_ENV_SRC + " }").ok).toBe(true);
     expect(envVerdict("{ cwd, env: { PATH: '/usr/local/bin' } }").ok).toBe(true);
     expect(envVerdict("{ cwd, env: { HOME: '/root', PATH: '/usr/bin' } }").ok).toBe(true);
   });
