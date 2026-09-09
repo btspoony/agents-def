@@ -20,7 +20,10 @@
  * constants (mstar-audit pr-review.md § Tally and derived score), `host`
  * detects the active
  * host from tool shapes, resolves skill roots and defines the type-only
- * `HostAdapter` contract, and `skill-authoring` lints frontmatter +
+ * `HostAdapter` contract, `gates` is the host-neutral coordination-write
+ * gate core (target classification + content/edit validation + reason
+ * formatting, shared by the omp and ZCode host gates), and `skill-authoring`
+ * lints frontmatter +
  * 5-question bodies and resolves skill-relative asset paths.
  */
 export type { GateResult, Severity, ValidationResult } from "./core.js";
@@ -219,6 +222,15 @@ export {
   validateProjectRegister,
   validateRoadmap,
 } from "./project.js";
+export type { HarnessDocKind, ValidateStatusWriteDocOptions } from "./gates.js";
+export {
+  MAX_STATUS_CONTENT_LENGTH,
+  eventTargetPaths,
+  formatStatusWriteBlockReason,
+  harnessDocKindOfTarget,
+  validateStatusWriteDoc,
+  violationLine,
+} from "./gates.js";
 export type {
   MigrateNotesFile,
   MigrateOptions,

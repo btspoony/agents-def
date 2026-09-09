@@ -16,6 +16,7 @@ on:
       - "skills/**"
       - "agents/**"
       - "commands/**"
+      - "hooks/**"
       - "package.json"
       - "bun.lock"
       - "bun.lockb"
@@ -34,6 +35,7 @@ on:
       - "skills/**"
       - "agents/**"
       - "commands/**"
+      - "hooks/**"
       - "package.json"
       - "bun.lock"
       - "bun.lockb"
@@ -113,6 +115,15 @@ jobs:
       - name: Build omp
         run: bun run omp:build
 
+      # Committed-bundle freshness (hooks contract D2): the ZCode plugin root
+      # IS the repo checkout and the plugin pipeline has no build step, so a
+      # bundle that drifted from its source must fail CI. Self-contained step
+      # (rebuilds engine dist the bundle inlines; both builds are idempotent),
+      # placed after all package builds and before tests so drift fails fast
+      # — it cannot turn a green workflow red on a consistent tree.
+      - name: ZCode hooks bundle freshness
+        run: bun run engine:build && bun run hooks:build && git diff --exit-code -- hooks/
+
       - name: CLI smoke check
         run: bun run --cwd packages/cli check
 
@@ -148,7 +159,12 @@ jobs:
         run: bun run --cwd packages/dsh typecheck:tests
 
       - name: Test scripts
-        run: bun test scripts/ascii-literal-utils.test.ts scripts/ci-dep-guard.test.ts scripts/ci-packed-manifest-guard.test.ts scripts/drift-lint.test.ts scripts/escape-dist-literals.test.ts scripts/lint-ascii-literals.test.ts scripts/prepare-release.test.ts
+        run: bun test scripts/ascii-literal-utils.test.ts scripts/build-zcode-hooks.test.ts scripts/ci-dep-guard.test.ts scripts/ci-packed-manifest-guard.test.ts scripts/drift-lint.test.ts scripts/escape-dist-literals.test.ts scripts/lint-ascii-literals.test.ts scripts/prepare-release.test.ts
+
+      # ZCode write-gate source tests: spawn the TS entry with synthetic
+      # PreToolUse stdin fixtures (engine dist is built above).
+      - name: Test hooks source
+        run: bun test hooks/src
 
       # spec §7.4: src code literals must stay pure ASCII — bun 1.2.17
       # misdecodes raw multi-byte UTF-8 in literals of the 366KB CLI bundle.

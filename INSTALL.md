@@ -124,10 +124,11 @@ The repo itself ships the marketplace catalog ZCode looks for when refreshing a 
 
 The marketplace entry carries `icon` + `displayName`, so the plugin card shows the Morning Star icon after a marketplace refresh or reinstall.
 
-**ZCode hooks (bundled):** the plugin ships `hooks/hooks.json` with two always-on gates:
+**ZCode hooks (bundled):** the plugin ships `hooks/hooks.json` with three gates:
 
 - **SessionStart** — in a harness-managed workspace (`.mstar/` discovered per `mstar-conventions`), injects a one-line context: harness dir, `status.json` summary, and the `mstar-harness-core` load pointer. Silent no-op outside harness workspaces.
-- **PreToolUse (Bash)** — deterministic backstop for `mstar-branch-worktree`: blocks `git commit` on the default protected branch (override per command with `MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1`, or per SessionStart note) and bare `git push --force` (use `--force-with-lease=<branch>:<oid>`). Disable everything with `MSTAR_BRANCH_GUARD=off`.
+- **PreToolUse (Bash)** — deterministic backstop for `mstar-branch-worktree`: blocks `git commit` on the default protected branch (override per command with `MSTAR_ALLOW_DEFAULT_BRANCH_COMMIT=1`, or per SessionStart note) and bare `git push --force` (use `--force-with-lease=<branch>:<oid>`). Disable with `MSTAR_BRANCH_GUARD=off`.
+- **PreToolUse (Write|Edit)** — engine-backed coordination-write gate: in repos with opt-in hard enforcement (`.mstarc`/compass), blocks writes to harness coordination documents (`status.json`, workflow snapshots, project registers) with an actionable reason; soft-enforced and non-harness writes pass silently. Disable with `MSTAR_WRITE_GATE=off`.
 
 ### Kimi
 

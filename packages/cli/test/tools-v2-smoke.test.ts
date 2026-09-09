@@ -2,18 +2,21 @@
  * Committed tools v2 smoke + hook Gate 1 regression. *
  * Covers the five rewired `tools/mstar_*` (module load + one execution per
  * tool against the rebuilt engine dist) AND the omp `hooks/pre/mstar-gates`
- * Gate 1 degrade/hard paths — replacing the one-time smoke script that only
- * existed in task-2-report.md. Fixture: a committed minimal v2
+ * Gate 1 degrade/hard paths. Fixture: a committed minimal v2
  * harness tree (`test/fixtures/tools-v2-smoke/`) copied into a temp git
  * repo with a real linked worktree, so `l1PreDispatchCheck`'s existence +
  * branch probes pass.
  *
  * Regression anchors bundled here (fix wave 1):
  * - W-A: `mstar_worktree_check` workflowId traversal guard parity.
- * - W-B: hooks/tools lazy-load the P1-only engine exports — a stale engine
- *   (missing `validateWorkflowSnapshot` / `validateProjectRegister` /
- *   `WORKFLOW_SNAPSHOT_FILE` / `resolveWorkflowDir` / `resolveProjectDir`)
- *   degrades to a one-time warning + skip, never a module-link crash.
+ * - W-B: hooks/tools lazy-load the P1-only engine exports — REMOVED for the
+ *   omp hook (cross-host hooks contract D1): the Gate-1 core
+ *   moved into the engine `gates` module and the engine is inlined into the
+ *   bundle at build, so a stale engine dist fails the omp build instead of
+ *   degrading; the degrade-path seam tests were deleted with the seams and
+ *   the parity matrix (`packages/omp/test/gate-parity.test.ts`) pins the
+ *   replaced behavior. The omp TOOLS' `workflowDirResolverLoader` seams
+ *   remain (below).
  * - W-C: `mstar_status_validate` classifies by harness-relative layout
  *   (Gate 1 parity), rejecting non-canonical snapshot paths.
  * - S-b: `mstar_iteration_gate` takes `workflowId` (CLI parity).
@@ -38,7 +41,7 @@ import mstarStatusValidate from "../../omp/src/tools/mstar_status_validate/index
 import mstarWorktreeCheck, {
   workflowDirResolverLoader as worktreeCheckDirResolverLoader,
 } from "../../omp/src/tools/mstar_worktree_check/index";
-import mstarGates, { dirResolversLoader, loadNewValidators, newValidatorsLoader } from "../../omp/src/hooks/pre/mstar-gates";
+import mstarGates from "../../omp/src/hooks/pre/mstar-gates";
 
 const FIXTURE = join(import.meta.dir, "fixtures", "tools-v2-smoke", "repo");
 const SNAPSHOT_REL = join("plans", "workflows", "wf-smoke", "snapshot.json");
@@ -582,35 +585,7 @@ describe("omp hook Gate 2 — task dispatch (issue #156: caller-scoped anti-recu
   });
 });
 
-describe("omp hook Gate 1 (W-B / S-d)", () => {
-  test("stale engine (missing P1 validators) → silent pass + one-time warning, no crash", async () => {
-    const root = repo!.root;
-    const warnings: string[] = [];
-    let handler: ((event: unknown) => Promise<unknown>) | undefined;
-    const pi = {
-      on: (_event: string, fn: (event: unknown) => Promise<unknown>) => {
-        handler = fn;
-      },
-      logger: { warn: (m: string) => warnings.push(m) },
-    };
-    mstarGates(pi as never);
-    expect(handler).toBeDefined();
-
-    const originalLoad = newValidatorsLoader.load;
-    try {
-      newValidatorsLoader.load = async () => ({ status: "missing" });
-      const res = await handler!({
-        toolName: "write",
-        input: { path: repo!.snapshotPath, content: "{ not json" },
-      });
-      // Degrade: skip snapshot/register validation entirely (silent pass).
-      expect(res).toBeUndefined();
-      expect(warnings.some((w) => w.includes("lacks") && w.includes("snapshot/register"))).toBe(true);
-    } finally {
-      newValidatorsLoader.load = originalLoad;
-    }
-  });
-
+describe("omp hook Gate 1 (S-d)", () => {
   test("hard enforcement: invalid snapshot write blocked, valid write passes", async () => {
     const root = repo!.root;
     let handler: ((event: unknown) => Promise<unknown>) | undefined;
@@ -875,12 +850,8 @@ describe("custom workflow_dir/project_dir layout (Phase-5 F1)", () => {
   // resolvers in BOTH the probe and the classify.
   let customRepo: SmokeRepo | undefined;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     customRepo = setupCustomLayoutRepo();
-    // Deterministic classification: the hook's async gate awaits the
-    // loader itself, but pinning it here makes the sync-slot state
-    // explicit for the degrade test below.
-    await dirResolversLoader.load();
   });
 
   afterAll(() => {
@@ -1005,32 +976,5 @@ describe("custom workflow_dir/project_dir layout (Phase-5 F1)", () => {
     writeFileSync(stray, JSON.stringify({ schema_version: 99 }));
     const strayRes = await handler!({ toolName: "write", input: { path: stray, content: "{}" } });
     expect(strayRes).toBeUndefined();
-  });
-
-  test("stale engine (no P1 dir resolvers) degrades to default-layout classification: custom docs pass silently", async () => {
-    const root = customRepo!.root;
-    let handler: ((event: unknown) => Promise<unknown>) | undefined;
-    mstarGates({
-      on: (_event: string, fn: (event: unknown) => Promise<unknown>) => {
-        handler = fn;
-      },
-      logger: { warn: () => undefined, error: () => undefined },
-    } as never);
-    expect(handler).toBeDefined();
-
-    const snapshotPath = join(root, ".mstar", "cw-wf", "wf-custom", "snapshot.json");
-    const originalLoad = dirResolversLoader.load;
-    try {
-      dirResolversLoader.load = async () => null;
-      // Without the resolvers the custom layout is unclassifiable — the
-      // write passes silently (the pre-F1 behavior), never a crash.
-      const res = await handler!({
-        toolName: "write",
-        input: { path: snapshotPath, content: JSON.stringify({ schema_version: 99 }) },
-      });
-      expect(res).toBeUndefined();
-    } finally {
-      dirResolversLoader.load = originalLoad;
-    }
   });
 });
