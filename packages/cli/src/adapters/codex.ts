@@ -108,17 +108,51 @@ function configuredMarketplaceNames(dryRun: boolean): string[] {
     .filter((name) => name !== "");
 }
 
+/**
+ * Parse `codex plugin list --json` → the full `installed[]` entries (records
+ * carrying `pluginId`, `version`, `enabled`, …). Shared by the doctor's
+ * installed-id check and `detectCodexPluginVersion` — one JSON-parsing site.
+ * Throws on non-JSON dumps (doctor catches and degrades to an error line).
+ */
+export function parseCodexInstalledEntries(dump: string): Array<Record<string, unknown>> {
+  const parsed = JSON.parse(dump) as {
+    installed?: unknown;
+  };
+  const list = Array.isArray(parsed.installed) ? parsed.installed : [];
+  return list.filter(
+    (entry): entry is Record<string, unknown> =>
+      entry !== null && typeof entry === "object" && !Array.isArray(entry),
+  );
+}
+
 /** Parse `codex plugin list --json` → installed plugin ids (`name@marketplace`). */
 function installedPluginIds(dryRun: boolean): string[] {
   if (dryRun) return [];
   const dump = runCodex(["plugin", "list", "--json"], false, CODEX_LOCAL_TIMEOUT_MS);
-  const parsed = JSON.parse(dump) as {
-    installed?: Array<{ pluginId?: unknown }>;
-  };
-  const list = Array.isArray(parsed.installed) ? parsed.installed : [];
-  return list
-    .map((entry) => (entry && typeof entry.pluginId === "string" ? entry.pluginId : ""))
+  return parseCodexInstalledEntries(dump)
+    .map((entry) => (typeof entry.pluginId === "string" ? entry.pluginId : ""))
     .filter((pluginId) => pluginId !== "");
+}
+
+/**
+ * Version of the installed Morning Star plugin (`morning-star-harness@mstar-repo`)
+ * from `codex plugin list --json`. Subprocess-bound discovery consumed by
+ * `../plugin-version-alignment`; no-throw — a missing codex CLI, a failed
+ * query, or an absent/shape-invalid version reports `null` (the alignment
+ * note is informational; doctor reports codex failures through its own
+ * error channels).
+ */
+export function detectCodexPluginVersion(): string | null {
+  let entries: Array<Record<string, unknown>>;
+  try {
+    entries = parseCodexInstalledEntries(runCodex(["plugin", "list", "--json"], false, CODEX_LOCAL_TIMEOUT_MS));
+  } catch {
+    return null;
+  }
+  const pluginId = `${PLUGIN_NAME}@${MARKETPLACE_NAME}`;
+  const entry = entries.find((candidate) => candidate.pluginId === pluginId);
+  const version = typeof entry?.version === "string" ? entry.version : "";
+  return version === "" ? null : version;
 }
 
 /**

@@ -156,3 +156,9 @@ Cannot emit required **N** → **`Blocked`**.
 - Session todos (`TodoWrite`) are not durable SSOT unless mirrored to `{HARNESS_DIR}`.
 - Morning Star roles **are** registered as ZCode subagent types from `agents/*.md` — but the shells are thin, so role binding is **still always** prompt + skill load (C5b); prefer bare role ids, the qualified form can fall back to the default prompt.
 - ZCode has no `sessionStart.skill`; new sessions do **not** auto-load PM — invoke `/morning-star-harness:pm` or `/skill:pm` manually.
+
+## Plugin/CLI version alignment
+
+- Installed plugin versions live under `~/.zcode/cli/plugins/cache/<marketplace>/morning-star-harness/<version>/` (one version directory per install; highest semver wins).
+- Update entry: **Settings → Plugin Management → update from the `mstar-local` marketplace**.
+- Behavioral contract (when to check, which side to update) → **`mstar-harness-core`**「版本对齐（CLI ↔ host 插件）」.

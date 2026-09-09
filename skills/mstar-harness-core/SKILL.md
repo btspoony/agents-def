@@ -1,6 +1,6 @@
 ---
 name: mstar-harness-core
-description: Morning Star (启明星) harness **生命周期 / 授权语义权威与全局入口** —— 信息源优先级、最小交付循环、状态机与 Done 权限、Task category 路由（含 quick 禁豁免）、@explore 边界、长任务纪律、核心研发守则、护栏不变量、Morning Star Skill 索引与宿主入口。加载**选择**权威在 **`mstar-roles`**（hub § Load Order 按 Assignment `Skill presets:` 决策；本 skill 不另设全局必读表）：PM 与标准路线仍以本 skill 为全局入口；独立直接调用专题时本 skill 是首个依赖；explicit `none` 角色路线以身份 + 角色自有方法自洽（唯一 hub bootstrap 例外）。`@project-manager` 开轮必读 + `mstar-dispatch-gates` / `mstar-phase-gates` / `mstar-conventions` 等；实现/审查/QA 按其角色 preset 清单加载。Prepare/派发/Git/residual/QC 细则在专题 skill，不在此重复。
+description: Morning Star (启明星) harness **生命周期 / 授权语义权威与全局入口** —— 信息源优先级、最小交付循环、状态机与 Done 权限、Task category 路由（含 quick 禁豁免）、@explore 边界、长任务纪律、核心研发守则、护栏不变量、Morning Star Skill 索引与宿主入口。加载**选择**权威在 **`mstar-roles`**（hub § Load Order 按 Assignment `Skill presets:` 决策；本 skill 不另设全局必读表）：PM 与标准路线仍以本 skill 为全局入口；独立直接调用专题时本 skill 是首个依赖；explicit `none` 角色路线以身份 + 角色自有方法自洽（唯一 hub bootstrap 例外）。`@project-manager` 开轮必读 + `mstar-dispatch-gates` / `mstar-phase-gates` / `mstar-conventions` 等；实现/审查/QA 按其角色 preset 清单加载。Prepare/派发/Git/residual/QC 细则在专题 skill，不在此重复。版本漂移（version drift）/ CLI 与插件版本不一致 / 提示更新插件或 CLI → 按「版本对齐」节处理（doctor 检查 + 定向更新提示）。
 ---
 
 # Morning Star Harness Core（启明星核心）
@@ -122,6 +122,13 @@ Read **`mstar-host`** after this skill; detect host per its table, then Read the
 | Codex | plugin skills、sandbox/apply_patch/tool discovery；无 invoke 工具时不声称 subagent dispatch → `references/codex.md` |
 | Kimi | `Agent`/`AgentSwarm`（仅 `coder`/`explore`/`plan`）；角色绑定在 prompt（C5b）；Plan 双写 → `references/kimi.md` · `kimi-plan-mode-bridge.md` |
 | 其它 | 同 `mstar-host` skill；按工具信号选 reference |
+
+## 版本对齐（CLI ↔ host 插件）
+
+- 全局 CLI 与已安装的宿主插件**独立升级**；版本漂移是已知故障源（skills/commands 与 CLI 预期不再匹配）。
+- 检查：`mstar-harness doctor --target <host>`（全部宿主已实现：opencode / cursor / codex / zcode / omp / dsh / kimi）。
+- **CLI 较新** → 提示用户更新宿主插件；**插件较新** → 提示用户更新全局 CLI（`npm i -g @mstar-harness/cli@latest`）。
+- 触发纪律：harness 行为异常/疑似过期、已知新版本发布后、或用户要求时运行——**不是**每个会话都跑。
 
 ## 核心研发守则
 
