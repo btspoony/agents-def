@@ -244,7 +244,7 @@ describe('preset/mstar seeds coexistence — both boot orders converge to 20 see
     const ctx = ctxWithService(registry, rowConfig([]))
     const { captured, restore } = captureAdvisoryLogs()
     try {
-      expect(await runFallbacksAdvisory(ctx, REAL_MIRROR)).toBe(true)
+      expect(await runFallbacksAdvisory(ctx, REAL_MIRROR)).toEqual({ ran: true, converged: true })
     } finally {
       restore()
     }

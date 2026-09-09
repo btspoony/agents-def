@@ -45,6 +45,9 @@ import {
 import { fallbacksMounted } from '../src/gates/fallbacks-probe.ts'
 import {
   ROLE_PERSONA_LOGGER,
+  ROLE_PERSONA_WRAPPER_BRAND,
+  evaluateSeamProbe,
+  probeRolePersonaSeam,
   setRolePersonaAgentsDir,
   setRolePersonaLogger,
   type RolePersonaLogLevel,
@@ -75,21 +78,36 @@ const ASSIGNMENT_PROMPT = [
 /** A non-Assignment task prompt (no header fields). */
 const PLAIN_PROMPT = 'Summarize the attached file.'
 
-/** The mirror default persona for `fullstack-dev` (multiline `|-` description). */
-const MIRROR_DEFAULT = 'Line one of the mirror default.\nLine two of the mirror default.'
-
-/** A fixture mirror shell whose default differs from the config PERSONA. */
-const MIRROR_SHELL = [
+/** One fixture mirror shell: frontmatter `name` + block-scalar `description` (`mode: subagent`). */
+const mirrorShell = (name: string, description: string): string => [
   '---',
-  `name: ${EXECUTE_AS}`,
+  `name: ${name}`,
   'description: |-',
-  '  Line one of the mirror default.',
-  '  Line two of the mirror default.',
+  ...description.split('\n').map((line) => `  ${line}`),
   'mode: subagent',
   '---',
   '',
   '## Morning Star Role Binding',
 ].join('\n')
+
+/** The mirror default persona for `fullstack-dev` (multiline `|-` description). */
+const MIRROR_DEFAULT = 'Line one of the mirror default.\nLine two of the mirror default.'
+
+/** A fixture mirror shell whose default differs from the config PERSONA. */
+const MIRROR_SHELL = mirrorShell(EXECUTE_AS, MIRROR_DEFAULT)
+
+/** A second mirror default (distinct text — the sink re-bind pin target). */
+const MIRROR_DEFAULT_ALT = 'Alternate mirror default persona.'
+
+/** A second fixture mirror shell whose default differs from MIRROR_DEFAULT. */
+const MIRROR_SHELL_ALT = mirrorShell(EXECUTE_AS, MIRROR_DEFAULT_ALT)
+
+/** A mirror-only probe role (configured NOWHERE) — the sink re-bind pin reads its persona. */
+const PROBE_ROLE = 'probe-dev'
+
+/** The probe-role shells (stems match PROBE_ROLE; the default differs per fixture root). */
+const PROBE_SHELL = mirrorShell(PROBE_ROLE, MIRROR_DEFAULT)
+const PROBE_SHELL_ALT = mirrorShell(PROBE_ROLE, MIRROR_DEFAULT_ALT)
 
 /** A fixture mirror shell whose description carries the interpolation hazard. */
 const HAZARD_SHELL = [
@@ -498,6 +516,67 @@ describe('native persona channel — SubagentStartRequest.persona merge', () => 
     }
   })
 
+  it('(s) a second setRolePersonaAgentsDir call re-binds the root, returns the prior binding, and re-arms the S-002 latch', async () => {
+    // Sink lifetime pin (module-level `rolePersonaAgentsDir`): the
+    // per-apply setter IS the re-bind — a second call swaps the root the
+    // per-start read observes, returns the PRIOR binding for restore, and
+    // re-arms the mirror-absent latch (once-per-apply debug). Config stays
+    // present (the perf guard needs it for the absent-latch path); the
+    // PROBE_ROLE Assignment is configured NOWHERE, so its persona text
+    // names the bound mirror root unambiguously.
+    const { app, provider } = await bootWithProvider('fake-spawn', { personaCapability: true })
+    const fixtureA = await fixtureMirror([[`${PROBE_ROLE}.md`, PROBE_SHELL]])
+    const fixtureB = await fixtureMirror([[`${PROBE_ROLE}.md`, PROBE_SHELL_ALT]])
+    const original = setRolePersonaAgentsDir(fixtureA.dir)
+    try {
+      const { captured, restore } = captureLogs()
+      try {
+        // Binding A: the probe role's mirror default comes from A's shell.
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, PROBE_ROLE)))
+        expect(provider.starts[0]!.request.persona).toBe(MIRROR_DEFAULT)
+        expect(captured[0]![0]).toBe('debug')
+        expect(captured[0]![1]).toContain('harness-agents default')
+
+        // The second set returns the PRIOR binding (A)...
+        expect(setRolePersonaAgentsDir(fixtureB.dir)).toBe(fixtureA.dir)
+        // ...and the mirror lookup follows the NEW root on the same
+        // wrapper: the per-start read re-resolves the module binding (no
+        // stale closure over A).
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, PROBE_ROLE)))
+        expect(provider.starts[1]!.request.persona).toBe(MIRROR_DEFAULT_ALT)
+
+        // Re-bind to ABSENT (returns B): a config-miss lookup now takes the
+        // mirror-absent path and the re-set re-armed the latch, so the
+        // debug fires once for THIS binding.
+        expect(setRolePersonaAgentsDir(undefined)).toBe(fixtureB.dir)
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, 'scout')))
+        expect(provider.starts[2]!.request.persona).toBeUndefined()
+        // The latch holds on the SAME binding: a further miss stays silent.
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, 'code-reviewer')))
+        expect(provider.starts[3]!.request.persona).toBeUndefined()
+
+        // Re-setting the SAME binding (value unchanged) re-arms the latch
+        // — the CALL is the reset, not the value transition.
+        expect(setRolePersonaAgentsDir(undefined)).toBeUndefined()
+        await startViaNativeChannel(app, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT.replace(EXECUTE_AS, 'ops-engineer')))
+        expect(provider.starts[4]!.request.persona).toBeUndefined()
+
+        // Exact log timeline: A delivery, B delivery, absent (fires),
+        // absent (latch holds), absent (fires again after the re-set).
+        expect(captured).toHaveLength(4)
+        expect(captured[1]![1]).toContain('harness-agents default')
+        expect(captured[2]![1]).toContain('mirror absent')
+        expect(captured[3]![1]).toContain('mirror absent')
+      } finally {
+        restore()
+      }
+    } finally {
+      setRolePersonaAgentsDir(original)
+      await fixtureA.cleanup()
+      await fixtureB.cleanup()
+    }
+  })
+
   it('(q) unknown provider → silent pass-through; the runtime fails loud its own way (NO_PROVIDER propagates)', async () => {
     const { app } = await bootWithProvider('fake-spawn', { personaCapability: true })
 
@@ -562,5 +641,91 @@ describe('native persona channel — SubagentStartRequest.persona merge', () => 
       await ctx.fiber.dispose().catch(() => {})
       await rm(root, { recursive: true, force: true })
     }
+  })
+})
+
+/** A stand-in branded wrapper built exactly like the channel stamps them (decision-table input). */
+function brandedWrapper(proto: object = {}): object {
+  const wrapper = Object.create(proto)
+  Object.defineProperty(wrapper, ROLE_PERSONA_WRAPPER_BRAND, { value: true, enumerable: false })
+  return wrapper
+}
+
+describe('role persona seam probe — decision table (pure evaluateSeamProbe)', () => {
+  it('(p1) canary fired + branded wrapper → ok, no reason (healthy, silent)', () => {
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: brandedWrapper() })).toEqual({ ok: true })
+  })
+
+  it('(p2) canary fired + read threw → ok:true, service-absent — never a warn', () => {
+    const result = evaluateSeamProbe({ dispatched: true, readError: new Error('cannot get property "subagents" without inject'), value: undefined })
+    expect(result).toEqual({ ok: true, reason: 'service-absent' })
+  })
+
+  it('(p3) canary fired + unbranded object → ok:false, wrap-skipped', () => {
+    const result = evaluateSeamProbe({ dispatched: true, readError: undefined, value: Object.create(null) })
+    expect(result).toEqual({ ok: false, reason: 'wrap-skipped' })
+  })
+
+  it('(p4) canary silent → ok:false, seam-absent — dominates value and error', () => {
+    // A silent canary means the delivery channel is gone; no other input can rehabilitate it.
+    expect(evaluateSeamProbe({ dispatched: false, readError: undefined, value: brandedWrapper() })).toEqual({ ok: false, reason: 'seam-absent' })
+    expect(evaluateSeamProbe({ dispatched: false, readError: new Error('renamed seam'), value: undefined })).toEqual({ ok: false, reason: 'seam-absent' })
+  })
+
+  it('(p5) canary fired + non-object resolved values (undefined / null / primitive) → wrap-skipped', () => {
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: undefined })).toEqual({ ok: false, reason: 'wrap-skipped' })
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: null })).toEqual({ ok: false, reason: 'wrap-skipped' })
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: 'subagents' })).toEqual({ ok: false, reason: 'wrap-skipped' })
+  })
+
+  it('(p6) brand lookalikes → wrap-skipped (the brand must be exactly `true`)', () => {
+    const wrongValue = Object.create(null)
+    Object.defineProperty(wrongValue, ROLE_PERSONA_WRAPPER_BRAND, { value: false, enumerable: false })
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: wrongValue })).toEqual({ ok: false, reason: 'wrap-skipped' })
+    const wrongType = Object.create(null)
+    Object.defineProperty(wrongType, ROLE_PERSONA_WRAPPER_BRAND, { value: 'yes', enumerable: false })
+    expect(evaluateSeamProbe({ dispatched: true, readError: undefined, value: wrongType })).toEqual({ ok: false, reason: 'wrap-skipped' })
+  })
+})
+
+describe('role persona seam probe — probeRolePersonaSeam', () => {
+  it('(p7) a probe-internal error fails open — ok:true, exactly one debug, never throws', () => {
+    const { captured, restore } = captureLogs()
+    try {
+      const hostile = { on: () => { throw new Error('registration exploded') } } as unknown as Context
+      expect(probeRolePersonaSeam(hostile)).toEqual({ ok: true })
+      expect(captured).toHaveLength(1)
+      expect(captured[0]![0]).toBe('debug')
+      expect(captured[0]![1]).toContain('fail-open')
+      expect(captured[0]![1]).toContain('registration exploded')
+    } finally {
+      restore()
+    }
+  })
+
+  it('(p8) the real wrapper carries the non-enumerable brand and the channel still wraps after the apply-time probe ran', async () => {
+    // The probe runs inside bootApp's apply (single call site after
+    // registerRolePersonaChannel). Post-boot this composition must still show
+    // the channel fully alive: reads are branded, the wrapper surface is
+    // unchanged (non-enumerable symbol), and delivery still merges.
+    booted = await bootApp({ agentsService: 'fake', subagents: 'real', rolePersonas: { [EXECUTE_AS]: PERSONA } })
+    const provider = new FakeSubagentProvider('fake-spawn', { personaCapability: true })
+    ;(booted.ctx.subagents as unknown as SubagentRuntime).registerProvider(provider as never)
+
+    const { promise, resolve } = Promise.withResolvers<unknown>()
+    void booted.ctx.inject(['subagents'], (sctx) => resolve((sctx as unknown as { subagents: unknown }).subagents))
+    const wrapper = (await promise) as object
+    expect(Object.getOwnPropertySymbols(wrapper)).toEqual([ROLE_PERSONA_WRAPPER_BRAND])
+    expect((wrapper as Record<symbol, unknown>)[ROLE_PERSONA_WRAPPER_BRAND]).toBe(true)
+    // Non-enumerable: the wrapper's key/spread surface stays service-shaped.
+    expect(Object.keys(wrapper).sort()).toEqual(['start', 'startContinuable'])
+    const descriptor = Object.getOwnPropertyDescriptor(wrapper, ROLE_PERSONA_WRAPPER_BRAND)
+    expect(descriptor?.enumerable).toBe(false)
+
+    // Delivery unchanged through the probed channel (no behavior change).
+    await startViaNativeChannel(booted, 'fake-spawn', startRequest(ASSIGNMENT_PROMPT))
+    expect(provider.starts[0]!.request.persona).toBe(PERSONA)
+    // The apply-bound channel label is still pinned.
+    expect(ROLE_PERSONA_LOGGER).toBe('mstar/role-persona')
   })
 })
