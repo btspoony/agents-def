@@ -91,7 +91,7 @@ npm i -g @mstar-harness/cli
 |------|---------|
 | dsh（DeepSeek Harness） | `pm` skill（经 mstar skill 提供者；无自动加载） |
 | omp | 每会话 `/skill:pm`（无自动加载） |
-| OpenCode | `agent.project-manager`（`agents/project-manager.md`） |
+| OpenCode | `agent.project-manager`（仅 OpenCode 的 shell，`packages/opencode/agents/project-manager.md`） |
 | Cursor | `/pm` |
 | Kimi | 新会话自动加载 `pm`；或 `/skill:pm` |
 | ZCode | 每会话 `/morning-star-harness:pm`（无自动加载） |

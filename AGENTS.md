@@ -203,6 +203,7 @@ The repo's harness root is **`.mstar/`** (the `mstar-conventions` consumer defau
 - Host adapters:
   - Host adapter -> `mstar-host` (in-repo: `skills/mstar-host/*`; OpenCode via `bundle-assets` → `harness-skills/mstar-host/`; Cursor/Codex/Kimi/ZCode/omp via `.cursor-plugin/` / `.codex-plugin` / `.kimi-plugin` / `.zcode-plugin/` / `.omp-plugin/` `skills/`)
   - OpenCode package: `harness-skills/` + `harness-agents/` from `bundle-assets` (npm publish `prepublishOnly`; explicit `bun run opencode:bundle-assets` in checkouts); plugin reads only package paths, not `process.cwd()` (npm: `@mstar-harness/opencode`)
+  - OpenCode-only primary agent shells (the `mode: primary` `project-manager`) -> `packages/opencode/agents/*`, merged into `harness-agents/` at bundle time; the shared repo-root `agents/` carries subagent shells only — other hosts take PM via the `pm` skill
 - CLI package -> `packages/cli/*` (package name `@mstar-harness/cli`; local `AGENTS.md`)
 - Codex plugin manifest -> `.codex-plugin/plugin.json`
 - Kimi plugin manifest -> `.kimi-plugin/plugin.json` (plugin root is repo root; paths `./skills/`, `./commands/`)

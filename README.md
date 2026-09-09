@@ -90,7 +90,7 @@ Enter PM, then run the per-plan cycle: `Prepare → Execute → QC → QA gate �
 |------|----------|
 | dsh (DeepSeek Harness) | `pm` skill (via the mstar skill provider; no auto-load) |
 | omp | `/skill:pm` each session (no auto-load) |
-| OpenCode | `agent.project-manager` (`agents/project-manager.md`) |
+| OpenCode | `agent.project-manager` (OpenCode-only shell, `packages/opencode/agents/project-manager.md`) |
 | Cursor | `/pm` |
 | Kimi | session auto-loads `pm`; or `/skill:pm` |
 | ZCode | `/morning-star-harness:pm` each session (no auto-load) |

@@ -403,7 +403,7 @@ npx @mstar-harness/cli plugin validate --root ~/.mstar/harness
 ## Post-install
 
 1. **Enter PM orchestration**
-   - OpenCode: start with the `Project Manager` role (`agents/project-manager.md`, typically `agent.project-manager` in `opencode.json`).
+   - OpenCode: start with the `Project Manager` role (`packages/opencode/agents/project-manager.md`, typically `agent.project-manager` in `opencode.json`; OpenCode-only — other hosts use the `pm` skill).
    - Cursor / Codex: use `/pm`.
    - Kimi: use `/skill:pm`.
    - ZCode: use `/morning-star-harness:pm` or `/skill:pm` (no session auto-load).

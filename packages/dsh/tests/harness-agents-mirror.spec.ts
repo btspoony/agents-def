@@ -22,7 +22,9 @@ import {
   sourceAgents,
 } from '../scripts/bundle-harness-assets.ts'
 
-/** The 14 repo-root agent shells (incl. the `mode: primary` project-manager). */
+/** The 13 shared subagent shells — the `mode: primary` project-manager seat
+ * is OpenCode-only (`packages/opencode/agents/`, merged into its own
+ * `harness-agents/` at bundle time), never on the shared subagent surface. */
 const AGENT_SHELLS: string[] = [
   'architect.md',
   'code-reviewer.md',
@@ -31,7 +33,6 @@ const AGENT_SHELLS: string[] = [
   'fullstack-dev.md',
   'ops-engineer.md',
   'product-manager.md',
-  'project-manager.md',
   'prompt-engineer.md',
   'qa-engineer.md',
   'qc-specialist-2.md',
@@ -94,11 +95,12 @@ describe('copyTree — mirror contract on a tiny fixture', () => {
   })
 })
 
-// Real-checkout sanity: 14 shells in the monorepo; skips when agents/ is absent.
-test.skipIf(!existsSync(sourceAgents))('repo-root agents/ carries the 14 shells (monorepo checkout)', () => {
+// Real-checkout sanity: 13 shared subagent shells in the monorepo; skips when
+// agents/ is absent.
+test.skipIf(!existsSync(sourceAgents))('repo-root agents/ carries the 13 shared subagent shells (monorepo checkout)', () => {
   const shells = readdirSync(sourceAgents)
     .filter((f) => f.endsWith('.md'))
     .sort()
   expect(shells).toEqual([...AGENT_SHELLS].sort())
-  expect(readFileSync(join(sourceAgents, 'project-manager.md'), 'utf8')).toContain('mode: primary')
+  expect(existsSync(join(sourceAgents, 'project-manager.md'))).toBe(false)
 })

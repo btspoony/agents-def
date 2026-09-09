@@ -193,7 +193,7 @@ describe('hostile role ids never reach the filesystem', () => {
 })
 
 describe('ROLE_ID_PATTERN — upstream ROLE_ID_PATTERN semantics, implemented locally', () => {
-  it('accepts the 14 mirror stems and rejects every hostile shape', () => {
+  it('accepts mirror stems and rejects every hostile shape', () => {
     for (const id of ['architect', 'code-reviewer', 'fullstack-dev', 'fullstack-dev-2', 'project-manager', 'qa-engineer', 'qc-specialist-2', 'writing-specialist']) {
       expect(ROLE_ID_PATTERN.test(id)).toBe(true)
     }
@@ -203,13 +203,14 @@ describe('ROLE_ID_PATTERN — upstream ROLE_ID_PATTERN semantics, implemented lo
   })
 })
 
-// Real-checkout sanity (architect fact): the ONLY `mode: primary` shell is
-// project-manager; the 13 subagent shells resolve a default. Skips when the
-// mirror is absent (bundle-assets not run).
+// Real-checkout sanity: the mirror carries the 13 shared subagent shells only
+// — the `mode: primary` project-manager seat is OpenCode-only
+// (packages/opencode/agents/), so PM resolves no shell persona here. Skips
+// when the mirror is absent (bundle-assets not run).
 describe('real mirror contract (when synced)', () => {
   const realMirror = join(packageRoot, 'harness-agents')
 
-  test.skipIf(!existsSync(realMirror))('project-manager (mode: primary) is excluded; subagent shells resolve', () => {
+  test.skipIf(!existsSync(realMirror))('project-manager resolves no shell persona; subagent shells resolve', () => {
     expect(personaFor('project-manager', { agentsDir: realMirror }, warn)).toBeUndefined()
     expect(warns).toHaveLength(0)
     const architect = personaFor('architect', { agentsDir: realMirror })
