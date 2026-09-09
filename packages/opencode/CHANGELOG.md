@@ -6,6 +6,17 @@ The monorepo root [CHANGELOG.md](../../CHANGELOG.md) summarizes cross-surface re
 
 ## [Unreleased]
 
+## [3.7.2] - 2026-09-09
+
+### Bundled harness skills (`harness-skills/` at publish)
+
+- Moved the `mode: primary` **`project-manager`** agent shell out of the shared `agents/` subagent surface into `packages/opencode/agents/` (OpenCode-only). Host plugin surfaces (ZCode / omp / Claude-plugin manifests) no longer register PM as a subagent — PM entry stays via the `pm` skill; OpenCode bundling merges the shell into `harness-agents/`.
+- Updated omp/dsh mirror contracts and host docs to match.
+
+- Version alignment with harness **3.7.2** (no OpenCode package API change).
+
+See root [CHANGELOG.md](../../CHANGELOG.md) **3.7.2**.
+
 ## [3.7.1] - 2026-09-09
 
 ### Bundled harness skills (`harness-skills/` at publish)
