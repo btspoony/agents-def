@@ -6,6 +6,26 @@
 
 ## [Unreleased]
 
+## [3.7.1] - 2026-09-09
+
+### Harness
+
+- **CLI 与插件版本漂移一条命令即可发现，覆盖全部受支持宿主**：`mstar-harness doctor --target <host>` 通过各宿主本地发现（opencode 包缓存、cursor 插件检出清单、codex/omp `plugin list --json`、zcode 插件缓存、dsh 全部 profile 的 node_modules、kimi 的 `$KIMI_CODE_HOME/plugins/managed`；多个版本取最高 semver）对比运行中的 CLI 版本与已安装的 Morning Star 插件版本，并按方向给出一条提示——CLI 较新 → 各宿主的插件更新提示，插件较新 → 更新全局 CLI（`npm i -g @mstar-harness/cli@latest`）——仅为信息性 note，不会成为 doctor 错误、也不改变退出码；`mstar-harness-core` 版本漂移契约已更新为全宿主覆盖。
+- `kimi` 以最小适配器加入受支持安装目标：doctor 报告解析后的 `$KIMI_CODE_HOME/plugins/managed` 位置且不要求 kimi 二进制存在；init 仅输出提示——插件安装与更新经 Kimi TUI 的 `/plugins install` 完成。
+- **Marketplace 清单现在固定插件版本。** `.claude-plugin/marketplace.json` 与根 `marketplace.json` 在 `morning-star-harness` 插件条目上携带 `version`，且两份清单加入发布版本面——`release:prepare` 在 `plugins[0].version` 处提升、`release:validate` 在同一路径把关，ZCode marketplace 刷新即可检测到新版本。
+- **ZCode bootstrap marketplace 条目携带 `version`。** CLI 以 CLI 发布版本作为种子；ZCode marketplace 刷新会用仓库随附清单覆盖种子。doctor 有意不按版本偏差把关——快照比已装 CLI 新或旧正是更新信号本身，而非异常状态。
+- **Worktree 门禁现在区分 Git checkout 身份与物理路径嵌套。** 位于 control checkout 内的真实 linked worktree（文档化的 `.worktrees` 布局）通过 L1 预派发检查与 bound SDD 执行上下文；同一 control checkout、其普通子目录或 symlink 别名即使声明分支与 control 分支相同也被拒绝。Git 探测失败沿用既有有界超时 fail-closed。
+- **control checkout 根由 git 探测推导，而非 `dirname(harness)`。** `resolveSddExecutionContext` 解析声明 harness 根的真实仓库 top-level（`git rev-parse --show-toplevel`，有界且 fail-closed），因此 `.mstarc`/override 嵌套 harness（如 `<control>/state/.mstar`）在 standalone 与 active-lease 上下文中以相同方式把关同 checkout 隔离；无法解析的根 fail-closed。
+- **单一共享 checkout 身份判定。** `l1PreDispatchCheck`、`assertControlVsFeaturePath` 与 `resolveSddExecutionContext`（`sdd.context.feature-in-control` 门禁）共享 `isDistinctCheckout`（按 canonical per-worktree git dir 比较）——无 `.worktrees` 名称特判、无重复 containment 规则，control-harness-inside-feature、路径逃逸、lease 与分支保护保持不变。
+- **ZCode 协调写入门禁**：新增引擎内置的 PreToolUse（`Write|Edit`）进程钩子 `hooks/mstar-write-gate.mjs` —— hard 模式仓库对 harness 协调文档（status.json、workflow 快照、项目登记）的写入以 exit 2 + 可操作的 stderr 理由拦截（stdout 恒为空）；soft 模式与非 harness 写入静默放行；可用 `MSTAR_WRITE_GATE=off` 按会话关闭。
+- **编辑校验重构后的结果（ZCode 宿主）**：确定性编辑（`old_string` + `new_string` 唯一匹配，或 `replace_all`）现在校验重构后的内容而非编辑前落盘状态 —— 确定性的破坏性编辑在 hard 模式下会被拦截；歧义或不可重构的编辑保持编辑前回退。
+- **超大协调文档在 ZCode 宿主上现为违规**：超过 2 MiB 校验预算的内容或落盘目标产生 `status.oversized`（hard 模式拦截并在理由中给出逃生口，而非静默放行；omp 保持默认静默放行）。
+- **omp 移除钩子懒加载（版本化分歧）**：引擎在构建期内联，过期的 engine dist 现在会让 omp 构建失败而非静默降级；Gate-1 的拦截/放行判定与理由字符串不变（golden fixture 矩阵验证）。
+
+### 版本对齐
+
+- 提升 monorepo 根、`@mstar-harness/opencode`、`@mstar-harness/cli`、`@mstar-harness/engine`、`@mstar-harness/dsh`、Cursor/Codex/Kimi/ZCode/omp/Claude 插件清单、便携式 Agent Plugins 清单及两份 marketplace 清单：**→ 3.7.1**。
+
 ## [3.7.0] - 2026-09-08
 
 ### Harness

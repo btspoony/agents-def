@@ -6,6 +6,22 @@ The monorepo root [CHANGELOG.md](../../CHANGELOG.md) summarizes cross-surface re
 
 ## [Unreleased]
 
+## [3.7.1] - 2026-09-09
+
+### Changed
+
+- **Worktree gates now distinguish Git checkout identity from physical path nesting.** A real linked worktree created inside the control checkout (the documented `.worktrees` layout) passes the L1 pre-dispatch check and the bound SDD execution context; the same control checkout, a plain subdirectory of it, or a symlink alias of it is refused — even when the declared branch equals the control branch. Git-probe failure fails closed with the existing bounded timeout.
+- **The control checkout root is derived by git probe, not `dirname(harness)`.** `resolveSddExecutionContext` resolves the real repository top-level of the declared harness root (`git rev-parse --show-toplevel`, bounded and fail-closed), so a `.mstarc`/override nested harness like `<control>/state/.mstar` gates the same-checkout isolation identically in standalone and active-lease contexts; an unresolvable root fails closed.
+- **One shared checkout-identity predicate.** `l1PreDispatchCheck`, `assertControlVsFeaturePath` and `resolveSddExecutionContext` (the `sdd.context.feature-in-control` gate) share `isDistinctCheckout` (canonical per-worktree git dir comparison) — no `.worktrees` name special-case, no duplicated containment rule, and the control-harness-inside-feature, path-escape, lease and branch protections are unchanged.
+- **ZCode coordination-write gate**: new engine-backed PreToolUse (`Write|Edit`) process hook `hooks/mstar-write-gate.mjs` — hard-enforced repos block writes to harness coordination documents (status.json, workflow snapshots, project registers) with exit 2 plus an actionable stderr reason (stdout stays empty); soft-mode and non-harness writes pass silently; disable per session with `MSTAR_WRITE_GATE=off`.
+- **Edits validate the reconstructed post-edit result (ZCode host)**: deterministic Edits (`old_string` + `new_string` with a unique match, or `replace_all`) are validated against the reconstructed content instead of the pre-edit on-disk state — a deterministic corrupting edit now blocks under hard enforcement; ambiguous or non-reconstructible edits keep the pre-edit fallback.
+- **Oversized coordination docs are now a violation on the ZCode host**: content or on-disk targets beyond the 2 MiB validation budget yield `status.oversized` (hard-mode block naming the escape hatch instead of a silent pass; omp keeps the default silent pass).
+- **omp hook lazy loaders removed (versioned divergence)**: the engine is inlined at build, so a stale engine dist now fails the omp build instead of silently degrading; Gate-1 block/pass decisions and reason strings are unchanged (golden fixture matrix).
+
+- Version alignment with harness **3.7.1**.
+
+See root [CHANGELOG.md](../../CHANGELOG.md) **3.7.1**.
+
 ## [3.7.0] - 2026-09-08
 
 ### Changed
