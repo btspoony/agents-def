@@ -6,6 +6,21 @@ The monorepo root [CHANGELOG.md](../../CHANGELOG.md) summarizes cross-surface re
 
 ## [Unreleased]
 
+## [3.7.1] - 2026-09-09
+
+### Changed
+
+- **dsh fallbacks seeds now converge on boot.** The mstar role-seed declaration survives the provider's apply window: a transient `seeds: settings service is unavailable` reject is retried (3 attempts across the provider's apply window) instead of failing the boot declaration, an ultimately-failed declaration logs exactly one terminal error while the decision-point retry stays available, and the adoption advisory arms only after a converged re-declare — no manual `roles.list` edit is needed for the 13 seeded mstar roles.
+- **Persona seam probe with fail-loud warn.** The native persona channel's cordis `internal/get` seam is probed once per apply (temporary canary listener + one controlled proxied `ctx.subagents` read, never `ctx.get`; fully try/catch-wrapped): a missing or unrecognized seam logs ONE warn (`role persona channel not installed — cordis 'internal/get' seam missing or unrecognized (rolePersonas will not be merged into subagent starts)` + reason) instead of failing silently; a healthy boot produces NO warn (on today's composition the apply ctx does not resolve `subagents`, so each apply emits one no-warn `service-absent` debug — cordis resolves the service in dispatch scopes, where reads are intercepted per read; `wrap-skipped` is pinned but not reachable from the shipped apply wiring; probe-internal errors degrade fail-open); merge/delegation semantics unchanged. A dedicated probe family (`tests/persona-seam-probe.spec.ts`, 10 cases) pins the seam name (via the exported `PERSONA_SEAM_EVENT` constant), the outcome table, and the warn text verbatim; the installed-artifact assertion arms once the release carrying the probe publishes (surface-vintage guard in `tests/install-e2e.spec.ts`).
+- **`rolePersonas` docs now state the merge semantics explicitly.** The Config JSDoc and the README config table spell out all three cases unambiguously: the request's own `persona` wins as-is (caller intent is never overridden — no role merge), a non-empty entry beats the bundled `harness-agents/` mirror default, and an **empty-string** entry is treated as unset and falls through to the mirror default — documentation only, persona resolution behavior unchanged.
+- **Seed mirror views are compile-tied to the real fallbacks types.** A dedicated typegate spec (run by `typecheck:tests`, the same channel as the existing service-view gate) asserts the mstar seed mirror views stay assignable from the real `dsh-llm-fallbacks` module shapes — drift fails the typecheck, not a runtime dispatch; `packages/dsh/src/` keeps zero runtime and zero type imports of the fallbacks package.
+- **Skill-lint runtime-mode parity is pinned by tests** on the canonical fixture rows (`classifySkillLint` routes `mstar-*` ids to the runtime profile; `lintFiveQuestion` receives `profile.mode`), closing the stale roadmap observation; the `fallbacks-decoration` fixture-flake observation is closed as obsolete (the spec no longer exists).
+- **The `rolePersonaAgentsDir` module sink lifetime is documented and pinned by a re-bind test** (one plugin row per process; the per-apply `setRolePersonaAgentsDir` call is the re-bind/reset and also resets the mirror-absent latch) — no refactor, persona delivery semantics unchanged.
+
+- Version alignment with harness **3.7.1**.
+
+See root [CHANGELOG.md](../../CHANGELOG.md) **3.7.1**.
+
 ## [3.7.0] - 2026-09-08
 
 ### Changed
