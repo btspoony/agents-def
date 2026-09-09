@@ -22,6 +22,7 @@
     "dsh:build": "bun run --cwd packages/dsh build",
     "omp:build": "bun run --cwd packages/omp build",
     "omp:pack": "npm pack --workspace @mstar-harness/omp",
+    "hooks:build": "bun run scripts/build-zcode-hooks.ts",
     "release:prepare": "bun run scripts/prepare-release.ts",
     "release:validate": "bun run scripts/validate-release-version.ts",
     "ci:dep-guard": "bun scripts/ci-dep-guard.ts",

@@ -205,6 +205,11 @@ function validateKnownMarketplaces() {
   return errors;
 }
 
+/** Plugin manifest `version` field reader and the cache version discovery
+ * live in `../plugin-version-alignment` (shared across hosts, plan batch 2);
+ * the zcode doctor alignment note is printed centrally by `runDoctor` in
+ * `index.ts` for every target. */
+
 function validatePluginAgents(pluginRoot: string) {
   const errors: string[] = [];
   const agentsDir = path.join(pluginRoot, "agents");
@@ -291,6 +296,10 @@ function runDoctor(scope: Scope) {
 
   errors.push(...validateKnownMarketplaces());
   errors.push(...validateMarketplaceJson());
+
+  // Plugin/CLI version alignment moved to `../plugin-version-alignment` and
+  // is printed centrally by runDoctor in index.ts for every target — the
+  // adapter no longer emits its own note (it would print twice).
 
   return { location: KNOWN_MARKETPLACES_PATH, errors };
 }

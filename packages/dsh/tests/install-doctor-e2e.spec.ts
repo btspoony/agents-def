@@ -273,7 +273,7 @@ describe.skipIf(skipReason !== undefined)('install-surface doctor three-state e2
       const advisoryLogs: Array<[AdvisoryLogLevel, string]> = []
       const priorAdvisory = setAdvisoryLogger((level, message) => { advisoryLogs.push([level, message]) })
       try {
-        expect(await runFallbacksAdvisory(app.ctx, join(hostCopyRoot, 'dsh/harness-agents'))).toBe(false)
+        expect(await runFallbacksAdvisory(app.ctx, join(hostCopyRoot, 'dsh/harness-agents'))).toEqual({ ran: false, converged: false })
         expect(advisoryLogs).toEqual([]) // unmounted → not invoked, no logs
       } finally {
         setAdvisoryLogger(priorAdvisory)
@@ -326,7 +326,7 @@ describe.skipIf(skipReason !== undefined)('install-surface doctor three-state e2
       const advisoryLogs: Array<[AdvisoryLogLevel, string]> = []
       const priorAdvisory = setAdvisoryLogger((level, message) => { advisoryLogs.push([level, message]) })
       try {
-        expect(await runFallbacksAdvisory(booted.ctx, join(hostCopyRoot, 'dsh/harness-agents'))).toBe(false)
+        expect(await runFallbacksAdvisory(booted.ctx, join(hostCopyRoot, 'dsh/harness-agents'))).toEqual({ ran: false, converged: false })
         expect(advisoryLogs).toEqual([]) // disabled entry → not invoked, no logs
       } finally {
         setAdvisoryLogger(priorAdvisory)

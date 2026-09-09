@@ -120,6 +120,7 @@ import { validateAgentPlugin } from "./agent-plugins";
 import { buildModelAssignments } from "./assignment";
 import { getAdapter } from "./adapters";
 import { defaultDetectVersion, ensureGlobalCli, formatCliDoctorNote } from "./global-cli";
+import { detectInstalledPluginVersion, formatPluginVersionDoctorNote } from "./plugin-version-alignment";
 import type { DoctorOptions, InitOptions, PluginValidateOptions, Target } from "./types";
 import { SUPPORTED_TARGETS } from "./types";
 import { parseCsv, readJson, writeJson, readHarnessVersion, resolveCliPath, resolveProjectRoot } from "./utils";
@@ -247,6 +248,11 @@ function runDoctor(options: DoctorOptions) {
  // CLI-on-PATH note: informational for every target, never part
  // of doctor errors and never affects the exit code.
   console.log(formatCliDoctorNote(defaultDetectVersion(), packageVersion));
+ // Plugin/CLI version alignment: exactly one informational line per target,
+ // printed via the shared builder BEFORE mode dispatch so both config-mode
+ // (opencode) and install-mode flows get it. Same tier as the CLI-on-PATH
+ // note — never part of doctor errors, never the exit code.
+  console.log(formatPluginVersionDoctorNote(target, packageVersion, detectInstalledPluginVersion(target, scope)));
 
   if (adapter.mode === "install") {
     const result = adapter.runInstallDoctor?.(scope);

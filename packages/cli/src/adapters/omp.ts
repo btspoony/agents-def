@@ -38,42 +38,69 @@ function runOmp(args: string[], dryRun: boolean): void {
   runCliCommand(["omp", ...args], { dryRun });
 }
 
-function listInstalledPlugins(): Array<Record<string, unknown>> {
+/**
+ * Bound for the `omp plugin list --json` probe (ms). Mirrors the codex
+ * adapter's local-probe ceiling (10s): the doctor's centralized version
+ * alignment check runs BEFORE the omp adapter's own checks, so a stalled omp
+ * binary must surface as a caught throw (→ empty listing → standard
+ * not-installed note) instead of blocking doctor indefinitely.
+ */
+export const OMP_LIST_TIMEOUT_MS = 10_000;
+
+/**
+ * Parse `omp plugin list --json` output into flat entry records (npm +
+ * marketplace groups flattened; pure — no subprocess). Exported so the
+ * JSON-parsing layer is testable without spawning omp.
+ */
+export function parseOmpPluginList(raw: string): Array<Record<string, unknown>> {
+  const parsed = JSON.parse(raw) as unknown;
+  if (Array.isArray(parsed)) return parsed as Array<Record<string, unknown>>;
+  if (parsed && typeof parsed === "object") {
+    const record = parsed as {
+      plugins?: unknown;
+      npm?: unknown;
+      marketplace?: unknown;
+    };
+    if (Array.isArray(record.plugins)) {
+      return record.plugins as Array<Record<string, unknown>>;
+    }
+    // omp 17.x: { npm: [...], marketplace: [...] }
+    const entries: Array<Record<string, unknown>> = [];
+    for (const key of ["npm", "marketplace"] as const) {
+      const group = record[key];
+      if (Array.isArray(group)) {
+        for (const item of group) {
+          if (item && typeof item === "object") entries.push(item as Record<string, unknown>);
+        }
+      }
+    }
+    if (entries.length > 0) return entries;
+  }
+  return [];
+}
+
+/** Exported for `../plugin-version-alignment`: the doctor alignment note
+ * reads the installed plugin version from the same listing the doctor's
+ * installed-state check uses (single JSON surface, no duplicate parsing).
+ * `timeoutMs` bounds the subprocess (default `OMP_LIST_TIMEOUT_MS`) — a
+ * timeout throw lands in the same catch as any other probe failure and
+ * degrades to an empty listing (never blocks doctor). The stdlib option name
+ * is `timeout` (ms): `exec.ts` maps its own `timeoutMs` spelling onto it, and
+ * raw `execFileSync` silently ignores an unknown `timeoutMs` key. */
+export function listInstalledPlugins(timeoutMs: number = OMP_LIST_TIMEOUT_MS): Array<Record<string, unknown>> {
   try {
     const raw = execFileSync("omp", ["plugin", "list", "--json"], {
       stdio: "pipe",
       encoding: "utf8",
+      timeout: timeoutMs,
     });
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) return parsed as Array<Record<string, unknown>>;
-    if (parsed && typeof parsed === "object") {
-      const record = parsed as {
-        plugins?: unknown;
-        npm?: unknown;
-        marketplace?: unknown;
-      };
-      if (Array.isArray(record.plugins)) {
-        return record.plugins as Array<Record<string, unknown>>;
-      }
-      // omp 17.x: { npm: [...], marketplace: [...] }
-      const entries: Array<Record<string, unknown>> = [];
-      for (const key of ["npm", "marketplace"] as const) {
-        const group = record[key];
-        if (Array.isArray(group)) {
-          for (const item of group) {
-            if (item && typeof item === "object") entries.push(item as Record<string, unknown>);
-          }
-        }
-      }
-      if (entries.length > 0) return entries;
-    }
-    return [];
+    return parseOmpPluginList(raw);
   } catch {
     return [];
   }
 }
 
-function findInstalledPlugin(plugins: Array<Record<string, unknown>>) {
+export function findInstalledPlugin(plugins: Array<Record<string, unknown>>) {
   return plugins.find((entry) => {
     const name = typeof entry.name === "string" ? entry.name : "";
     const pathValue = typeof entry.path === "string" ? entry.path : "";

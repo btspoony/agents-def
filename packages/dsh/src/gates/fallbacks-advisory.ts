@@ -27,12 +27,18 @@
  *
  * Unreadable row config (absent field / non-object, or an unreadable
  * `roles.list`) → skip + one debug log. Unmounted → the pass is not invoked
- * (returns `false`, no logs). The advisory NEVER writes the fallbacks config
- * — the read is read-only over the deployment's config layer (never the
- * fallbacks plugin's module internals); the only write path is the
- * idempotent seeds re-declare through the released seeds surface (no-delta
- * → no settings write upstream). The advisory never throws (the caller's
- * dispatch/apply flow is never affected).
+ * (`{ ran: false, converged: false }`, no logs). An aborted pass (any caught
+ * error, including a rejected re-declare) reports `{ ran: true, converged:
+ * false }` — the honest latch: the caller arms its one-shot latch only on
+ * `ran && converged`, so a failed pass never suppresses the decision-point
+ * retry. The degraded-abort warn is deduplicated to at most ONE per apply
+ * (module flag; the entry resets it via {@link resetAdvisoryAbortWarn}).
+ * The advisory NEVER writes the fallbacks config — the read is read-only
+ * over the deployment's config layer (never the fallbacks plugin's module
+ * internals); the only write path is the idempotent seeds re-declare
+ * through the released seeds surface (no-delta → no settings write
+ * upstream). The advisory never throws (the caller's dispatch/apply flow is
+ * never affected).
  *
  * Module boundary: no barrel — the entry imports this module by explicit
  * relative path (the role-persona module pattern).
@@ -74,6 +80,46 @@ export function setAdvisoryLogger(sink: AdvisoryLogSink): AdvisoryLogSink {
  */
 export const ADVISORY_ID_LIST_CAP = 20
 
+/**
+ * One advisory pass outcome (the honest-latch contract):
+ * - `ran` — the pass executed (the capability is mounted); `false` means the
+ *   pass was not invoked (unmounted). Carries the one-pass-per-apply
+ *   bookkeeping.
+ * - `converged` — the pass reached its converged end. Per return path:
+ *   unmounted → `false`; aborted pass (any caught error, including a
+ *   rejected re-declare) → `false`; a no-re-declare path (loader-fallback
+ *   structural read, unreadable config, or a service-present pass that
+ *   never reaches the re-declare) → `true`; service-present path → reflects
+ *   the re-declare resolving.
+ *
+ * The caller (entry `apply`) arms its one-shot latch only on
+ * `ran && converged` — a rejected re-declare must never suppress the
+ * `subagent/start` decision-point retry.
+ */
+export interface AdvisoryPassReport {
+  ran: boolean
+  converged: boolean
+}
+
+/**
+ * Module-level dedup flag for the degraded-abort warn: at most ONE aborted-
+ * pass warn per apply. The entry resets it via {@link resetAdvisoryAbortWarn}
+ * at `apply` and in the seeds inject child's teardown, so each apply (and
+ * each HMR re-apply) gets a fresh one-warn budget while a decision-point
+ * retry that aborts again within the same apply stays silent.
+ */
+let advisoryAbortWarned = false
+
+/**
+ * Reset the degraded-abort warn dedup flag (one warn per apply budget).
+ * Called by the entry at `apply` (next to the advisory sink binding) and in
+ * the `llm-fallbacks` inject child's teardown (a fiber swap re-opens the
+ * budget for the re-applied fiber). Exported for the suite's dedup case.
+ */
+export function resetAdvisoryAbortWarn(): void {
+  advisoryAbortWarned = false
+}
+
 /** Format an id list for one warn/debug line: first N ids, then `… and K more`. */
 function capIdList(items: readonly string[]): string {
   if (items.length <= ADVISORY_ID_LIST_CAP) return items.join(', ')
@@ -87,27 +133,32 @@ interface RoleEntityView {
 }
 
 /**
- * One advisory pass: unmounted → not invoked (`false`, no logs); mounted →
- * report the taxonomy adoption state (bounded: ≤1 warn per category). With
- * the service present the pass is ASYNC: it awaits the idempotent re-declare
- * before the effective-state readback (report determinism — the boot
- * dual-inject-child race window is closed). Never throws — every failure
- * mode degrades to skip + one debug/warn. Never writes the fallbacks config.
+ * One advisory pass: unmounted → not invoked (`{ ran: false, converged:
+ * false }`, no logs); mounted → report the taxonomy adoption state (bounded:
+ * ≤1 warn per category). With the service present the pass is ASYNC: it
+ * awaits the idempotent re-declare before the effective-state readback
+ * (report determinism — the boot dual-inject-child race window is closed).
+ * Never throws — every failure mode degrades to skip + one debug/warn, and
+ * an aborted pass reports `converged: false` (the honest latch). Never
+ * writes the fallbacks config.
  *
  * @param ctx - the plugin's registrant context (the app composition root).
  * @param agentsDir - the `harness-agents/` mirror root the mstar role-id set
  *   is derived from; absent → the taxonomy checks are skipped (one debug
  *   log; the legacy-keys check is mirror-independent and still runs).
- * @returns `true` when the pass ran (mounted), `false` when unmounted — the
- *   caller (entry `apply`) uses the boolean for the one-pass-per-apply latch.
+ * @returns the {@link AdvisoryPassReport} — `ran` marks a mounted pass (the
+ *   one-pass-per-apply bookkeeping), `converged` marks a pass that reached
+ *   its converged end; the caller (entry `apply`) arms the one-shot latch
+ *   only on `ran && converged`, so an aborted pass (e.g. a rejected
+ *   re-declare) never suppresses the decision-point retry.
  */
-export async function runFallbacksAdvisory(ctx: Context, agentsDir: string | undefined): Promise<boolean> {
+export async function runFallbacksAdvisory(ctx: Context, agentsDir: string | undefined): Promise<AdvisoryPassReport> {
   try {
-    if (!fallbacksMounted(ctx)) return false
+    if (!fallbacksMounted(ctx)) return { ran: false, converged: false }
     const config = readRowConfig(ctx)
     if (config === undefined) {
       log('debug', 'fallbacks row config unreadable (absent or non-object) — adoption advisory skipped')
-      return true
+      return { ran: true, converged: true }
     }
     const service = fallbacksService(ctx)
     if (service !== undefined) {
@@ -120,24 +171,38 @@ export async function runFallbacksAdvisory(ctx: Context, agentsDir: string | und
     return runStructuralAdvisory(config, agentsDir)
   } catch (error) {
     // Contained like the gate's degrade path: skip the pass, never crash.
-    log('warn', `fallbacks adoption advisory aborted (degraded — warn-only, deployment config untouched): ${errorMessage(error)}`)
-    return true
+    // The degraded-abort warn is deduplicated to at most ONE per apply
+    // (module flag, reset by the entry at apply / inject teardown) — a
+    // decision-point retry that aborts again within the same apply stays
+    // silent. The report stays honest either way: an aborted pass NEVER
+    // reports converged, so the caller's latch stays open for the retry.
+    if (!advisoryAbortWarned) {
+      advisoryAbortWarned = true
+      log('warn', `fallbacks adoption advisory aborted (degraded — warn-only, deployment config untouched): ${errorMessage(error)}`)
+    }
+    return { ran: true, converged: false }
   }
 }
 
 /**
  * Service-present path: legacy keys → mirror gate → await the idempotent
  * re-declare → effective readback → three-state report + declare-outcome
- * merge. The re-declare's own diagnostics are forwarded on the advisory
- * DEBUG channel only — per-id skip detail stays visible without breaking
- * the ≤1-warn-per-category bound (the declaration/skip warn surface is the
- * single consolidated `reportDeclareOutcome` line).
+ * merge. `converged` reflects the re-declare resolving: every path that
+ * returns before the re-declare (no mirror / no subagent shells) reports
+ * `converged: true` (no convergence was attempted), a resolved re-declare
+ * reports `converged: true` (a throwing readback after it does not un-
+ * converge the declaration), and a rejecting re-declare propagates to the
+ * caller's abort path (`converged: false`). The re-declare's own
+ * diagnostics are forwarded on the advisory DEBUG channel only — per-id
+ * skip detail stays visible without breaking the ≤1-warn-per-category
+ * bound (the declaration/skip warn surface is the single consolidated
+ * `reportDeclareOutcome` line).
  */
 async function runSeedsAdvisory(
   service: FallbacksServiceView,
   config: Record<string, unknown>,
   agentsDir: string | undefined,
-): Promise<boolean> {
+): Promise<AdvisoryPassReport> {
   // (d) Legacy keys — the service's own detector when applied (mirror-
   // independent: runs even without a mirror).
   const legacy = service.detectLegacyKeys(config)
@@ -149,12 +214,12 @@ async function runSeedsAdvisory(
   // (a preserved-only batch has no mstar analysis to converge).
   if (agentsDir === undefined) {
     log('debug', 'harness-agents mirror absent — fallbacks adoption taxonomy check skipped (config-only advisory)')
-    return true
+    return { ran: true, converged: true }
   }
   const mstarIds = subagentRoleIds(agentsDir)
   if (mstarIds.length === 0) {
     log('debug', 'harness-agents mirror has no subagent-mode shells — fallbacks adoption taxonomy check skipped')
-    return true
+    return { ran: true, converged: true }
   }
   // Decision-point convergence: await the idempotent re-declare FIRST, then
   // read the EFFECTIVE state — the report deterministically reflects the
@@ -170,36 +235,38 @@ async function runSeedsAdvisory(
   const seedsLog: SeedsLogSink = (_level, message) => log('debug', message)
   const view = await declareMstarSeeds(service, { agentsDir, log: seedsLog })
   // Readback — sync (probe semantics: a throwing readback degrades to skip +
-  // one warn; the adoption state is unavailable, never guessed).
+  // one warn; the adoption state is unavailable, never guessed). The
+  // re-declare RESOLVED, so the pass stays converged — the readback failure
+  // only degrades the adoption-state report.
   let readback: EffectiveRolesReadbackView
   try {
     readback = service.getEffectiveRoles()
   } catch (error) {
     log('warn', `fallbacks effective-state readback failed — adoption state unavailable: ${errorMessage(error)}`)
-    return true
+    return { ran: true, converged: true }
   }
   reportEffectiveState(mstarIds, readback)
   reportDeclareOutcome(view)
-  return true
+  return { ran: true, converged: true }
 }
 
-/** Loader-fallback path (no service): the structural roles.list read, unchanged. */
-function runStructuralAdvisory(config: Record<string, unknown>, agentsDir: string | undefined): boolean {
+/** Loader-fallback path (no service): the structural roles.list read, unchanged. No re-declare is involved — the pass always reports converged. */
+function runStructuralAdvisory(config: Record<string, unknown>, agentsDir: string | undefined): AdvisoryPassReport {
   // The mstar role-id set is mirror-derived, never
   // hardcoded: no mirror → no taxonomy reference → one debug.
   if (agentsDir === undefined) {
     log('debug', 'harness-agents mirror absent — fallbacks adoption taxonomy check skipped (config-only advisory)')
-    return true
+    return { ran: true, converged: true }
   }
   const mstarIds = subagentRoleIds(agentsDir)
   if (mstarIds.length === 0) {
     log('debug', 'harness-agents mirror has no subagent-mode shells — fallbacks adoption taxonomy check skipped')
-    return true
+    return { ran: true, converged: true }
   }
   const list = readRolesList(config)
   if (list === undefined) {
     log('debug', 'fallbacks roles block not structurally readable (roles.list absent or non-array) — adoption advisory skipped')
-    return true
+    return { ran: true, converged: true }
   }
   const declared = new Map<string, RoleEntityView>()
   for (let index = 0; index < list.length; index++) {
@@ -229,7 +296,7 @@ function runStructuralAdvisory(config: Record<string, unknown>, agentsDir: strin
   if (emptyPersona.length > 0) {
     log('warn', `fallbacks roles.list declares roles with an empty persona: ${capIdList(emptyPersona)} — declare a persona (or remove the role)`)
   }
-  return true
+  return { ran: true, converged: true }
 }
 
 /**
