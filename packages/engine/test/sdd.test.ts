@@ -757,7 +757,7 @@ type ExecutionFixture = {
 
 const PLAN_ID = "20260907-sdd-execution-paths";
 
-function executionFixture(root: string): ExecutionFixture {
+function executionFixture(root: string, opts: { nested?: boolean; nestedHarness?: boolean } = {}): ExecutionFixture {
   const primary = join(root, "primary");
   mkdirSync(primary);
   git(["init", "-q"], primary);
@@ -773,10 +773,16 @@ function executionFixture(root: string): ExecutionFixture {
   const control = join(root, "control");
   git(["worktree", "add", "-q", "-b", "codex/iter-integration", control], primary);
   const workingBranch = `feature/${PLAN_ID}`;
-  const feature = join(root, "feature");
+  // Nested variant: the feature worktree lives INSIDE the control checkout
+  // under an arbitrary folder name (the documented .worktrees layout) — the
+  // checkout-identity gate must accept it without a name special-case.
+  const feature = opts.nested ? join(control, "nested-checkouts", `wt-${PLAN_ID}`) : join(root, "feature");
   git(["worktree", "add", "-q", "-b", workingBranch, feature], primary);
 
-  const harnessDir = join(control, ".mstar");
+  // Nested-harness variant: the harness sits under a configured subdir of
+  // the control checkout (`<control>/state/.mstar`) — the resolver must
+  // derive the real checkout root by git probe, never dirname(harness).
+  const harnessDir = opts.nestedHarness ? join(control, "state", ".mstar") : join(control, ".mstar");
   const planFile = join(harnessDir, "plans", `${PLAN_ID}.md`);
   mkdirSync(dirname(planFile), { recursive: true });
   writeFileSync(planFile, "# Plan\n\n## Task 1\n\n- implement\n");
@@ -933,6 +939,163 @@ describe("resolveSddExecutionContext — A3 declared-context resolution", () => 
       );
       expect(err.exitCode).toBe(1);
       expect(err.message).toContain("sdd.context.control-inside-feature");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("nested feature worktree inside the control checkout passes (real linked worktree, arbitrary folder name)", () => {
+    const root = tmpRoot("sdd-ctx-nested-ok-");
+    try {
+      const f = executionFixture(root, { nested: true });
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(resolved.featureCwd).toBe(realpathSync(f.feature));
+      expect(resolved.controlHarnessRoot).toBe(realpathSync(f.harnessDir));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("nested feature worktree with a verified lease resolves (L1 + lease binding)", () => {
+    const root = tmpRoot("sdd-ctx-nested-lease-");
+    try {
+      const f = executionFixture(root, { nested: true });
+      writeSnapshot(f, "wf-1", [{ id: PLAN_ID, status: "InProgress", execution_lease: executionLease(f) }]);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(resolved.featureCwd).toBe(realpathSync(f.feature));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("coherent harness alias passes (control harness root declared through a symlink alias)", () => {
+    const root = tmpRoot("sdd-ctx-alias-ok-");
+    try {
+      const f = executionFixture(root, { nested: true });
+      const alias = join(root, "control-alias");
+      symlinkSync(f.control, alias);
+      const aliasHarness = join(alias, ".mstar");
+      const resolved = resolveSddExecutionContext({
+        ...contextOf(f),
+        controlHarnessRoot: aliasHarness,
+        planFile: join(aliasHarness, "plans", `${PLAN_ID}.md`),
+        sddDir: join(aliasHarness, "sdd", PLAN_ID),
+      });
+      expect(resolved.controlHarnessRoot).toBe(realpathSync(f.harnessDir));
+      expect(resolved.featureCwd).toBe(realpathSync(f.feature));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("feature cwd equal to the control checkout is refused (exit 1)", () => {
+    const root = tmpRoot("sdd-ctx-same-");
+    try {
+      const f = executionFixture(root);
+      const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), featureCwd: f.control }));
+      expect(err.exitCode).toBe(1);
+      // The control harness lives inside the feature cwd (the control
+      // checkout itself) — control-inside-feature is the first gate.
+      expect(err.message).toContain("sdd.context.control-inside-feature");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("symlink alias of the control checkout is refused as feature cwd (exit 1)", () => {
+    const root = tmpRoot("sdd-ctx-alias-neg-");
+    try {
+      const f = executionFixture(root);
+      const alias = join(root, "control-alias");
+      symlinkSync(f.control, alias);
+      const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), featureCwd: alias }));
+      expect(err.exitCode).toBe(1);
+      // The alias canonicalizes to the control checkout, whose harness is
+      // inside the feature cwd — control-inside-feature is the first gate.
+      expect(err.message).toContain("sdd.context.control-inside-feature");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("plain subdirectory of the control checkout refused even when the declared branch equals the control branch (exit 1)", () => {
+    const root = tmpRoot("sdd-ctx-branch-eq-");
+    try {
+      const f = executionFixture(root);
+      const subdir = join(f.control, "plain-subdir");
+      mkdirSync(subdir);
+      const controlBranch = git(["branch", "--show-current"], f.control);
+      const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), featureCwd: subdir, workingBranch: controlBranch }));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.feature-in-control");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("configured nested harness (standalone): nested real linked worktree passes", () => {
+    const root = tmpRoot("sdd-ctx-nested-harness-ok-");
+    try {
+      const f = executionFixture(root, { nested: true, nestedHarness: true });
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(resolved.featureCwd).toBe(realpathSync(f.feature));
+      expect(resolved.controlHarnessRoot).toBe(realpathSync(f.harnessDir));
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("configured nested harness (standalone): plain subdirectory of the control checkout refused", () => {
+    const root = tmpRoot("sdd-ctx-nested-harness-subdir-");
+    try {
+      const f = executionFixture(root, { nestedHarness: true });
+      const subdir = join(f.control, "plain-feature");
+      mkdirSync(subdir);
+      const controlBranch = git(["branch", "--show-current"], f.control);
+      const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), featureCwd: subdir, workingBranch: controlBranch }));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("sdd.context.feature-in-control");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("configured nested harness (standalone): symlink alias of the control checkout refused", () => {
+    const root = tmpRoot("sdd-ctx-nested-harness-alias-");
+    try {
+      const f = executionFixture(root, { nestedHarness: true });
+      const alias = join(root, "control-alias");
+      symlinkSync(f.control, alias);
+      const controlBranch = git(["branch", "--show-current"], f.control);
+      const err = errOf(() => resolveSddExecutionContext({ ...contextOf(f), featureCwd: alias, workingBranch: controlBranch }));
+      expect(err.exitCode).toBe(1);
+      // The alias canonicalizes to the control checkout, whose harness is
+      // inside the feature cwd — control-inside-feature is the first gate.
+      expect(err.message).toContain("sdd.context.control-inside-feature");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("configured nested harness (active lease): nested real linked worktree passes; plain subdir lease refused", () => {
+    const root = tmpRoot("sdd-ctx-nested-harness-lease-");
+    try {
+      const f = executionFixture(root, { nested: true, nestedHarness: true });
+      writeSnapshot(f, "wf-1", [{ id: PLAN_ID, status: "InProgress", execution_lease: executionLease(f) }]);
+      const resolved = resolveSddExecutionContext(contextOf(f));
+      expect(resolved.featureCwd).toBe(realpathSync(f.feature));
+
+      // A lease naming a plain subdirectory of the control checkout is the
+      // same checkout — the reused L1 gate refuses it (lease-equals-control).
+      const subdir = join(f.control, "plain-feature");
+      mkdirSync(subdir);
+      const controlBranch = git(["branch", "--show-current"], f.control);
+      writeSnapshot(f, "wf-1", [
+        { id: PLAN_ID, status: "InProgress", execution_lease: executionLease(f, { worktree_path: subdir, working_branch: controlBranch }) },
+      ]);
+      const err = errOf(() => resolveSddExecutionContext(contextOf(f)));
+      expect(err.exitCode).toBe(1);
+      expect(err.message).toContain("worktree.l1.lease-equals-control");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

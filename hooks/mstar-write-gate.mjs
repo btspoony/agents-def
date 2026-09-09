@@ -17,7 +17,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { existsSync as existsSync4, readFileSync as readFileSync4, readdirSync as readdirSync3, realpathSync } from "node:fs";
 import { dirname as dirname4, join as join7, resolve as resolve5, sep } from "node:path";
 import { existsSync as existsSync8, statSync as statSync5 } from "node:fs";
-import { basename as basename5, dirname as dirname7, join as join11, relative as relative4, resolve as resolve10 } from "node:path";
+import { basename as basename5, dirname as dirname7, join as join12, relative as relative4, resolve as resolve10 } from "node:path";
 var SEVERITY_ORDER = ["critical", "high", "medium", "low", "nit"];
 function readJson(filePath) {
   if (!existsSync(filePath))
@@ -779,7 +779,7 @@ var SNAPSHOT_FILE = "snapshot.json";
 var REGISTER_FILE = "residuals.json";
 function hasEntry(dir, name) {
   try {
-    statSync5(join11(dir, name));
+    statSync5(join12(dir, name));
     return true;
   } catch {
     return false;
@@ -824,8 +824,8 @@ function harnessDocKindOfTarget(targetPath) {
       workflowDir = resolveWorkflowDir(harnessDir2, { harnessDir: harnessDir2 });
       projectDir = resolveProjectDir(harnessDir2, { harnessDir: harnessDir2 });
     } catch {
-      workflowDir = join11(harnessDir2, "workflows");
-      projectDir = join11(harnessDir2, "projects");
+      workflowDir = join12(harnessDir2, "workflows");
+      projectDir = join12(harnessDir2, "projects");
     }
     if (name === SNAPSHOT_FILE && /^[^/]+\/snapshot\.json$/.test(relative4(workflowDir, resolved))) {
       return { harnessDir: harnessDir2, kind: "snapshot" };
