@@ -6,6 +6,17 @@
 
 ## [Unreleased]
 
+## [3.7.2] - 2026-09-09
+
+### Harness
+
+- 将 `mode: primary` 的 **`project-manager`** agent shell 从共享 `agents/` subagent 目录迁出，移至 `packages/opencode/agents/`（仅 OpenCode 使用）。各宿主插件面（ZCode / omp / Claude-plugin manifest）不再把 PM 注册为 subagent——PM 入口保持 `pm` skill；OpenCode bundle 时并入 `harness-agents/`。
+- 同步更新 omp/dsh 镜像契约与宿主文档。
+
+### 版本对齐
+
+- 提升 monorepo 根、`@mstar-harness/opencode`、`@mstar-harness/cli`、`@mstar-harness/engine`、`@mstar-harness/dsh`、Cursor/Codex/Kimi/ZCode/omp/Claude 插件清单、便携式 Agent Plugins 清单及两份 marketplace 清单：**→ 3.7.2**。
+
 ## [3.7.1] - 2026-09-09
 
 ### Harness
