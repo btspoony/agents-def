@@ -11,7 +11,7 @@ Parallel PM dispatch: read **`parallel-dispatch.md`** when dispatching **N ≥ 2
 - Plugin markers: **`.omp-plugin/plugin.json`** (Morning Star host marker) and **`.claude-plugin/plugin.json`** (Claude-compatible marketplace discovery). The **npm package** (`@mstar-harness/omp`) ships its own package-root `plugin.json` + `skills/` + `commands/` + `agents/` + `hooks/` + `tools/` mirrors; the **maintainer link path** is now `<repo>/packages/omp` (built) — hooks/tools moved into the package (2026-09-03), so linking the repo root provides skills/commands/agents only, with NO runtime gates.
 - Runtime skills: package `skills/` (or repo `skills/` on the link path) discovered after `omp plugin install` / `omp plugin link` (OMP extension-package sub-discovery) or Claude marketplace install.
 - Plugin commands: `commands/<name>.md` → slash **`/<name>`** (e.g. `/iteration-start`). omp uses the **filename** as the command name (no `morning-star-harness:` prefix).
-- Plugin agents: **`agents/*.md`** are discovered into the live **`task.agent`** list after install/link + reload. Morning Star **subagent** role ids (`product-manager`, `architect`, `fullstack-dev`, `qc-specialist`, …) are valid `agent` values **when listed** — see C5. `project-manager` is **`mode: primary`** (orchestration seat), not a typical `task` dispatch target.
+- Plugin agents: **`agents/*.md`** are discovered into the live **`task.agent`** list after install/link + reload. Morning Star **subagent** role ids (`product-manager`, `architect`, `fullstack-dev`, `qc-specialist`, …) are valid `agent` values **when listed** — see C5. `project-manager` ships **no agent shell here** — the `mode: primary` seat is OpenCode-only (`packages/opencode/agents/`); PM enters via the `pm` skill and is never a `task` dispatch target.
 - **No Kimi-style `sessionStart.skill`** — enter PM manually via **`/skill:pm`** (or the `pm` skill), then **Read next** → `mstar-harness-core` → `project-manager.md`.
 - Install (user-scoped, recommended):
   - `omp plugin install @mstar-harness/omp`
@@ -101,7 +101,7 @@ Single-task shorthand may exist depending on host version — always match the l
 
 ### Notes
 
-- `project-manager` is the **primary** orchestration agent (`agents/project-manager.md` `mode: primary`). Do not dispatch PM-to-PM via `task` unless the live schema explicitly lists it **and** the Assignment requires it.
+- PM is the **primary** orchestration seat via the `pm` skill (no PM agent shell is bundled here — the `mode: primary` shell is OpenCode-only, `packages/opencode/agents/`). Do not dispatch PM-to-PM via `task` unless the live schema explicitly lists it **and** the Assignment requires it.
 - Host generics (`scout`, `reviewer`, `designer`, …) remain useful for non-role orientation / assist — they do not replace a listed Morning Star role agent for role-owned deliverables.
 
 ### Role binding in prompt (C5b — required)

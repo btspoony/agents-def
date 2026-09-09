@@ -101,7 +101,11 @@ describe("@mstar-harness/omp packed artifact", () => {
         for (const cmd of ["iteration-start", "iteration-drive", "iteration-loop"]) {
           expect(existsSync(join(pkgRoot, "commands", `${cmd}.md`))).toBe(true);
         }
-        expect(existsSync(join(pkgRoot, "agents", "project-manager.md"))).toBe(true);
+        // PM ships no agent shell here: the `mode: primary` project-manager
+        // shell is OpenCode-only (packages/opencode/agents/) — omp registers
+        // subagent shells only and takes PM via the pm skill.
+        expect(existsSync(join(pkgRoot, "agents", "project-manager.md"))).toBe(false);
+        expect(existsSync(join(pkgRoot, "agents", "fullstack-dev.md"))).toBe(true);
       } finally {
         rmSync(outDir, { recursive: true, force: true });
         for (const f of readdirSync(ROOT)) {

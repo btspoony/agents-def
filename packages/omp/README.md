@@ -30,7 +30,7 @@ Maintainers / local checkouts: `omp plugin link /path/to/mstar-harness/packages/
 | `tools/mstar_*.js` | Six model-callable validator tools (`mstar_status_validate`, `mstar_dispatch_validate`, `mstar_lease_verify`, `mstar_path_resolve`, `mstar_iteration_gate`, `mstar_worktree_check`) |
 | `skills/` | `mstar-harness-core`, `mstar-iteration`, `mstar-sdd`, roles, phase/dispatch gates, … |
 | `commands/` | `/iteration-start`, `/iteration-drive`, `/iteration-loop`, `/codebase-audit`, `/amazing-pr-review` |
-| `agents/` | Role shells (`project-manager`, `fullstack-dev`, `qc-specialist`, …) |
+| `agents/` | Subagent role shells (`fullstack-dev`, `qc-specialist`, …) — no PM shell; the `mode: primary` project-manager seat is OpenCode-only |
 
 The engine is **bundled inline** into every hook/tool bundle at build time — the installed package has no runtime `@mstar-harness/engine` resolution, so module link can never fail on a missing package.
 
