@@ -30,7 +30,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { GateResult } from "../src/core.js";
@@ -52,11 +52,9 @@ function git(args: string[], cwd: string): string {
 }
 
 /**
- * Create a temp git repo with an initial commit and one linked worktree per
- * branch via real `git worktree add` (L1/L2 probe realism). Returns
- * branch → absolute worktree path.
+ * Init a git repo with one commit at `root/repo`; returns the repo path.
  */
-function worktreeFixture(root: string, branches: readonly string[]): Map<string, string> {
+function gitRepo(root: string): string {
   const repo = join(root, "repo");
   mkdirSync(repo);
   git(["init", "-q"], repo);
@@ -65,6 +63,16 @@ function worktreeFixture(root: string, branches: readonly string[]): Map<string,
   writeFileSync(join(repo, "README.md"), "fixture\n");
   git(["add", "-A"], repo);
   git(["commit", "-q", "-m", "initial"], repo);
+  return repo;
+}
+
+/**
+ * Create a temp git repo with an initial commit and one linked worktree per
+ * branch via real `git worktree add` (L1/L2 probe realism). Returns
+ * branch → absolute worktree path.
+ */
+function worktreeFixture(root: string, branches: readonly string[]): Map<string, string> {
+  const repo = gitRepo(root);
   const paths = new Map<string, string>();
   for (const branch of branches) {
     const path = join(root, `wt-${branch}`);
@@ -72,6 +80,22 @@ function worktreeFixture(root: string, branches: readonly string[]): Map<string,
     paths.set(branch, path);
   }
   return paths;
+}
+
+/**
+ * Nested variant: linked worktrees created INSIDE the repo checkout (the
+ * documented `.worktrees` layout) under an arbitrary folder name — the
+ * checkout-identity gate must accept them without a name special-case.
+ */
+function nestedWorktreeFixture(root: string, branches: readonly string[]): { repo: string; paths: Map<string, string> } {
+  const repo = gitRepo(root);
+  const paths = new Map<string, string>();
+  for (const branch of branches) {
+    const path = join(repo, "nested-checkouts", `wt-${branch.replace(/\//g, "-")}`);
+    git(["worktree", "add", "-q", "-b", branch, path], repo);
+    paths.set(branch, path);
+  }
+  return { repo, paths };
 }
 
 /** Add a detached-HEAD linked worktree (branch --show-current prints nothing). */
@@ -98,8 +122,7 @@ describe("l1PreDispatchCheck — L1 cross-plan checklist", () => {
     const root = tmpRoot("worktree-l1-ok-");
     try {
       const wts = worktreeFixture(root, ["feature/a"]);
-      const control = join(root, "control");
-      mkdirSync(control);
+      const control = join(root, "repo");
       const result = l1PreDispatchCheck({
         controlWorktreePath: control,
         leaseWorktreePath: wts.get("feature/a")!,
@@ -116,11 +139,10 @@ describe("l1PreDispatchCheck — L1 cross-plan checklist", () => {
   test("lease worktree equal to control path → worktree.l1.lease-equals-control (critical)", () => {
     const root = tmpRoot("worktree-l1-eq-");
     try {
-      const path = join(root, "same");
-      mkdirSync(path);
+      const repo = gitRepo(root);
       const result = l1PreDispatchCheck({
-        controlWorktreePath: path,
-        leaseWorktreePath: path,
+        controlWorktreePath: repo,
+        leaseWorktreePath: repo,
         leaseWorkingBranch: "feature/a",
         planId: "p-1",
       });
@@ -209,7 +231,7 @@ describe("l1PreDispatchCheck — L1 cross-plan checklist", () => {
     try {
       const wts = worktreeFixture(root, ["feature/a", "feature/b"]);
       const result = l1PreDispatchCheck({
-        controlWorktreePath: join(root, "control"),
+        controlWorktreePath: join(root, "repo"),
         leaseWorktreePath: wts.get("feature/a")!,
         leaseWorkingBranch: "feature/b",
         planId: "p-1",
@@ -222,13 +244,13 @@ describe("l1PreDispatchCheck — L1 cross-plan checklist", () => {
     }
   });
 
-  test("precomputed branchOf opt skips the git probe (purity)", () => {
+  test("precomputed branchOf opt skips the branch probe (purity; identity probe still real)", () => {
     const root = tmpRoot("worktree-l1-pure-");
     try {
-      const lease = join(root, "lease");
-      mkdirSync(lease);
+      const wts = worktreeFixture(root, ["feature/a"]);
+      const lease = wts.get("feature/a")!;
       const base = {
-        controlWorktreePath: join(root, "control"),
+        controlWorktreePath: join(root, "repo"),
         leaseWorktreePath: lease,
         leaseWorkingBranch: "feature/a",
         planId: "p-1",
@@ -242,7 +264,7 @@ describe("l1PreDispatchCheck — L1 cross-plan checklist", () => {
     }
   });
 
-  test("non-repo lease dir probe fails closed → worktree.l1.branch-probe-failed", () => {
+  test("non-repo lease dir probe fails closed → worktree.l1.checkout-probe-failed + branch-probe-failed", () => {
     const root = tmpRoot("worktree-l1-probe-");
     try {
       const lease = join(root, "lease");
@@ -253,8 +275,67 @@ describe("l1PreDispatchCheck — L1 cross-plan checklist", () => {
         leaseWorkingBranch: "feature/a",
         planId: "p-1",
       });
+      expect(codesOf(result)).toContain("worktree.l1.checkout-probe-failed");
       expect(codesOf(result)).toContain("worktree.l1.branch-probe-failed");
       expect(result.ok).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("nested linked worktree inside the control checkout passes (arbitrary folder name, no .worktrees special-case)", () => {
+    const root = tmpRoot("worktree-l1-nested-");
+    try {
+      const { repo, paths } = nestedWorktreeFixture(root, ["feature/a"]);
+      const result = l1PreDispatchCheck({
+        controlWorktreePath: repo,
+        leaseWorktreePath: paths.get("feature/a")!,
+        leaseWorkingBranch: "feature/a",
+        planId: "p-1",
+      });
+      expect(result.ok).toBe(true);
+      expect(result.violations).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("plain subdirectory of the control checkout refused even when the declared branch equals the control branch", () => {
+    const root = tmpRoot("worktree-l1-subdir-");
+    try {
+      const repo = gitRepo(root);
+      const subdir = join(repo, "plain-subdir");
+      mkdirSync(subdir);
+      const controlBranch = git(["branch", "--show-current"], repo);
+      const result = l1PreDispatchCheck({
+        controlWorktreePath: repo,
+        leaseWorktreePath: subdir,
+        leaseWorkingBranch: controlBranch,
+        planId: "p-1",
+      });
+      expect(result.ok).toBe(false);
+      expect(codesOf(result)).toContain("worktree.l1.lease-equals-control");
+      expect(severitiesOf(result)).toContain("critical");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("symlink alias of the control checkout refused → worktree.l1.lease-equals-control", () => {
+    const root = tmpRoot("worktree-l1-alias-");
+    try {
+      const repo = gitRepo(root);
+      const alias = join(root, "alias");
+      symlinkSync(repo, alias);
+      const controlBranch = git(["branch", "--show-current"], repo);
+      const result = l1PreDispatchCheck({
+        controlWorktreePath: repo,
+        leaseWorktreePath: alias,
+        leaseWorkingBranch: controlBranch,
+        planId: "p-1",
+      });
+      expect(result.ok).toBe(false);
+      expect(codesOf(result)).toContain("worktree.l1.lease-equals-control");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -461,12 +542,18 @@ describe("l2PreDispatchCheck — within-plan parallel track checklist", () => {
   });
 });
 
-describe("assertControlVsFeaturePath — lease worktree ≠ control path", () => {
-  test("same path → worktree.control-feature.same (critical)", () => {
-    const result = assertControlVsFeaturePath("/repo/control", "/repo/control");
-    expect(result.ok).toBe(false);
-    expect(codesOf(result)).toContain("worktree.control-feature.same");
-    expect(severitiesOf(result)).toContain("critical");
+describe("assertControlVsFeaturePath — lease worktree must be a distinct Git checkout", () => {
+  test("same checkout → worktree.control-feature.same (critical)", () => {
+    const root = tmpRoot("worktree-cvf-same-");
+    try {
+      const repo = gitRepo(root);
+      const result = assertControlVsFeaturePath(repo, repo);
+      expect(result.ok).toBe(false);
+      expect(codesOf(result)).toContain("worktree.control-feature.same");
+      expect(severitiesOf(result)).toContain("critical");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   test("both empty → worktree.control-feature.same", () => {
@@ -474,15 +561,77 @@ describe("assertControlVsFeaturePath — lease worktree ≠ control path", () =>
     expect(codesOf(result)).toContain("worktree.control-feature.same");
   });
 
-  test("different paths → ok", () => {
-    const result = assertControlVsFeaturePath("/repo/control", "/worktrees/p-1");
-    expect(result.ok).toBe(true);
-    expect(result.violations).toEqual([]);
+  test("one empty → ok (nothing to compare; the lease validator owns empty lease paths)", () => {
+    expect(assertControlVsFeaturePath("/repo/control", "").ok).toBe(true);
+    expect(assertControlVsFeaturePath("", "/repo/feature").ok).toBe(true);
+  });
+
+  test("distinct linked worktrees → ok (real git worktrees)", () => {
+    const root = tmpRoot("worktree-cvf-ok-");
+    try {
+      const wts = worktreeFixture(root, ["feature/a"]);
+      const result = assertControlVsFeaturePath(join(root, "repo"), wts.get("feature/a")!);
+      expect(result.ok).toBe(true);
+      expect(result.violations).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("nested linked worktree inside the control checkout → ok (arbitrary folder name)", () => {
+    const root = tmpRoot("worktree-cvf-nested-");
+    try {
+      const { repo, paths } = nestedWorktreeFixture(root, ["feature/a"]);
+      expect(assertControlVsFeaturePath(repo, paths.get("feature/a")!).ok).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("plain subdirectory of the control checkout → worktree.control-feature.same", () => {
+    const root = tmpRoot("worktree-cvf-subdir-");
+    try {
+      const repo = gitRepo(root);
+      const subdir = join(repo, "plain-subdir");
+      mkdirSync(subdir);
+      expect(codesOf(assertControlVsFeaturePath(repo, subdir))).toContain("worktree.control-feature.same");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("symlink alias of the control checkout → worktree.control-feature.same", () => {
+    const root = tmpRoot("worktree-cvf-alias-");
+    try {
+      const repo = gitRepo(root);
+      const alias = join(root, "alias");
+      symlinkSync(repo, alias);
+      expect(codesOf(assertControlVsFeaturePath(repo, alias))).toContain("worktree.control-feature.same");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   test("path aliases of the same dir collide → worktree.control-feature.same (normalization)", () => {
-    expect(codesOf(assertControlVsFeaturePath("/repo/control/", "/repo/control"))).toContain("worktree.control-feature.same");
-    expect(codesOf(assertControlVsFeaturePath("/repo/control/../control", "/repo/control"))).toContain("worktree.control-feature.same");
+    const root = tmpRoot("worktree-cvf-norm-");
+    try {
+      const repo = gitRepo(root);
+      expect(codesOf(assertControlVsFeaturePath(`${repo}/`, repo))).toContain("worktree.control-feature.same");
+      expect(codesOf(assertControlVsFeaturePath(join(repo, "..", "repo"), repo))).toContain("worktree.control-feature.same");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("non-repo dir fails closed → worktree.control-feature.same", () => {
+    const root = tmpRoot("worktree-cvf-nonrepo-");
+    try {
+      const dir = join(root, "not-a-repo");
+      mkdirSync(dir);
+      expect(codesOf(assertControlVsFeaturePath(dir, join(root, "other")))).toContain("worktree.control-feature.same");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 
@@ -685,14 +834,15 @@ describe("git probe timeout — bounded probes fail closed ", () => {
     }
   }
 
-  test("per-call timeoutMs bounds the probe → worktree.l1.branch-probe-failed with timeout detail", () => {
+  test("per-call timeoutMs bounds the probe → checkout-probe-failed + branch-probe-failed with timeout detail", () => {
     slowGitFixture((gitPath, lease) => {
       const result = l1PreDispatchCheck(
         { controlWorktreePath: join(lease, "..", "control"), leaseWorktreePath: lease, leaseWorkingBranch: "feature/a", planId: "p-1" },
         { gitPath, timeoutMs: 300 },
       );
       expect(result.ok).toBe(false);
-      expect(codesOf(result)).toEqual(["worktree.l1.branch-probe-failed"]);
+      expect(codesOf(result)).toEqual(["worktree.l1.checkout-probe-failed", "worktree.l1.branch-probe-failed"]);
+      expect(findViolation(result, "worktree.l1.checkout-probe-failed")?.message).toMatch(/timed out after 300ms/);
       expect(findViolation(result, "worktree.l1.branch-probe-failed")?.message).toMatch(/timed out after 300ms/);
     });
   });
@@ -706,7 +856,8 @@ describe("git probe timeout — bounded probes fail closed ", () => {
           { controlWorktreePath: join(lease, "..", "control"), leaseWorktreePath: lease, leaseWorkingBranch: "feature/a", planId: "p-1" },
           { gitPath },
         );
-        expect(codesOf(result)).toEqual(["worktree.l1.branch-probe-failed"]);
+        expect(codesOf(result)).toEqual(["worktree.l1.checkout-probe-failed", "worktree.l1.branch-probe-failed"]);
+        expect(findViolation(result, "worktree.l1.checkout-probe-failed")?.message).toMatch(/timed out after 300ms/);
         expect(findViolation(result, "worktree.l1.branch-probe-failed")?.message).toMatch(/timed out after 300ms/);
       });
     } finally {
@@ -723,7 +874,7 @@ describe("git probe timeout — bounded probes fail closed ", () => {
       try {
         const wts = worktreeFixture(root, ["feature/x"]);
         const result = l1PreDispatchCheck({
-          controlWorktreePath: join(root, "control"),
+          controlWorktreePath: join(root, "repo"),
           leaseWorktreePath: wts.get("feature/x")!,
           leaseWorkingBranch: "feature/x",
           planId: "p-1",

@@ -46,7 +46,7 @@ import { findMstarc, parseMstarc } from "./mstarc.js";
 import { readJson, type GateResult, type Severity, type ValidationResult } from "./core.js";
 import { verifyPlanExecutionLease } from "./lease.js";
 import { WORKFLOW_SNAPSHOT_FILE } from "./workflow.js";
-import { assertBranchAlignment, l1PreDispatchCheck } from "./worktree.js";
+import { assertBranchAlignment, isDistinctCheckout, l1PreDispatchCheck, probeCheckoutRoot } from "./worktree.js";
 
 /**
  * Error carrying the ported script exit code so the CLI can map validation
@@ -941,24 +941,50 @@ export function resolveSddExecutionContext(input: SddExecutionContext): SddExecu
     ]);
   }
 
- // L1 hard rules — the feature cwd and the control checkout must not nest.
-  const controlCheckout = dirname(canonicalControlHarnessRoot);
-  if (isInside(canonicalFeatureCwd, controlCheckout)) {
-    throwGateFail([
-      contextViolation(
-        "critical",
-        "sdd.context.feature-in-control",
-        `featureCwd "${canonicalFeatureCwd}" is inside the control checkout "${controlCheckout}" \u2014 product edits never land in the control checkout (execution_lease.worktree_path MUST differ from metadata.control_worktree_path)`,
-        "use a distinct feature worktree for the plan",
-      ),
-    ]);
-  }
+  // L1 hard rules — the feature cwd and the control checkout must not nest
+  // UNLESS the feature is a distinct Git checkout: a real linked worktree
+  // nested inside the control checkout (the documented .worktrees layout)
+  // is a distinct checkout and passes; the same checkout, a plain
+  // subdirectory, or a symlink alias of it is refused (checkout identity
+  // via the canonical per-worktree git dir; probe failure fails closed).
+  //
+  // control-inside-feature is checked FIRST (physical, unchanged): a
+  // harness declared inside the feature cwd is diagnosed here, before any
+  // checkout-root derivation — a git probe from such a misplaced harness
+  // would resolve to the feature worktree itself, misdiagnosing the case.
   if (isInside(canonicalControlHarnessRoot, canonicalFeatureCwd)) {
     throwGateFail([
       contextViolation(
         "critical",
         "sdd.context.control-inside-feature",
         `controlHarnessRoot "${canonicalControlHarnessRoot}" is inside featureCwd "${canonicalFeatureCwd}" \u2014 a feature worktree's same-looking {HARNESS_DIR} is not the SSOT; the control harness must live outside the feature checkout`,
+      ),
+    ]);
+  }
+  // The control checkout root is derived from the harness dir by a
+  // bounded, fail-closed git probe (`--show-toplevel`) — never
+  // dirname(harness), which is only correct when the harness sits directly
+  // under the checkout (a `.mstarc`-declared nested harness like
+  // `<control>/state/.mstar` would otherwise infer the wrong boundary).
+  // An unresolvable root (harness outside any git checkout) fails closed.
+  const controlCheckout = probeCheckoutRoot(canonicalControlHarnessRoot);
+  if (controlCheckout === null) {
+    throwGateFail([
+      contextViolation(
+        "high",
+        "sdd.context.control-root-unresolvable",
+        `cannot resolve the control checkout root for controlHarnessRoot "${canonicalControlHarnessRoot}" (git rev-parse --show-toplevel failed) \u2014 the control harness must live inside a git checkout`,
+        "verify the control harness root is inside the control worktree checkout",
+      ),
+    ]);
+  }
+  if (isInside(canonicalFeatureCwd, controlCheckout) && !isDistinctCheckout(canonicalControlHarnessRoot, canonicalFeatureCwd)) {
+    throwGateFail([
+      contextViolation(
+        "critical",
+        "sdd.context.feature-in-control",
+        `featureCwd "${canonicalFeatureCwd}" is inside the control checkout "${controlCheckout}" and is not a distinct Git checkout \u2014 a plain subdirectory or symlink alias of the control checkout is not isolation; product edits never land in the control checkout (execution_lease.worktree_path MUST be a distinct checkout)`,
+        "use a distinct feature worktree for the plan (git worktree add <path> <branch>)",
       ),
     ]);
   }

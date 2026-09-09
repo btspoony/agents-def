@@ -20,7 +20,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -82,6 +82,24 @@ function worktreeFixture(root: string): string {
   git(["add", "-A"], root);
   git(["commit", "-q", "-m", "base commit"], root);
   const linked = join(root, "linked");
+  git(["worktree", "add", "-q", linked, "-b", "feature/plan-a"], root);
+  return linked;
+}
+
+/**
+ * Nested variant: the linked worktree is created INSIDE the repo checkout
+ * under an arbitrary folder name (the documented `.worktrees` layout) —
+ * the checkout-identity gate must accept it without a name special-case.
+ * Returns the nested linked worktree path.
+ */
+function nestedWorktreeFixture(root: string): string {
+  git(["init", "-q"], root);
+  git(["config", "user.email", "worktree-cli-test@example.com"], root);
+  git(["config", "user.name", "Worktree CLI Test"], root);
+  writeFileSync(join(root, "base.txt"), "base\n");
+  git(["add", "-A"], root);
+  git(["commit", "-q", "-m", "base commit"], root);
+  const linked = join(root, "nested-checkouts", "wt-plan-a");
   git(["worktree", "add", "-q", linked, "-b", "feature/plan-a"], root);
   return linked;
 }
@@ -301,6 +319,77 @@ describe("mstar worktree check — L1 (control/feature isolation + branch alignm
     const result = runCli(["worktree", "check", "plan-a"]);
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("--workflow");
+  });
+
+  test("nested linked worktree inside the control checkout → OK, exit 0 (arbitrary folder name)", () => {
+    const root = tmpRoot("mstar-wt-l1-nested-");
+    try {
+      const linked = nestedWorktreeFixture(root);
+      writeSnapshot(
+        root,
+        snapshotDoc([{ id: "plan-a", title: "Plan A", status: "InProgress", execution_lease: LEASE(linked) }], {
+          control_worktree_path: root,
+        }),
+      );
+      const result = runCli(["worktree", "check", "--plan", "plan-a", "--workflow", WORKFLOW_ID, "--harness", root]);
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("worktree L1 check: OK");
+      expect(result.stderr).toBe("");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("plain subdirectory of the control checkout as lease → worktree.l1.lease-equals-control, exit 1", () => {
+    const root = tmpRoot("mstar-wt-l1-subdir-");
+    try {
+      git(["init", "-q"], root);
+      git(["config", "user.email", "worktree-cli-test@example.com"], root);
+      git(["config", "user.name", "Worktree CLI Test"], root);
+      writeFileSync(join(root, "base.txt"), "base\n");
+      git(["add", "-A"], root);
+      git(["commit", "-q", "-m", "base commit"], root);
+      const subdir = join(root, "plain-subdir");
+      mkdirSync(subdir);
+      const controlBranch = git(["branch", "--show-current"], root);
+      writeSnapshot(
+        root,
+        snapshotDoc([{ id: "plan-a", title: "Plan A", status: "InProgress", execution_lease: LEASE(subdir, controlBranch) }], {
+          control_worktree_path: root,
+        }),
+      );
+      const result = runCli(["worktree", "check", "--plan", "plan-a", "--workflow", WORKFLOW_ID, "--harness", root]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("worktree.l1.lease-equals-control");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("symlink alias of the control checkout as lease → worktree.l1.lease-equals-control, exit 1", () => {
+    const root = tmpRoot("mstar-wt-l1-alias-");
+    try {
+      git(["init", "-q"], root);
+      git(["config", "user.email", "worktree-cli-test@example.com"], root);
+      git(["config", "user.name", "Worktree CLI Test"], root);
+      writeFileSync(join(root, "base.txt"), "base\n");
+      git(["add", "-A"], root);
+      git(["commit", "-q", "-m", "base commit"], root);
+      const alias = join(root, "alias");
+      symlinkSync(root, alias);
+      const controlBranch = git(["branch", "--show-current"], root);
+      writeSnapshot(
+        root,
+        snapshotDoc([{ id: "plan-a", title: "Plan A", status: "InProgress", execution_lease: LEASE(alias, controlBranch) }], {
+          control_worktree_path: root,
+        }),
+      );
+      const result = runCli(["worktree", "check", "--plan", "plan-a", "--workflow", WORKFLOW_ID, "--harness", root]);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("worktree.l1.lease-equals-control");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

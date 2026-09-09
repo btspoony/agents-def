@@ -149,8 +149,10 @@ export {
   assertBranchAlignment,
   assertControlVsFeaturePath,
   assertQcAlignment,
+  isDistinctCheckout,
   l1PreDispatchCheck,
   l2PreDispatchCheck,
+  probeCheckoutRoot,
   singleReviewSnapshot,
 } from "./worktree.js";
 export type {

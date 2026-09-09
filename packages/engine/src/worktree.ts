@@ -31,8 +31,8 @@
  *   § "单一待审 Git 快照（派 QC 前置条件）".
  */
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { isAbsolute, join, resolve } from "node:path";
 import type { GateResult, ValidationResult, Severity } from "./core.js";
 
 /**
@@ -155,6 +155,86 @@ function probeBranch(worktreePath: string, opts: BranchProbeOptions): BranchProb
 }
 
 /**
+ * Probe the per-worktree git dir of a checkout via
+ * `git -C <path> rev-parse --git-dir` — bounded exactly like `probeBranch`
+ * (same timeout policy, same fail-closed shape). The resolved + realpath'd
+ * git dir is the checkout's identity: a linked worktree from
+ * `git worktree add` has its own git dir under the common dir, while a
+ * plain subdirectory or a symlink alias of a checkout resolves to that
+ * checkout's git dir. A non-repo path, a hung git, or an unresolvable git
+ * dir is an error — never an identity.
+ */
+type CheckoutProbe = { gitDir: string } | { error: string };
+
+function probeCheckout(worktreePath: string, opts: BranchProbeOptions): CheckoutProbe {
+  const timeout = opts.timeoutMs ?? probeTimeoutMs();
+  try {
+    const stdout = execFileSync(opts.gitPath ?? "git", ["-C", worktreePath, "rev-parse", "--git-dir"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout,
+    });
+    const raw = stdout.trim();
+    if (raw === "") return { error: `no git dir reported at "${worktreePath}"` };
+    // git prints the git dir relative to the probed cwd (`.git` at the
+    // checkout top, `../.git` from a subdirectory) or absolute (linked
+    // worktrees); resolve against the probed path, then realpath so a
+    // symlink alias of a checkout compares equal to the checkout itself.
+    const abs = isAbsolute(raw) ? raw : join(worktreePath, raw);
+    return { gitDir: realpathSync(abs) };
+  } catch (err) {
+    const e = err as { message?: string; stderr?: string | Buffer; status?: number; killed?: boolean; signal?: string };
+    if (e.killed === true || e.signal !== undefined) {
+      return { error: `git probe timed out after ${timeout}ms (killed by ${e.signal ?? "SIGTERM"})` };
+    }
+    const detail = (e.stderr !== undefined ? e.stderr.toString().trim() : "") || e.message || "git probe failed";
+    return { error: detail };
+  }
+}
+
+/**
+ * True when `candidatePath` is a Git checkout DISTINCT from `controlPath` —
+ * the canonical per-worktree git dirs differ. A linked worktree from
+ * `git worktree add` (nested inside the control checkout or a sibling) has
+ * its own git dir and is distinct; the same checkout, a plain subdirectory
+ * of it, or a symlink alias of it resolves to the same git dir and is NOT
+ * distinct. Everything unprovable — a non-repo path or a probe failure —
+ * is NOT distinct: fail closed, never guess an identity.
+ */
+export function isDistinctCheckout(controlPath: string, candidatePath: string, opts: BranchProbeOptions = {}): boolean {
+  const control = probeCheckout(controlPath, opts);
+  const candidate = probeCheckout(candidatePath, opts);
+  if ("error" in control || "error" in candidate) return false;
+  return control.gitDir !== candidate.gitDir;
+}
+
+/**
+ * Probe the repository top-level (worktree root) of a checkout via
+ * `git -C <path> rev-parse --show-toplevel` — bounded exactly like
+ * `probeBranch` / `probeCheckout`, fail-closed (null on any failure). The
+ * canonical top-level is the checkout root regardless of where inside it
+ * the probed path sits — a `.mstarc`-declared nested harness dir like
+ * `<control>/state/.mstar` included — so callers never infer the checkout
+ * root from `dirname(harness)` (a layout assumption that only holds when
+ * the harness sits directly under the checkout).
+ */
+export function probeCheckoutRoot(path: string, opts: BranchProbeOptions = {}): string | null {
+  const timeout = opts.timeoutMs ?? probeTimeoutMs();
+  try {
+    const stdout = execFileSync(opts.gitPath ?? "git", ["-C", path, "rev-parse", "--show-toplevel"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout,
+    });
+    const raw = stdout.trim();
+    if (raw === "") return null;
+    return realpathSync(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * L1 cross-plan pre-dispatch checklist (mstar-branch-worktree L1 table +
  * Harness path SSOT hard rules): control path recorded, feature worktree
  * exists, lease worktree ≠ control path, and the branch checked out at the
@@ -194,17 +274,56 @@ export function l1PreDispatchCheck(input: L1PreDispatchInput, opts: BranchProbeO
       ),
     );
   }
-  // Normalized comparison : trailing slashes / `.` / `..` aliases
-  // of the same directory are the same path — resolve before string equality.
-  if (controlWorktreePath !== "" && leaseWorktreePath !== "" && resolve(controlWorktreePath) === resolve(leaseWorktreePath)) {
-    violations.push(
-      violation(
-        "critical",
-        "worktree.l1.lease-equals-control",
-        `execution_lease.worktree_path "${leaseWorktreePath}" equals metadata.control_worktree_path \u2014 the feature worktree MUST differ from the control worktree (L1 isolation; product edits never land in the control checkout)`,
-        "use a distinct feature worktree for the plan (git worktree add <path> <branch>) and update the lease",
-      ),
-    );
+  // Same-checkout refusal by Git checkout identity, not physical path
+  // equality: the lease worktree MUST be a distinct checkout from the
+  // control worktree. A real linked worktree nested inside the control
+  // checkout (the documented .worktrees layout) is a distinct checkout and
+  // passes; the same checkout, a plain subdirectory, or a symlink alias of
+  // it is refused — even when the declared branch matches the control
+  // branch. Git-probe failure fails closed (bounded timeout).
+  if (controlWorktreePath !== "" && leaseWorktreePath !== "") {
+    // Fast path: normalized path equality is the same checkout — no probe.
+    if (resolve(controlWorktreePath) === resolve(leaseWorktreePath)) {
+      violations.push(
+        violation(
+          "critical",
+          "worktree.l1.lease-equals-control",
+          `execution_lease.worktree_path "${leaseWorktreePath}" equals metadata.control_worktree_path \u2014 the feature worktree MUST differ from the control worktree (L1 isolation; product edits never land in the control checkout)`,
+          "use a distinct feature worktree for the plan (git worktree add <path> <branch>) and update the lease",
+        ),
+      );
+    } else if (existsSync(leaseWorktreePath)) {
+      const controlProbe = probeCheckout(controlWorktreePath, opts);
+      const leaseProbe = probeCheckout(leaseWorktreePath, opts);
+      if ("error" in controlProbe) {
+        violations.push(
+          violation(
+            "high",
+            "worktree.l1.checkout-probe-failed",
+            `cannot establish the lease worktree "${leaseWorktreePath}" is a distinct Git checkout from the control worktree "${controlWorktreePath}" for plan "${planId}": ${controlProbe.error}`,
+            "verify the control worktree path is a git checkout (integration-branch checkout)",
+          ),
+        );
+      } else if ("error" in leaseProbe) {
+        violations.push(
+          violation(
+            "high",
+            "worktree.l1.checkout-probe-failed",
+            `cannot establish the lease worktree "${leaseWorktreePath}" is a distinct Git checkout from the control worktree "${controlWorktreePath}" for plan "${planId}": ${leaseProbe.error}`,
+            "verify the lease worktree path is a git checkout (git worktree add <path> <branch>)",
+          ),
+        );
+      } else if (controlProbe.gitDir === leaseProbe.gitDir) {
+        violations.push(
+          violation(
+            "critical",
+            "worktree.l1.lease-equals-control",
+            `execution_lease.worktree_path "${leaseWorktreePath}" is the same Git checkout as metadata.control_worktree_path "${controlWorktreePath}" \u2014 a plain subdirectory or symlink alias of the control checkout is not isolation; the feature worktree MUST be a distinct checkout`,
+            "use a distinct feature worktree for the plan (git worktree add <path> <branch>) and update the lease",
+          ),
+        );
+      }
+    }
   }
 
   if (leaseWorktreePath !== "" && !existsSync(leaseWorktreePath)) {
@@ -343,25 +462,41 @@ export function l2PreDispatchCheck(input: L2PreDispatchInput, opts: BranchProbeO
 
 /**
  * L1 hard rule (Harness path SSOT): `execution_lease.worktree_path` MUST
- * differ from `metadata.control_worktree_path`. String equality on the two
- * paths — canonical absolute paths are the caller's contract (the lease
- * validator already requires `worktree_path` to be absolute).
+ * be a Git checkout DISTINCT from `metadata.control_worktree_path` — the
+ * same checkout, a plain subdirectory, or a symlink alias of the control
+ * checkout is refused (checkout identity via the canonical per-worktree
+ * git dir; probe failure fails closed). Both-empty stays a match (nothing
+ * recorded, per the lease validator contract); one empty has nothing to
+ * compare and passes (the lease validator's absolute-path requirement owns
+ * empty lease paths).
  */
-export function assertControlVsFeaturePath(controlWorktreePath: string, featureWorktreePath: string): GateResult {
+export function assertControlVsFeaturePath(
+  controlWorktreePath: string,
+  featureWorktreePath: string,
+  opts: BranchProbeOptions = {},
+): GateResult {
   const violations: ValidationResult[] = [];
-  // Normalized comparison : trailing slashes / `.` / `..` aliases
-  // of the same directory are the same path; both-empty stays a match
-  // (nothing recorded, per the lease validator contract).
-  const samePath =
-    (controlWorktreePath === "" && featureWorktreePath === "") ||
-    (controlWorktreePath !== "" && featureWorktreePath !== "" && resolve(controlWorktreePath) === resolve(featureWorktreePath));
-  if (samePath) {
+  if (controlWorktreePath === "" && featureWorktreePath === "") {
     violations.push(
       violation(
         "critical",
         "worktree.control-feature.same",
-        `control worktree path equals feature/lease worktree path "${controlWorktreePath}" \u2014 execution_lease.worktree_path MUST differ from metadata.control_worktree_path`,
-        "use a distinct feature worktree for the plan's product edits",
+        `control worktree path and feature/lease worktree path are both empty \u2014 execution_lease.worktree_path MUST differ from metadata.control_worktree_path`,
+        "record a distinct feature worktree path",
+      ),
+    );
+    return gate(violations);
+  }
+  if (controlWorktreePath === "" || featureWorktreePath === "") {
+    return gate(violations); // one empty — nothing to compare (retained contract)
+  }
+  if (!isDistinctCheckout(controlWorktreePath, featureWorktreePath, opts)) {
+    violations.push(
+      violation(
+        "critical",
+        "worktree.control-feature.same",
+        `control worktree path "${controlWorktreePath}" and feature/lease worktree path "${featureWorktreePath}" are not distinct Git checkouts \u2014 a plain subdirectory or symlink alias of the control checkout is not isolation; execution_lease.worktree_path MUST be a distinct checkout`,
+        "use a distinct feature worktree for the plan's product edits (git worktree add <path> <branch>)",
       ),
     );
   }

@@ -383,7 +383,7 @@ interface ExecFixture {
   workingBranch: string;
 }
 
-function executionFixture(root: string): ExecFixture {
+function executionFixture(root: string, opts: { nested?: boolean } = {}): ExecFixture {
   const primary = join(root, "primary");
   mkdirSync(primary);
   git(["init", "-q"], primary);
@@ -401,7 +401,10 @@ function executionFixture(root: string): ExecFixture {
   const control = join(root, "control");
   git(["worktree", "add", "-q", "-b", "codex/iter-integration", control], primary);
   const workingBranch = `feature/${PLAN_ID}`;
-  const feature = join(root, "feature");
+  // Nested variant: the feature worktree lives INSIDE the control checkout
+  // under an arbitrary folder name (the documented .worktrees layout) — the
+  // checkout-identity gate must accept it without a name special-case.
+  const feature = opts.nested ? join(control, "nested-checkouts", `wt-${PLAN_ID}`) : join(root, "feature");
   git(["worktree", "add", "-q", "-b", workingBranch, feature], primary);
 
   const harnessDir = join(control, ".mstar");
@@ -689,6 +692,96 @@ describe("mstar sdd task-brief/review-package --context — bound artifact produ
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain("sdd.context.artifact-outside-plan");
       expect(existsSync(destination)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Nested layout: the feature worktree is a real
+// linked worktree created INSIDE the control checkout under an arbitrary
+// folder name (the documented .worktrees layout). The bound surface must
+// accept it as a distinct checkout — no .worktrees name special-case — and
+// keep every containment behavior: child writes land in the nested feature
+// only, artifacts stay under the control sddDir, and a source action from
+// the control cwd is still refused.
+// ---------------------------------------------------------------------------
+
+describe("mstar sdd bound surface with a nested feature worktree", () => {
+  test("check-context launch passes for the nested feature (exit 0)", () => {
+    const root = tmpRoot("mstar-sdd-nested-launch-");
+    try {
+      const f = executionFixture(root, { nested: true });
+      const result = runCli(["sdd", "check-context", "--context", f.ctxFile, "--kind", "launch"], { cwd: f.control });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("check-context: OK");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("source action from the control cwd is still refused for the nested feature (exit 1)", () => {
+    const root = tmpRoot("mstar-sdd-nested-source-");
+    try {
+      const f = executionFixture(root, { nested: true });
+      const result = runCli(
+        ["sdd", "check-context", "--context", f.ctxFile, "--kind", "source", "--target", "src/probe.txt"],
+        { cwd: f.control },
+      );
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("sdd.context.source-cwd-outside-feature");
+      expect(existsSync(join(f.feature, "src", "probe.txt"))).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("bound task-brief --context lands in the control sddDir for the nested feature (exit 0)", () => {
+    const root = tmpRoot("mstar-sdd-nested-brief-");
+    try {
+      const f = executionFixture(root, { nested: true });
+      const result = runCli(["sdd", "task-brief", f.planFile, "1", "--context", f.ctxFile], { cwd: f.control });
+      expect(result.exitCode).toBe(0);
+      const expected = realpathSync(join(f.sddDir, "task-1-brief.md"));
+      expect(result.stdout).toContain(`task 1 brief: ${expected}`);
+      expect(readFileSync(expected, "utf8")).toContain("- implement");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("bound review-package probes the nested feature and lands in the control sddDir (exit 0)", () => {
+    const root = tmpRoot("mstar-sdd-nested-rp-");
+    try {
+      const f = executionFixture(root, { nested: true });
+      writeFileSync(join(f.feature, "feature-file.txt"), "feature change\n");
+      git(["add", "-A"], f.feature);
+      git(["commit", "-q", "-m", "feature commit"], f.feature);
+      const base = git(["rev-parse", "main"], f.primary);
+      const head = git(["rev-parse", "HEAD"], f.feature);
+      const result = runCli(["sdd", "review-package", base, head, "--context", f.ctxFile], { cwd: f.control });
+      expect(result.exitCode).toBe(0);
+      const expected = realpathSync(join(f.sddDir, `review-${base.slice(0, 7)}..${head.slice(0, 7)}.diff`));
+      expect(result.stdout).toContain(`review package: ${expected}`);
+      expect(readFileSync(expected, "utf8")).toContain("feature-file.txt");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("bound exec child runs in the nested feature; the sentinel lands there and nowhere else", () => {
+    const root = tmpRoot("mstar-sdd-nested-exec-");
+    try {
+      const f = executionFixture(root, { nested: true });
+      const writer = childWriterFixture(root);
+      const record = join(f.sddDir, "child-record.json");
+      const result = runCli(["sdd", "exec", "--context", f.ctxFile, "--", process.execPath, writer, record], { cwd: f.control });
+      expect(result.exitCode).toBe(0);
+      const doc = JSON.parse(readFileSync(record, "utf8")) as { cwd: string; argv: string[] };
+      expect(doc.cwd).toBe(realpathSync(f.feature));
+      expect(existsSync(join(f.primary, "child-record.json"))).toBe(false);
+      expect(existsSync(join(f.control, "child-record.json"))).toBe(false);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
