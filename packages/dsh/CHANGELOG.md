@@ -6,6 +6,11 @@ The monorepo root [CHANGELOG.md](../../CHANGELOG.md) summarizes cross-surface re
 
 ## [Unreleased]
 
+### Changed
+
+- Bump `@deepseek-ai/dsh-*` host peers to `^0.1.5-rc.1` and refresh the lock against the `0.1.5-rc.1` line (badge `0.1.5-rc.1`). Corridor rollup from `0.1.2-rc.1` via intervening alphas; no `dsh-session-persistence-sqlite` / `dsh-client-runtime` pin; fallbacks-only/transitive dsh packages pinned as peers for single-line lock; no root overrides.
+- Compensate for client packages (`dsh-client-store` / `dsh-client-ui-primitives` / `dsh-client-ui-renderer`) that no longer declare former runtime deps: add `zustand`/`immer`, the primitives markdown/shiki stack, and `use-sync-external-store` as package **devDependencies**.
+
 ## [3.7.2] - 2026-09-09
 
 ### Changed
